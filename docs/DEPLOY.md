@@ -13,7 +13,7 @@ Bu liste yeni ortam açarken veya gözden geçirirken kullanılır. Ayrıntılı
 
 ## 2a. rebiovil.com (Docker)
 
-Tek sunucu için hazır `docker-compose.yml` ve adım adım Türkçe rehber: **[REBIOVIL-YAYIN.md](./REBIOVIL-YAYIN.md)**. Sıfırdan, tek tek: **[REBIOVIL-SIFIRDAN.md](./REBIOVIL-SIFIRDAN.md)**. Hostinger VPS: **[REBIOVIL-HOSTINGER.md](./REBIOVIL-HOSTINGER.md)**.
+Tek sunucu için hazır `docker-compose.yml` ve adım adım Türkçe rehber: **[REBIOVIL-YAYIN.md](./REBIOVIL-YAYIN.md)**. Sıfırdan, tek tek: **[REBIOVIL-SIFIRDAN.md](./REBIOVIL-SIFIRDAN.md)**. Hostinger VPS: **[REBIOVIL-HOSTINGER.md](./REBIOVIL-HOSTINGER.md)**. Push ile otomatik deploy: **[GITHUB-ACTIONS-DEPLOY.md](./GITHUB-ACTIONS-DEPLOY.md)**.
 
 ## 2. Backend (FastAPI)
 
