@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
-import { DEMO_USER_ID } from "../lib/demoUser";
 
 const AuthContext = createContext({});
 
@@ -54,18 +53,9 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  // Demo mode: allow bypass when Supabase is not configured
-  const demoLogin = () => {
-    setUser({
-      id: DEMO_USER_ID,
-      email: "demo@rebi.app",
-      user_metadata: { full_name: "Demo Kullanıcı" },
-    });
-  };
-
   return (
     <AuthContext.Provider
-      value={{ user, loading, signUp, signIn, signOut, demoLogin }}
+      value={{ user, loading, signUp, signIn, signOut }}
     >
       {children}
     </AuthContext.Provider>

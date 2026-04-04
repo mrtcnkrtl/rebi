@@ -23,13 +23,21 @@ async function testFaceZoneInteraction() {
     console.log('📍 Logging in...');
     await page.goto('http://localhost:5173/auth', { waitUntil: 'networkidle0' });
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    await page.evaluate(() => {
-      const buttons = Array.from(document.querySelectorAll('button'));
-      const demoButton = buttons.find(btn => btn.textContent.includes('Demo'));
-      if (demoButton) demoButton.click();
-    });
-    await new Promise(resolve => setTimeout(resolve, 3000));
+
+    const e2eEmail = process.env.E2E_EMAIL;
+    const e2ePassword = process.env.E2E_PASSWORD;
+    if (!e2eEmail || !e2ePassword) {
+      throw new Error(
+        'Demo giriş kaldırıldı. Test için: E2E_EMAIL ve E2E_PASSWORD ortam değişkenlerini ayarla (gerçek test hesabı).'
+      );
+    }
+    await page.type('input[type="email"]', e2eEmail);
+    await page.type('input[type="password"]', e2ePassword);
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => {}),
+      page.click('button[type="submit"]'),
+    ]);
+    await new Promise(resolve => setTimeout(resolve, 2000));
     console.log('✅ Logged in\n');
     
     // Navigate to analyze

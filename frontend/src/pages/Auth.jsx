@@ -12,7 +12,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
-  const { signIn, signUp, demoLogin } = useAuth();
+  const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -58,11 +58,6 @@ export default function Auth() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDemo = () => {
-    demoLogin();
-    navigate("/dashboard");
   };
 
   return (
@@ -179,19 +174,6 @@ export default function Auth() {
               )}
             </button>
           </form>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-200" />
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="bg-white px-4 text-gray-400">veya</span>
-            </div>
-          </div>
-
-          <button onClick={handleDemo} className="btn-secondary w-full">
-            Demo ile Devam Et
-          </button>
 
           <p className="text-center text-sm text-gray-500 mt-6">
             {mode === "login" ? (
