@@ -60,14 +60,21 @@ Secret adları **tam olarak** tablodaki gibi olmalı (`VPS_SSH_KEY` vb.).
 Çok satırlı PEM’i doğrudan secret’a yapıştırmak Actions’ta dosyayı bozar (`libcrypto` / `no key found`). Mac’te:
 
 ```bash
-base64 < ~/.ssh/gha_deploy | tr -d '\n' | pbcopy
+base64 -i ~/.ssh/gha_deploy | tr -d '\n' | pbcopy
 ```
 
-(Anahtar dosyan `rebi_deploy` ise yolu ona çevir.) **Tek satır** panoya gelir → GitHub’da `VPS_SSH_KEY` → **Update** → yapıştır.
+(`-i` macOS’ta dosyadan okur; `base64 < dosya` da olur.) Anahtar dosyan `rebi_deploy` ise yolu ona çevir. **Tek satır** panoya gelir → GitHub’da `VPS_SSH_KEY` → **Update** → yapıştır; başına/sonuna boşluk veya tırnak ekleme.
+
+**Alternatif:** Secret’a doğrudan private key’in tamamını yapıştırabilirsin (ilk satır `-----BEGIN … PRIVATE KEY-----` olmalı). Workflow bunu da kabul eder.
+
+### `Incorrect padding` (Actions log)
+
+Genelde base64 **kesik** veya sonundaki `=` karakterleri eksik. Çözüm: secret’ı silip yeniden oluştur (`base64 -i … | tr -d '\n' | pbcopy`), tek seferde yapıştır; ya da ham PEM’i çok satırlı yapıştır.
 
 ### Hata özeti
 
-- **`error in libcrypto`:** Bozuk PEM; **base64** secret kullan.
+- **`Incorrect padding`:** Base64 bozuk/kısa; secret’ı yeniden kopyala veya **ham PEM** yapıştır (yukarıda).
+- **`error in libcrypto`:** Bozuk PEM; **base64** veya tam PEM kullan.
 - **`ssh: no key found`:** Public key yapıştırma veya yanlış secret.
 
 PEM RSA anahtarı yoksa:

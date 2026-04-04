@@ -17,20 +17,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # VPS_SSH_KEY = Mac: base64 < ~/.ssh/gha_deploy | tr -d '\n' (tek satır, PEM değil).
-      - name: SSH anahtarını dosyaya yaz (base64 → Python decode)
+      - name: SSH anahtarını dosyaya yaz (PEM veya base64)
         env:
           VPS_SSH_KEY_B64: ${{ secrets.VPS_SSH_KEY }}
         run: |
           set -euo pipefail
           python3 << 'PY'
-          import base64, os, pathlib
-          b64 = os.environ["VPS_SSH_KEY_B64"].strip().replace("\n", "").replace("\r", "").replace(" ", "")
-          raw = base64.standard_b64decode(b64)
+          import base64, binascii, os, pathlib
+
+          def decode_key_material(secret: str) -> bytes:
+              s = secret.strip()
+              if not s:
+                  raise SystemExit("VPS_SSH_KEY boş. GitHub Secrets’ta güncelle.")
+              # Ham private key (PEM / OpenSSH): çok satırlı yapıştırılabilir
+              if s.startswith("-----BEGIN"):
+                  return s.replace("\r\n", "\n").encode("utf-8")
+              # Tek satır base64: boşluk/satır kırp; eksik = padding ekle (Incorrect padding önlenir)
+              b64 = "".join(s.split())
+              pad = len(b64) % 4
+              if pad:
+                  b64 += "=" * (4 - pad)
+              try:
+                  return base64.standard_b64decode(b64)
+              except binascii.Error:
+                  pass
+              try:
+                  return base64.urlsafe_b64decode(b64)
+              except binascii.Error:
+                  pass
+              raise SystemExit(
+                  "Base64 çözülemedi. Mac: base64 -i ~/.ssh/gha_deploy | tr -d '\\n' | pbcopy "
+                  "veya secret’a -----BEGIN ile başlayan tüm private key’i yapıştır."
+              )
+
+          raw = decode_key_material(os.environ["VPS_SSH_KEY_B64"])
           p = pathlib.Path(os.environ["RUNNER_TEMP"]) / "deploy_key"
           p.write_bytes(raw)
           p.chmod(0o600)
-          if b"BEGIN" not in raw[:200]:
-              raise SystemExit("Decoded file does not look like a PEM/OpenSSH key. Regenerate secret: base64 < ~/.ssh/gha_deploy | tr -d '\\n' | pbcopy")
+          if b"BEGIN" not in raw[:240]:
+              raise SystemExit("Dosya anahtar gibi görünmüyor. Private key (PEM) veya doğru base64 kullan.")
           print("OK: key file bytes:", len(raw))
           PY
           ssh-keygen -y -f "$RUNNER_TEMP/deploy_key" > /dev/null
