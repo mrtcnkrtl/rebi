@@ -72,3 +72,13 @@ Repo **private** yapılırsa sunucuda `git pull` için [deploy key](https://docs
 ## 6) Elle tetikleme
 
 GitHub → **Actions** → **Deploy rebiovil** → **Run workflow**.
+
+## 7) “exit code 1” / kırmızı iş
+
+1. **Actions** → başarısız koşuya tıkla → **SSH — pull + docker compose** adımını aç → logda **en alttaki kırmızı / hata satırlarını** oku.
+2. **Zaman aşımı** (`timeout`, `i/o timeout`): VPS’te ilk build uzun sürer; workflow’da `command_timeout: 45m` kullanılıyor, yine yetmezse süreyi artır.
+3. **`docker: command not found`:** Sunucuda Docker kurulu mu? `ssh` ile bağlanıp `docker compose version` dene.
+4. **`fatal: not a git repository`** veya **`cd: /opt/rebi`:** Klasör ve `git clone` kurulumu eksik.
+5. **Disk dolu** (`no space`): VPS disk temizliği veya `docker system prune` (dikkatli kullan).
+
+Workflow dosyası güncellenince `git push` ile repoya gönder; bir sonraki deploy yeni ayarlarla çalışır.
