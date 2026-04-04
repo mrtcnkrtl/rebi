@@ -12,6 +12,7 @@ import Chat from "./pages/Chat";
 import CheckIn from "./pages/CheckIn";
 import Themes from "./pages/Themes";
 import Subscribe from "./pages/Subscribe";
+import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -43,6 +44,7 @@ function AppRoutes() {
         <Route path="/dashboard/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/dashboard/themes" element={<ProtectedRoute><Themes /></ProtectedRoute>} />
         <Route path="/dashboard/subscribe" element={<ProtectedRoute><Subscribe /></ProtectedRoute>} />
+        <Route path="/dashboard/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {user && isDashboard && <BottomNav />}

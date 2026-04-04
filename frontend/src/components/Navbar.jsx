@@ -34,6 +34,12 @@ export default function Navbar() {
                 Dashboard
               </Link>
               <Link
+                to="/dashboard/profile"
+                className="text-gray-600 hover:text-teal-600 font-medium text-sm"
+              >
+                Profil
+              </Link>
+              <Link
                 to="/dashboard/subscribe"
                 className="text-amber-700 hover:text-amber-900 font-medium text-sm flex items-center gap-1"
               >
@@ -79,6 +85,13 @@ export default function Navbar() {
                 className="block py-2 text-gray-700 font-medium"
               >
                 Dashboard
+              </Link>
+              <Link
+                to="/dashboard/profile"
+                onClick={() => setMenuOpen(false)}
+                className="block py-2 text-gray-700 font-medium"
+              >
+                Profil
               </Link>
               <Link
                 to="/dashboard/subscribe"
