@@ -49,21 +49,34 @@ Repo: **https://github.com/mrtcnkrtl/rebi** → **Settings** → **Secrets and v
 |----|--------|
 | `VPS_HOST` | VPS IPv4 (ör. `76.13.14.133`) |
 | `VPS_USER` | `root` (veya SSH kullanıcı adın) |
-| `VPS_SSH_KEY` | **Private key** tam metni (`BEGIN` / `END` satırları dahil) |
+| `VPS_SSH_KEY` | Private key’in **base64 tek satırı** (aşağıdaki komutla üret) |
 
 **Private key’i asla commit etme, ekran görüntüsünde paylaşma.**
 
 Secret adları **tam olarak** tablodaki gibi olmalı (`VPS_SSH_KEY` vb.).
 
-### `ssh: no key found` hatası
+### `VPS_SSH_KEY` — base64 (zorunlu)
 
-- **Public** (`.pub`) yapıştırmış olabilirsin; **private** dosya olmalı (içinde `BEGIN ... PRIVATE KEY`).
-- Kopyalamak için Mac’te: `pbcopy < ~/.ssh/rebi_deploy` → GitHub secret’a **Cmd+V**.
-- Hâlâ olmazsa **PEM RSA** anahtarı dene; `.pub` satırını sunucuda `authorized_keys` sonuna ekle, private’ı `VPS_SSH_KEY` yap:
+Çok satırlı PEM’i doğrudan secret’a yapıştırmak Actions’ta dosyayı bozar (`libcrypto` / `no key found`). Mac’te:
+
+```bash
+base64 < ~/.ssh/gha_deploy | tr -d '\n' | pbcopy
+```
+
+(Anahtar dosyan `rebi_deploy` ise yolu ona çevir.) **Tek satır** panoya gelir → GitHub’da `VPS_SSH_KEY` → **Update** → yapıştır.
+
+### Hata özeti
+
+- **`error in libcrypto`:** Bozuk PEM; **base64** secret kullan.
+- **`ssh: no key found`:** Public key yapıştırma veya yanlış secret.
+
+PEM RSA anahtarı yoksa:
 
 ```bash
 ssh-keygen -t rsa -b 4096 -m PEM -f ~/.ssh/gha_deploy -N "" -C "gha"
 ```
+
+`.pub` satırını sunucuda `authorized_keys` sonuna ekle; sonra yukarıdaki `base64` komutunu `gha_deploy` için çalıştır.
 
 ## 3) Workflow dosyası
 
