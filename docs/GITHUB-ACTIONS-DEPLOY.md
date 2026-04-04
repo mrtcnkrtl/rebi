@@ -49,9 +49,21 @@ Repo: **https://github.com/mrtcnkrtl/rebi** → **Settings** → **Secrets and v
 |----|--------|
 | `VPS_HOST` | VPS IPv4 (ör. `76.13.14.133`) |
 | `VPS_USER` | `root` (veya SSH kullanıcı adın) |
-| `VPS_SSH_KEY` | **Private key** tam metni (`cat ~/.ssh/rebi_deploy` — `BEGIN` / `END` satırları dahil) |
+| `VPS_SSH_KEY` | **Private key** tam metni (`BEGIN` / `END` satırları dahil) |
 
 **Private key’i asla commit etme, ekran görüntüsünde paylaşma.**
+
+Secret adları **tam olarak** tablodaki gibi olmalı (`VPS_SSH_KEY` vb.).
+
+### `ssh: no key found` hatası
+
+- **Public** (`.pub`) yapıştırmış olabilirsin; **private** dosya olmalı (içinde `BEGIN ... PRIVATE KEY`).
+- Kopyalamak için Mac’te: `pbcopy < ~/.ssh/rebi_deploy` → GitHub secret’a **Cmd+V**.
+- Hâlâ olmazsa **PEM RSA** anahtarı dene; `.pub` satırını sunucuda `authorized_keys` sonuna ekle, private’ı `VPS_SSH_KEY` yap:
+
+```bash
+ssh-keygen -t rsa -b 4096 -m PEM -f ~/.ssh/gha_deploy -N "" -C "gha"
+```
 
 ## 3) Workflow dosyası
 
