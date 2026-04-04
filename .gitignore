@@ -1,0 +1,12 @@
+.env
+deploy/.env.api
+*.local
+
+# Dependencies & env (never push)
+node_modules/
+backend/venv/
+.venv/
+
+# Large local backups / archives (GitHub 100MB limit)
+backups/
+*.tar.gz

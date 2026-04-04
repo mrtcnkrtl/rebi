@@ -1,0 +1,1093 @@
+"""
+REBI AI - Ana API Sunucusu v3.0
+=================================
+Mimari: Flow Engine (deterministik) -> Knowledge Router (metadata) -> AI (polish)
+Yeni: /daily_checkin endpoint, adaptif rutin sistemi, risk skoru
+"""
+
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import Optional, Literal
+import re
+import uuid
+from datetime import date, datetime, timezone
+
+from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
+from weather_service import fetch_weather
+from flow_engine import (
+    run_flow,
+    adapt_existing_routine,
+    CONCERN_KNOWLEDGE_MAP,
+    get_routine_care_guide,
+    sanitize_routine_items_details,
+)
+from skincare_absolute_rules import enforce_absolute_rules_on_routine, get_absolute_rules_catalog
+from knowledge_router import execute_query_plan, get_targeted_context
+from rag_service import polish_routine_with_ai, chat_with_knowledge
+from ingredient_db import compute_risk_score, build_ingredient_context_for_ai
+from auth_deps import enforce_supabase_user, jwt_auth_enabled
+from demo_users import (
+    demo_checkin_already_today,
+    demo_checkin_mark,
+    is_demo_user_id,
+    should_use_supabase_db,
+)
+from rate_limit import (
+    rate_limit_dependency,
+    rate_limit_backend_label,
+    LIMIT_DAILY_TRACKING_INGEST,
+    LIMIT_DAILY_TRACKING_TODAY,
+    LIMIT_CHAT_ASSESSMENT,
+    LIMIT_DAILY_CHECKIN,
+    LIMIT_DAILY_CHECKIN_STATUS,
+    LIMIT_GENERATE_ROUTINE,
+    LIMIT_CHAT,
+    LIMIT_UPLOAD_PHOTO,
+)
+
+log = get_logger("api")
+
+_OPENAPI_TAGS = [
+    {
+        "name": "meta",
+        "description": "Kök bilgi ve sürüm.",
+    },
+    {
+        "name": "health",
+        "description": "Sağlık ve yapılandırma özeti (JWT / rate limit arka ucu).",
+    },
+    {
+        "name": "routine",
+        "description": "Analiz sonrası kişiselleştirilmiş rutin üretimi.",
+    },
+    {
+        "name": "chat",
+        "description": "Bilgi tabanlı sohbet ve değerlendirme diyaloğu.",
+    },
+    {
+        "name": "checkin",
+        "description": "Günlük cilt check-in ve adaptasyon.",
+    },
+    {
+        "name": "tracking",
+        "description": "Mobil günlük olaylar (su, uyku, stres, konum vb.).",
+    },
+    {
+        "name": "media",
+        "description": "Cilt fotoğrafı yükleme (Supabase Storage).",
+    },
+]
+
+app = FastAPI(
+    title="Rebi API",
+    version="3.0.0",
+    description=(
+        "Rebi holistik cilt bakım API’si. "
+        "Mobil ve web istemcileri `POST` gövdelerinde `user_id` (Supabase `auth.users` UUID) kullanır. "
+        "`SUPABASE_JWT_SECRET` tanımlıysa isteklere `Authorization: Bearer <access_token>` ekleyin; "
+        "`sub` ile `user_id` eşleşmeli. "
+        "Şema: [/openapi.json](/openapi.json), interaktif: [/docs](/docs)."
+    ),
+    openapi_tags=_OPENAPI_TAGS,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS + ["https://rebiovil.com", "https://www.rebiovil.com"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+def get_supabase():
+    if not SUPABASE_URL:
+        return None
+    from supabase import create_client
+    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+
+def _utc_now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _safe_date_from_timestamp(ts: Optional[str]) -> str:
+    """
+    Basit ve sorunsuz: timestamp parse edilemezse bugüne düş.
+    Date key: YYYY-MM-DD (UTC).
+    """
+    if not ts:
+        return str(date.today())
+    try:
+        dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
+        if not dt.tzinfo:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc).date().isoformat()
+    except Exception:
+        return str(date.today())
+
+
+# Supabase yokken (veya tablo yoksa) geliştirme için bellek içi depolama
+_MEM_DAILY_EVENTS: dict[tuple[str, str], list[dict]] = {}
+
+def _mem_append_event(user_id: str, log_date: str, event: dict) -> None:
+    key = (user_id, log_date)
+    _MEM_DAILY_EVENTS.setdefault(key, []).append(event)
+
+
+def _aggregate_daily_events(events: list[dict]) -> dict:
+    water_ml_total = 0
+    nutrition = {}
+    stress_vals = []
+    sleep_hours = None
+    last_location = None
+    last_weather = None
+
+    for ev in events or []:
+        t = (ev.get("type") or "").lower()
+        payload = ev.get("payload") or {}
+        if t == "water_intake":
+            try:
+                water_ml_total += int(payload.get("ml", 0) or 0)
+            except Exception:
+                pass
+        elif t == "nutrition":
+            if isinstance(payload, dict):
+                nutrition = {**nutrition, **payload}
+        elif t == "stress":
+            try:
+                stress_vals.append(int(payload.get("value")))
+            except Exception:
+                pass
+        elif t == "sleep":
+            try:
+                sleep_hours = float(payload.get("hours"))
+            except Exception:
+                pass
+        elif t == "location":
+            if isinstance(payload, dict) and payload.get("lat") is not None and payload.get("lon") is not None:
+                last_location = {"lat": payload.get("lat"), "lon": payload.get("lon")}
+        elif t == "weather":
+            if isinstance(payload, dict):
+                last_weather = payload
+
+    avg_stress = None
+    if stress_vals:
+        avg_stress = sum(stress_vals) / max(1, len(stress_vals))
+
+    return {
+        "water_ml_total": water_ml_total,
+        "nutrition": nutrition,
+        "avg_stress": avg_stress,
+        "sleep_hours": sleep_hours,
+        "last_location": last_location,
+        "weather": last_weather,
+        "events_count": len(events or []),
+    }
+
+
+# Marka/ürün adı veya belirsiz ifade → etken madde + konsantrasyon (ürün önerisi yasak)
+BRAND_TO_INGREDIENT = {
+    "adalen": "Adapalen (%0.1)",
+    "differin": "Adapalen",
+    "retin a": "Tretinoin",
+    "retina": "Tretinoin",
+    "la roche": "etken madde", "cerave": "etken madde", "the ordinary": "etken madde",
+    "cetaphil": "temizleyici", "eucerin": "etken madde",
+    "zengin onarım kremi": "Seramid %2-5 + Kolesterol + Yağ asidi (bariyer onarım)",
+    "zengin krem": "Seramid %2-5 + Squalane (bariyer kremi)",
+    "onarım kremi": "Seramid %2-5 + Kolesterol (onarım)",
+}
+
+
+def _sanitize_routine_no_products(routine_items: list) -> None:
+    """action ve detail içinde marka/ürün adı geçiyorsa etken madde adıyla değiştir. Ürün önerisi yasak."""
+    for item in routine_items:
+        for key in ("action", "detail"):
+            if key not in item or not item[key]:
+                continue
+            text = item[key]
+            lower = text.lower()
+            for brand, replacement in BRAND_TO_INGREDIENT.items():
+                if brand in lower:
+                    text = re.sub(re.escape(brand), replacement, text, flags=re.IGNORECASE)
+            item[key] = text
+
+
+# ═══════════════════════════════════════════════════════
+# Request / Response Models
+# ═══════════════════════════════════════════════════════
+
+class AssessmentRequest(BaseModel):
+    user_id: str
+    full_name: str
+    age: int
+    gender: str
+    concern: str
+    skin_type: str = "normal"
+    severity_score: int = 5
+    water_intake: float = 2.0
+    sleep_hours: float = 7.0
+    stress_score: int = 0
+    smoking: bool = False
+    smoking_per_day: int = 0
+    smoking_years: int = 0
+    alcohol: bool = False
+    alcohol_frequency: int = 0
+    alcohol_amount: int = 1
+    location_lat: Optional[float] = None
+    location_lon: Optional[float] = None
+    photo_url: Optional[str] = None
+    is_pregnant: bool = False
+    cycle_phase: str = ""
+    acne_zones: Optional[list] = None
+    actives_experience: str = "occasional"  # none | occasional | regular (retinol/asit vb. geçmiş kullanım)
+    actives_unused: Optional[list] = None  # eski istemciler: her id -> never
+    actives_tolerance: Optional[dict] = None  # { "bha": "never"|"good"|"mild"|"bad", ... }
+    makeup_frequency: int = 0  # 0 yok, 1 seyrek, 3 haftada birkaç, 5 günlük
+    makeup_removal: str = "cleanser"  # none | water | cleanser | double
+
+
+class RoutineResponse(BaseModel):
+    routine: list[dict]
+    weather: dict
+    assessment_id: str
+    holistic_insights: list[dict]
+    flow_debug: Optional[dict] = None
+    care_guide: Optional[dict] = None
+    safety_absolute_rules: Optional[dict] = None
+    rule_enforcement_report: Optional[dict] = None
+    ai_polish_note: Optional[str] = None
+
+
+class ChatRequest(BaseModel):
+    user_id: str
+    message: str
+    concern: Optional[str] = "acne"
+    history: Optional[list[dict]] = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    sources: list[str]
+
+
+class AssessmentChatRequest(BaseModel):
+    user_id: str
+    message: str
+    history: Optional[list] = None
+    user_profile: Optional[dict] = None
+
+
+class AssessmentChatResponse(BaseModel):
+    reply: str
+    is_complete: bool = False
+    extracted_data: Optional[dict] = None
+
+
+class DailyCheckinRequest(BaseModel):
+    user_id: str
+    sleep_hours: float
+    stress_today: int          # 1-5
+    skin_feeling: str          # "iyi" / "kuru" / "yagli" / "kirik" / "irritasyon"
+    applied_routine: bool
+    notes: Optional[str] = None
+    location_lat: Optional[float] = None
+    location_lon: Optional[float] = None
+
+
+class DailyCheckinResponse(BaseModel):
+    today_routine: list[dict]
+    changes: list[dict]
+    risk_level: str
+    risk_detail: str
+    ai_note: str
+    adaptation_type: str
+    care_guide: Optional[dict] = None
+
+
+DailyTrackingEventType = Literal["water_intake", "nutrition", "stress", "sleep", "location"]
+
+
+class DailyTrackingIngestRequest(BaseModel):
+    user_id: str
+    timestamp: Optional[str] = None
+    type: DailyTrackingEventType
+    payload: dict
+    source: str = "mobile"
+
+
+class DailyTrackingIngestResponse(BaseModel):
+    ok: bool = True
+    log_date: str
+    aggregated: dict
+
+
+class DailyTrackingTodayResponse(BaseModel):
+    user_id: str
+    log_date: str
+    aggregated: dict
+    events: list[dict] = []
+
+
+# ═══════════════════════════════════════════════════════
+# Endpoints
+# ═══════════════════════════════════════════════════════
+
+@app.get("/", tags=["meta"])
+async def root():
+    return {
+        "message": "Rebi API v3.0 - Flow Engine + Chat + Adaptive Routine",
+        "version": "3.0.0",
+        "endpoints": [
+            "/generate_routine",
+            "/chat",
+            "/chat_assessment",
+            "/daily_tracking/ingest",
+            "/daily_tracking/today",
+            "/daily_checkin",
+            "/daily_checkin/status",
+            "/upload_photo",
+            "/health",
+        ],
+    }
+
+
+@app.get("/health", tags=["health"])
+async def health():
+    supabase = get_supabase()
+    return {
+        "status": "ok",
+        "supabase": "connected" if supabase else "not configured",
+        "concerns": list(CONCERN_KNOWLEDGE_MAP.keys()),
+        "jwt_auth": "on" if jwt_auth_enabled() else "off",
+        "rate_limit_backend": rate_limit_backend_label(),
+    }
+
+
+@app.post(
+    "/daily_tracking/ingest",
+    response_model=DailyTrackingIngestResponse,
+    tags=["tracking"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_TRACKING_INGEST))],
+)
+async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestRequest):
+    """
+    En basit ama sorunsuz: gün içinde event ingest et.
+    Supabase varsa daily_events tablosuna yazar; yoksa bellek içi saklar.
+    """
+    enforce_supabase_user(request, req.user_id)
+    ts = req.timestamp or _utc_now_iso()
+    log_date = _safe_date_from_timestamp(ts)
+    event = {
+        "user_id": req.user_id,
+        "event_time": ts,
+        "log_date": log_date,
+        "type": req.type,
+        "payload": req.payload or {},
+        "source": req.source or "mobile",
+    }
+
+    supabase = get_supabase()
+    wrote_remote = False
+    if should_use_supabase_db(supabase, req.user_id):
+        try:
+            supabase.table("daily_events").insert(event).execute()
+            wrote_remote = True
+        except Exception as e:
+            log.error("daily_events insert hatası (fallback to memory): %s", e)
+
+    if not wrote_remote:
+        _mem_append_event(req.user_id, log_date, event)
+
+    # Location gelirse anlık weather snapshot ekle (opsiyonel ama değerli)
+    if req.type == "location":
+        try:
+            lat = (req.payload or {}).get("lat")
+            lon = (req.payload or {}).get("lon")
+            if lat is not None and lon is not None:
+                weather_data = await fetch_weather(lat, lon)
+                w_event = {
+                    "user_id": req.user_id,
+                    "event_time": _utc_now_iso(),
+                    "log_date": log_date,
+                    "type": "weather",
+                    "payload": weather_data,
+                    "source": "server",
+                }
+                if should_use_supabase_db(supabase, req.user_id):
+                    try:
+                        supabase.table("daily_events").insert(w_event).execute()
+                    except Exception as e:
+                        log.error("weather event insert hatası (ignored): %s", e)
+                        _mem_append_event(req.user_id, log_date, w_event)
+                else:
+                    _mem_append_event(req.user_id, log_date, w_event)
+        except Exception as e:
+            log.error("Location->weather hatası (ignored): %s", e)
+
+    # Return aggregated for immediate UI feedback
+    events = []
+    if should_use_supabase_db(supabase, req.user_id):
+        try:
+            r = (
+                supabase.table("daily_events")
+                .select("event_time,type,payload,source")
+                .eq("user_id", req.user_id)
+                .eq("log_date", log_date)
+                .order("event_time", desc=False)
+                .execute()
+            )
+            events = r.data or []
+        except Exception as e:
+            log.error("daily_events read hatası (fallback memory): %s", e)
+            events = _MEM_DAILY_EVENTS.get((req.user_id, log_date), [])
+    else:
+        events = _MEM_DAILY_EVENTS.get((req.user_id, log_date), [])
+
+    return DailyTrackingIngestResponse(ok=True, log_date=log_date, aggregated=_aggregate_daily_events(events))
+
+
+@app.get(
+    "/daily_tracking/today",
+    response_model=DailyTrackingTodayResponse,
+    tags=["tracking"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_TRACKING_TODAY))],
+)
+async def daily_tracking_today(
+    request: Request,
+    user_id: str,
+    log_date: Optional[str] = None,
+    include_events: bool = False,
+):
+    """
+    Mobil: bugün ne toplandı? Basit günlük özet.
+    """
+    enforce_supabase_user(request, user_id)
+    d = log_date or str(date.today())
+    supabase = get_supabase()
+    events = []
+    if should_use_supabase_db(supabase, user_id):
+        try:
+            r = (
+                supabase.table("daily_events")
+                .select("event_time,type,payload,source")
+                .eq("user_id", user_id)
+                .eq("log_date", d)
+                .order("event_time", desc=False)
+                .execute()
+            )
+            events = r.data or []
+        except Exception as e:
+            log.error("daily_tracking/today read hatası (fallback memory): %s", e)
+            events = _MEM_DAILY_EVENTS.get((user_id, d), [])
+    else:
+        events = _MEM_DAILY_EVENTS.get((user_id, d), [])
+
+    return DailyTrackingTodayResponse(
+        user_id=user_id,
+        log_date=d,
+        aggregated=_aggregate_daily_events(events),
+        events=(events if include_events else []),
+    )
+
+
+@app.post(
+    "/generate_routine",
+    response_model=RoutineResponse,
+    tags=["routine"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_GENERATE_ROUTINE))],
+)
+async def generate_routine(request: Request, req: AssessmentRequest):
+    """
+    Ana rutin üretme endpoint'i.
+    1. Hava durumu (1 HTTP call)
+    2. Flow Engine (0 token) — içeride bir kez kesinlik (kırmızı çizgi) uygulanır
+    3. Knowledge Router (0 token)
+    4. AI Polish (~400 token) — yalnızca metin cilası; kuralları zayıflatamaz
+    5. Kesinlik kuralları tekrar (AI sonrası zorunlu) + detay sanitize
+    """
+    enforce_supabase_user(request, req.user_id)
+    log.info("Rutin isteği: concern=%s, age=%d, severity=%d", req.concern, req.age, req.severity_score)
+
+    # ADIM 1: Hava Durumu
+    weather_data = {"humidity": 50, "uv_index": 3, "temperature": 20, "description": "N/A"}
+    if req.location_lat and req.location_lon:
+        weather_data = await fetch_weather(req.location_lat, req.location_lon)
+
+    # ADIM 2: Flow Engine (0 TOKEN)
+    flow_result = run_flow(
+        concern=req.concern,
+        severity_score=req.severity_score,
+        age=req.age,
+        gender=req.gender,
+        skin_type_key=req.skin_type,
+        stress_score=req.stress_score,
+        sleep_hours=req.sleep_hours,
+        water_intake=req.water_intake,
+        smoking=req.smoking,
+        alcohol=req.alcohol,
+        uv_index=weather_data.get("uv_index", 3),
+        humidity=weather_data.get("humidity", 50),
+        temperature=weather_data.get("temperature", 20),
+        smoking_per_day=req.smoking_per_day,
+        smoking_years=req.smoking_years,
+        alcohol_frequency=req.alcohol_frequency,
+        alcohol_amount=req.alcohol_amount,
+        is_pregnant=req.is_pregnant,
+        cycle_phase=req.cycle_phase,
+        acne_zones=req.acne_zones or [],
+        actives_experience=req.actives_experience or "occasional",
+        actives_unused=req.actives_unused or [],
+        actives_tolerance=req.actives_tolerance,
+        makeup_frequency=req.makeup_frequency,
+        makeup_removal=req.makeup_removal or "cleanser",
+    )
+
+    routine_items = flow_result["routine_items"]
+    query_plan = flow_result["query_plan"]
+    context_summary = flow_result["context_summary"]
+
+    log.info("Flow Engine: %d rutin öğesi, %d sorgu planı", len(routine_items), len(query_plan))
+
+    # ADIM 3: Knowledge Router (0 TOKEN)
+    knowledge_result = await execute_query_plan(query_plan)
+    knowledge_context = await get_targeted_context(knowledge_result, max_chars=2000)
+
+    # ADIM 4: AI Polish (~400 TOKEN)
+    polished_routine, ai_polish_note = await polish_routine_with_ai(
+        routine_items=routine_items,
+        context_summary=context_summary,
+        knowledge_context=knowledge_context,
+    )
+
+    for item in polished_routine:
+        item.pop("priority", None)
+
+    _sanitize_routine_no_products(polished_routine)
+
+    polished_routine, rule_enforcement_final = enforce_absolute_rules_on_routine(polished_routine)
+    sanitize_routine_items_details(polished_routine)
+
+    # ADIM 5: Veritabanına Kaydet (demo kullanıcı: auth.users FK yok, atla)
+    assessment_id = str(uuid.uuid4())
+    supabase = get_supabase()
+    if should_use_supabase_db(supabase, req.user_id):
+        try:
+            supabase.table("profiles").upsert({
+                "id": req.user_id,
+                "full_name": req.full_name,
+                "age": req.age,
+                "gender": req.gender,
+                "location_lat": req.location_lat,
+                "location_lon": req.location_lon,
+            }).execute()
+
+            assessment_result = supabase.table("assessments").insert({
+                "user_id": req.user_id,
+                "concern": req.concern,
+                "severity_score": req.severity_score,
+                "lifestyle_data": {
+                    "skin_type": req.skin_type,
+                    "water_intake": req.water_intake,
+                    "sleep_hours": req.sleep_hours,
+                    "stress_score": req.stress_score,
+                    "smoking": req.smoking,
+                    "smoking_per_day": req.smoking_per_day,
+                    "smoking_years": req.smoking_years,
+                    "alcohol": req.alcohol,
+                    "alcohol_frequency": req.alcohol_frequency,
+                    "alcohol_amount": req.alcohol_amount,
+                    "is_pregnant": req.is_pregnant,
+                    "cycle_phase": req.cycle_phase,
+                    "acne_zones": req.acne_zones,
+                    "actives_experience": req.actives_experience,
+                    "actives_unused": req.actives_unused or [],
+                    "actives_tolerance": req.actives_tolerance or {},
+                    "makeup_frequency": req.makeup_frequency,
+                    "makeup_removal": req.makeup_removal or "cleanser",
+                },
+                "photo_url": req.photo_url,
+                "weather_data": weather_data,
+            }).execute()
+
+            if assessment_result.data:
+                assessment_id = assessment_result.data[0]["id"]
+
+            supabase.table("routines").insert({
+                "user_id": req.user_id,
+                "assessment_id": assessment_id,
+                "active_routine": polished_routine,
+                "is_active": True,
+            }).execute()
+
+            supabase.table("routines").update({"is_active": False}).neq(
+                "assessment_id", assessment_id
+            ).eq("user_id", req.user_id).execute()
+
+            log.info("Veritabanına kaydedildi: assessment_id=%s", assessment_id)
+
+        except Exception as e:
+            log.error("DB kayıt hatası: %s", e)
+    elif supabase and is_demo_user_id(req.user_id):
+        log.info("Demo kullanıcı: profil/assessment/rutin DB yazımı atlandı (user_id=%s)", req.user_id)
+
+    holistic_insights = [
+        item for item in polished_routine
+        if item.get("category") in ("Zihin", "Yaşam", "Beslenme")
+    ]
+
+    log.info("Rutin tamamlandı: %d öğe, %d insight", len(polished_routine), len(holistic_insights))
+
+    return RoutineResponse(
+        routine=polished_routine,
+        weather=weather_data,
+        assessment_id=assessment_id,
+        holistic_insights=holistic_insights,
+        care_guide=flow_result.get("care_guide"),
+        safety_absolute_rules=get_absolute_rules_catalog(),
+        rule_enforcement_report=rule_enforcement_final,
+        ai_polish_note=ai_polish_note,
+        flow_debug={
+            "severity": flow_result["severity"]["label_tr"],
+            "age_group": flow_result["age_group"]["label_tr"],
+            "skin_type": flow_result["skin_type"]["label_tr"],
+            "hormonal_info": flow_result.get("hormonal_info", {}),
+            "acne_zones": flow_result.get("acne_zone_info", []),
+            "risk_info": flow_result.get("risk_info", {}),
+            "is_pregnant": req.is_pregnant,
+            "actives_experience": req.actives_experience or "occasional",
+            "actives_unused": req.actives_unused or [],
+            "actives_tolerance": req.actives_tolerance or {},
+            "personalization": flow_result.get("personalization"),
+            "absolute_enforcement_prefinal": flow_result.get("absolute_enforcement_report"),
+            "knowledge_retrieved": knowledge_result.get("total_retrieved", 0),
+            "sources": knowledge_result.get("sources", []),
+            "token_estimate": "~400 (sadece AI polish)",
+        },
+    )
+
+
+@app.post(
+    "/chat",
+    response_model=ChatResponse,
+    tags=["chat"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT))],
+)
+async def chat(request: Request, req: ChatRequest):
+    """
+    Interaktif sohbet endpoint'i.
+    Kullanıcı sorusu -> Knowledge Base'den bağlam -> Gemini cevap
+    Token: ~200-400/mesaj
+    """
+    enforce_supabase_user(request, req.user_id)
+    log.info("Chat isteği: concern=%s, mesaj='%s'", req.concern, req.message[:60])
+
+    concern = req.concern or "acne"
+    knowledge_map = CONCERN_KNOWLEDGE_MAP.get(concern, CONCERN_KNOWLEDGE_MAP["acne"])
+
+    query_plan = [
+        {"kategori": knowledge_map["primary_kategori"], "alt_kategori": ak, "limit": 5, "purpose": ak}
+        for ak in knowledge_map["primary_alt_kategoriler"][:2]
+    ]
+    query_plan.append({
+        "kategori": knowledge_map["treatment_kategori"],
+        "alt_kategori": knowledge_map["treatment_alt_kategoriler"][0],
+        "limit": 5,
+        "purpose": "Tedavi",
+    })
+
+    knowledge_result = await execute_query_plan(query_plan)
+    knowledge_context = await get_targeted_context(knowledge_result, max_chars=2000)
+
+    reply = await chat_with_knowledge(
+        user_message=req.message,
+        knowledge_context=knowledge_context,
+        history=req.history,
+    )
+
+    return ChatResponse(
+        reply=reply,
+        sources=knowledge_result.get("sources", []),
+    )
+
+
+@app.post(
+    "/chat_assessment",
+    response_model=AssessmentChatResponse,
+    tags=["chat"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
+)
+async def chat_assessment(request: Request, req: AssessmentChatRequest):
+    """
+    AI-driven cilt değerlendirmesi sohbeti.
+    Temel bilgiler form ile toplanır, kalan değerlendirmeyi AI konuşarak yapar.
+    AI birkaç soru sorar, yeterli bilgi topladığında is_complete=True döndürür.
+    """
+    enforce_supabase_user(request, req.user_id)
+    log.info("Assessment chat: user=%s, msg='%s'", req.user_id, req.message[:80])
+
+    from rag_service import assessment_chat
+    result = await assessment_chat(
+        user_message=req.message,
+        history=req.history,
+        user_profile=req.user_profile or {},
+    )
+    return AssessmentChatResponse(**result)
+
+
+@app.get(
+    "/daily_checkin/status",
+    tags=["checkin"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_CHECKIN_STATUS))],
+)
+async def daily_checkin_status(request: Request, user_id: str):
+    """Bugün için check-in yapılmış mı (aynı gün tekrarını önlemek için)."""
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    today = str(date.today())
+    if is_demo_user_id(user_id):
+        return {
+            "already_checked_in": demo_checkin_already_today(user_id, today),
+            "log_date": today,
+        }
+    if not supabase:
+        return {"already_checked_in": False, "log_date": today}
+    try:
+        r = (
+            supabase.table("daily_logs")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("log_date", today)
+            .limit(1)
+            .execute()
+        )
+        return {"already_checked_in": bool(r.data), "log_date": today}
+    except Exception as e:
+        log.error("daily_checkin/status hatası: %s", e)
+        return {"already_checked_in": False, "log_date": today}
+
+
+@app.post(
+    "/daily_checkin",
+    response_model=DailyCheckinResponse,
+    tags=["checkin"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_CHECKIN))],
+)
+async def daily_checkin(request: Request, req: DailyCheckinRequest):
+    """
+    Günlük check-in: 3-5 hızlı soru ile cilt durumu takibi.
+    Akış: Check-in → daily_logs kaydet → hava durumu → risk skoru → AI adaptasyon → rutin güncelle
+    """
+    enforce_supabase_user(request, req.user_id)
+    log.info("Daily checkin: user=%s, feeling=%s, stress=%d", req.user_id, req.skin_feeling, req.stress_today)
+
+    supabase = get_supabase()
+    today_str = str(date.today())
+
+    if is_demo_user_id(req.user_id):
+        if demo_checkin_already_today(req.user_id, today_str):
+            raise HTTPException(
+                status_code=409,
+                detail="Bugün için check-in zaten kaydedildi. Yarın tekrar deneyebilirsin.",
+            )
+    elif supabase:
+        try:
+            dup = (
+                supabase.table("daily_logs")
+                .select("id")
+                .eq("user_id", req.user_id)
+                .eq("log_date", today_str)
+                .limit(1)
+                .execute()
+            )
+            if dup.data:
+                raise HTTPException(
+                    status_code=409,
+                    detail="Bugün için check-in zaten kaydedildi. Yarın tekrar deneyebilirsin.",
+                )
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.error("Check-in mükerrer kontrolü hatası: %s", e)
+
+    # 1. Hava durumu
+    weather_data = {"humidity": 50, "uv_index": 3, "temperature": 20}
+    if req.location_lat and req.location_lon:
+        weather_data = await fetch_weather(req.location_lat, req.location_lon)
+
+    # 2. Mevcut aktif rutini Supabase'den çek
+    current_routine = []
+    user_profile = {}
+    if should_use_supabase_db(supabase, req.user_id):
+        try:
+            routine_res = supabase.table("routines").select("active_routine, assessment_id").eq(
+                "user_id", req.user_id
+            ).eq("is_active", True).limit(1).execute()
+
+            if routine_res.data and routine_res.data[0].get("active_routine"):
+                current_routine = routine_res.data[0]["active_routine"]
+
+            profile_res = supabase.table("profiles").select("*").eq("id", req.user_id).limit(1).execute()
+            if profile_res.data:
+                user_profile = profile_res.data[0]
+
+            assessment_res = supabase.table("assessments").select("lifestyle_data").eq(
+                "user_id", req.user_id
+            ).order("created_at", desc=True).limit(1).execute()
+            if assessment_res.data and assessment_res.data[0].get("lifestyle_data"):
+                user_profile.update(assessment_res.data[0]["lifestyle_data"])
+
+        except Exception as e:
+            log.error("Mevcut rutin çekme hatası: %s", e)
+
+    # 3. Mobil günlük takip (varsa): bugün toplanan verilerden özet çıkar
+    tracking_today = None
+    if should_use_supabase_db(supabase, req.user_id):
+        try:
+            ev_res = (
+                supabase.table("daily_events")
+                .select("event_time,type,payload,source")
+                .eq("user_id", req.user_id)
+                .eq("log_date", today_str)
+                .order("event_time", desc=False)
+                .execute()
+            )
+            tracking_today = _aggregate_daily_events(ev_res.data or [])
+        except Exception as e:
+            # tablo yoksa veya erişim hatası: sessizce yok say
+            log.error("daily_events okuma hatası (ignored): %s", e)
+    else:
+        ev_local = _MEM_DAILY_EVENTS.get((req.user_id, today_str), [])
+        tracking_today = _aggregate_daily_events(ev_local)
+
+    # 4. Risk skoru hesapla
+    stress_mapped = req.stress_today * 2
+    water_intake = user_profile.get("water_intake", 2.0)
+    try:
+        if tracking_today and int(tracking_today.get("water_ml_total", 0) or 0) > 0:
+            water_intake = float(tracking_today["water_ml_total"]) / 1000.0
+    except Exception:
+        pass
+    makeup_frequency = int(user_profile.get("makeup_frequency", 0) or 0)
+    makeup_removal = str(user_profile.get("makeup_removal", "cleanser") or "cleanser")
+    cycle_for_risk = str(user_profile.get("cycle_phase", "") or "")
+    gender_for_risk = str(user_profile.get("gender", "") or "")
+
+    risk_info = compute_risk_score(
+        stress=stress_mapped,
+        water_intake=water_intake,
+        humidity=weather_data.get("humidity", 50),
+        sleep_hours=req.sleep_hours,
+        makeup_frequency=makeup_frequency,
+        makeup_removal=makeup_removal,
+        cycle_phase=cycle_for_risk,
+        gender=gender_for_risk,
+    )
+
+    # 5. Deterministik adaptasyon
+    daily_data = {
+        "sleep_hours": req.sleep_hours,
+        "stress_today": req.stress_today,
+        "skin_feeling": req.skin_feeling,
+        "applied_routine": req.applied_routine,
+        "notes": req.notes or "",
+        "tracking_today": tracking_today or {},
+    }
+
+    adaptation = adapt_existing_routine(
+        current_routine=current_routine,
+        daily_data=daily_data,
+        risk_info=risk_info,
+    )
+
+    # 4.5 Tolerans öğrenimi (en basit kalıcı yol):
+    # check-in'de irritasyon/kırık sinyali → o gün pause/reduce olan aktif ailelerini 'mild' olarak işaretle.
+    learned_tol: dict = {}
+    if (
+        should_use_supabase_db(supabase, req.user_id)
+        and req.skin_feeling in ("irritasyon", "kirik")
+        and adaptation.get("changes")
+    ):
+        def _family_from_action(a: str) -> Optional[str]:
+            t = (a or "").lower()
+            if "retinol" in t or "retinal" in t:
+                return "retinol"
+            if "salisilik" in t or "salicylic" in t or "bha" in t:
+                return "bha"
+            if "glikolik" in t or "glycolic" in t or "laktik asit" in t or "lactic acid" in t or " aha" in t:
+                return "aha"
+            if "benzoil" in t or "benzoyl" in t:
+                return "benzoyl"
+            if "azelaik" in t or "azelaic" in t:
+                return "azelaic"
+            if "askorbik" in t or "ascorbic" in t or "c vitamini" in t or "vitamin c" in t:
+                return "vitamin_c"
+            if "niasinamid" in t or "niacinamide" in t:
+                return "niacinamide"
+            return None
+
+        for c in adaptation["changes"]:
+            fam = _family_from_action(c.get("item", ""))
+            if fam:
+                learned_tol[fam] = "mild"
+
+        # En son assessment'ın lifestyle_data.actives_tolerance alanına merge et (varsa).
+        try:
+            assessment_res = (
+                supabase.table("assessments")
+                .select("id,lifestyle_data")
+                .eq("user_id", req.user_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if assessment_res.data:
+                row = assessment_res.data[0]
+                lifestyle = row.get("lifestyle_data") or {}
+                tol = lifestyle.get("actives_tolerance") or {}
+                if isinstance(tol, dict):
+                    tol = {**tol, **learned_tol}
+                else:
+                    tol = dict(learned_tol)
+                lifestyle["actives_tolerance"] = tol
+                supabase.table("assessments").update({"lifestyle_data": lifestyle}).eq("id", row["id"]).execute()
+        except Exception as e:
+            log.error("Tolerans öğrenimi update hatası (ignored): %s", e)
+
+    # Kırmızı çizgiler: check-in sonrası rutin de kesinlik kurallarından geçer (AI/uyarlama metninden bağımsız).
+    enforced_items, _checkin_absolute_report = enforce_absolute_rules_on_routine(
+        adaptation["adapted_items"]
+    )
+    sanitize_routine_items_details(enforced_items)
+    adaptation["adapted_items"] = enforced_items
+
+    # 5. AI adaptasyon notu (büyük değişikliklerde veya belirsiz durumlarda)
+    ai_note = ""
+    if adaptation["adaptation_type"] == "major" or req.skin_feeling in ("irritasyon", "kirik"):
+        try:
+            from rag_service import adapt_routine_with_ai
+            ai_note = await adapt_routine_with_ai(
+                current_routine=current_routine,
+                daily_data=daily_data,
+                risk_score=risk_info["score"],
+                changes=adaptation["changes"],
+            )
+        except Exception as e:
+            log.error("AI adaptasyon hatası: %s", e)
+            ai_note = _generate_fallback_note(risk_info["level"], req.skin_feeling)
+    else:
+        ai_note = _generate_fallback_note(risk_info["level"], req.skin_feeling)
+
+    # 6. Supabase: daily_logs'a kaydet + routine güncelle
+    if should_use_supabase_db(supabase, req.user_id):
+        try:
+            supabase.table("daily_logs").upsert({
+                "user_id": req.user_id,
+                "log_date": today_str,
+                "sleep_hours": req.sleep_hours,
+                "stress_level": req.stress_today,
+                "skin_feeling": req.skin_feeling,
+                "applied_routine": req.applied_routine,
+                "notes": req.notes,
+                "weather_data": weather_data,
+                "risk_score": risk_info["score"],
+                "adaptation": {
+                    "type": adaptation["adaptation_type"],
+                    "changes": adaptation["changes"],
+                    "ai_note": ai_note,
+                    "learned_tolerance": learned_tol,
+                },
+            }).execute()
+
+            if adaptation["changes"]:
+                supabase.table("routines").update({
+                    "active_routine": adaptation["adapted_items"],
+                }).eq("user_id", req.user_id).eq("is_active", True).execute()
+
+            log.info("Daily log kaydedildi: user=%s, risk=%s, changes=%d",
+                     req.user_id, risk_info["level"], len(adaptation["changes"]))
+        except Exception as e:
+            log.error("Daily log kayıt hatası: %s", e)
+    elif is_demo_user_id(req.user_id):
+        demo_checkin_mark(req.user_id, today_str)
+        log.info("Demo check-in: DB atlandı, bellekte bugün işaretlendi (user_id=%s)", req.user_id)
+
+    is_pregnant = bool(user_profile.get("is_pregnant"))
+
+    return DailyCheckinResponse(
+        today_routine=adaptation["adapted_items"],
+        changes=adaptation["changes"],
+        risk_level=risk_info["level"],
+        risk_detail=risk_info.get("detail", ""),
+        ai_note=ai_note,
+        adaptation_type=adaptation["adaptation_type"],
+        care_guide=get_routine_care_guide(is_pregnant=is_pregnant),
+    )
+
+
+def _generate_fallback_note(risk_level: str, skin_feeling: str) -> str:
+    """AI çağrısı olmadan basit adaptasyon notu üret."""
+    notes = {
+        ("crisis", "irritasyon"): "Cildin şu an çok hassas. Tüm aktif maddeler durduruldu. Sadece bariyer onarım ve nemlendirme yap.",
+        ("crisis", "kirik"): "Cilt bariyerin hasar görmüş. Petrolatum + Seramid ile onarım öncelikli.",
+        ("crisis", "kuru"): "Yoğun kuruluk ve yüksek risk. Bol nemlendirici + oklüzif kilitleme.",
+        ("high", "irritasyon"): "Hassasiyet yüksek. Bazı aktif maddeler sıklığı azaltıldı. Bariyer bakımına odaklan.",
+        ("high", "kuru"): "Risk seviyesi yüksek, kuruluk mevcut. Nemlendirme artırıldı.",
+        ("high", "kirik"): "Bariyer zayıf. Aktifler azaltıldı, onarım protokolü aktif.",
+        ("moderate", "iyi"): "Cilt durumun iyi görünüyor. Mevcut rutin devam ediyor.",
+        ("normal", "iyi"): "Her şey yolunda! Rutinine devam et.",
+    }
+    return notes.get((risk_level, skin_feeling),
+                     f"Risk: {risk_level}. Cilt hissi: {skin_feeling}. Rutinin buna göre ayarlandı.")
+
+
+_MAX_PHOTO_BYTES = 8 * 1024 * 1024
+_ALLOWED_PHOTO_EXT = frozenset({"jpg", "jpeg", "png", "webp", "heic", "heif"})
+
+
+@app.post(
+    "/upload_photo",
+    tags=["media"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_UPLOAD_PHOTO))],
+)
+async def upload_photo(request: Request, user_id: str, file: UploadFile = File(...)):
+    """Fotoğraf yükleme endpoint'i."""
+    enforce_supabase_user(request, user_id)
+    if not user_id or ".." in user_id or any(c in user_id for c in "/\\"):
+        raise HTTPException(status_code=400, detail="Geçersiz kullanıcı kimliği")
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    try:
+        name = file.filename or ""
+        file_ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+        if file_ext not in _ALLOWED_PHOTO_EXT:
+            raise HTTPException(
+                status_code=400,
+                detail="İzin verilen formatlar: jpeg, png, webp, heic",
+            )
+        contents = await file.read()
+        if len(contents) > _MAX_PHOTO_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail="Dosya çok büyük (en fazla 8 MB)",
+            )
+        file_path = f"{user_id}/{uuid.uuid4()}.{file_ext}"
+        supabase.storage.from_("skin-photos").upload(file_path, contents)
+        public_url = supabase.storage.from_("skin-photos").get_public_url(file_path)
+        log.info("Fotoğraf yüklendi: %s", file_path)
+        return {"url": public_url, "path": file_path}
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.error("Fotoğraf yükleme hatası: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

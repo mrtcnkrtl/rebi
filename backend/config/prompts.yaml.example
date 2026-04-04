@@ -1,0 +1,8 @@
+# Rebi AI - Prompt override (kopyala: config/prompts.yaml)
+# Bu dosyayı config/prompts.yaml olarak kopyalayıp düzenleyebilirsin.
+# Sadece değiştirmek istediğin anahtarları ekle; diğerleri kod içi varsayılana döner.
+
+polish_system_instruction: |
+  Sen Rebi. Türkçe konuş. Kısa, sıcak, motive edici cümleler kur. SADECE JSON döndür.
+
+# İleride eklenebilir: assessment_system_instruction, free_chat_system_instruction, chat_system_instruction, adapt_system_instruction
