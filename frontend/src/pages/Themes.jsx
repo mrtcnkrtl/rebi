@@ -1,5 +1,7 @@
+import { useNavigate, Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
-import { Check, Sparkles } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { Check, Sparkles, Lock } from "lucide-react";
 
 const patternPreviews = {
   "": null,
@@ -44,10 +46,63 @@ const patternPreviews = {
       ))}
     </div>
   ),
+  sunburst: (
+    <div
+      className="absolute inset-0 pointer-events-none opacity-30"
+      style={{
+        background: "conic-gradient(from 180deg at 50% 70%, #f0abfc 0deg, transparent 40deg, #fdba74 120deg, transparent 200deg, #e879f9 280deg, transparent 360deg)",
+      }}
+    />
+  ),
+  waves: (
+    <div className="absolute inset-0 overflow-hidden opacity-25 pointer-events-none">
+      <div className="absolute -bottom-2 left-0 right-0 h-16 bg-[repeating-linear-gradient(90deg,transparent,transparent_8px,rgba(14,165,233,0.15)_8px,rgba(14,165,233,0.15)_16px)] rounded-t-full scale-x-150" />
+      <div className="absolute bottom-2 left-0 right-0 h-10 bg-[repeating-linear-gradient(90deg,transparent,transparent_6px,rgba(6,182,212,0.2)_6px,rgba(6,182,212,0.2)_14px)] rounded-t-full scale-x-125 opacity-80" />
+    </div>
+  ),
+  stars: (
+    <div className="absolute inset-0 overflow-hidden opacity-25 pointer-events-none">
+      {[...Array(14)].map((_, i) => (
+        <span
+          key={i}
+          className="absolute text-indigo-400"
+          style={{
+            fontSize: `${6 + (i % 4) * 3}px`,
+            left: `${(i * 17) % 92}%`,
+            top: `${(i * 23) % 88}%`,
+            opacity: 0.4 + (i % 3) * 0.2,
+          }}
+        >
+          ✦
+        </span>
+      ))}
+    </div>
+  ),
 };
+
+function userHasRebiPlus(user) {
+  if (!user?.user_metadata) return false;
+  const m = user.user_metadata;
+  if (m.rebi_plus === true) return true;
+  return ["plus", "pro", "premium"].includes(String(m.subscription_tier || "").toLowerCase());
+}
 
 export default function Themes() {
   const { theme, themeId, setThemeId, themes } = useTheme();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const plus = userHasRebiPlus(user);
+
+  const pickTheme = (t) => {
+    if (t.premium && !plus) {
+      navigate("/dashboard/subscribe");
+      return;
+    }
+    setThemeId(t.id);
+  };
+
+  const previewRadius = (t) =>
+    t.shape === "angular" ? "rounded-lg" : "rounded-2xl";
 
   return (
     <div className={`min-h-screen ${theme.bg} pb-24`}>
@@ -57,19 +112,21 @@ export default function Themes() {
             <Sparkles className="w-6 h-6" style={{ color: theme.primary }} />
             Tema Seç
           </h2>
-          <p className="text-gray-500 text-sm mt-1">Uygulamanın görünümünü kişiselleştir.</p>
+          <p className="text-gray-500 text-sm mt-1">Ücretsiz temalar herkese açık; Plus ile özel görünümler açılır.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           {Object.values(themes).map((t) => {
             const isActive = themeId === t.id;
+            const locked = t.premium && !plus;
             return (
               <button
                 key={t.id}
-                onClick={() => setThemeId(t.id)}
-                className={`relative rounded-2xl border-2 overflow-hidden transition-all ${
+                type="button"
+                onClick={() => pickTheme(t)}
+                className={`relative rounded-2xl border-2 overflow-hidden transition-all text-left ${
                   isActive ? "ring-2 ring-offset-2 scale-[1.02]" : "hover:scale-[1.01]"
-                }`}
+                } ${locked ? "opacity-95" : ""}`}
                 style={{
                   borderColor: isActive ? t.primary : "#e5e7eb",
                   ringColor: t.primary,
@@ -80,15 +137,22 @@ export default function Themes() {
                   {patternPreviews[t.pattern]}
                   {/* Mini UI preview */}
                   <div className="relative z-10 space-y-1.5">
-                    <div className="h-2 w-12 rounded-full" style={{ backgroundColor: t.primary, opacity: 0.7 }} />
-                    <div className="h-1.5 w-16 rounded-full bg-gray-300/50" />
+                    <div className={`h-2 w-12 ${previewRadius(t)}`} style={{ backgroundColor: t.primary, opacity: 0.7 }} />
+                    <div className={`h-1.5 w-16 ${previewRadius(t)} bg-gray-300/50`} />
                     <div className="flex gap-1 mt-2">
-                      <div className="h-5 w-5 rounded-lg" style={{ backgroundColor: t.primary, opacity: 0.5 }} />
-                      <div className="h-5 flex-1 rounded-lg bg-white/60" />
+                      <div className={`h-5 w-5 ${previewRadius(t)}`} style={{ backgroundColor: t.primary, opacity: 0.5 }} />
+                      <div className={`h-5 flex-1 ${previewRadius(t)} bg-white/60`} />
                     </div>
-                    <div className="h-6 rounded-lg" style={{ backgroundColor: t.primary, opacity: 0.3 }} />
+                    <div className={`h-6 ${previewRadius(t)}`} style={{ backgroundColor: t.primary, opacity: 0.3 }} />
                   </div>
-                  {isActive && (
+                  {locked && (
+                    <div className="absolute inset-0 z-20 bg-white/35 flex items-center justify-center backdrop-blur-[1px]">
+                      <span className="flex items-center gap-1 text-[10px] font-bold text-gray-800 bg-white/90 px-2 py-1 rounded-full shadow">
+                        <Lock className="w-3 h-3" /> Plus
+                      </span>
+                    </div>
+                  )}
+                  {isActive && !locked && (
                     <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white"
                       style={{ backgroundColor: t.primary }}>
                       <Check className="w-4 h-4" />
@@ -96,13 +160,24 @@ export default function Themes() {
                   )}
                 </div>
                 {/* Label */}
-                <div className="px-3 py-2.5 bg-white">
+                <div className="px-3 py-2.5 bg-white flex items-center justify-between gap-1">
                   <p className="text-xs font-semibold text-gray-900">{t.emoji} {t.label}</p>
+                  {t.premium && (
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-amber-700 shrink-0">Plus</span>
+                  )}
                 </div>
               </button>
             );
           })}
         </div>
+
+        <p className="text-center text-xs text-gray-500 mt-4">
+          Rebi Plus için{" "}
+          <Link to="/dashboard/subscribe" className="font-semibold underline-offset-2 hover:underline" style={{ color: theme.primary }}>
+            abonelik sayfası
+          </Link>
+          .
+        </p>
 
         {/* Live Preview */}
         <div className="mt-8">

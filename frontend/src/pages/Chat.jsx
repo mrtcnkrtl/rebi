@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { API_URL } from "../lib/supabase";
@@ -23,8 +24,14 @@ export default function Chat() {
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [quota, setQuota] = useState(null);
 
   const userName = user?.user_metadata?.full_name || "Kullanıcı";
+  const isPlus =
+    user?.user_metadata?.rebi_plus === true ||
+    ["plus", "pro", "premium"].includes(
+      String(user?.user_metadata?.subscription_tier || "").toLowerCase()
+    );
 
   useEffect(() => {
     if (history.length === 0) {
@@ -52,6 +59,10 @@ export default function Chat() {
     }
   }, [history]);
 
+  useEffect(() => {
+    setQuota(null);
+  }, [user?.id]);
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
     const msg = input.trim();
@@ -77,6 +88,14 @@ export default function Chat() {
         const errText = formatApiErrorDetail(data) + (res.status ? ` (${res.status})` : "");
         setHistory([...newHist, { role: "assistant", content: `Şu an yanıt alınamadı: ${errText}` }]);
         return;
+      }
+      if (data.chat_quota_exceeded) {
+        setQuota({
+          remaining: data.free_chat_remaining ?? 0,
+          limit: data.free_chat_limit ?? 0,
+        });
+      } else if (data.free_chat_remaining != null && data.free_chat_limit != null) {
+        setQuota({ remaining: data.free_chat_remaining, limit: data.free_chat_limit });
       }
       const reply = typeof data.reply === "string" ? data.reply : formatApiErrorDetail(data);
       setHistory([...newHist, { role: "assistant", content: reply }]);
@@ -172,9 +191,29 @@ export default function Chat() {
               <Send className="w-5 h-5" />
             </button>
           </div>
-          <p className="text-[10px] text-gray-400 text-center mt-1.5">
-            <Sparkles className="w-3 h-3 inline" /> Cilt, yüz ve el bakımı hakkında her şeyi sorabilirsin
-          </p>
+          {isPlus ? (
+            <p className="text-[10px] text-emerald-700/90 text-center mt-1.5 font-medium">
+              Rebi Plus — günlük mesaj kotası uygulanmıyor
+            </p>
+          ) : quota != null ? (
+            <p className="text-[10px] text-gray-500 text-center mt-1.5">
+              Bugün kalan ücretsiz mesaj:{" "}
+              <strong style={{ color: theme.primary }}>{quota.remaining}</strong>
+              {quota.limit ? ` / ${quota.limit}` : ""}
+              {" · "}
+              <Link
+                to="/dashboard/subscribe"
+                className="font-semibold underline-offset-2 hover:underline"
+                style={{ color: theme.primary }}
+              >
+                Rebi Plus
+              </Link>
+            </p>
+          ) : (
+            <p className="text-[10px] text-gray-400 text-center mt-1.5">
+              <Sparkles className="w-3 h-3 inline" /> Cilt, yüz ve el bakımı — ücretsiz günlük limit geçerli
+            </p>
+          )}
         </div>
       </div>
     </div>

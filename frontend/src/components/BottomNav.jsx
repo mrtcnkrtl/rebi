@@ -1,22 +1,25 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
-import { isRoutineTrackingAccepted } from "../lib/routineTracking";
+import { isRoutineTrackingAccepted, hasCompletedOnboarding } from "../lib/routineTracking";
 import { Home, MessageCircle, Scan, Palette, ClipboardCheck } from "lucide-react";
-
-const tabs = [
-  { id: "/dashboard", label: "Ana Sayfa", icon: Home },
-  { id: "/dashboard/checkin", label: "Check-in", icon: ClipboardCheck },
-  { id: "/dashboard/chat", label: "Rebi AI", icon: MessageCircle },
-  { id: "/dashboard/analyze", label: "Analiz", icon: Scan },
-  { id: "/dashboard/themes", label: "Tema", icon: Palette },
-];
 
 export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { user } = useAuth();
+
+  const analyzeLabel =
+    user?.id && hasCompletedOnboarding(user.id) ? "Yeniden" : "Analiz";
+
+  const tabs = [
+    { id: "/dashboard", label: "Ana Sayfa", icon: Home },
+    { id: "/dashboard/checkin", label: "Check-in", icon: ClipboardCheck },
+    { id: "/dashboard/chat", label: "Rebi AI", icon: MessageCircle },
+    { id: "/dashboard/analyze", label: analyzeLabel, icon: Scan },
+    { id: "/dashboard/themes", label: "Tema", icon: Palette },
+  ];
 
   const active = tabs.find((t) => location.pathname === t.id)?.id
     || tabs.find((t) => location.pathname.startsWith(t.id) && t.id !== "/dashboard")?.id

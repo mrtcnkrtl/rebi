@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
 
 const themes = {
   teal: {
@@ -61,6 +62,46 @@ const themes = {
     bg: "bg-gradient-to-b from-orange-50/40 to-amber-50/20",
     pattern: "cats",
   },
+  /** Rebi Plus — premium */
+  sunset: {
+    id: "sunset", label: "Gün Batımı", emoji: "🌅", premium: true,
+    primary: "#c026d3", primaryLight: "#fae8ff", primaryDark: "#86198f",
+    accent: "#f97316", gradientFrom: "from-fuchsia-50/60", gradientTo: "to-orange-50/40",
+    cardBorder: "border-fuchsia-100", navBg: "bg-gradient-to-r from-fuchsia-50/90 to-orange-50/80",
+    btnBg: "bg-fuchsia-600", btnHover: "hover:bg-fuchsia-700", btnShadow: "shadow-fuchsia-600/25",
+    btnSecBorder: "border-fuchsia-200", btnSecText: "text-fuchsia-800",
+    inputFocus: "focus:border-fuchsia-400 focus:ring-fuchsia-100",
+    chipActive: "border-fuchsia-500 bg-fuchsia-50 text-fuchsia-900",
+    bg: "bg-gradient-to-br from-fuchsia-50/70 via-orange-50/40 to-rose-50/50",
+    pattern: "sunburst",
+    shape: "sunburst",
+  },
+  ocean: {
+    id: "ocean", label: "Derin Okyanus", emoji: "🌊", premium: true,
+    primary: "#0369a1", primaryLight: "#e0f2fe", primaryDark: "#0c4a6e",
+    accent: "#06b6d4", gradientFrom: "from-sky-50/50", gradientTo: "to-cyan-50/40",
+    cardBorder: "border-sky-200", navBg: "bg-sky-50/90",
+    btnBg: "bg-sky-700", btnHover: "hover:bg-sky-800", btnShadow: "shadow-sky-700/25",
+    btnSecBorder: "border-sky-200", btnSecText: "text-sky-800",
+    inputFocus: "focus:border-sky-400 focus:ring-sky-100",
+    chipActive: "border-sky-600 bg-sky-50 text-sky-900",
+    bg: "bg-gradient-to-b from-sky-100/50 via-cyan-50/30 to-blue-50/40",
+    pattern: "waves",
+    shape: "waves",
+  },
+  noir: {
+    id: "noir", label: "Gece Şehir", emoji: "🌃", premium: true,
+    primary: "#4338ca", primaryLight: "#e0e7ff", primaryDark: "#312e81",
+    accent: "#a855f7", gradientFrom: "from-indigo-50/50", gradientTo: "to-violet-50/30",
+    cardBorder: "border-indigo-200", navBg: "bg-indigo-50/95",
+    btnBg: "bg-indigo-600", btnHover: "hover:bg-indigo-700", btnShadow: "shadow-indigo-600/30",
+    btnSecBorder: "border-indigo-200", btnSecText: "text-indigo-800",
+    inputFocus: "focus:border-indigo-400 focus:ring-indigo-100",
+    chipActive: "border-indigo-500 bg-indigo-50 text-indigo-900",
+    bg: "bg-gradient-to-b from-indigo-100/40 via-violet-50/30 to-slate-100/50",
+    pattern: "stars",
+    shape: "angular",
+  },
 };
 
 const ThemeContext = createContext({});
@@ -97,3 +138,30 @@ export function ThemeProvider({ children }) {
 
 // eslint-disable-next-line react-refresh/only-export-components -- context hook
 export const useTheme = () => useContext(ThemeContext);
+
+// eslint-disable-next-line react-refresh/only-export-components
+export function isPremiumThemeId(id) {
+  return Boolean(themes[id]?.premium);
+}
+
+function userHasRebiPlusFromUser(user) {
+  if (!user?.user_metadata) return false;
+  const m = user.user_metadata;
+  if (m.rebi_plus === true) return true;
+  return ["plus", "pro", "premium"].includes(String(m.subscription_tier || "").toLowerCase());
+}
+
+/** Plus olmayan kullanıcıda kayıtlı premium temayı teal’e çeker. */
+export function ThemePremiumGate() {
+  const { user } = useAuth();
+  const { themeId, setThemeId } = useTheme();
+
+  useEffect(() => {
+    if (!user) return;
+    if (!userHasRebiPlusFromUser(user) && isPremiumThemeId(themeId)) {
+      setThemeId("teal");
+    }
+  }, [user, themeId, setThemeId]);
+
+  return null;
+}

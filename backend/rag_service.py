@@ -21,6 +21,35 @@ from flow_engine import sanitize_routine_items_details
 
 log = get_logger("rag_service")
 
+
+def _gemini_response_text(response) -> str:
+    """
+    google-genai bazen güvenlik/aday yokken .text ile patlar.
+    Önce .text, olmazsa candidates[].content.parts[].text toplanır.
+    """
+    if response is None:
+        return ""
+    try:
+        t = response.text
+        if isinstance(t, str) and t.strip():
+            return t.strip()
+    except Exception:
+        pass
+    try:
+        chunks = []
+        for c in getattr(response, "candidates", None) or []:
+            content = getattr(c, "content", None)
+            if not content:
+                continue
+            for p in getattr(content, "parts", None) or []:
+                pt = getattr(p, "text", None)
+                if pt:
+                    chunks.append(pt)
+        return "\n".join(chunks).strip()
+    except Exception:
+        return ""
+
+
 gemini_client = None
 if GEMINI_API_KEY:
     try:
@@ -104,7 +133,7 @@ SADECE JSON array döndür (sadece detail güncellenebilir, action/time/category
             ),
         )
 
-        parsed = json.loads(response.text)
+        parsed = json.loads(_gemini_response_text(response) or "{}")
 
         if isinstance(parsed, list) and len(parsed) > 0:
             for i, item in enumerate(routine_items):
@@ -238,7 +267,10 @@ Cevabının sonuna ekle:
             ),
         )
 
-        reply_text = response.text.strip()
+        reply_text = (_gemini_response_text(response) or "").strip()
+        if not reply_text:
+            log.warning("Assessment: boş model yanıtı")
+            return {"reply": "Şu an güvenli bir yanıt üretilemedi. Kısaca tekrar yazar mısın?", "is_complete": False}
 
         is_complete = False
         extracted = None
@@ -267,45 +299,75 @@ Cevabının sonuna ekle:
 
     except Exception as e:
         log.error("Assessment chat hatası: %s", e)
+        et = str(e).lower()
+        if "429" in et or "quota" in et or "resource_exhausted" in et:
+            return {
+                "reply": "Şu an çok yoğunuz; bir süre sonra tekrar dener misin? (Kota/limit)",
+                "is_complete": False,
+            }
         return {"reply": "Bir hata oluştu, tekrar dener misin?", "is_complete": False}
 
 
 async def _free_chat(user_message: str, history: list = None, user_profile: dict = None) -> dict:
     """Serbest sohbet modu - cilt/yüz/el bakımı hakkında her şey sorulabilir."""
-    history_text = ""
-    if history:
-        for msg in (history or [])[-12:]:
-            role = "Kullanıcı" if msg.get("role") == "user" else "Rebi"
-            history_text += f"{role}: {msg.get('content', '')}\n"
+    hist = list(history or [])
+    um = (user_message or "").strip()
+    if (
+        hist
+        and hist[-1].get("role") == "user"
+        and (hist[-1].get("content") or "").strip() == um
+    ):
+        hist = hist[:-1]
+
+    contents: list = []
+    for msg in hist[-12:]:
+        role = "model" if msg.get("role") == "assistant" else "user"
+        contents.append(
+            types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", "") or "")])
+        )
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_message)]))
 
     name = (user_profile or {}).get("name", "Kullanıcı")
-    prompt = f"""Önceki konuşma:
-{history_text if history_text else 'Yeni sohbet.'}
-
-Kullanıcı ({name}): {user_message}"""
+    system_instruction = (
+        f"Kullanıcının görünen adı: {name}.\n"
+        "Sen Rebi, profesyonel cilt bakım asistanısın. Türkçe konuş.\n"
+        "KAPSAM: SADECE cilt, yüz ve el bakımı. Ürünler, maddeler (niacinamide, retinol, AHA, BHA vb.), "
+        "cilt sorunları, bakım rutinleri, dermakozmetik bilgisi.\n"
+        "Kapsam dışı konulara: 'Bu konuda yardımcı olamam, cilt bakımıyla ilgili sorularını yanıtlayabilirim.' de.\n"
+        "KISA ve NET yanıtlar ver — en fazla 3–4 cümle. Bilgi yığını yapma.\n"
+        "Sıcak, samimi, profesyonel ol. Tıbbi teşhis koyma, gerekirse dermatoloğa yönlendir."
+    )
 
     try:
         response = gemini_client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=prompt,
+            contents=contents,
             config=types.GenerateContentConfig(
-                system_instruction=(
-                    "Sen Rebi, profesyonel cilt bakım asistanısın. Türkçe konuş.\n"
-                    "KAPSAM: SADECE cilt, yüz ve el bakımı. Ürünler, maddeler (niacinamide, retinol, AHA, BHA vb.), "
-                    "cilt sorunları, bakım rutinleri, dermakozmetik bilgisi.\n"
-                    "Kapsam dışı konulara: 'Bu konuda yardımcı olamam, cilt bakımıyla ilgili sorularını yanıtlayabilirim.' de.\n"
-                    "KISA ve NET yanıtlar ver - max 3-4 cümle. Bilgi yığını yapma.\n"
-                    "Sıcak, samimi, profesyonel ol. Tıbbi teşhis koyma, gerekirse dermatoloğa yönlendir."
-                ),
+                system_instruction=system_instruction,
                 temperature=0.6,
                 max_output_tokens=350,
             ),
         )
-        log.info("Free chat yanıtı (%d karakter)", len(response.text))
-        return {"reply": response.text.strip(), "is_complete": False, "extracted_data": None}
+        reply = _gemini_response_text(response)
+        if not reply:
+            log.warning("Free chat: boş veya engellenmiş model yanıtı")
+            return {
+                "reply": "Şu an güvenli bir yanıt üretilemedi. Sorunu biraz kısaltıp tekrar dener misin?",
+                "is_complete": False,
+                "extracted_data": None,
+            }
+        log.info("Free chat yanıtı (%d karakter)", len(reply))
+        return {"reply": reply, "is_complete": False, "extracted_data": None}
     except Exception as e:
         log.error("Free chat hatası: %s", e)
-        return {"reply": "Bir hata oluştu, tekrar dener misin?", "is_complete": False}
+        hint = _polish_user_message(e)
+        if "429" in str(e).lower() or "quota" in str(e).lower() or "resource_exhausted" in str(e).lower():
+            return {
+                "reply": hint,
+                "is_complete": False,
+                "extracted_data": None,
+            }
+        return {"reply": "Bir hata oluştu, tekrar dener misin?", "is_complete": False, "extracted_data": None}
 
 
 async def chat_with_knowledge(
@@ -350,8 +412,9 @@ Bu soruyu bilgi tabanındaki verilere dayanarak yanıtla. Emin olmadığın konu
                 max_output_tokens=600,
             ),
         )
-        log.info("Chat yanıtı oluşturuldu (%d karakter)", len(response.text))
-        return response.text
+        out = _gemini_response_text(response)
+        log.info("Chat yanıtı oluşturuldu (%d karakter)", len(out))
+        return out or "Şu an kısa bir yanıt üretilemedi; sorunu tekrar yazar mısın?"
 
     except Exception as e:
         log.error("Chat hatası: %s", e)
@@ -412,7 +475,7 @@ Türkçe, sıcak, samimi ol. Bilgi yığını yapma."""
                 max_output_tokens=200,
             ),
         )
-        note = response.text.strip()
+        note = (_gemini_response_text(response) or "").strip()
         log.info("AI adaptasyon notu oluşturuldu (%d karakter)", len(note))
         return note
     except Exception as e:

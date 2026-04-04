@@ -51,3 +51,11 @@ export function acceptRoutineTracking(userId, snapshot) {
     /* ignore */
   }
 }
+
+/** İlk analiz tamamlandıysa (kayıtlı rutin veya kabul bayrağı) uzun sihirbaz göstermeyi atla. */
+export function hasCompletedOnboarding(userId) {
+  if (!userId) return false;
+  if (isRoutineTrackingAccepted(userId)) return true;
+  const s = getRoutineSnapshot(userId);
+  return Array.isArray(s?.routine) && s.routine.length > 0;
+}

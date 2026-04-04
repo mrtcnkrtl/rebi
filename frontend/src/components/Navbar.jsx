@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Leaf, Menu, X, LogOut, User } from "lucide-react";
+import { Leaf, Menu, X, LogOut, Crown } from "lucide-react";
 
 export default function Navbar() {
   const { user, signOut } = useAuth();
@@ -32,6 +32,12 @@ export default function Navbar() {
                 className="text-gray-600 hover:text-teal-600 font-medium transition-colors"
               >
                 Dashboard
+              </Link>
+              <Link
+                to="/dashboard/subscribe"
+                className="text-amber-700 hover:text-amber-900 font-medium text-sm flex items-center gap-1"
+              >
+                <Crown className="w-4 h-4" /> Plus
               </Link>
               <Link
                 to="/dashboard/analyze"
@@ -73,6 +79,13 @@ export default function Navbar() {
                 className="block py-2 text-gray-700 font-medium"
               >
                 Dashboard
+              </Link>
+              <Link
+                to="/dashboard/subscribe"
+                onClick={() => setMenuOpen(false)}
+                className="block py-2 text-amber-700 font-medium"
+              >
+                Rebi Plus
               </Link>
               <Link
                 to="/dashboard/analyze"

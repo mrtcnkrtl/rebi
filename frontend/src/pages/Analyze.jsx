@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { API_URL, supabase } from "../lib/supabase";
 import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
+import { hasCompletedOnboarding } from "../lib/routineTracking";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import LoadingScreen from "../components/LoadingScreen";
 import SkinTypeVisual from "../components/SkinTypeVisual";
@@ -179,6 +180,8 @@ export default function Analyze() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState("");
+  /** İlk analizden sonra varsayılan: kısa ekran; kullanıcı isterse tam sihirbazı açar. */
+  const [forceFullWizard, setForceFullWizard] = useState(false);
 
   useEffect(() => {
     setSubmitError("");
@@ -348,6 +351,48 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
   };
 
   if (loading) return <LoadingScreen />;
+
+  const uid = user?.id || DEMO_USER_ID;
+  const showCompactHub =
+    !forceFullWizard && hasCompletedOnboarding(uid);
+
+  if (showCompactHub) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-teal-50/50 to-white pb-24">
+        <div className="max-w-lg mx-auto px-4 py-10">
+          <div className="card space-y-4 !p-6 text-center border-teal-100">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center mx-auto shadow-lg">
+              <Sparkles className="w-8 h-8 text-white" />
+            </div>
+            <h1 className="text-xl font-bold text-gray-900">Rutinin hazır</h1>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              İlk analizini tamamladın; uzun formu her gün tekrarlamana gerek yok. Panele dön veya
+              cildinde büyük bir değişiklik olduysa yeni analiz başlat.
+            </p>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => navigate("/dashboard")}
+                className="btn-primary w-full justify-center"
+              >
+                Panele dön <ArrowRight className="w-5 h-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setForceFullWizard(true);
+                  setStep(1);
+                }}
+                className="btn-secondary w-full justify-center text-sm"
+              >
+                Yeni analiz başlat (tam form)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-teal-50/50 to-white">

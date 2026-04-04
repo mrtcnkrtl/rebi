@@ -26,7 +26,13 @@ from skincare_absolute_rules import enforce_absolute_rules_on_routine, get_absol
 from knowledge_router import execute_query_plan, get_targeted_context
 from rag_service import polish_routine_with_ai, chat_with_knowledge
 from ingredient_db import compute_risk_score, build_ingredient_context_for_ai
-from auth_deps import enforce_supabase_user, jwt_auth_enabled
+from auth_deps import enforce_supabase_user, jwt_auth_enabled, user_is_rebi_plus
+from free_chat_quota import (
+    free_chat_limit,
+    free_chat_remaining,
+    free_chat_quota_exceeded,
+    free_chat_record_successful_turn,
+)
 from demo_users import (
     demo_checkin_already_today,
     demo_checkin_mark,
@@ -286,6 +292,9 @@ class AssessmentChatResponse(BaseModel):
     reply: str
     is_complete: bool = False
     extracted_data: Optional[dict] = None
+    free_chat_remaining: Optional[int] = None
+    free_chat_limit: Optional[int] = None
+    chat_quota_exceeded: bool = False
 
 
 class DailyCheckinRequest(BaseModel):
@@ -730,13 +739,58 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
     enforce_supabase_user(request, req.user_id)
     log.info("Assessment chat: user=%s, msg='%s'", req.user_id, req.message[:80])
 
+    profile = req.user_profile or {}
+    is_free = profile.get("mode") == "free_chat"
+    lim = free_chat_limit()
+    plus = user_is_rebi_plus(request, req.user_id)
+
+    if is_free and not plus and jwt_auth_enabled():
+        if free_chat_quota_exceeded(req.user_id):
+            return AssessmentChatResponse(
+                reply=(
+                    "Bugünkü ücretsiz Rebi AI mesaj hakkın doldu. "
+                    "Sınırsız sohbet için Rebi Plus’a geçebilirsin; uygulamadaki "
+                    "«Abonelik / Rebi Plus» bölümünden devam et."
+                ),
+                is_complete=False,
+                extracted_data=None,
+                free_chat_remaining=0,
+                free_chat_limit=lim,
+                chat_quota_exceeded=True,
+            )
+
     from rag_service import assessment_chat
     result = await assessment_chat(
         user_message=req.message,
         history=req.history,
-        user_profile=req.user_profile or {},
+        user_profile=profile,
     )
-    return AssessmentChatResponse(**result)
+
+    remaining: Optional[int] = None
+    if is_free and jwt_auth_enabled():
+        if not plus:
+            reply = (result.get("reply") or "").strip()
+            err_like = (
+                not reply
+                or reply.startswith("Bir hata oluştu")
+                or reply.startswith("Bağlantı kurulamadı")
+                or reply.startswith("Şu an güvenli bir yanıt üretilemedi")
+                or reply.startswith("Şu an kısa bir yanıt üretilemedi")
+                or reply.startswith("Üzgünüm, şu anda cevap veremiyorum")
+                or reply.startswith("Şu an çok yoğunuz")
+            )
+            if not err_like:
+                free_chat_record_successful_turn(req.user_id)
+            remaining = free_chat_remaining(req.user_id)
+
+    return AssessmentChatResponse(
+        reply=result.get("reply", ""),
+        is_complete=result.get("is_complete", False),
+        extracted_data=result.get("extracted_data"),
+        free_chat_remaining=remaining,
+        free_chat_limit=lim if is_free and jwt_auth_enabled() and not plus else None,
+        chat_quota_exceeded=False,
+    )
 
 
 @app.get(

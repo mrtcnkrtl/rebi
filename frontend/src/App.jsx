@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import { ThemeProvider } from "./context/ThemeContext";
+import { ThemeProvider, ThemePremiumGate } from "./context/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
@@ -11,6 +11,7 @@ import Analyze from "./pages/Analyze";
 import Chat from "./pages/Chat";
 import CheckIn from "./pages/CheckIn";
 import Themes from "./pages/Themes";
+import Subscribe from "./pages/Subscribe";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ function AppRoutes() {
         <Route path="/dashboard/checkin" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />
         <Route path="/dashboard/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/dashboard/themes" element={<ProtectedRoute><Themes /></ProtectedRoute>} />
+        <Route path="/dashboard/subscribe" element={<ProtectedRoute><Subscribe /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {user && isDashboard && <BottomNav />}
@@ -54,6 +56,7 @@ export default function App() {
       <BrowserRouter>
         <AuthProvider>
           <ThemeProvider>
+            <ThemePremiumGate />
             <AppRoutes />
           </ThemeProvider>
         </AuthProvider>
