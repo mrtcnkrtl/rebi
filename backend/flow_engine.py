@@ -1680,6 +1680,79 @@ def compute_holistic_recommendations(
     return items
 
 
+def build_mind_body_protocol_items(
+    water_intake: float,
+    sleep_hours: float,
+    stress_score: int,
+    risk_level: str,
+    concern: str,
+) -> list:
+    """
+    Bütüncül rutin: su, nefes, uyku ritmi (+ endişeye göre antioksidan besin vurgusu).
+    Tek paragraf yerine ayrı Yaşam satırları.
+    """
+    stress_hi = stress_score >= 10
+    w_low = float(water_intake or 0) < 2.0
+    s_low = float(sleep_hours or 0) < 7.0
+    cold = risk_level in ("moderate", "high", "crisis")
+
+    items = [
+        {
+            "time": "Günlük",
+            "category": "Yaşam",
+            "icon": "💧",
+            "action": "Su rutini (hidrodenge)",
+            "detail": (
+                "Gün içinde düzenli aralıklarla iç; hedef yaklaşık 1.8–2.5 L (kilo ve aktiviteye göre ayarlanır). "
+                "Kafein veya alkollü günlerde ek bir bardak ekle."
+                + (" Şu an hedefe yaklaşmak cilt bariyeri ve elastikiyet için özellikle önerilir." if w_low else "")
+            ),
+            "priority": 2 if (w_low or cold) else 5,
+            "step_order": 2,
+        },
+        {
+            "time": "Sabah",
+            "category": "Yaşam",
+            "icon": "🌬️",
+            "action": "Kısa nefes egzersizi",
+            "detail": (
+                "2–4 dakika: 4 sn burundan al, 6 sn ağızdan ver; 6–10 tekrar. "
+                "Otonom sinir sistemini yumuşatır; stresle uyumlu cilt tepkilerini hafifletmeye yardımcı olabilir."
+                + (" Bugün stres yüksek görünüyor; özellikle önerilir." if stress_hi else "")
+            ),
+            "priority": 1 if stress_hi else 5,
+            "step_order": 12,
+        },
+        {
+            "time": "Akşam",
+            "category": "Yaşam",
+            "icon": "🌙",
+            "action": "Uyku öncesi protokol",
+            "detail": (
+                "Yatmadan 60–90 dk önce ekran ve parlak ışığı azalt; oda serin ve karanlık olsun. "
+                "Yatış/kalkış saatlerini hafta içi yakın tut; gece onarımı rutindeki nem/onarım adımlarını destekler."
+                + (" Uyku süreni kademeli olarak 7 saat civarına yaklaştırmayı hedefle." if s_low else "")
+            ),
+            "priority": 1 if (s_low or cold) else 5,
+            "step_order": 80,
+        },
+    ]
+    if concern in ("aging", "pigmentation"):
+        items.append({
+            "time": "Sabah",
+            "category": "Yaşam",
+            "icon": "🫐",
+            "action": "Antioksidan yoğun besinler (tabaktan)",
+            "detail": (
+                "Renkli sebze-meyve, yeşil çay, domates/biber gibi kaynaklar UV ve oksidatif strese karşı içerden destek sunar. "
+                "Tablet takviyesi için eczacı veya hekim onayı gerekir; oral takviyeyi rutindeki ürünlerle birlikte düşünmeden başlama."
+            ),
+            "priority": 4,
+            "step_order": 25,
+        })
+    return items
+
+
 def _get_nutrition_plan(concern: str, age: int, severity_level: str) -> list:
     """Concern'e özel beslenme önerileri."""
     items = []
@@ -2810,29 +2883,12 @@ def run_flow(
     routine_items.extend(lifestyle_items)
     routine_items.append(risk_summary_item)
 
-    # Temel düzey yaşam alışkanlıkları (yalnız gerektiğinde): su/beslenme/nefes/hareket
-    need_basics = (
-        risk_level in ("moderate", "high", "crisis")
-        or stress_score >= 10
-        or water_intake < 2.0
-        or sleep_hours < 7.0
+    # 7b. Zihin–beden protokolleri (su, nefes, uyku; endişeye göre antioksidan besin notu)
+    routine_items.extend(
+        build_mind_body_protocol_items(
+            water_intake, sleep_hours, stress_score, risk_level, concern
+        )
     )
-    if need_basics:
-        routine_items.append({
-            "time": "Günlük",
-            "category": "Yaşam",
-            "icon": "🧭",
-            "action": "Temel günlük destek (temel düzey)",
-            "detail": (
-                "Bugün rutinin yanında temel düzeyde 4 şey hedefle: "
-                "1) Su: toplam 1.8–2.5L (kafein/alkol günlerinde ek su), "
-                "2) Beslenme: en az 1 öğünde protein + lif; şekerli/işlenmiş gıdayı azalt, "
-                "3) Nefes: 2–4 dk 4 sn al → 6 sn ver (6–10 tur), "
-                "4) Hareket: 20–30 dk yürüyüş/hafif spor (ter sonrası nazik temizlik)."
-            ),
-            "priority": 0,
-            "step_order": 1,
-        })
 
     # 8. Holistic recommendations (nutrition, exercise, supplements)
     holistic_items = compute_holistic_recommendations(

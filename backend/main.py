@@ -26,6 +26,15 @@ from skincare_absolute_rules import enforce_absolute_rules_on_routine, get_absol
 from knowledge_router import execute_query_plan, get_targeted_context
 from rag_service import polish_routine_with_ai, chat_with_knowledge
 from ingredient_db import compute_risk_score, build_ingredient_context_for_ai
+from hydration_window import compute_effective_water_liters, load_water_series_7d
+from checkin_carryover import (
+    blend_sleep_hours,
+    blend_stress_mapped,
+    build_carryover_notes,
+    effective_makeup_with_history,
+    fetch_past_daily_logs,
+)
+from concern_checkin_extras import apply_concern_extra_risk
 from auth_deps import enforce_supabase_user, jwt_auth_enabled, user_is_rebi_plus
 from free_chat_quota import (
     free_chat_limit,
@@ -306,6 +315,20 @@ class DailyCheckinRequest(BaseModel):
     notes: Optional[str] = None
     location_lat: Optional[float] = None
     location_lon: Optional[float] = None
+    # Koşullu check-in: riskte kullanılır; None ise profil/takip aynen
+    water_ml_today: Optional[int] = None
+    makeup_used_today: Optional[bool] = None
+    makeup_removal_today: Optional[str] = None
+    tried_new_active_today: Optional[bool] = None
+    # Endişe tipine göre ek sorular (hepsi opsiyonel; None = atlandı)
+    picked_skin_today: Optional[bool] = None
+    high_glycemic_intake_today: Optional[bool] = None
+    heavy_dairy_today: Optional[bool] = None
+    long_sun_exposure_today: Optional[bool] = None
+    spf_applied_today: Optional[bool] = None
+    very_dry_environment_today: Optional[bool] = None
+    long_hot_shower_today: Optional[bool] = None
+    fragrance_new_product_today: Optional[bool] = None
 
 
 class DailyCheckinResponse(BaseModel):
@@ -316,6 +339,9 @@ class DailyCheckinResponse(BaseModel):
     ai_note: str
     adaptation_type: str
     care_guide: Optional[dict] = None
+    water_effective_liters: Optional[float] = None
+    hydration_summary: Optional[str] = None
+    lifestyle_carryover_detail: Optional[str] = None
 
 
 DailyTrackingEventType = Literal["water_intake", "nutrition", "stress", "sleep", "location"]
@@ -889,11 +915,20 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
             if profile_res.data:
                 user_profile = profile_res.data[0]
 
-            assessment_res = supabase.table("assessments").select("lifestyle_data").eq(
-                "user_id", req.user_id
-            ).order("created_at", desc=True).limit(1).execute()
-            if assessment_res.data and assessment_res.data[0].get("lifestyle_data"):
-                user_profile.update(assessment_res.data[0]["lifestyle_data"])
+            assessment_res = (
+                supabase.table("assessments")
+                .select("lifestyle_data, concern")
+                .eq("user_id", req.user_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if assessment_res.data:
+                ar0 = assessment_res.data[0]
+                if ar0.get("lifestyle_data"):
+                    user_profile.update(ar0["lifestyle_data"])
+                if ar0.get("concern"):
+                    user_profile["concern"] = ar0["concern"]
 
         except Exception as e:
             log.error("Mevcut rutin çekme hatası: %s", e)
@@ -918,16 +953,77 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
         ev_local = _MEM_DAILY_EVENTS.get((req.user_id, today_str), [])
         tracking_today = _aggregate_daily_events(ev_local)
 
-    # 4. Risk skoru hesapla
-    stress_mapped = req.stress_today * 2
-    water_intake = user_profile.get("water_intake", 2.0)
+    # 4. Risk skoru: su (7 gün) + uyku/stres/makyaj (daily_logs carryover) + sorun tipi
+    concern_for_carry = str(user_profile.get("concern", "") or "").lower().strip()
+    past_logs: list[dict] = []
+    if should_use_supabase_db(supabase, req.user_id):
+        try:
+            past_logs = fetch_past_daily_logs(supabase, req.user_id, today_str, limit=14)
+        except Exception as e:
+            log.error("daily_logs carryover okuma (ignored): %s", e)
+
     try:
-        if tracking_today and int(tracking_today.get("water_ml_total", 0) or 0) > 0:
-            water_intake = float(tracking_today["water_ml_total"]) / 1000.0
+        effective_sleep, sleep_carry_note = blend_sleep_hours(req.sleep_hours, past_logs)
     except Exception:
-        pass
-    makeup_frequency = int(user_profile.get("makeup_frequency", 0) or 0)
-    makeup_removal = str(user_profile.get("makeup_removal", "cleanser") or "cleanser")
+        effective_sleep, sleep_carry_note = float(req.sleep_hours), "uyku: carryover atlandı"
+
+    try:
+        stress_mapped, stress_carry_note = blend_stress_mapped(req.stress_today, past_logs)
+    except Exception:
+        stress_mapped, stress_carry_note = req.stress_today * 2, "stres: carryover atlandı"
+
+    if concern_for_carry == "sensitivity" and req.tried_new_active_today is True:
+        stress_mapped = min(10, stress_mapped + 2)
+
+    try:
+        profile_water = float(user_profile.get("water_intake", 2.0) or 2.0)
+    except (TypeError, ValueError):
+        profile_water = 2.0
+    today_d = date.fromisoformat(today_str)
+    use_db = should_use_supabase_db(supabase, req.user_id)
+    try:
+        water_series = load_water_series_7d(
+            req.user_id,
+            today_d,
+            supabase,
+            _MEM_DAILY_EVENTS,
+            use_db,
+        )
+        series_list = list(water_series)
+        if req.water_ml_today is not None and req.water_ml_today >= 0:
+            lit = max(0.0, float(req.water_ml_today) / 1000.0)
+            if series_list:
+                d0, _ = series_list[0]
+                series_list[0] = (d0, lit)
+            else:
+                series_list = [(today_str, lit)]
+        water_intake, hydration_summary = compute_effective_water_liters(profile_water, series_list)
+    except Exception as e:
+        log.error("hydration_window hatası (profil suya düşülüyor): %s", e)
+        water_intake = profile_water
+        hydration_summary = None
+
+    profile_mf = int(user_profile.get("makeup_frequency", 0) or 0)
+    profile_mr = str(user_profile.get("makeup_removal", "cleanser") or "cleanser")
+    try:
+        makeup_frequency, makeup_removal, makeup_carry_note = effective_makeup_with_history(
+            concern_for_carry,
+            profile_mf,
+            profile_mr,
+            req.makeup_used_today,
+            req.makeup_removal_today,
+            past_logs,
+        )
+    except Exception:
+        makeup_frequency, makeup_removal, makeup_carry_note = profile_mf, profile_mr, None
+        if req.makeup_used_today is not None:
+            if not req.makeup_used_today:
+                makeup_frequency, makeup_removal = 0, "cleanser"
+            elif req.makeup_removal_today:
+                mr = (req.makeup_removal_today or "").lower().strip()
+                if mr in ("none", "water", "cleanser", "double"):
+                    makeup_removal = mr
+
     cycle_for_risk = str(user_profile.get("cycle_phase", "") or "")
     gender_for_risk = str(user_profile.get("gender", "") or "")
 
@@ -935,12 +1031,24 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
         stress=stress_mapped,
         water_intake=water_intake,
         humidity=weather_data.get("humidity", 50),
-        sleep_hours=req.sleep_hours,
+        sleep_hours=effective_sleep,
         makeup_frequency=makeup_frequency,
         makeup_removal=makeup_removal,
         cycle_phase=cycle_for_risk,
         gender=gender_for_risk,
     )
+    try:
+        risk_info = apply_concern_extra_risk(concern_for_carry, req, past_logs, risk_info)
+    except Exception as e:
+        log.error("concern_checkin_extras hatası (ignored): %s", e)
+    risk_detail_out = risk_info.get("detail", "")
+    carryover_blob = build_carryover_notes(
+        sleep_carry_note,
+        stress_carry_note,
+        makeup_carry_note,
+        hydration_summary,
+    )
+    risk_detail_out = f"{risk_detail_out} | Carryover: {carryover_blob}"
 
     # 5. Deterministik adaptasyon
     daily_data = {
@@ -1054,6 +1162,20 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
                     "changes": adaptation["changes"],
                     "ai_note": ai_note,
                     "learned_tolerance": learned_tol,
+                    "checkin_extras": {
+                        "water_ml_today": req.water_ml_today,
+                        "makeup_used_today": req.makeup_used_today,
+                        "makeup_removal_today": req.makeup_removal_today,
+                        "tried_new_active_today": req.tried_new_active_today,
+                        "picked_skin_today": req.picked_skin_today,
+                        "high_glycemic_intake_today": req.high_glycemic_intake_today,
+                        "heavy_dairy_today": req.heavy_dairy_today,
+                        "long_sun_exposure_today": req.long_sun_exposure_today,
+                        "spf_applied_today": req.spf_applied_today,
+                        "very_dry_environment_today": req.very_dry_environment_today,
+                        "long_hot_shower_today": req.long_hot_shower_today,
+                        "fragrance_new_product_today": req.fragrance_new_product_today,
+                    },
                 },
             }).execute()
 
@@ -1076,10 +1198,13 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
         today_routine=adaptation["adapted_items"],
         changes=adaptation["changes"],
         risk_level=risk_info["level"],
-        risk_detail=risk_info.get("detail", ""),
+        risk_detail=risk_detail_out,
         ai_note=ai_note,
         adaptation_type=adaptation["adaptation_type"],
         care_guide=get_routine_care_guide(is_pregnant=is_pregnant),
+        water_effective_liters=round(float(water_intake), 3),
+        hydration_summary=hydration_summary,
+        lifestyle_carryover_detail=carryover_blob,
     )
 
 

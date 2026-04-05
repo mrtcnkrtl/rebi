@@ -12,9 +12,11 @@ import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import {
-  Moon, SmilePlus, Frown, Droplets, AlertCircle,
+  Moon, SmilePlus, Droplets, AlertCircle,
   CheckCircle2, Send, Loader2, ArrowRight, Sparkles,
+  Palette, FlaskConical, Hand, Sun, Wind, Flower2,
 } from "lucide-react";
+import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -34,6 +36,59 @@ const STRESS_LEVELS = [
   { value: 5, label: "Çok yüksek", emoji: "😰" },
 ];
 
+/** Evet / Hayır / Atla — check-in ek soruları */
+function ExtraTristate({ title, description, value, onChange }) {
+  return (
+    <div className="card mb-3">
+      <h3 className="text-sm font-bold text-gray-800 mb-1">{title}</h3>
+      {description ? (
+        <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">{description}</p>
+      ) : null}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={() => onChange(true)}
+          className={`py-2 rounded-xl text-xs font-medium border-2 ${
+            value === true ? "border-teal-500 bg-teal-50" : "border-gray-200"
+          }`}
+        >
+          Evet
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(false)}
+          className={`py-2 rounded-xl text-xs font-medium border-2 ${
+            value === false ? "border-teal-500 bg-teal-50" : "border-gray-200"
+          }`}
+        >
+          Hayır
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          className="py-2 rounded-xl text-xs font-medium border-2 border-gray-200 text-gray-600"
+        >
+          Atla
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const CONCERN_EXTRA_INITIAL = {
+  picked_skin_today: null,
+  high_glycemic_intake_today: null,
+  heavy_dairy_today: null,
+  long_sun_exposure_today: null,
+  spf_applied_today: null,
+  very_dry_environment_today: null,
+  long_hot_shower_today: null,
+  fragrance_new_product_today: null,
+  tried_new_active_today: null,
+};
+
+const TRISTATE_PAYLOAD_KEYS = Object.keys(CONCERN_EXTRA_INITIAL);
+
 export default function CheckIn() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -46,18 +101,83 @@ export default function CheckIn() {
     navigate("/dashboard", { replace: true, state: { flashNeedAccept: true } });
   }, [user?.id, navigate]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!user?.id || !supabase) {
+        setCtxLoading(false);
+        return;
+      }
+      try {
+        const { data: row } = await supabase
+          .from("assessments")
+          .select("concern, lifestyle_data")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (cancelled) return;
+        const life = row?.lifestyle_data || {};
+        setAssessmentCtx({
+          concern: row?.concern || "acne",
+          water_intake: Number(life.water_intake ?? 2),
+          makeup_frequency: Number(life.makeup_frequency ?? 0),
+        });
+      } catch {
+        if (!cancelled) {
+          setAssessmentCtx({ concern: "acne", water_intake: 2, makeup_frequency: 0 });
+        }
+      } finally {
+        if (!cancelled) setCtxLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
   const [sleepHours, setSleepHours] = useState(7);
   const [stressToday, setStressToday] = useState(3);
   const [skinFeeling, setSkinFeeling] = useState("");
   const [appliedRoutine, setAppliedRoutine] = useState(true);
   const [notes, setNotes] = useState("");
+  /** Son assessment bağlamı: hangi ek soruları göstereceğiz */
+  const [ctxLoading, setCtxLoading] = useState(true);
+  const [assessmentCtx, setAssessmentCtx] = useState({
+    concern: "acne",
+    water_intake: 2,
+    makeup_frequency: 0,
+  });
+  const [waterMlToday, setWaterMlToday] = useState("");
+  const [makeupUsedToday, setMakeupUsedToday] = useState(null);
+  const [makeupRemovalToday, setMakeupRemovalToday] = useState("cleanser");
+  const [concernExtra, setConcernExtra] = useState(() => ({ ...CONCERN_EXTRA_INITIAL }));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [submitError, setSubmitError] = useState("");
 
-  const canSubmit = skinFeeling && !loading && !alreadyCheckedIn;
+  const canSubmit = skinFeeling && !loading && !alreadyCheckedIn && !ctxLoading;
+
+  const concernDrivenExtras = ["acne", "dryness", "pigmentation", "sensitivity", "aging"];
+  const showWaterExtra =
+    concernDrivenExtras.includes(assessmentCtx.concern) || assessmentCtx.water_intake < 2;
+  const showMakeupExtra =
+    assessmentCtx.makeup_frequency >= 3 ||
+    ["acne", "pigmentation", "sensitivity", "aging"].includes(assessmentCtx.concern);
+  const showConcernIntro = concernDrivenExtras.includes(assessmentCtx.concern);
+
+  const setExtraField = (key, val) => {
+    setConcernExtra((p) => ({ ...p, [key]: val }));
+  };
+
+  const MAKEUP_REMOVAL_OPTS = [
+    { id: "cleanser", label: "Temizleyici" },
+    { id: "double", label: "Çift aşama" },
+    { id: "water", label: "Sadece su" },
+    { id: "none", label: "Temizlemedim" },
+  ];
 
   useEffect(() => {
     const id = user?.id;
@@ -96,17 +216,33 @@ export default function CheckIn() {
     setSubmitError("");
     try {
       const auth = await apiAuthHeaders();
+      const payload = {
+        user_id: user?.id || DEMO_USER_ID,
+        sleep_hours: sleepHours,
+        stress_today: stressToday,
+        skin_feeling: skinFeeling,
+        applied_routine: appliedRoutine,
+        notes: notes || null,
+      };
+      const wTrim = String(waterMlToday || "").trim();
+      if (wTrim !== "" && !Number.isNaN(Number(wTrim)) && Number(wTrim) >= 0) {
+        payload.water_ml_today = Math.round(Number(wTrim));
+      }
+      if (makeupUsedToday === true || makeupUsedToday === false) {
+        payload.makeup_used_today = makeupUsedToday;
+        if (makeupUsedToday === true) {
+          payload.makeup_removal_today = makeupRemovalToday;
+        }
+      }
+      for (const k of TRISTATE_PAYLOAD_KEYS) {
+        const v = concernExtra[k];
+        if (v === true || v === false) payload[k] = v;
+      }
+
       const res = await fetch(`${API}/daily_checkin`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...auth },
-        body: JSON.stringify({
-          user_id: user?.id || DEMO_USER_ID,
-          sleep_hours: sleepHours,
-          stress_today: stressToday,
-          skin_feeling: skinFeeling,
-          applied_routine: appliedRoutine,
-          notes: notes || null,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
       if (res.status === 409) {
@@ -263,6 +399,9 @@ export default function CheckIn() {
         <div className="text-center mb-8">
           <h1 className="text-xl font-bold text-gray-900">Günlük Check-in</h1>
           <p className="text-sm text-gray-500 mt-1">Bugün nasıl hissediyorsun?</p>
+          <p className="text-[11px] text-gray-400 mt-2 max-w-sm mx-auto leading-relaxed">
+            Uyku ve stres cevapların, geçmiş check-in kayıtlarınla kısa süreli harmanlanarak risk özetine girer.
+          </p>
         </div>
 
         {submitError && (
@@ -388,6 +527,201 @@ export default function CheckIn() {
             </button>
           </div>
         </div>
+
+        {showConcernIntro && (
+          <div className="card mb-4 bg-slate-50/90 border-slate-100">
+            <p className="text-[11px] text-slate-600 leading-relaxed">
+              <span className="font-semibold text-slate-800">Endişene özel:</span> Aşağıdaki ek sorular
+              analizindeki ana soruna göre seçilir. Cevap vermezsen atla; geçmiş check-in örüntüleri bazen
+              risk özetine yansır. Uyku ve stres üstte, geçmiş kayıtlarla harmanlanır.
+            </p>
+          </div>
+        )}
+
+        {/* Koşullu: su (endişe / düşük profil suyu) */}
+        {showWaterExtra && (
+          <div className="card mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Droplets className="w-5 h-5 text-sky-500" />
+              <h3 className="text-sm font-bold text-gray-800">Bugün tahmini toplam su</h3>
+            </div>
+            <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+              Boş bırakırsan uygulama içi su takibi veya profil hedefin kullanılır. Yaklaşık ml yazman risk özetine girer.
+            </p>
+            <input
+              type="number"
+              min={0}
+              max={8000}
+              step={50}
+              placeholder="Örn. 1500"
+              value={waterMlToday}
+              onChange={(e) => setWaterMlToday(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm"
+            />
+            <span className="text-[10px] text-gray-400 mt-1 block">ml (mililitre)</span>
+          </div>
+        )}
+
+        {/* Koşullu: makyaj (sık makyaj profili) */}
+        {showMakeupExtra && (
+          <div className="card mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Palette className="w-5 h-5 text-rose-500" />
+              <h3 className="text-sm font-bold text-gray-800">Bugün makyaj</h3>
+            </div>
+            <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+              İstersen atla; seçmezsen risk hesabında yalnızca profil makyaj sıklığın kullanılır.
+            </p>
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() => setMakeupUsedToday(true)}
+                className={`py-2 rounded-xl text-xs font-medium border-2 ${
+                  makeupUsedToday === true ? "border-teal-500 bg-teal-50" : "border-gray-200"
+                }`}
+              >
+                Evet
+              </button>
+              <button
+                type="button"
+                onClick={() => setMakeupUsedToday(false)}
+                className={`py-2 rounded-xl text-xs font-medium border-2 ${
+                  makeupUsedToday === false ? "border-teal-500 bg-teal-50" : "border-gray-200"
+                }`}
+              >
+                Hayır
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMakeupUsedToday(null);
+                  setMakeupRemovalToday("cleanser");
+                }}
+                className="py-2 rounded-xl text-xs font-medium border-2 border-gray-200 text-gray-600"
+              >
+                Atla
+              </button>
+            </div>
+            {makeupUsedToday === true && (
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium text-gray-700">Nasıl temizledin?</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {MAKEUP_REMOVAL_OPTS.map((o) => (
+                    <button
+                      key={o.id}
+                      type="button"
+                      onClick={() => setMakeupRemovalToday(o.id)}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border-2 ${
+                        makeupRemovalToday === o.id
+                          ? "border-teal-500 bg-teal-50"
+                          : "border-gray-200 text-gray-600"
+                      }`}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {assessmentCtx.concern === "acne" && (
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <Hand className="w-4 h-4 text-rose-500" />
+              Akneye özel
+            </p>
+            <ExtraTristate
+              title="Ciltte sivilce/komedon kurcaladın mı?"
+              description="Mekanik irritasyon bariyeri zayıflatır; risk özetine yansır."
+              value={concernExtra.picked_skin_today}
+              onChange={(v) => setExtraField("picked_skin_today", v)}
+            />
+            <ExtraTristate
+              title="Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?"
+              description="Beyaz un, tatlı, şekerli içecek gibi."
+              value={concernExtra.high_glycemic_intake_today}
+              onChange={(v) => setExtraField("high_glycemic_intake_today", v)}
+            />
+            <ExtraTristate
+              title="Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?"
+              description="Bazı akne eğilimlerinde tetikleyici olabilir."
+              value={concernExtra.heavy_dairy_today}
+              onChange={(v) => setExtraField("heavy_dairy_today", v)}
+            />
+          </div>
+        )}
+
+        {(assessmentCtx.concern === "aging" || assessmentCtx.concern === "pigmentation") && (
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <Sun className="w-4 h-4 text-amber-500" />
+              {assessmentCtx.concern === "aging" ? "Yaşlanma endişesine özel" : "Lekelenmeye özel"}
+            </p>
+            <ExtraTristate
+              title="Uzun süre doğrudan güneş altında kaldın mı?"
+              description="30 dk+ açık güneş veya yoğun UV günü."
+              value={concernExtra.long_sun_exposure_today}
+              onChange={(v) => setExtraField("long_sun_exposure_today", v)}
+            />
+            <ExtraTristate
+              title="Yüz için güneş koruyucu uyguladın mı?"
+              description="Rutindeki SPF adımını tamamladıysan Evet."
+              value={concernExtra.spf_applied_today}
+              onChange={(v) => setExtraField("spf_applied_today", v)}
+            />
+          </div>
+        )}
+
+        {assessmentCtx.concern === "dryness" && (
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <Wind className="w-4 h-4 text-sky-500" />
+              Kuruluğa özel
+            </p>
+            <ExtraTristate
+              title="Ev/iş ortamı çok kuru muydu? (ısıtma, klima, rüzgâr)"
+              value={concernExtra.very_dry_environment_today}
+              onChange={(v) => setExtraField("very_dry_environment_today", v)}
+            />
+            <ExtraTristate
+              title="Uzun veya çok sıcak duş aldın mı?"
+              description="Bariyer kuruluğunu artırabilir."
+              value={concernExtra.long_hot_shower_today}
+              onChange={(v) => setExtraField("long_hot_shower_today", v)}
+            />
+          </div>
+        )}
+
+        {assessmentCtx.concern === "sensitivity" && (
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-800 mb-2 flex items-center gap-2">
+              <Flower2 className="w-4 h-4 text-violet-500" />
+              Hassasiyete özel
+            </p>
+            <ExtraTristate
+              title="Yeni parfüm veya yoğun kokulu ürün kullandın mı?"
+              value={concernExtra.fragrance_new_product_today}
+              onChange={(v) => setExtraField("fragrance_new_product_today", v)}
+            />
+            <ExtraTristate
+              title="Uzun veya çok sıcak duş aldın mı?"
+              value={concernExtra.long_hot_shower_today}
+              onChange={(v) => setExtraField("long_hot_shower_today", v)}
+            />
+            <div className="flex items-center gap-2 mb-1 mt-1">
+              <FlaskConical className="w-4 h-4 text-violet-500" />
+              <span className="text-[11px] font-semibold text-gray-700">Aktif madde</span>
+            </div>
+            <ExtraTristate
+              title="Yeni güçlü madde veya peeling denedin mi?"
+              description="Örn. retinol, AHA/BHA, yüksek konsantrasyon serum."
+              value={concernExtra.tried_new_active_today}
+              onChange={(v) => setExtraField("tried_new_active_today", v)}
+            />
+          </div>
+        )}
 
         {/* Q5: Notes (optional) */}
         <div className="card mb-6">

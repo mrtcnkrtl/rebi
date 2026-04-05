@@ -9,8 +9,9 @@ import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import LoadingScreen from "../components/LoadingScreen";
 import SkinTypeVisual from "../components/SkinTypeVisual";
 import SeverityTest from "../components/SeverityTest";
+import WebcamCapture from "../components/WebcamCapture";
 import {
-  MapPin, ArrowRight, ArrowLeft, Camera, ImagePlus,
+  MapPin, ArrowRight, ArrowLeft, Camera, ImagePlus, Monitor,
   Droplets, Moon, Cigarette, Wine, AlertCircle, CheckCircle,
   User, Sparkles, Heart, Send, Bot, Loader2,
   UtensilsCrossed, Palette, AlertTriangle,
@@ -174,8 +175,10 @@ function ChipSelect({ options, value, onChange, cols = 2 }) {
 export default function Analyze() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const cameraRef = useRef(null);
+  const cameraUserRef = useRef(null);
+  const cameraEnvRef = useRef(null);
   const galleryRef = useRef(null);
+  const previewUrlRef = useRef(null);
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -229,6 +232,10 @@ export default function Analyze() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [showRoutineModal, setShowRoutineModal] = useState(false);
+  const [showSkipPhotoModal, setShowSkipPhotoModal] = useState(false);
+  const [showWebcam, setShowWebcam] = useState(false);
+  /** Fotoğrafsız rutin için kullanıcı bir kez onayladı (aynı oturumda tekrar sorma). */
+  const allowRoutineWithoutPhotoRef = useRef(false);
   /** Her güçlü aktif ailesi: never | good | mild | bad */
   const [activesTolerance, setActivesTolerance] = useState(() =>
     Object.fromEntries(strongActiveFamilies.map((f) => [f.id, "good"]))
@@ -278,10 +285,34 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
     );
   };
 
-  /* ─── Submit ─── */
+  /* ─── Foto: galeri / mobil kamera / webcam ─── */
+  const applyPhotoFile = (file) => {
+    if (!file) return;
+    allowRoutineWithoutPhotoRef.current = false;
+    if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
+    setPhotoFile(file);
+    const url = URL.createObjectURL(file);
+    previewUrlRef.current = url;
+    setPhotoPreview(url);
+  };
+
+  const clearPhoto = () => {
+    allowRoutineWithoutPhotoRef.current = false;
+    if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
+
   const handlePhotoChange = (e) => {
     const file = e.target.files?.[0];
-    if (file) { setPhotoFile(file); const r = new FileReader(); r.onload = (ev) => setPhotoPreview(ev.target.result); r.readAsDataURL(file); }
+    if (file) applyPhotoFile(file);
+    e.target.value = "";
+  };
+
+  const triggerHiddenInput = (ref) => {
+    const el = ref.current;
+    if (el) el.click();
   };
 
   const handleSubmit = async () => {
@@ -293,7 +324,17 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
         const ext = photoFile.name.split(".").pop();
         const path = `${user?.id || DEMO_USER_ID}/${Date.now()}.${ext}`;
         const { error } = await supabase.storage.from("skin-photos").upload(path, photoFile);
-        if (!error) photoUrl = supabase.storage.from("skin-photos").getPublicUrl(path)?.data?.publicUrl;
+        if (error) {
+          setSubmitError(
+            "Fotoğraf şu an sunucuya yüklenemedi; rutin yine de oluşturulacak. Süreç takibi için sonra tekrar yükleyebilirsin."
+          );
+        } else {
+          photoUrl = supabase.storage.from("skin-photos").getPublicUrl(path)?.data?.publicUrl;
+        }
+      } else if (photoFile && !supabase) {
+        setSubmitError(
+          "Depolama (Supabase) kapalı; fotoğraf sunucuya gidemiyor. Rutin oluşturuluyor; ileride fotoğraf için ayarları kontrol et."
+        );
       }
       const body = {
         user_id: user?.id || DEMO_USER_ID, full_name: name, age: parseInt(age), gender,
@@ -327,7 +368,8 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
           weather: data.weather,
           insights: data.holistic_insights,
           assessmentId: data.assessment_id,
-          photoUrl: photoUrl || photoPreview,
+          photoUrl: photoUrl || photoPreview || null,
+          routineWithoutPhoto: !photoUrl && !photoPreview,
           userName: name,
           concern: primaryConcern,
           flowDebug: data.flow_debug,
@@ -704,17 +746,89 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
         {/* ═══ STEP 4: Fotoğraf + Rutin oluştur (Rebi en sonda, rutin sonrası) ═══ */}
         {step === 4 && (
           <div className="space-y-5 animate-in fade-in">
-            <div><h2 className="text-2xl font-bold text-gray-900 mb-1">Son Adım</h2><p className="text-gray-500 text-sm">Fotoğraf ekle; rutin oluştura basınca kısa bir bilgilendirme ve güçlü madde soruları açılır.</p></div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">Son Adım</h2>
+              <p className="text-gray-500 text-sm">
+                İstersen hemen rutin oluşturabilirsin. <span className="font-medium text-gray-700">Süreç takibi</span> (ilerleyişi karşılaştırmak)
+                için net bir yüz fotoğrafı <span className="font-medium text-gray-700">çok önerilir</span> — galeri, kamera veya web kamerası.
+              </p>
+            </div>
+            <div className="card border-sky-100 bg-sky-50/90 text-[11px] text-sky-950 leading-relaxed space-y-2">
+              <p className="font-semibold text-sky-950">Fotoğraf telefonda klasöre kaydolur mu?</p>
+              <p className="text-sky-900/95">
+                Hayır. Rebi tarayıcı/PWA üzerinden çalıştığında seçtiğin fotoğraf genelde{" "}
+                <strong>uygulamanın bağlı olduğu güvenli bulut depoya</strong> (ör. Supabase Storage) yüklenir;
+                telefonda otomatik bir &quot;Rebi&quot; klasörü oluşmaz. İndirmediğin sürece galerinde ekstra kopya da oluşmayabilir.
+              </p>
+            </div>
             <div className="card space-y-3">
               {photoPreview ? (
-                <div className="space-y-3"><img src={photoPreview} alt="" className="w-full h-64 object-cover rounded-2xl" />
-                  <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="btn-secondary w-full text-sm">Değiştir</button></div>
+                <div className="space-y-3">
+                  <img src={photoPreview} alt="" className="w-full h-64 object-cover rounded-2xl" />
+                  <button type="button" onClick={clearPhoto} className="btn-secondary w-full text-sm">
+                    Değiştir
+                  </button>
+                </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => cameraRef.current?.click()} className="flex flex-col items-center gap-2 p-4 border-2 border-teal-200 rounded-2xl bg-teal-50/50"><Camera className="w-6 h-6 text-teal-600" /><span className="text-xs font-medium text-teal-800">Kamera</span></button>
-                  <button onClick={() => galleryRef.current?.click()} className="flex flex-col items-center gap-2 p-4 border-2 border-gray-200 rounded-2xl"><ImagePlus className="w-6 h-6 text-gray-500" /><span className="text-xs font-medium text-gray-600">Galeri</span></button>
-                </div>)}
-              <input ref={cameraRef} type="file" accept="image/*" capture="user" onChange={handlePhotoChange} className="hidden" />
+                <>
+                  <p className="text-[11px] text-amber-900/95 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 leading-relaxed">
+                    <span className="font-semibold">Öneri:</span> Süreç takibini kolaylaştırmak için net bir yüz fotoğrafı ekle. Mobil: Kamera ön/arka veya Galeri; masaüstü: Web kamerası veya dosya.
+                  </p>
+                  <p className="text-[11px] text-gray-500 leading-relaxed">
+                    <span className="font-medium text-gray-700">Mod seç:</span> Telefonda ön/arka kamera; bilgisayarda galeri/dosya veya canlı webcam.
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => triggerHiddenInput(galleryRef)}
+                      className="flex flex-col items-center gap-2 p-3 border-2 border-gray-200 rounded-2xl hover:border-teal-200 transition-colors"
+                    >
+                      <ImagePlus className="w-6 h-6 text-gray-500" />
+                      <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">Galeri / dosya</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerHiddenInput(cameraUserRef)}
+                      className="flex flex-col items-center gap-2 p-3 border-2 border-teal-200 rounded-2xl bg-teal-50/50"
+                    >
+                      <Camera className="w-6 h-6 text-teal-600" />
+                      <span className="text-[10px] font-medium text-teal-800 text-center leading-tight">Kamera ön</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => triggerHiddenInput(cameraEnvRef)}
+                      className="flex flex-col items-center gap-2 p-3 border-2 border-teal-100 rounded-2xl bg-teal-50/30"
+                    >
+                      <Camera className="w-6 h-6 text-teal-500" />
+                      <span className="text-[10px] font-medium text-teal-800 text-center leading-tight">Kamera arka</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowWebcam(true)}
+                      className="flex flex-col items-center gap-2 p-3 border-2 border-indigo-200 rounded-2xl bg-indigo-50/50"
+                    >
+                      <Monitor className="w-6 h-6 text-indigo-600" />
+                      <span className="text-[10px] font-medium text-indigo-800 text-center leading-tight">Web kamerası</span>
+                    </button>
+                  </div>
+                </>
+              )}
+              <input
+                ref={cameraUserRef}
+                type="file"
+                accept="image/*"
+                capture="user"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
+              <input
+                ref={cameraEnvRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={handlePhotoChange}
+                className="hidden"
+              />
               <input ref={galleryRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
             </div>
             <div className="card bg-teal-50/50 border-teal-100 space-y-2">
@@ -739,6 +853,11 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                 <Sparkles className="w-5 h-5" />Optimal Rutini Oluştur
               </button>
             </div>
+            {!photoFile && (
+              <p className="text-center text-[11px] text-gray-500">
+                Fotoğraf eklemeden de devam edebilirsin; son adımda süreç takibi için kısa bir uyarı gösterilir.
+              </p>
+            )}
           </div>
         )}
 
@@ -767,6 +886,15 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                   </p>
                 </div>
               </div>
+              {!photoFile && (
+                <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3 text-[11px] text-amber-950 leading-relaxed">
+                  <p className="font-semibold text-amber-950 mb-1">Fotoğraf eklemedin</p>
+                  <p>
+                    Rutin yine oluşturulur; ilerleyişi fotoğrafla kıyaslamak zorlaşır. İstersen geri dönüp kamera veya galeriden ekleyebilirsin.
+                    Yüklenen fotoğraflar güvenli bulutta saklanır, telefonda ayrı bir Rebi klasörü oluşmaz.
+                  </p>
+                </div>
+              )}
               <div className="rounded-xl bg-teal-50/80 border border-teal-100 p-3 space-y-2 text-xs text-gray-700 leading-relaxed">
                 <p className="font-semibold text-teal-900">Ürün ve formül gerçeği</p>
                 <ul className="list-disc list-inside space-y-1.5 text-gray-600">
@@ -817,6 +945,10 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                   type="button"
                   className="btn-primary flex-1"
                   onClick={() => {
+                    if (!photoFile && !allowRoutineWithoutPhotoRef.current) {
+                      setShowSkipPhotoModal(true);
+                      return;
+                    }
                     setShowRoutineModal(false);
                     handleSubmit();
                   }}
@@ -827,6 +959,69 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
             </div>
           </div>
         )}
+
+        {showSkipPhotoModal && (
+          <div
+            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="skip-photo-title"
+            onClick={() => setShowSkipPhotoModal(false)}
+          >
+            <div
+              className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4 border border-amber-100"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <h3 id="skip-photo-title" className="font-bold text-gray-900 text-base leading-tight">
+                    Süreç takibi için fotoğraf önerilir
+                  </h3>
+                  <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+                    Fotoğrafsız devam edebilirsin; rutin üretilir. İlerleyişi zaman içinde karşılaştırmak için yüz fotoğrafı faydalıdır.
+                  </p>
+                  <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+                    Yüklediğin görüntü <strong>uygulamanın sunucu tarafındaki güvenli depoda</strong> tutulur.
+                    Bu bir web uygulaması olduğu için fotoğraf genelde <strong>telefonda ayrı bir Rebi klasörüne kaydedilmez</strong>
+                    (galerinde yalnızca çektiğin/ seçtiğin kopya kalabilir).
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
+                <button
+                  type="button"
+                  className="btn-secondary flex-1"
+                  onClick={() => {
+                    setShowSkipPhotoModal(false);
+                  }}
+                >
+                  Fotoğraf ekleyeyim
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary flex-1"
+                  onClick={() => {
+                    allowRoutineWithoutPhotoRef.current = true;
+                    setShowSkipPhotoModal(false);
+                    setShowRoutineModal(false);
+                    handleSubmit();
+                  }}
+                >
+                  Yine de rutini oluştur
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <WebcamCapture
+          open={showWebcam}
+          onClose={() => setShowWebcam(false)}
+          onPhoto={applyPhotoFile}
+        />
       </div>
     </div>
   );
