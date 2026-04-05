@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { Sparkles, Crown, MessageCircle, Palette, ExternalLink } from "lucide-react";
+import ThemePatternOverlay from "../components/ThemePatternOverlay";
 
 const CHECKOUT_URL = import.meta.env.VITE_REBI_PLUS_CHECKOUT_URL || "";
 
@@ -15,8 +16,9 @@ export default function Subscribe() {
     );
 
   return (
-    <div className={`min-h-screen ${theme.bg} pb-28`}>
-      <div className="max-w-lg mx-auto px-4 py-8">
+    <div className={`min-h-screen ${theme.bg} pb-28 relative`}>
+      <ThemePatternOverlay pattern={theme.pattern} />
+      <div className="max-w-lg mx-auto px-4 py-8 relative z-[1]">
         <div className="flex items-center gap-3 mb-2">
           <div
             className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"

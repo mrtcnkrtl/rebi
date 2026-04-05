@@ -2,6 +2,12 @@
 deploy/.env.api
 *.local
 
+.DS_Store
+**/.DS_Store
+
+# Local PDF corpora (large / optional)
+backend/DATA/
+
 # Dependencies & env (never push)
 node_modules/
 backend/venv/

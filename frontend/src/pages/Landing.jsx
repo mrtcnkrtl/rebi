@@ -11,6 +11,11 @@ import {
   Sparkles,
   Star,
   ChevronRight,
+  Crown,
+  MessageCircle,
+  Palette,
+  ClipboardCheck,
+  Lock,
 } from "lucide-react";
 
 const features = [
@@ -43,6 +48,30 @@ const steps = [
   { num: "03", title: "Rutinini Al", desc: "Sana özel sabah ve akşam rutini." },
 ];
 
+const plusHighlights = [
+  {
+    icon: MessageCircle,
+    title: "Sınırsız Rebi AI",
+    desc: "Cilt bakımı, içerikler ve ürün sorularında kesintisiz sohbet.",
+    gradient: "from-violet-500 to-fuchsia-500",
+    glow: "shadow-fuchsia-500/20",
+  },
+  {
+    icon: Palette,
+    title: "Premium temalar",
+    desc: "Gün batımı, okyanus ve gece şehir gibi özel görünümler.",
+    gradient: "from-cyan-500 to-blue-600",
+    glow: "shadow-cyan-500/20",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "Derin takip",
+    desc: "Günlük check-in ile rutinin cildinin cevabına göre uyarlanır.",
+    gradient: "from-amber-500 to-orange-600",
+    glow: "shadow-amber-500/25",
+  },
+];
+
 export default function Landing() {
   const { user } = useAuth();
 
@@ -69,9 +98,14 @@ export default function Landing() {
               Bilimsel Rutin.
             </h1>
 
-            <p className="text-lg md:text-xl text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg md:text-xl text-gray-500 mb-6 max-w-2xl mx-auto leading-relaxed">
               Rebi, cildin ile birlikte uykunu, stresini ve çevreni analiz eder.
               Bilimsel kaynaklara dayalı, sana özel bütüncül bir bakım rutini oluşturur.
+            </p>
+            <p className="text-base text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+              Analiz sonunda sabah ve akşam adımların, yaşam tarzı önerilerin ve hava durumuna göre koruma
+              notların tek yerde toplanır. İstersen cilt fotoğrafını güvenli depoda saklayıp ilerlemeni
+              karşılaştırabilirsin; günlük check-in ile rutin zaman içinde sana göre esner.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -108,6 +142,63 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Rebi Plus — premium görsel blok */}
+      <section className="py-16 md:py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-violet-950/95 to-slate-900" />
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 20% 30%, rgba(167,139,250,0.35) 0%, transparent 45%), radial-gradient(circle at 80% 70%, rgba(244,114,182,0.25) 0%, transparent 40%)",
+          }}
+        />
+        <div className="relative max-w-6xl mx-auto px-4">
+          <div className="text-center mb-12 md:mb-14">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-2 text-sm font-medium text-amber-200 mb-6">
+              <Crown className="w-4 h-4 text-amber-300" />
+              Rebi Plus
+            </div>
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
+              Ücretsiz analizle başla; istersen derinleş
+            </h2>
+            <p className="text-violet-200/90 text-lg max-w-2xl mx-auto leading-relaxed">
+              Temel analiz ve rutin herkese açık. Plus ile yapay zeka sohbetinde sınır kalkar, özel temalar
+              açılır ve günlük check-in akışın tam güçle çalışır.
+            </p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5 md:gap-6">
+            {plusHighlights.map((item, i) => (
+              <div
+                key={i}
+                className={`group relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md p-6 md:p-7 shadow-xl ${item.glow} hover:bg-white/10 transition-all duration-300`}
+              >
+                <div
+                  className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-5 shadow-lg group-hover:scale-105 transition-transform`}
+                >
+                  <item.icon className="w-7 h-7 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
+                <p className="text-sm text-violet-100/85 leading-relaxed">{item.desc}</p>
+                <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-amber-200/90">
+                  <Lock className="w-3.5 h-3.5" />
+                  Uygulama içi Plus ile açılır
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Link
+              to={user ? "/dashboard/subscribe" : "/auth"}
+              className="inline-flex items-center gap-2 rounded-2xl bg-white text-violet-950 font-bold px-8 py-4 text-base shadow-lg shadow-black/20 hover:bg-violet-50 transition-colors"
+            >
+              <Crown className="w-5 h-5 text-amber-600" />
+              Plus&apos;ı keşfet
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section id="features" className="py-20 md:py-28">
         <div className="max-w-6xl mx-auto px-4">
@@ -116,7 +207,13 @@ export default function Landing() {
               Cilt Bakımında Yeni Nesil
             </h2>
             <p className="text-gray-500 text-lg max-w-xl mx-auto">
-              Sadece krem önermekle kalmaz, yaşam tarzını da iyileştirir.
+              Sadece krem önermekle kalmaz, uyku, stres, su ve beslenme gibi yaşam tarzı sinyallerini de
+              rutinine bağlar.
+            </p>
+            <p className="text-gray-600 text-sm max-w-2xl mx-auto mt-4 leading-relaxed">
+              Rebi tıbbi teşhis veya reçete yerine geçmez; güçlü aktiflerde dikkatli sıklık ve bariyer
+              önceliği gibi güvenlik katmanlarıyla yönlendirir. Şüpheli durumda her zaman bir sağlık
+              uzmanına danışmalısın.
             </p>
           </div>
 

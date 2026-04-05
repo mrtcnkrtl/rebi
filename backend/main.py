@@ -238,6 +238,57 @@ def _sanitize_routine_no_products(routine_items: list) -> None:
             item[key] = text
 
 
+def _optional_natural_examples_routine_item(concern: str) -> list:
+    """
+    Rutinin sonuna tek kısa satır: takviye / bitkisel isteğe bağlı örnekler (lavanta uçucu yağı vb.).
+    Uzun PDF özeti yok; bilgi tabanı içeriği yalnızca polish bağlamında kalır.
+    """
+    c = (concern or "acne").lower().strip()
+    if c == "acne":
+        examples = (
+            "Örnek (isteğe bağlı): lavanta uçucu yağını taşıyıcı yağla seyreltik kullanım; "
+            "çay ağacı yağı yalnızca noktasal ve seyreltik. Rehberde sık geçen oral takviye örnekleri: çinko, omega-3 "
+            "(doz ve süre için eczacı veya hekim)."
+        )
+    elif c in ("aging", "pigmentation"):
+        examples = (
+            "Örnek (isteğe bağlı): topikal bitkisel antioksidanlar (ör. yeşil çay, resveratrol kaynakları); "
+            "C vitamini gibi oral takviyeler yalnızca uygunluk varsa hekim önerisiyle."
+        )
+    elif c == "dryness":
+        examples = (
+            "Örnek (isteğe bağlı): shea veya jojoba gibi doğal yağlar nem kilidine ek okslüzif katman olarak; "
+            "papatya özü yatıştırıcı formlarda örnek gösterilebilir."
+        )
+    elif c == "sensitivity":
+        examples = (
+            "Örnek (isteğe bağlı): papatya, aloe gibi yatıştırıcı bitki özleri; lavanta uçucu yağı varsa çok seyreltik "
+            "ve önce küçük alanda 24–48 saat yama testi."
+        )
+    else:
+        examples = (
+            "Örnek (isteğe bağlı): lavanta uçucu yağı (seyreltik), papatya veya centella içeren yatıştırıcı formlar; "
+            "vitamin, mineral veya omega-3 takviyeleri için doz ve uygunluk hekim veya eczacı ile."
+        )
+
+    closing = (
+        " Bu satır ana rutin adımlarının yerine geçmez; hamilelik, emzirme veya ilaç kullanıyorsan danış."
+    )
+
+    return [
+        {
+            "time": "Günlük",
+            "category": "Yaşam",
+            "icon": "🌿",
+            "action": "İsteğe bağlı — bitkisel / takviye örnekleri",
+            "detail": examples + closing,
+            "step_order": 95,
+            "natural_alternative": True,
+            "natural_examples_only": True,
+        }
+    ]
+
+
 # ═══════════════════════════════════════════════════════
 # Request / Response Models
 # ═══════════════════════════════════════════════════════
@@ -606,6 +657,10 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     # ADIM 3: Knowledge Router (0 TOKEN)
     knowledge_result = await execute_query_plan(query_plan)
     knowledge_context = await get_targeted_context(knowledge_result, max_chars=2000)
+
+    # Rutinin altına tek kısa “lavanta vb. isteğe bağlı” örnek satırı
+    routine_items = list(routine_items)
+    routine_items.extend(_optional_natural_examples_routine_item(req.concern))
 
     # ADIM 4: AI Polish (~400 TOKEN)
     polished_routine, ai_polish_note = await polish_routine_with_ai(

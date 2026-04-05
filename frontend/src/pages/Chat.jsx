@@ -7,6 +7,7 @@ import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { Bot, Send, Loader2, Sparkles } from "lucide-react";
+import ThemePatternOverlay from "../components/ThemePatternOverlay";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -128,8 +129,9 @@ export default function Chat() {
   };
 
   return (
-    <div className={`min-h-screen ${theme.bg}`}>
-      <div className="max-w-lg mx-auto flex flex-col h-[calc(100vh-128px)]">
+    <div className={`min-h-screen ${theme.bg} relative`}>
+      <ThemePatternOverlay pattern={theme.pattern} />
+      <div className="max-w-lg mx-auto flex flex-col h-[calc(100vh-128px)] relative z-[1]">
         {/* Header */}
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"

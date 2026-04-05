@@ -1,10 +1,15 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
 import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
+import {
+  getRoutineSnapshot,
+  isRoutineTrackingAccepted,
+  saveRoutineSnapshot,
+} from "../lib/routineTracking";
 import {
   User,
   Mail,
@@ -18,7 +23,11 @@ import {
   AlertCircle,
   ImageIcon,
   Trash2,
+  Target,
+  ClipboardCheck,
 } from "lucide-react";
+import { getProfileRoutineStats, ROUTINE_STREAK_GOAL_DAYS } from "../lib/checkinStats";
+import ThemePatternOverlay from "../components/ThemePatternOverlay";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const ACCOUNT_DELETE_PHRASE = "HESABIMI_SIL";
@@ -57,6 +66,7 @@ export default function Profile() {
   const [deletePhrase, setDeletePhrase] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState({ type: "", text: "" });
+  const [statsTick, setStatsTick] = useState(0);
 
   const uid = user?.id;
   const email = user?.email || "—";
@@ -66,9 +76,31 @@ export default function Profile() {
       String(user?.user_metadata?.subscription_tier || "").toLowerCase()
     );
 
+  const routineStats = useMemo(
+    () => (uid ? getProfileRoutineStats(uid) : null),
+    [uid, statsTick],
+  );
+
   useEffect(() => {
     setDisplayName(user?.user_metadata?.full_name || "");
   }, [user?.user_metadata?.full_name]);
+
+  /** Eski kayıtlarda acceptedAt yoktu; profil açılınca bir kez tamamlanır. */
+  useEffect(() => {
+    if (!uid) return;
+    if (!isRoutineTrackingAccepted(uid)) return;
+    try {
+      const s = getRoutineSnapshot(uid);
+      if (s && s.acceptedAt == null && Array.isArray(s.routine) && s.routine.length > 0) {
+        saveRoutineSnapshot(uid, {
+          acceptedAt: typeof s.updatedAt === "number" ? s.updatedAt : Date.now(),
+        });
+        setStatsTick((n) => n + 1);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, [uid]);
 
   const loadPhotos = useCallback(async () => {
     if (!supabase || !uid) {
@@ -214,8 +246,9 @@ export default function Profile() {
 
   if (!supabase) {
     return (
-      <div className={`min-h-screen ${theme.bg} pb-28 flex items-center justify-center px-4`}>
-        <p className="text-sm text-gray-600 text-center">
+      <div className={`min-h-screen ${theme.bg} pb-28 flex items-center justify-center px-4 relative`}>
+        <ThemePatternOverlay pattern={theme.pattern} />
+        <p className="text-sm text-gray-600 text-center relative z-[1]">
           Supabase yapılandırılmamış; profil ve fotoğraflar kullanılamıyor.
         </p>
       </div>
@@ -223,8 +256,9 @@ export default function Profile() {
   }
 
   return (
-    <div className={`min-h-screen ${theme.bg} pb-28`}>
-      <div className="max-w-lg mx-auto px-4 py-8 space-y-6">
+    <div className={`min-h-screen ${theme.bg} pb-28 relative`}>
+      <ThemePatternOverlay pattern={theme.pattern} />
+      <div className="max-w-lg mx-auto px-4 py-8 space-y-6 relative z-[1]">
         <div className="flex items-center gap-3">
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center text-white shadow-lg"
@@ -247,13 +281,19 @@ export default function Profile() {
             <Info className="w-5 h-5 shrink-0 text-sky-700 mt-0.5" />
             <div className="text-sm text-sky-950/90 space-y-2 leading-relaxed">
               <p>
-                <strong className="text-sky-950">Rebi</strong> verilerini güvenle saklar. Analiz
-                sırasında yüklediğin cilt fotoğrafları aşağıda kronolojik olarak listelenir; yeni
-                fotoğraf için{" "}
-                <Link to="/dashboard/analyze" className="font-semibold underline underline-offset-2">
-                  analiz
+                <strong className="text-sky-950">Rebi</strong> verilerini güvenle saklar. Yeni cilt
+                fotoğrafını{" "}
+                <Link
+                  to="/dashboard/analyze?photo=1"
+                  className="font-semibold underline underline-offset-2"
+                >
+                  hızlı yükleme
                 </Link>{" "}
-                adımlarına gidebilirsin.
+                ile ekleyebilir veya tam{" "}
+                <Link to="/dashboard/analyze" className="font-semibold underline underline-offset-2">
+                  analiz formu
+                </Link>
+                na gidebilirsin. Aşağıda yüklediğin görseller listelenir.
               </p>
               <p className="text-xs text-sky-900/80">
                 Şifre değişikliği e-posta ile giriş yaptığın hesaplar içindir. Sosyal giriş
@@ -285,6 +325,90 @@ export default function Profile() {
             )}
           </div>
         </div>
+
+        {/* Rutin sadakati & hedef */}
+        {routineStats?.hasAcceptedRoutine && (
+          <div
+            className="card !p-4 space-y-3 border-opacity-80"
+            style={{ borderColor: theme.primaryLight }}
+          >
+            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <Target className="w-4 h-4" style={{ color: theme.primary }} />
+              Rutin &amp; check-in özeti
+            </h2>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Günlük check-in yaptıkça seri ve sadakat burada güncellenir. Hedef: üst üste{" "}
+              {ROUTINE_STREAK_GOAL_DAYS} gün check-in alışkanlığı.
+            </p>
+            <div className="grid grid-cols-2 gap-2 text-center">
+              <div className="rounded-xl p-3 bg-white border border-gray-100">
+                <p className="text-2xl font-bold tabular-nums" style={{ color: theme.primary }}>
+                  {routineStats.streak}
+                </p>
+                <p className="text-[10px] text-gray-500 font-medium mt-0.5">Günlük seri</p>
+              </div>
+              <div className="rounded-xl p-3 bg-white border border-gray-100">
+                <p className="text-2xl font-bold tabular-nums text-gray-800">
+                  {routineStats.totalCheckIns}
+                </p>
+                <p className="text-[10px] text-gray-500 font-medium mt-0.5">Toplam check-in</p>
+              </div>
+            </div>
+            {routineStats.appliedRatePercent != null && (
+              <div className="flex items-center gap-2 rounded-xl px-3 py-2 bg-gray-50 border border-gray-100">
+                <ClipboardCheck className="w-4 h-4 shrink-0 text-gray-500" />
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-800">Rutine sadakat</p>
+                  <p className="text-[11px] text-gray-500">
+                    Check-in kayıtlarında rutini uyguladım dediğin günler:{" "}
+                    <span className="font-bold text-gray-800">{routineStats.appliedRatePercent}%</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            <div>
+              <div className="flex justify-between text-[10px] text-gray-500 mb-1">
+                <span>Hedef seri ({ROUTINE_STREAK_GOAL_DAYS} gün)</span>
+                <span>{routineStats.goalProgress}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${routineStats.goalProgress}%`,
+                    backgroundColor: theme.primary,
+                  }}
+                />
+              </div>
+            </div>
+            {routineStats.daysSinceAccept != null ? (
+              <p className="text-[11px] text-gray-500 text-center">
+                Rutin yolculuğun:{" "}
+                <strong className="text-gray-800">{routineStats.daysSinceAccept} gün</strong> (kabul
+                tarihinden)
+              </p>
+            ) : (
+              <p className="text-[11px] text-gray-400 text-center">
+                Rutin kabul tarihi bir sonraki güncellemeden itibaren otomatik kaydedilir.
+              </p>
+            )}
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Link
+                to="/dashboard/checkin"
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border"
+                style={{ borderColor: theme.primaryLight, color: theme.primary }}
+              >
+                Check-in yap
+              </Link>
+              <Link
+                to="/dashboard/analyze?photo=1"
+                className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700"
+              >
+                Fotoğraf ekle
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* Ad güncelle */}
         <form onSubmit={saveProfile} className="card !p-4 space-y-3">
@@ -450,11 +574,11 @@ export default function Profile() {
               <ImageIcon className="w-10 h-10 mx-auto text-gray-300 mb-2" />
               <p className="text-sm text-gray-600 mb-3">Henüz kayıtlı fotoğraf yok.</p>
               <Link
-                to="/dashboard/analyze"
+                to="/dashboard/analyze?photo=1"
                 className="text-sm font-semibold underline-offset-2 hover:underline"
                 style={{ color: theme.primary }}
               >
-                Analizde fotoğraf yükle
+                Hızlı fotoğraf yükle
               </Link>
             </div>
           ) : (

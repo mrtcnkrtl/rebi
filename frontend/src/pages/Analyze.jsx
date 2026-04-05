@@ -1,7 +1,9 @@
 import { useState, useRef, useMemo, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTheme } from "../context/ThemeContext";
 import { API_URL, supabase } from "../lib/supabase";
+import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import { hasCompletedOnboarding } from "../lib/routineTracking";
@@ -157,6 +159,224 @@ function calcCyclePhase(lastPeriodDate, cycleLength) {
   return "luteal";
 }
 
+/** Profilden veya rutin hazır ekranından: yalnızca depoya foto yükle (tam analiz zorunlu değil). */
+function AnalyzePhotoOnly({ user, navigate }) {
+  const { theme } = useTheme();
+  const cameraUserRef = useRef(null);
+  const cameraEnvRef = useRef(null);
+  const galleryRef = useRef(null);
+  const previewUrlRef = useRef(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [showWebcam, setShowWebcam] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState({ type: "", text: "" });
+
+  const applyPhotoFile = (file) => {
+    if (!file) return;
+    if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
+    setPhotoFile(file);
+    const url = URL.createObjectURL(file);
+    previewUrlRef.current = url;
+    setPhotoPreview(url);
+    setMsg({ type: "", text: "" });
+  };
+
+  const clearPhoto = () => {
+    if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
+    previewUrlRef.current = null;
+    setPhotoFile(null);
+    setPhotoPreview(null);
+  };
+
+  const handlePhotoChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) applyPhotoFile(file);
+    e.target.value = "";
+  };
+
+  const triggerHiddenInput = (ref) => ref.current?.click();
+
+  const uploadOnly = async () => {
+    if (!photoFile) {
+      setMsg({ type: "err", text: "Önce bir fotoğraf seç veya çek." });
+      return;
+    }
+    if (!supabase) {
+      setMsg({ type: "err", text: "Depolama yapılandırılmamış; fotoğraf yüklenemiyor." });
+      return;
+    }
+    const uid = user?.id;
+    if (!uid) {
+      setMsg({ type: "err", text: "Oturum gerekli." });
+      return;
+    }
+    setBusy(true);
+    setMsg({ type: "", text: "" });
+    try {
+      const ext = (photoFile.name.split(".").pop() || "jpg").replace(/[^a-z0-9]/gi, "") || "jpg";
+      const path = `${uid}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("skin-photos").upload(path, photoFile);
+      if (error) throw error;
+      setMsg({
+        type: "ok",
+        text: "Fotoğraf güvenli depoya yüklendi. Profil → Cilt fotoğrafları bölümünde görebilirsin.",
+      });
+      clearPhoto();
+    } catch (e) {
+      setMsg({
+        type: "err",
+        text: e?.message || "Yükleme başarısız. Bağlantı veya depo izinlerini kontrol et.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!supabase) {
+    return (
+      <div className={`min-h-screen ${theme.bg} pb-24 relative flex items-center justify-center px-4`}>
+        <ThemePatternOverlay pattern={theme.pattern} />
+        <p className="relative z-[1] text-sm text-gray-600 text-center">
+          Supabase yapılandırılmamış; fotoğraf yüklenemiyor.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+      <ThemePatternOverlay pattern={theme.pattern} />
+      <div className="relative z-[1] max-w-lg mx-auto px-4 py-8 space-y-4">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          className="text-xs font-medium text-gray-500 hover:text-gray-800 flex items-center gap-1"
+        >
+          <ArrowLeft className="w-4 h-4" /> Geri
+        </button>
+        <div className="text-center space-y-2">
+          <div
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto shadow-lg text-white"
+            style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}
+          >
+            <Camera className="w-7 h-7" />
+          </div>
+          <h1 className="text-xl font-bold text-gray-900">Cilt fotoğrafı yükle</h1>
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Tam analiz formuna girmeden sadece görüntüyü kaydedebilirsin. İlerleyişi kıyaslamak veya
+            arşiv tutmak için kullan.
+          </p>
+        </div>
+
+        {msg.text && (
+          <div
+            className={`rounded-xl px-3 py-2 text-sm ${
+              msg.type === "ok"
+                ? "bg-emerald-50 text-emerald-900 border border-emerald-100"
+                : "bg-red-50 text-red-800 border border-red-100"
+            }`}
+          >
+            {msg.text}
+          </div>
+        )}
+
+        <div className="card space-y-3">
+          {photoPreview ? (
+            <div className="space-y-3">
+              <img src={photoPreview} alt="" className="w-full h-64 object-cover rounded-2xl" />
+              <button type="button" onClick={clearPhoto} className="btn-secondary w-full text-sm">
+                Değiştir
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <button
+                type="button"
+                onClick={() => triggerHiddenInput(galleryRef)}
+                className="flex flex-col items-center gap-2 p-3 border-2 border-gray-200 rounded-2xl hover:border-teal-200 transition-colors"
+              >
+                <ImagePlus className="w-6 h-6 text-gray-500" />
+                <span className="text-[10px] font-medium text-gray-600 text-center leading-tight">
+                  Galeri / dosya
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => triggerHiddenInput(cameraUserRef)}
+                className="flex flex-col items-center gap-2 p-3 border-2 border-teal-200 rounded-2xl bg-teal-50/50"
+              >
+                <Camera className="w-6 h-6 text-teal-600" />
+                <span className="text-[10px] font-medium text-teal-800 text-center leading-tight">
+                  Kamera ön
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => triggerHiddenInput(cameraEnvRef)}
+                className="flex flex-col items-center gap-2 p-3 border-2 border-teal-100 rounded-2xl bg-teal-50/30"
+              >
+                <Camera className="w-6 h-6 text-teal-500" />
+                <span className="text-[10px] font-medium text-teal-800 text-center leading-tight">
+                  Kamera arka
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowWebcam(true)}
+                className="flex flex-col items-center gap-2 p-3 border-2 border-indigo-200 rounded-2xl bg-indigo-50/50"
+              >
+                <Monitor className="w-6 h-6 text-indigo-600" />
+                <span className="text-[10px] font-medium text-indigo-800 text-center leading-tight">
+                  Web kamerası
+                </span>
+              </button>
+            </div>
+          )}
+          <input
+            ref={cameraUserRef}
+            type="file"
+            accept="image/*"
+            capture="user"
+            onChange={handlePhotoChange}
+            className="hidden"
+          />
+          <input
+            ref={cameraEnvRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoChange}
+            className="hidden"
+          />
+          <input ref={galleryRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+        </div>
+
+        <button
+          type="button"
+          onClick={uploadOnly}
+          disabled={busy || !photoFile}
+          className="btn-primary w-full justify-center disabled:opacity-50"
+          style={{ backgroundColor: theme.primary }}
+        >
+          {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : "Fotoğrafı kaydet"}
+        </button>
+
+        <div className="flex flex-col gap-2 text-center text-sm">
+          <Link to="/dashboard/profile" className="font-semibold" style={{ color: theme.primary }}>
+            Profildeki fotoğraflara git
+          </Link>
+          <Link to="/dashboard/analyze" className="text-gray-500 hover:text-gray-700 text-xs">
+            Tam yeni analiz (uzun form)
+          </Link>
+        </div>
+
+        <WebcamCapture open={showWebcam} onClose={() => setShowWebcam(false)} onPhoto={applyPhotoFile} />
+      </div>
+    </div>
+  );
+}
+
 /* ═══════════ CHIP SELECT COMPONENT ═══════════ */
 function ChipSelect({ options, value, onChange, cols = 2 }) {
   return (
@@ -175,6 +395,9 @@ function ChipSelect({ options, value, onChange, cols = 2 }) {
 export default function Analyze() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { theme } = useTheme();
+  const photoOnlyMode = searchParams.get("photo") === "1";
   const cameraUserRef = useRef(null);
   const cameraEnvRef = useRef(null);
   const galleryRef = useRef(null);
@@ -392,6 +615,10 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
     }
   };
 
+  if (photoOnlyMode) {
+    return <AnalyzePhotoOnly user={user} navigate={navigate} />;
+  }
+
   if (loading) return <LoadingScreen />;
 
   const uid = user?.id || DEMO_USER_ID;
@@ -400,25 +627,41 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
 
   if (showCompactHub) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-teal-50/50 to-white pb-24">
-        <div className="max-w-lg mx-auto px-4 py-10">
-          <div className="card space-y-4 !p-6 text-center border-teal-100">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center mx-auto shadow-lg">
+      <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+        <ThemePatternOverlay pattern={theme.pattern} />
+        <div className="relative z-[1] max-w-lg mx-auto px-4 py-10">
+          <div
+            className="card space-y-4 !p-6 text-center border-opacity-80"
+            style={{ borderColor: theme.primaryLight }}
+          >
+            <div
+              className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto shadow-lg text-white"
+              style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}
+            >
               <Sparkles className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-xl font-bold text-gray-900">Rutinin hazır</h1>
             <p className="text-sm text-gray-600 leading-relaxed">
-              İlk analizini tamamladın; uzun formu her gün tekrarlamana gerek yok. Panele dön veya
-              cildinde büyük bir değişiklik olduysa yeni analiz başlat.
+              İlk analizini tamamladın; uzun formu her gün tekrarlamana gerek yok. Sadece cilt fotoğrafı
+              eklemek için aşağıdaki kısayolu kullan; büyük bir değişiklikte tam formu aç.
             </p>
             <div className="flex flex-col gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => navigate("/dashboard")}
                 className="btn-primary w-full justify-center"
+                style={{ backgroundColor: theme.primary }}
               >
                 Panele dön <ArrowRight className="w-5 h-5" />
               </button>
+              <Link
+                to="/dashboard/analyze?photo=1"
+                className="w-full py-3 rounded-xl text-sm font-semibold border-2 flex items-center justify-center gap-2"
+                style={{ borderColor: theme.primaryLight, color: theme.primary }}
+              >
+                <Camera className="w-5 h-5" />
+                Cilt fotoğrafı yükle (hızlı)
+              </Link>
               <button
                 type="button"
                 onClick={() => {
@@ -426,6 +669,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                   setStep(1);
                 }}
                 className="btn-secondary w-full justify-center text-sm"
+                style={{ borderColor: theme.primaryLight, color: theme.primary }}
               >
                 Yeni analiz başlat (tam form)
               </button>
@@ -437,8 +681,9 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50/50 to-white">
-      <div className="max-w-lg mx-auto px-4 py-8">
+    <div className={`min-h-screen ${theme.bg} relative`}>
+      <ThemePatternOverlay pattern={theme.pattern} />
+      <div className="relative z-[1] max-w-lg mx-auto px-4 py-8">
         {/* Progress */}
         <div className="flex items-center gap-2 mb-6">
           {[1, 2, 3, 4].map((s) => (

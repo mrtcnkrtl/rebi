@@ -16,6 +16,10 @@ Kullanım:
     cd backend
     source venv/bin/activate
     python ingest_pdf_smart.py
+
+PDF kaynakları (repo içi):
+    - documents/ : akne + dermakozmetik (varsa)
+    - DATA/      : doğal ürünler ve diğer ek PDF'ler (*.pdf)
 """
 
 import os
@@ -23,6 +27,10 @@ import re
 import sys
 import time
 from pathlib import Path
+
+BACKEND_DIR = Path(__file__).resolve().parent
+DOCUMENTS_DIR = BACKEND_DIR / "documents"
+DATA_DIR = BACKEND_DIR / "DATA"
 
 from dotenv import load_dotenv
 from google import genai
@@ -43,19 +51,49 @@ CHUNK_OVERLAP = 80
 BATCH_SIZE = 20
 
 # ══════════════════════════════════════════════════════════════════════
-# Hedef dosyalar
+# Doğal ürün / fitokozmetik — alt kategori = Tedavi Ajanı sorgu planı ile uyumlu
 # ══════════════════════════════════════════════════════════════════════
 
-PDF_FILES = [
+NATURAL_TOPIC_RULES = [
     {
-        "path": Path("/Users/molekulerci/Desktop/documents/Akne Türleri, Nedenleri ve Etki Yüzdeleri_ Bilimse.pdf"),
-        "short_name": "Akne Bilimsel",
-        "default_kategori": "Akne Vulgaris",
+        "alt_kategori": "Kanıt Seviyesi",
+        "keywords": [
+            r"kanıt", r"klinik çalışma", r"randomize", r"RCT", r"meta[\s-]?analiz",
+            r"sistematik", r"derleme", r"ölçek", r"skor", r"istatistik",
+            r"güvenilirlik", r"limitasyon", r"bias", r"GRADE", r"Cochrane",
+        ],
     },
     {
-        "path": Path("/Users/molekulerci/Desktop/documents/dermakozmetik oltttarak sorunlara yönelik bilimsel ol.pdf"),
-        "short_name": "Dermakozmetik Bilimsel",
-        "default_kategori": "Tedavi Ajanı",
+        "alt_kategori": "Klinik Etkinlik",
+        "keywords": [
+            r"etkinlik", r"iyileş", r"azalma", r"artış", r"%\s*\d",
+            r"hafta", r"gün\s*\d", r"tedavi sonuc", r"yan etki",
+            r"hasta", r"olgu", r"kohort",
+        ],
+    },
+    {
+        "alt_kategori": "Etki Mekanizması",
+        "keywords": [
+            r"mekanizma", r"antioksidan", r"polifenol", r"flavonoid",
+            r"inflamat", r"serbest radikal", r"bariyer", r"TEWL",
+            r"keratinosit", r"kolajen", r"elastin", r"UV",
+        ],
+    },
+    {
+        "alt_kategori": "Mekanizma",
+        "keywords": [
+            r"doğal", r"bitki", r"fito", r"herbal", r"botanical",
+            r"ekstrakt", r"yağ\s*\(", r"uçucu yağ", r"esansiyel",
+            r"bal", r"propolis", r"aloe", r"çay ağacı", r"lavanta",
+            r"kamfer", r"mentol", r"shea", r"jojoba", r"argan",
+        ],
+    },
+    {
+        "alt_kategori": "Genel",
+        "keywords": [
+            r"güvenli", r"toksisite", r"alerji", r"patch test", r"hassas",
+            r"hamile", r"emzir", r"kullanım öner", r"rehber", r"özet",
+        ],
     },
 ]
 
@@ -157,6 +195,50 @@ DERMA_TOPIC_RULES = [
         ],
     },
 ]
+
+
+def build_pdf_jobs() -> list[dict]:
+    """
+    İşlenecek PDF listesi: documents/ (klasik) + DATA/ (doğal ürün vb.).
+    Eksik dosyalar atlanır; hiç PDF yoksa boş liste.
+    """
+    jobs: list[dict] = []
+
+    p_akne = DOCUMENTS_DIR / "Akne Türleri, Nedenleri ve Etki Yüzdeleri_ Bilimse.pdf"
+    if p_akne.is_file():
+        jobs.append({
+            "path": p_akne,
+            "short_name": "Akne Bilimsel",
+            "default_kategori": "Akne Vulgaris",
+            "topic_rules": AKNE_TOPIC_RULES,
+            "doc_type": "pdf_bilimsel",
+        })
+
+    p_derma_a = DOCUMENTS_DIR / "dermakozmetik olarak sorunlara yönelik bilimsel ol.pdf"
+    p_derma_b = DOCUMENTS_DIR / "dermakozmetik oltttarak sorunlara yönelik bilimsel ol.pdf"
+    p_derma = p_derma_a if p_derma_a.is_file() else p_derma_b
+    if p_derma.is_file():
+        jobs.append({
+            "path": p_derma,
+            "short_name": "Dermakozmetik Bilimsel",
+            "default_kategori": "Tedavi Ajanı",
+            "topic_rules": DERMA_TOPIC_RULES,
+            "doc_type": "pdf_bilimsel",
+        })
+
+    if DATA_DIR.is_dir():
+        for path in sorted(DATA_DIR.glob("*.pdf")):
+            if not path.is_file():
+                continue
+            jobs.append({
+                "path": path,
+                "short_name": (path.stem[:60] or path.name[:60]),
+                "default_kategori": "Tedavi Ajanı",
+                "topic_rules": NATURAL_TOPIC_RULES,
+                "doc_type": "pdf_dogal_urun",
+            })
+
+    return jobs
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -294,6 +376,7 @@ def process_pdf(
     topic_rules: list[dict],
     gemini_client,
     supabase_client,
+    doc_type: str = "pdf_bilimsel",
 ) -> int:
     """
     Tek bir PDF'i akıllıca işler:
@@ -358,7 +441,7 @@ def process_pdf(
                     "alt_kategori": chunk_topic,
                     "page": i + 1,
                     "chunk_index": chunk_idx,
-                    "doc_type": "pdf_bilimsel",
+                    "doc_type": doc_type,
                 },
             })
 
@@ -434,15 +517,19 @@ def main():
     log("🔗", f"Supabase: {SUPABASE_URL}")
     log("🤖", f"Model: {EMBEDDING_MODEL} ({EMBEDDING_DIMENSIONS} boyut)")
     log("✂️", f"Chunk: {CHUNK_SIZE} char (cümle-farkında), overlap yok")
-    log("📋", f"Hedef: {len(PDF_FILES)} PDF dosyası")
+    jobs = build_pdf_jobs()
+    if not jobs:
+        log("❌", f"Hiç PDF bulunamadı. Şunları kontrol et: {DOCUMENTS_DIR}, {DATA_DIR}")
+        sys.exit(1)
+
+    log("📋", f"Hedef: {len(jobs)} PDF dosyası")
     print()
 
-    # Dosya varlık kontrolü
-    for pdf_info in PDF_FILES:
+    for pdf_info in jobs:
         fpath = pdf_info["path"]
         if not fpath.exists():
-            log("❌", f"Bulunamadı: {fpath.name}")
-            sys.exit(1)
+            log("⚠️", f"Atlanıyor (yok): {fpath}")
+            continue
         size_mb = fpath.stat().st_size / (1024 * 1024)
         log("📄", f"  {pdf_info['short_name']}: {fpath.name} ({size_mb:.1f} MB)")
 
@@ -450,46 +537,42 @@ def main():
     print("─" * 58)
 
     total_chunks = 0
+    per_file_counts: list[tuple[str, int]] = []
     start = time.time()
 
-    # PDF 1: Akne
-    print(f"\n  [1/{len(PDF_FILES)}] 🔬 Akne Bilimsel PDF")
-    print("  " + "─" * 54)
-    count1 = process_pdf(
-        filepath=PDF_FILES[0]["path"],
-        short_name=PDF_FILES[0]["short_name"],
-        default_kategori=PDF_FILES[0]["default_kategori"],
-        topic_rules=AKNE_TOPIC_RULES,
-        gemini_client=gemini_client,
-        supabase_client=supabase_client,
-    )
-    total_chunks += count1
-    log("✅", f"  Tamamlandı: {count1} parça yüklendi")
-
-    # PDF 2: Dermakozmetik
-    print(f"\n  [2/{len(PDF_FILES)}] 💊 Dermakozmetik Bilimsel PDF")
-    print("  " + "─" * 54)
-    count2 = process_pdf(
-        filepath=PDF_FILES[1]["path"],
-        short_name=PDF_FILES[1]["short_name"],
-        default_kategori=PDF_FILES[1]["default_kategori"],
-        topic_rules=DERMA_TOPIC_RULES,
-        gemini_client=gemini_client,
-        supabase_client=supabase_client,
-    )
-    total_chunks += count2
-    log("✅", f"  Tamamlandı: {count2} parça yüklendi")
+    for idx, job in enumerate(jobs, start=1):
+        fpath = job["path"]
+        if not fpath.exists():
+            continue
+        label = job.get("short_name", fpath.name)
+        print(f"\n  [{idx}/{len(jobs)}] 📚 {label}")
+        print("  " + "─" * 54)
+        n = process_pdf(
+            filepath=fpath,
+            short_name=job["short_name"],
+            default_kategori=job["default_kategori"],
+            topic_rules=job["topic_rules"],
+            gemini_client=gemini_client,
+            supabase_client=supabase_client,
+            doc_type=job.get("doc_type", "pdf_bilimsel"),
+        )
+        total_chunks += n
+        per_file_counts.append((label, n))
+        log("✅", f"  Tamamlandı: {n} parça yüklendi")
 
     elapsed = time.time() - start
+
+    lines = [f"  {'─' * 42}", "  Dosya bazında:"]
+    for name, c in per_file_counts:
+        lines.append(f"    • {name[:44]:<44} {c:>5} parça")
+    lines.append(f"  📦 Toplam:                 {total_chunks:>5} parça")
+    lines.append(f"  ⏱️  Süre:                   {elapsed:.1f}s")
+    summary_body = "\n".join(lines)
 
     print(f"""
 {'═' * 58}
   🏁 PDF YÜKLEME TAMAMLANDI
-  {'─' * 42}
-  📄 Akne Bilimsel:         {count1:>5} parça
-  📄 Dermakozmetik Bilimsel: {count2:>5} parça
-  📦 Toplam:                 {total_chunks:>5} parça
-  ⏱️  Süre:                   {elapsed:.1f}s
+{summary_body}
   🏷️  Metadata:               kategori + alt_kategori + sayfa
   🧠 Chunking:               Cümle-farkında (800 char max)
 {'═' * 58}

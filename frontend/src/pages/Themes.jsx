@@ -2,28 +2,59 @@ import { useNavigate, Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { Check, Sparkles, Lock } from "lucide-react";
+import ThemePatternOverlay from "../components/ThemePatternOverlay";
 
 const patternPreviews = {
   "": null,
   hearts: (
     <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
-      {[...Array(8)].map((_, i) => (
-        <span key={i} className="absolute text-pink-400" style={{
-          fontSize: `${12 + Math.random() * 16}px`,
-          left: `${Math.random() * 90}%`, top: `${Math.random() * 90}%`,
-          transform: `rotate(${Math.random() * 30 - 15}deg)`,
-        }}>&#10084;</span>
+      {[
+        { left: "8%", top: "14%", s: 14, r: -8 },
+        { left: "86%", top: "20%", s: 12, r: 12 },
+        { left: "24%", top: "44%", s: 11, r: 5 },
+        { left: "70%", top: "40%", s: 13, r: -12 },
+        { left: "46%", top: "10%", s: 10, r: 0 },
+        { left: "14%", top: "78%", s: 12, r: 16 },
+        { left: "84%", top: "74%", s: 11, r: -6 },
+        { left: "50%", top: "86%", s: 10, r: 8 },
+      ].map((p, i) => (
+        <span
+          key={i}
+          className="absolute text-pink-400"
+          style={{
+            fontSize: p.s,
+            left: p.left,
+            top: p.top,
+            transform: `rotate(${p.r}deg)`,
+          }}
+        >
+          &#10084;
+        </span>
       ))}
     </div>
   ),
   leaves: (
     <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
-      {[...Array(6)].map((_, i) => (
-        <span key={i} className="absolute text-green-500" style={{
-          fontSize: `${12 + Math.random() * 14}px`,
-          left: `${Math.random() * 90}%`, top: `${Math.random() * 90}%`,
-          transform: `rotate(${Math.random() * 60 - 30}deg)`,
-        }}>{["🌿", "🍃", "🌱"][i % 3]}</span>
+      {[
+        { left: "12%", top: "18%", s: 13, r: -18, c: "🌿" },
+        { left: "80%", top: "24%", s: 12, r: 14, c: "🍃" },
+        { left: "34%", top: "56%", s: 14, r: 8, c: "🌱" },
+        { left: "66%", top: "48%", s: 12, r: -14, c: "🌿" },
+        { left: "8%", top: "76%", s: 11, r: 22, c: "🍃" },
+        { left: "90%", top: "68%", s: 13, r: -20, c: "🌱" },
+      ].map((p, i) => (
+        <span
+          key={i}
+          className="absolute text-green-500"
+          style={{
+            fontSize: p.s,
+            left: p.left,
+            top: p.top,
+            transform: `rotate(${p.r}deg)`,
+          }}
+        >
+          {p.c}
+        </span>
       ))}
     </div>
   ),
@@ -37,12 +68,49 @@ const patternPreviews = {
   ),
   cats: (
     <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
-      {[...Array(5)].map((_, i) => (
-        <span key={i} className="absolute" style={{
-          fontSize: `${10 + Math.random() * 12}px`,
-          left: `${Math.random() * 85}%`, top: `${Math.random() * 85}%`,
-          transform: `rotate(${Math.random() * 20 - 10}deg)`,
-        }}>{["🐱", "🐾", "😺", "🐈"][i % 4]}</span>
+      {[
+        { left: "12%", top: "20%", s: 12, r: -5, c: "🐱" },
+        { left: "78%", top: "18%", s: 11, r: 8, c: "🐾" },
+        { left: "28%", top: "68%", s: 13, r: 10, c: "😺" },
+        { left: "72%", top: "62%", s: 12, r: -8, c: "🐈" },
+        { left: "48%", top: "42%", s: 11, r: 0, c: "🐱" },
+      ].map((p, i) => (
+        <span
+          key={i}
+          className="absolute"
+          style={{
+            fontSize: p.s,
+            left: p.left,
+            top: p.top,
+            transform: `rotate(${p.r}deg)`,
+          }}
+        >
+          {p.c}
+        </span>
+      ))}
+    </div>
+  ),
+  bears: (
+    <div className="absolute inset-0 overflow-hidden opacity-20 pointer-events-none">
+      {[
+        { left: "10%", top: "22%", s: 16, r: -6, c: "🧸" },
+        { left: "82%", top: "16%", s: 15, r: 8, c: "🧸" },
+        { left: "44%", top: "38%", s: 14, r: 0, c: "🐻" },
+        { left: "20%", top: "72%", s: 14, r: 10, c: "🧸" },
+        { left: "76%", top: "70%", s: 13, r: -10, c: "🧸" },
+      ].map((p, i) => (
+        <span
+          key={i}
+          className="absolute"
+          style={{
+            fontSize: p.s,
+            left: p.left,
+            top: p.top,
+            transform: `rotate(${p.r}deg)`,
+          }}
+        >
+          {p.c}
+        </span>
       ))}
     </div>
   ),
@@ -105,8 +173,9 @@ export default function Themes() {
     t.shape === "angular" ? "rounded-lg" : "rounded-2xl";
 
   return (
-    <div className={`min-h-screen ${theme.bg} pb-24`}>
-      <div className="max-w-lg mx-auto px-4 py-8">
+    <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+      <ThemePatternOverlay pattern={theme.pattern} />
+      <div className="max-w-lg mx-auto px-4 py-8 relative z-[1]">
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Sparkles className="w-6 h-6" style={{ color: theme.primary }} />

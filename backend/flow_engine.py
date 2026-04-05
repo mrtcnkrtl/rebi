@@ -645,14 +645,9 @@ def _personalization_detail_suffix(personalization: Optional[dict]) -> str:
         return ""
     tier = personalization.get("tier", 3)
     if tier <= 1:
-        return (
-            " Kişisel puan (yaşam riski + şiddet/tolerans): yüksek koruma — "
-            "aynı işlevde fazladan serum/nem katmanı bu planda tutulmadı; sıklık günlük check-in verileriyle güncellenir."
-        )
+        return " Plan sade: aynı iş için ekstra serum/nem katmanı yok. Sıklık check-in ile güncellenir."
     if tier == 2:
-        return (
-            " Kişisel puan: dengeli mod — ekstra aktif/katman bu planda açılmadı; değişiklikler check-in verileriyle değerlendirilir."
-        )
+        return " Ekstra katman açılmadı; sıklık check-in ile ayarlanır."
     return ""
 
 
@@ -670,14 +665,11 @@ def build_morning_moisturizer_item(
         return {
             "time": "Sabah", "category": "Bakım", "icon": "🧊",
             "action": f"Nemlendirici (HA + nem tek taban): {skin_type['moisturizer_type']}",
-            "detail": (
-                "Kişisel puan: ayrı sabah HA serumu yok; çoklu MW hyalüronik amacını nemlendiricide veya "
-                f"çok ince HA altına hemen krem ile birleştir. İçerik: {skin_type['moisturizer_type']}.{sfx}"
-            ),
+            "detail": f"Ayrı HA serumu yok; nem hedefini bu tek adımda topla.{sfx}",
             "usage": "Temiz cilde; ayrı serum adımı yoksa doğrudan nem veya önce damla HA sonra krem.",
             "priority": 3, "step_order": 30,
         }
-    detail = f"Serum emildikten sonra. İçerik: {skin_type['moisturizer_type']}.{sfx}"
+    detail = f"Serumdan sonra.{sfx}"
     return {
         "time": "Sabah", "category": "Bakım", "icon": "🧊",
         "action": f"Nemlendirici: {skin_type['moisturizer_type']}",
@@ -992,8 +984,8 @@ def build_evening_moisturizer_item(
                 "gerekirse son adım ince vazelin bariyer kilidi"
             ),
             "detail": (
-                f"Şiddetli hassasiyet: {base} ile panthenol aynı gece blokunda; ayrı panthenol/vazelin şişesi gerekmez. "
-                "Çok kuru veya tahrişte en son çok ince vazelin filmi. Tıkanıklık eğiliminde vazelini atlama veya haftada 2–3 kez."
+                "Tek gece katmanında toplandı; ayrı panthenol/vazelin şişesi şart değil. "
+                "Çok kuruysa en son ince vazelin filmi; tıkanıklıkta vazelini seyrelt veya azalt."
                 + sfx
             ),
             "usage": "Temiz cilde önce onarım katmanı; vazelin varsa en son, ince film.",
@@ -1005,11 +997,7 @@ def build_evening_moisturizer_item(
         return {
             "time": "Akşam", "category": "Bakım", "icon": "🌙",
             "action": f"Gece (yoğun tek katman): {base} + HA nem çekimi; çok kuruda kalınlık artır",
-            "detail": (
-                "Kuruluk şiddetli + kişisel puan (yüksek yaşam riski / düşük tolerans eşiği): "
-                f"ayrı uyku maskesi yerine tek blokta bariyer + HA yoğunluğu. Taban: {base}."
-                + sfx
-            ),
+            "detail": (f"Ayrı maske satırı yok; tek blokta bariyer + nem yoğunluğu ({base})." + sfx),
             "usage": "Serum/aktif sonrası tek kalın nem tabanı; gerekirse ıslak cilde uygula.",
             "priority": 3,
             "step_order": 30,
@@ -1024,10 +1012,7 @@ def build_evening_moisturizer_item(
                     f"Gece (tek katman): {base} + seramid NP/skualan onarım içeriği "
                     "(bir ürün veya nemlendiricide birleşik)"
                 ),
-                "detail": (
-                    "Kuruluk + kişisel puan: ayrı gece serum satırı yok; seramid ve skualan amacını gece nemlendiricide topla."
-                    + sfx
-                ),
+                "detail": ("Ayrı gece serum yok; seramid/skualan hedefini bu nemlendiricide topla." + sfx),
                 "usage": "Temiz cilde veya hafif tonik sonrası tek kalın taban.",
                 "priority": 3,
                 "step_order": 30,
@@ -1036,7 +1021,7 @@ def build_evening_moisturizer_item(
     return {
         "time": "Akşam", "category": "Bakım", "icon": "🌙",
         "action": f"Gece: {base}",
-        "detail": f"Bariyer onarımı. İçerik: {base}.{sfx}",
+        "detail": f"Bariyer onarımı.{sfx}",
         "usage": "Aktif tedaviden sonra. Tüm yüze ince katman, gece bırak.",
         "priority": 3,
         "step_order": 30,
@@ -1447,27 +1432,36 @@ def compute_lifestyle_branches(
             "action": "Box Breathing + 10 dk Meditasyon",
             "detail": f"Stres puanın çok yüksek ({stress_score}/16). Yüksek kortizol cildi doğrudan bozar: "
                      f"{'akne alevlenmesi, sebum artışı' if concern == 'acne' else 'kolajen yıkımı hızlanır' if concern == 'aging' else 'bariyer zayıflaması'}.",
+            "usage": (
+                "Box breathing: 4 sn nefes al, 4 sn tut, 4 sn ver, 4 sn bekle; 5–10 tur. "
+                "Ardından 10 dk sessiz oturma veya rehberli nefes/meditasyon uygula."
+            ),
             "priority": 1,
         })
         items.append({
             "time": "Akşam", "category": "Beslenme", "icon": "🍵",
             "action": "Adaptojenik Çay (Ashwagandha + Melisa)",
-            "detail": "Kortizolü düşürmek için adaptojenik bitkiler. Yatmadan 30 dk önce.",
+            "detail": "Kortizolü düşürmek için adaptojenik bitkiler yatış öncesi rahatlamayı destekleyebilir.",
+            "usage": "Paket önerisine göre demle; yatmadan yaklaşık 30 dk önce iç, aşırı sıcak içme.",
             "priority": 2,
         })
     elif stress_score > 6:
         items.append({
             "time": "Akşam", "category": "Zihin", "icon": "🌿",
             "action": "5 Dakika Nefes Egzersizi",
-            "detail": f"Stres puanın orta ({stress_score}/16). 4-7-8 nefes tekniği: "
-                     "parasempatik sistemi aktive eder, cilt yenilenmesini destekler.",
+            "detail": f"Stres puanın orta ({stress_score}/16). Parasempatik sistemi güçlendirmek yenilenmeyi destekler.",
+            "usage": (
+                "4-7-8: burnundan 4 sn nefes al, 7 sn tut, ağızdan 8 sn ver; 4–6 tur, yaklaşık 5 dakika. "
+                "Rahat otur, omuzları gevşet."
+            ),
             "priority": 2,
         })
     elif stress_score > 3:
         items.append({
             "time": "Akşam", "category": "Zihin", "icon": "🎵",
             "action": "Rahatlama Rutini",
-            "detail": "Yatmadan 1 saat önce ekranları kapat. Sakin müzik veya kitap ile günü bitir.",
+            "detail": "Geçiş ritüeli uyku kalitesini ve gece onarımını destekleyebilir.",
+            "usage": "Yatmadan yaklaşık 1 saat önce ekranları kapat; sakin müzik, kitap veya hafif esneme ile günü bitir.",
             "priority": 3,
         })
 
@@ -1478,22 +1472,29 @@ def compute_lifestyle_branches(
             "action": "Acil Uyku Düzenlemesi",
             "detail": f"Sadece {sleep_hours} saat uyku cilt için kriz durumu. "
                      "Melatonin üretimi bozulur, HGH salgısı düşer. Hedef: en az 7 saat.",
+            "usage": (
+                "Bu hafta her gece 15–30 dk daha erken yatmaya çalış; sabah aynı pencerede uyan. "
+                "Oda karanlık ve serin; yatmadan 60 dk ekranı kes."
+            ),
             "priority": 1,
         })
     elif sleep_hours < 6.5:
         items.append({
             "time": "Akşam", "category": "Yaşam", "icon": "😴",
             "action": "Uyku Hijyeni Protokolü",
-            "detail": f"{sleep_hours} saat yetersiz. Karanlık, serin oda + mavi ışık filtresi. "
-                     "Cilt 23:00-03:00 arası en çok yenilenir.",
+            "detail": f"{sleep_hours} saat yetersiz. Karanlık, serin ortam ve ışık yönetimi onarımı destekler.",
+            "usage": (
+                "Yatak odasını serin ve karanlık tut; akşam parlak ekranı azalt. "
+                "23:00–03:00 arası uyku, cilt yenilenmesi için özellikle değerlidir."
+            ),
             "priority": 2,
         })
     elif sleep_hours < 7.5:
         items.append({
             "time": "Akşam", "category": "Yaşam", "icon": "🌙",
             "action": "Uyku Optimizasyonu",
-            "detail": "30 dk daha erken yat. Derin uyku fazında büyüme hormonu salgılanır, "
-                     "cilt onarımı hızlanır.",
+            "detail": "Derin uyku fazında büyüme hormonu salgılanır; cilt onarımı bu dönemde hızlanır.",
+            "usage": "Her gece hedefin 15–30 dk daha erken yatmak; hafta içi yatış/kalkış saatlerini sabitle.",
             "priority": 3,
         })
 
@@ -1502,24 +1503,24 @@ def compute_lifestyle_branches(
         items.append({
             "time": "Sabah", "category": "Yaşam", "icon": "🚰",
             "action": "Acil Hidrasyon Planı",
-            "detail": f"Günde {water_intake}L su kritik seviyede düşük. "
-                     "Sabah kalktığında 500ml, her öğünde 400ml, aralarda 200ml.",
+            "detail": f"Günde {water_intake}L su kritik seviyede düşük; cilt ve genel doku nemini doğrudan etkiler.",
+            "usage": "Sabah kalkınca ~500 ml; her ana öğünde ~400 ml; ara öğünlerde ~200 ml hedefle.",
             "priority": 1,
         })
     elif water_intake < 1.5:
         items.append({
             "time": "Sabah", "category": "Yaşam", "icon": "💧",
             "action": "Hidrasyon Artışı (2L+ Hedef)",
-            "detail": f"{water_intake}L yeterli değil. Telefona hatırlatıcı kur. "
-                     "Cildin nem seviyesi direkt su alımıyla bağlantılı.",
+            "detail": f"{water_intake}L yeterli değil; cilt nem dengesi su alımıyla yakından ilişkilidir.",
+            "usage": "Günlük 2 L+ için telefona hatırlatıcı kur; her öğünle bir bardak içmeyi alışkanlık yap.",
             "priority": 2,
         })
     elif water_intake < 2.0:
         items.append({
             "time": "Sabah", "category": "Yaşam", "icon": "💧",
             "action": "Su Optimizasyonu",
-            "detail": "İyi gidiyorsun ama 2L'ye çıkmayı dene. "
-                     "Limonlu veya salatalıklı su lezzet katar.",
+            "detail": "Mevcut alımın iyi; 2 L civarı hedef bariyer ve genel hidrasyonu destekler.",
+            "usage": "Günlük suyu artırmak için limonlu veya salatalıklı su gibi hafif tatlar kullan.",
             "priority": 3,
         })
 
@@ -1669,8 +1670,13 @@ def compute_holistic_recommendations(
         "category": "Yaşam",
         "icon": "🚶",
         "action": "Yürüyüş veya hafif hareket",
-        "detail": "Gün içinde toplam yaklaşık 20–30 dakika tempolu yürüyüş, bisiklet veya hafif kardiyo "
-        "kan dolaşımını destekler; nefes ve stres rutinleriyle birlikte düşünüldüğünde cilt için dolaylı fayda sağlayabilir.",
+        "detail": (
+            "Kan dolaşımını destekler; nefes ve stres rutinleriyle birlikte düşünüldüğünde cilt için dolaylı fayda sağlayabilir."
+        ),
+        "usage": (
+            "Gün içinde toplam yaklaşık 20–30 dakika tempolu yürüyüş, bisiklet veya hafif kardiyo hedefle; "
+            "tek seferde veya parçalara bölerek uygula."
+        ),
         "priority": 4,
         "step_order": 8,
     })
@@ -1706,9 +1712,12 @@ def build_mind_body_protocol_items(
             "icon": "💧",
             "action": "Su rutini (hidrodenge)",
             "detail": (
-                "Gün içinde düzenli aralıklarla iç; hedef yaklaşık 1.8–2.5 L (kilo ve aktiviteye göre ayarlanır). "
-                "Kafein veya alkollü günlerde ek bir bardak ekle."
+                "Düzenli sıvı alımı bariyer fonksiyonu ve genel doku tazeliğini destekler."
                 + (" Şu an hedefe yaklaşmak cilt bariyeri ve elastikiyet için özellikle önerilir." if w_low else "")
+            ),
+            "usage": (
+                "Hedef yaklaşık 1.8–2.5 L (kilo ve aktiviteye göre ayarla). "
+                "Sabah bir bardak, öğünlerle ve susadığında iç; kafein veya alkollü günlerde ekstra bir bardak ekle."
             ),
             "priority": 2 if (w_low or cold) else 5,
             "step_order": 2,
@@ -1719,9 +1728,12 @@ def build_mind_body_protocol_items(
             "icon": "🌬️",
             "action": "Kısa nefes egzersizi",
             "detail": (
-                "2–4 dakika: 4 sn burundan al, 6 sn ağızdan ver; 6–10 tekrar. "
                 "Otonom sinir sistemini yumuşatır; stresle uyumlu cilt tepkilerini hafifletmeye yardımcı olabilir."
                 + (" Bugün stres yüksek görünüyor; özellikle önerilir." if stress_hi else "")
+            ),
+            "usage": (
+                "2–4 dakika ayır: 4 sn burundan al, 6 sn ağızdan ver; 6–10 tekrar. "
+                "İstersen 4-7-8: 4 sn burundan al, 7 sn tut, 8 sn ağızdan ver; birkaç tur."
             ),
             "priority": 1 if stress_hi else 5,
             "step_order": 12,
@@ -1732,9 +1744,12 @@ def build_mind_body_protocol_items(
             "icon": "🌙",
             "action": "Uyku öncesi protokol",
             "detail": (
-                "Yatmadan 60–90 dk önce ekran ve parlak ışığı azalt; oda serin ve karanlık olsun. "
-                "Yatış/kalkış saatlerini hafta içi yakın tut; gece onarımı rutindeki nem/onarım adımlarını destekler."
+                "Düzenli, yeterli uyku gece onarımı ve rutindeki nem/onarım adımlarını destekler."
                 + (" Uyku süreni kademeli olarak 7 saat civarına yaklaştırmayı hedefle." if s_low else "")
+            ),
+            "usage": (
+                "Yatmadan 60–90 dk önce ekran ve parlak ışığı azalt; odayı serin ve karanlık tut. "
+                "Yatış/kalkış saatlerini hafta içi birbirine yakın tut."
             ),
             "priority": 1 if (s_low or cold) else 5,
             "step_order": 80,
@@ -1747,8 +1762,11 @@ def build_mind_body_protocol_items(
             "icon": "🫐",
             "action": "Antioksidan yoğun besinler (tabaktan)",
             "detail": (
-                "Renkli sebze-meyve, yeşil çay, domates/biber gibi kaynaklar UV ve oksidatif strese karşı içerden destek sunar. "
-                "Tablet takviyesi için eczacı veya hekim onayı gerekir; oral takviyeyi rutindeki ürünlerle birlikte düşünmeden başlama."
+                "Renkli sebze-meyve, yeşil çay, domates/biber gibi kaynaklar UV ve oksidatif strese karşı içerden destek sunar."
+            ),
+            "usage": (
+                "Öğünlere renkli sebze-meyve ekle; yeşil çay veya domates/biberi gün içine yay. "
+                "Tablet/oral takviye için önce eczacı veya hekim onayı al; rutindeki ürünlerle birlikte kendi kendine başlama."
             ),
             "priority": 4,
             "step_order": 25,
@@ -2230,6 +2248,10 @@ def compute_acne_zone_recommendations(acne_zones: list, acne_severity_level: str
 # 13. QUERY PLAN BUILDER - Supabase sorgu planı
 # ══════════════════════════════════════════════════════════════════════
 
+# Bilgi tabanında metadata.doc_type = pdf_dogal_urun (ingest_pdf_smart DATA/)
+NATURAL_KNOWLEDGE_PURPOSE = "Doğal alternatifler (bilgi tabanı)"
+
+
 def build_query_plan(concern: str, severity: dict) -> list:
     """Supabase'e atılacak hedefli sorguları planlar."""
     plan = []
@@ -2250,6 +2272,13 @@ def build_query_plan(concern: str, severity: dict) -> list:
             "limit": 8,
             "purpose": f"Tedavi - {alt_kat}",
         })
+
+    # Doğal ürün / fitokozmetik PDF'leri — rutinde ayrı satır olarak gösterilir (main.py)
+    plan.append({
+        "doc_type": "pdf_dogal_urun",
+        "limit": 8,
+        "purpose": NATURAL_KNOWLEDGE_PURPOSE,
+    })
 
     return plan
 
@@ -3119,99 +3148,35 @@ def _why_this_step_for_user(
     age_label_tr: str,
     time_slot: str,
 ) -> str:
-    """Profil + madde: kullanıcıya konuşan gerekçe (usage ile birleştirilir)."""
+    """Kısa gerekçe; uzun açıklama 'Neden bu madde' alanında şişmesin."""
     if not ingredient_key or not (concern or "").strip():
         return ""
     focus = CONCERN_FOCUS_USER_TR.get(concern, "cilt hedeflerin")
-    ctx = SEVERITY_CONTEXT_USER_TR.get(severity_level, "Profilinde")
+    ctx = SEVERITY_CONTEXT_USER_TR.get(severity_level, "Şiddet profilin")
     slot = _routine_slot_phrase(time_slot)
-    skin = skin_label_tr or "senin"
-    age = age_label_tr or "yaş aralığın"
 
     templates = {
-        "vitamin_c": (
-            f"{slot} C vitamini önermemizin nedeni şu: ana odağın {focus} ile uyumlu; "
-            f"gün içi çevreye karşı cildi destekler, ışıltı ve ton dengesine katkı sağlayabilir. "
-            f"{ctx} ve {skin} cilt tipini, {age} bilgisini seçimde öne aldık."
-        ),
-        "retinol": (
-            f"{slot} retinol (A vitamini türevi) bu tabloda mantıklı: {focus} için sık kullanılan bir gece aktifidir; "
-            f"hücre yenilenmesi ve ince çizgi görünümüne yönelir. {ctx} sıklığı haftalık takvime yaymak tahrişi azaltır; "
-            f"{skin} cildi ve {age} yaş grubunu dikkate aldık."
-        ),
-        "bakuchiol": (
-            f"{slot} bakuchiol, retinole yakın etki arayan ama genelde daha az tahriş riski taşıyan bir seçenek: "
-            f"{focus} hedefin ve {ctx} göz önünde tutuldu. {skin} cilt tipin de bu yönlendirmede rol oynadı."
-        ),
-        "niacinamid": (
-            f"{slot} niasinamid (B3) hem bariyere hem sebum/tona destek olabilir; "
-            f"{focus} ile çoğu zaman iyi örtüşür. {ctx} konsantrasyon ve haftalık sıklık planda belirlendi; {skin} cilt tipi dikkate alındı."
-        ),
-        "salisilik_asit": (
-            f"{slot} salisilik asit (BHA) gözenek içine işleyerek yağ ve tıkanıklığa yardımcıdır; "
-            f"{focus} hedefi için sık kullanılan bir adımdır. {ctx} sıklık haftalık takvime yayıldı; hassasiyette motor sıklığı düşürür."
-        ),
-        "benzoil_peroksit": (
-            f"{slot} benzoil peroksit bakteri yükünü azaltmada etkilidir; {focus} için yoğun akne tablolarında sık düşünülür. "
-            f"{ctx} kısa temas ve sabah kullanmama gibi kurallarla güvenli kullanım hedeflenir."
-        ),
-        "hyaluronik_asit": (
-            f"{slot} hyaluronik asit nem çekimini ve cildin dolgun görünmesini destekler; "
-            f"{focus} hedefinde nem önemliyse doğru adımdır. {ctx} {skin} cildine uygun yoğunlukta önerilir."
-        ),
-        "seramidler": (
-            f"{slot} seramid ve benzeri lipidler bariyer onarımına yardımcı olur; "
-            f"{focus} ile ve özellikle kuruluk/hassasiyette önceliklidir. {ctx} {skin} cildin için bu katmanı güçlendirir."
-        ),
-        "azelaik_asit": (
-            f"{slot} azelaik asit hem akne hem kızarıklık/leke görünümünde dengeli kalabilen bir aktiftir; "
-            f"{focus} hedefin ve {ctx} şiddet profilin bu seçimi destekledi."
-        ),
-        "traneksamik_asit": (
-            f"{slot} traneksamik asit leke ve ton sorunlarında sık önerilen destekleyicilerdendir; "
-            f"{focus} odağı için akşam tarafında konumlandırıldı. Güçlü asitlerle sıra planda ayrıldı."
-        ),
-        "kojik_asit": (
-            f"{slot} kojik asit leke baskılamada kullanılan bir ajan olabilir; {focus} hedefin ve {ctx} tablona göre sıraya alındı."
-        ),
-        "alfa_arbutin": (
-            f"{slot} alfa-arbutin lekeyi hedefleyen bir aktiftir; genelde C vitamini sabah, arbutin akşam şeklinde ayrılır. "
-            f"{focus} odağın ve {ctx} profilin için akşamda konumlandırdık."
-        ),
-        "leke_kompleksi": (
-            f"{slot} arbutin + niasinamid + traneksamik gibi leke odaklı tek blok, {focus} hedefinde aynı gece fazla katmanı "
-            f"azaltırken etkiyi toparlamak için uygun olabilir. {ctx} güçlü akşam adımlarından sonra sıraya dikkat."
-        ),
-        "petrolatum": (
-            f"{slot} vazelin/petrolatum ince film halinde su kaybını kilitleyebilir; "
-            f"{focus} ile birlikte çok kuru veya tahrişli dönemlerde ek bariyer için düşünülür."
-        ),
-        "cay_agaci": (
-            f"{slot} çay ağacı yağı hafif antimikrobiyal etki ile akneye eşlik eden sorunlarda ara destek olabilir; "
-            f"{focus} hedefin ve {ctx} hassasiyetine göre seyrek ve küçük bölgede tercih edilir."
-        ),
-        "centella_panthenol": (
-            f"{slot} centella/pantenol gibi yatıştırıcılar, {focus} ve hassasiyet birlikteyken bariyeri sakinleştirmeye odaklanır."
-        ),
-        "hidrokinon": (
-            f"{slot} hidrokinon güçlü bir depigmentandır; yalnızca uzman yönetiminde düşünülmelidir."
-        ),
-        "mineral_spf": (
-            f"{slot} güneş koruyucu (SPF), {focus} hangi olursa olsun en kritik sabah korumasıdır; "
-            f"çoğu aktifle birlikte leke ve yaşlanmayı yönetmeye yardım eder. {ctx} UV ve çevreye göre seviye seçtik."
-        ),
-        "glycolic_aha": (
-            f"{slot} glikolik asit (AHA) yüzey yenilemeye yardımcıdır; {focus} leke/parlaklık tarafında akşamlara yayılır. "
-            f"{ctx} ve {skin} cildin tahriş eşiği sıklığı belirler."
-        ),
-        "peptides": (
-            f"{slot} peptidler kolajen sinyali ve nazik anti-aging için uygundur; {focus} yaşlanma veya önleyici bakımda "
-            f"retinol öncesi basamak olabilir. {ctx} genç ciltler için yumuşak bir giriş sağlar."
-        ),
-        "toco_ferulic": (
-            f"{slot} E vitamini + ferulik gibi antioksidanlar, güneş ve kirliliğe karşı hafif koruma sunar; "
-            f"{focus} genç veya hassas ciltlerde C vitamini öncesi basamak olabilir."
-        ),
+        "vitamin_c": f"{slot} C vitamini: {focus} ile uyumlu gündüz antioksidan; ton ve parlaklığa destek. {ctx} dikkate alındı.",
+        "retinol": f"{slot} retinol: {focus} için gece yenilenme aktifi; sıklık haftalık plana yayıldı. {ctx} ve tahriş riski dengelendi.",
+        "bakuchiol": f"{slot} bakuchiol: retinole benzer hedefte genelde daha yumuşak alternatif. {focus} ve {ctx} için uygun görüldü.",
+        "niacinamid": f"{slot} niasinamid: bariyer, sebum ve ton için çok yönlü B3. {focus} ile örtüşür; {ctx} ile doz/sıklık ayarlı.",
+        "salisilik_asit": f"{slot} BHA: gözenek içi yağ/tıkanıklığa yönelir; {focus} akne bandında sık kullanılır. {ctx} ile sıklık kısıtlandı.",
+        "benzoil_peroksit": f"{slot} benzoil peroksit: bakteri yükü için; {focus} yoğun akne tablolarında. Sabah kullanımı genelde önerilmez.",
+        "hyaluronik_asit": f"{slot} hyaluronik asit: nem tutulumu ve dolgunluk hissi. {focus} hedefinde nem katmanı için.",
+        "seramidler": f"{slot} seramid/lipid: bariyer onarımı; kuruluk ve hassasiyette öncelik. {focus} ile uyumlu.",
+        "azelaik_asit": f"{slot} azelaik asit: akne ve kızarıklık/leke dengesinde orta güçlü seçenek. {focus} ve {ctx}.",
+        "traneksamik_asit": f"{slot} traneksamik asit: leke/ton desteği; akşamda, güçlü asitlerden ayrı sırada.",
+        "kojik_asit": f"{slot} kojik asit: leke baskılama seçeneklerinden; {focus} ve {ctx} sırasına göre.",
+        "alfa_arbutin": f"{slot} alfa-arbutin: leke hedefli; genelde akşam bloğunda C vitamini ile gündüz-akşam ayrımı.",
+        "leke_kompleksi": f"{slot} leke odaklı kombinasyon tek blokta: fazla gece katmanını azaltır, {focus} hedefini korur.",
+        "petrolatum": f"{slot} oklüzif film: çok kuruda su kaybını kilitler; {focus} ile bariyer krizi dönemlerinde ek katman.",
+        "cay_agaci": f"{slot} çay ağacı: hafif antimikrobiyal; noktasal, seyreltik. {focus} ve hassasiyet gözetildi.",
+        "centella_panthenol": f"{slot} centella/pantenol: yatıştırma ve bariyer sakinliği; {focus} + hassasiyet uyumu.",
+        "hidrokinon": f"{slot} hidrokinon: güçlü depigmentan; yalnızca uzman yönetiminde.",
+        "mineral_spf": f"{slot} SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli.",
+        "glycolic_aha": f"{slot} glikolik AHA: yüzey yenileme; {focus} leke/parlaklıkta akşam sıklığı. {ctx} tahriş eşiği ile.",
+        "peptides": f"{slot} peptid: nazik anti-aging sinyali; {focus} yaşlanmada retinol öncesi basamak olabilir.",
+        "toco_ferulic": f"{slot} E+ferulik: hafif antioksidan; hassas veya C öncesi sabah desteği.",
     }
 
     return templates.get(ingredient_key, "").strip()
@@ -3227,8 +3192,8 @@ def _risk_condition_sentence(
     note = (note or "").strip()
     if paused:
         s = (
-            "Bugünkü stres, uyku veya nem verilerine göre bu ürün tipi geçici olarak duraklatıldı; "
-            "bariyer adımları öne alındı. Toparlanma sonrası sıklık check-in verileriyle yeniden planlanır."
+            "Yaşam verilerine göre bu adım geçici duraklatıldı; bariyer öne alındı. "
+            "Sıklık check-in ile yeniden planlanır."
         )
         if note and note.lower() not in ("ara ver, sadece bariyer bakım",):
             s += f" ({note})"
@@ -3238,14 +3203,8 @@ def _risk_condition_sentence(
     if not note or note.lower() in ("standart", "standart protokol"):
         return ""
     if risk_level == "crisis":
-        return (
-            f"Aynı veriler ışığında bu adımın temposu nazikleştirildi: {note}. "
-            "Hedef korunur; bariyer önceliği artırıldı."
-        )
-    return (
-        f"Yaşam verilerine göre bu adımın sıklığı veya gücü hafif düşürüldü: {note}. "
-        "Fayda korunurken tahriş riski azaltıldı."
-    )
+        return f"Tempo yumuşatıldı: {note}. Bariyer öncelikli."
+    return f"Sıklık/güç hafif düşürüldü: {note}. Tahriş riski azaltıldı."
 
 
 def _strip_prior_daily_risk_overlay(detail: str) -> str:
@@ -3261,6 +3220,30 @@ def _strip_prior_daily_risk_overlay(detail: str) -> str:
     for p in patterns:
         d = re.sub(p, "", d, flags=re.IGNORECASE)
     return d.strip()
+
+
+def _is_spf_routine_row(item: dict) -> bool:
+    a = (item.get("action") or "").lower()
+    return "spf" in a or "güneş koruyucu" in a or "gunes koruyucu" in a
+
+
+def _is_moisturizer_or_barrier_row(item: dict) -> bool:
+    """Nemlendirici / gece bariyer katmanı: uzun içerik tekrarı + 'tek ürün' uyarısı."""
+    if item.get("category") not in ("Bakım", "Koruma"):
+        return False
+    if _is_spf_routine_row(item):
+        return False
+    a = (item.get("action") or "").lower()
+    so = item.get("step_order")
+    if so == 30:
+        return True
+    if "nemlendirici" in a:
+        return True
+    if "gece" in a and any(x in a for x in ("krem", "katman", "bariyer", "onarım", "yoğun", "tek ")):
+        return True
+    if "bariyer kilidi" in a or "uyku mask" in a:
+        return True
+    return False
 
 
 def _detect_ingredient_key(action_lower: str) -> str:
@@ -3322,8 +3305,8 @@ def finalize_user_routine_item_details(
     age_label_tr: str = "",
 ) -> list:
     """
-    Bakım/Koruma satırları: kullanıcıya 'neden bu madde' + (varsa) bugünkü yaşam riski + rutin usage/detay.
-    Yalnızca tam analiz akışında (run_flow) sıralama ve filtreler bittikten sonra çağrılır.
+    Bakım/Koruma: `detail` yalnızca kısa “neden” (+ SPF/nem bütçe ipuçları).
+    Sıklık, risk motoru ve adım talimatları `usage` alanında birleştirilir (arka plan metni kullanıcıya “neden”de gösterilmez).
     """
     from ingredient_db import get_risk_adjustment
 
@@ -3336,7 +3319,8 @@ def finalize_user_routine_item_details(
 
         orig = dict(item)
         ik = _detect_ingredient_key(orig.get("action", "").lower())
-        usage = (orig.get("detail") or "").strip()
+        motor_detail = (orig.get("detail") or "").strip()
+        motor_usage = (orig.get("usage") or "").strip()
 
         why = _why_this_step_for_user(
             ik,
@@ -3347,7 +3331,8 @@ def finalize_user_routine_item_details(
             orig.get("time", ""),
         )
 
-        risk_part = ""
+        # Sıklık / risk motoru cümleleri kullanıcıya "neden" yerine "nasıl uygularsın"da gösterilir
+        risk_usage_addon = ""
         rk = _ingredient_key_for_risk_adjustment(ik)
         if ik and rk and risk_level and risk_level != "normal":
             adj = get_risk_adjustment(rk, risk_level)
@@ -3356,12 +3341,33 @@ def finalize_user_routine_item_details(
             if mult == 0:
                 orig["action"] = f"⏸️ {orig['action']} — şimdilik kullanma"
                 orig["priority"] = 10
-                risk_part = _risk_condition_sentence(risk_level, mult, note, paused=True)
+                risk_usage_addon = _risk_condition_sentence(risk_level, mult, note, paused=True)
+                why = "Şu an bu adım güvenlik için duraklatıldı; önce bariyer ve sakinleşme."
             elif mult < 1.0:
-                risk_part = _risk_condition_sentence(risk_level, mult, note, paused=False)
+                risk_usage_addon = _risk_condition_sentence(risk_level, mult, note, paused=False)
 
-        parts = [p for p in [why, risk_part, usage] if p]
-        orig["detail"] = sanitize_routine_detail_system_voice(" ".join(parts).strip())
+        if _is_spf_routine_row(orig):
+            budget = (
+                "Tek geniş spektrumlu güneş koruyucu yeter; istersen nem + SPF’yi tek üründe birleştirebilirsin."
+            )
+            detail_parts = [p for p in [why, budget] if p]
+        elif _is_moisturizer_or_barrier_row(orig):
+            budget = (
+                "Aynı işi gören birkaç ayrı ürün almak zorunda değilsin: mümkünse tek nemlendiricide bu hedef içerikleri topla; "
+                "olmazsa bu adımdaki içeriklerden birini seçerek rutine devam et."
+            )
+            detail_parts = [p for p in [why, budget] if p]
+        else:
+            detail_parts = [why] if why else []
+
+        orig["detail"] = sanitize_routine_detail_system_voice(" ".join(detail_parts).strip())
+
+        usage_bits = [b for b in [motor_usage, motor_detail, risk_usage_addon] if b]
+        if usage_bits:
+            orig["usage"] = sanitize_routine_detail_system_voice(" ".join(usage_bits).strip())
+        elif not motor_usage:
+            orig["usage"] = "Önerilen sırada, temiz cilde uygula."
+
         out.append(orig)
 
     if risk_level == "crisis":
@@ -3370,9 +3376,10 @@ def finalize_user_routine_item_details(
             out.append({
                 "time": "Sabah ve Akşam", "category": "Bakım", "icon": "🛡️",
                 "action": "Seramid + niasinamid içeren bariyer nemlendirici (öncelik)",
-                "detail": (
-                    "Şu dönemde cildin önce bariyerinden destek alması iyi olur. Diğer adımları hafiflettik veya durdurduk; "
-                    "nem ve onarıma odaklan. Eczane veya güvendiğin bir markada seramid/niasinamid içeren ürün seçebilirsin."
+                "detail": "Önce bariyeri desteklemek için bu katman öne alındı; diğer güçlü adımlar hafifletildi veya durduruldu.",
+                "usage": (
+                    "Günde iki kez veya tahrişe göre sabah-akşam ince katman. "
+                    "Eczane veya güvendiğin kanalda seramid/niasinamid içeren tek ürün yeterli olabilir."
                 ),
                 "priority": 1, "step_order": 15,
             })
@@ -3403,7 +3410,8 @@ def overlay_daily_risk_on_saved_routine(items: list, risk_level: str) -> list:
             adjusted.append(orig)
             continue
 
-        base = _strip_prior_daily_risk_overlay(orig.get("detail") or "")
+        base_detail = _strip_prior_daily_risk_overlay(orig.get("detail") or "")
+        motor_usage = (orig.get("usage") or "").strip()
         ik = _detect_ingredient_key(orig.get("action", "").lower())
         rk = _ingredient_key_for_risk_adjustment(ik)
         risk_part = ""
@@ -3418,10 +3426,13 @@ def overlay_daily_risk_on_saved_routine(items: list, risk_level: str) -> list:
             elif mult < 1.0:
                 risk_part = _risk_condition_sentence(risk_level, mult, note, paused=False)
 
-        if risk_part and base:
-            orig["detail"] = f"{risk_part} {base}".strip()
+        orig["detail"] = base_detail
+        if risk_part:
+            orig["usage"] = sanitize_routine_detail_system_voice(
+                f"{risk_part} {motor_usage}".strip() if motor_usage else risk_part
+            )
         else:
-            orig["detail"] = base
+            orig["usage"] = motor_usage
         adjusted.append(orig)
 
     if risk_level == "crisis":
@@ -3430,9 +3441,10 @@ def overlay_daily_risk_on_saved_routine(items: list, risk_level: str) -> list:
             adjusted.append({
                 "time": "Sabah ve Akşam", "category": "Bakım", "icon": "🛡️",
                 "action": "Seramid + niasinamid içeren bariyer nemlendirici (öncelik)",
-                "detail": (
-                    "Şu dönemde cildin önce bariyerinden destek alması iyi olur. Diğer adımları hafiflettik veya durdurduk; "
-                    "nem ve onarıma odaklan. Eczane veya güvendiğin bir markada seramid/niasinamid içeren ürün seçebilirsin."
+                "detail": "Önce bariyeri desteklemek için bu katman öne alındı; diğer güçlü adımlar hafifletildi veya durduruldu.",
+                "usage": (
+                    "Günde iki kez veya tahrişe göre sabah-akşam ince katman. "
+                    "Eczane veya güvendiğin kanalda seramid/niasinamid içeren tek ürün yeterli olabilir."
                 ),
                 "priority": 1, "step_order": 15,
             })
@@ -3526,12 +3538,13 @@ def adapt_existing_routine(
                 })
                 new_item["action"] = f"⏸️ {item['action']} — {days} gün ara ver"
                 tn = trigger.get("note", "")
-                prior = (item.get("detail") or "").strip()
-                new_item["detail"] = sanitize_routine_detail_system_voice(
-                    (
-                        f"Check-in’de cilt hissi “{skin_feeling}” olarak kaydedildi; bu adım yaklaşık {days} gün duraklatıldı"
-                        f"{(': ' + tn) if tn else ''}. {prior}"
-                    ).strip()
+                prior_u = (item.get("usage") or "").strip()
+                check_u = (
+                    f"Check-in: cilt hissi “{skin_feeling}”; bu adım yaklaşık {days} gün duraklatıldı"
+                    f"{(': ' + tn) if tn else ''}."
+                )
+                new_item["usage"] = sanitize_routine_detail_system_voice(
+                    f"{check_u} {prior_u}".strip() if prior_u else check_u
                 )
                 new_item["priority"] = 10
 
@@ -3544,13 +3557,14 @@ def adapt_existing_routine(
                     "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
                 })
                 tn = trigger.get("note", "")
-                prior = (item.get("detail") or "").strip()
+                prior_u = (item.get("usage") or "").strip()
                 _shrink_weekly_days_for_reduce(new_item, mult)
-                new_item["detail"] = sanitize_routine_detail_system_voice(
-                    (
-                        f"Check-in’de cilt hissi ({skin_feeling}) nedeniyle bu adımın haftalık sıklığı düşürüldü"
-                        f"{(': ' + tn) if tn else ''}. {prior}"
-                    ).strip()
+                check_u = (
+                    f"Check-in: cilt hissi ({skin_feeling}); haftalık sıklık düşürüldü"
+                    f"{(': ' + tn) if tn else ''}."
+                )
+                new_item["usage"] = sanitize_routine_detail_system_voice(
+                    f"{check_u} {prior_u}".strip() if prior_u else check_u
                 )
 
             elif action_type == "increase":
@@ -3561,12 +3575,13 @@ def adapt_existing_routine(
                     "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
                 })
                 tn = trigger.get("note", "")
-                prior = (item.get("detail") or "").strip()
-                new_item["detail"] = sanitize_routine_detail_system_voice(
-                    (
-                        f"Check-in’de cilt hissi olumlu; bu adımın sıklığı hafif artırıldı"
-                        f"{(': ' + tn) if tn else ''}. {prior}"
-                    ).strip()
+                prior_u = (item.get("usage") or "").strip()
+                check_u = (
+                    f"Check-in: cilt hissi olumlu; sıklık hafif artırıldı"
+                    f"{(': ' + tn) if tn else ''}."
+                )
+                new_item["usage"] = sanitize_routine_detail_system_voice(
+                    f"{check_u} {prior_u}".strip() if prior_u else check_u
                 )
 
         adapted.append(new_item)

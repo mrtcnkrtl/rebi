@@ -6,6 +6,7 @@ import {
   isRoutineTrackingAccepted,
   saveRoutineSnapshot,
 } from "../lib/routineTracking";
+import { recordCheckInSuccess } from "../lib/checkinStats";
 import { useTheme } from "../context/ThemeContext";
 import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
@@ -17,6 +18,7 @@ import {
   Palette, FlaskConical, Hand, Sun, Wind, Flower2,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
+import ThemePatternOverlay from "../components/ThemePatternOverlay";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -88,6 +90,102 @@ const CONCERN_EXTRA_INITIAL = {
 };
 
 const TRISTATE_PAYLOAD_KEYS = Object.keys(CONCERN_EXTRA_INITIAL);
+
+/** Check-in su: Türkiye’de sık kullanılan “1 bardak ≈ 250 ml” (2 L ≈ 8 bardak). */
+const ML_PER_GLASS = 250;
+
+function parseWaterMlInput(raw) {
+  const s = String(raw ?? "").trim().replace(",", ".");
+  if (s === "") return null;
+  const n = Number(s);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.min(8000, Math.round(n));
+}
+
+function formatGlassesLabel(ml) {
+  if (ml <= 0) return "0 bardak";
+  const glasses = ml / ML_PER_GLASS;
+  const rounded =
+    Math.abs(glasses - Math.round(glasses)) < 0.05
+      ? Math.round(glasses)
+      : Math.round(glasses * 10) / 10;
+  return `yaklaşık ${rounded} bardak`;
+}
+
+function WaterMlCheckInCard({ value, onChange, theme }) {
+  const parsed = parseWaterMlInput(value);
+  const bumpMl = (delta) => {
+    const base = parsed ?? 0;
+    const next = Math.max(0, Math.min(8000, base + delta));
+    onChange(String(next));
+  };
+
+  return (
+    <div className="card mb-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Droplets className="w-5 h-5 text-sky-500" />
+        <h3 className="text-sm font-bold text-gray-800">Bugün içtiğin su (ml)</h3>
+      </div>
+      <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
+        Miktarı <strong className="text-gray-700">mililitre (ml)</strong> olarak yaz. Hesaplama:{" "}
+        <strong className="text-gray-700">1 bardak = {ML_PER_GLASS} ml</strong> (standart su bardağı).
+        Boş bırakırsan uygulama içi su takibi veya analizdeki günlük hedefin kullanılır.
+      </p>
+      <div className="flex gap-2 items-stretch">
+        <div className="relative flex-1 min-w-0">
+          <input
+            id="checkin-water-ml"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={8000}
+            step={50}
+            placeholder={`Örn. ${ML_PER_GLASS * 8} (8 bardak)`}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full pl-4 pr-12 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-900"
+            aria-describedby="checkin-water-ml-hint"
+          />
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-gray-400">
+            ml
+          </span>
+        </div>
+      </div>
+      <p id="checkin-water-ml-hint" className="text-[10px] text-gray-400 mt-1.5">
+        Gönderirken değer tam sayı ml olarak kaydedilir (en fazla 8000 ml).
+      </p>
+      {parsed != null && parsed > 0 && (
+        <p className="text-xs font-semibold text-sky-800 mt-2 py-2 px-3 rounded-xl bg-sky-50 border border-sky-100">
+          <span className="tabular-nums">{parsed.toLocaleString("tr-TR")}</span> ml → {formatGlassesLabel(parsed)}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-2 mt-3">
+        <button
+          type="button"
+          onClick={() => bumpMl(-ML_PER_GLASS)}
+          className="px-3 py-1.5 rounded-lg text-[11px] font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+        >
+          −1 bardak (−{ML_PER_GLASS} ml)
+        </button>
+        <button
+          type="button"
+          onClick={() => bumpMl(ML_PER_GLASS)}
+          className="px-3 py-1.5 rounded-lg text-[11px] font-medium border text-white shadow-sm"
+          style={{ backgroundColor: theme?.primary || "#0ea5e9", borderColor: theme?.primary || "#0ea5e9" }}
+        >
+          +1 bardak (+{ML_PER_GLASS} ml)
+        </button>
+        <button
+          type="button"
+          onClick={() => bumpMl(125)}
+          className="px-3 py-1.5 rounded-lg text-[11px] font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+        >
+          +½ bardak (+125 ml)
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function CheckIn() {
   const { user } = useAuth();
@@ -224,9 +322,9 @@ export default function CheckIn() {
         applied_routine: appliedRoutine,
         notes: notes || null,
       };
-      const wTrim = String(waterMlToday || "").trim();
-      if (wTrim !== "" && !Number.isNaN(Number(wTrim)) && Number(wTrim) >= 0) {
-        payload.water_ml_today = Math.round(Number(wTrim));
+      const wParsed = parseWaterMlInput(waterMlToday);
+      if (wParsed != null && wParsed > 0) {
+        payload.water_ml_today = wParsed;
       }
       if (makeupUsedToday === true || makeupUsedToday === false) {
         payload.makeup_used_today = makeupUsedToday;
@@ -254,6 +352,7 @@ export default function CheckIn() {
         setSubmitError(formatApiErrorDetail(data) + (res.status ? ` (${res.status})` : ""));
         return;
       }
+      recordCheckInSuccess(user?.id, { appliedRoutine });
       setResult(data);
     } catch (err) {
       console.error("Check-in error:", err);
@@ -269,8 +368,9 @@ export default function CheckIn() {
 
   if (result) {
     return (
-      <div className={`min-h-screen ${theme.bg} pb-24`}>
-        <div className="max-w-lg mx-auto px-4 py-8">
+      <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+        <ThemePatternOverlay pattern={theme.pattern} />
+        <div className="max-w-lg mx-auto px-4 py-8 relative z-[1]">
           <div className="text-center mb-6">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg"
               style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}>
@@ -366,16 +466,18 @@ export default function CheckIn() {
 
   if (statusLoading) {
     return (
-      <div className={`min-h-screen ${theme.bg} flex items-center justify-center pb-24`}>
-        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      <div className={`min-h-screen ${theme.bg} flex items-center justify-center pb-24 relative`}>
+        <ThemePatternOverlay pattern={theme.pattern} />
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400 relative z-[1]" />
       </div>
     );
   }
 
   if (alreadyCheckedIn && !result) {
     return (
-      <div className={`min-h-screen ${theme.bg} pb-24`}>
-        <div className="max-w-lg mx-auto px-4 py-8 text-center">
+      <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+        <ThemePatternOverlay pattern={theme.pattern} />
+        <div className="max-w-lg mx-auto px-4 py-8 text-center relative z-[1]">
           <CheckCircle2 className="w-14 h-14 mx-auto mb-4 text-teal-500" />
           <h1 className="text-xl font-bold text-gray-900">Bugün check-in yaptın</h1>
           <p className="text-sm text-gray-500 mt-2">Her gün tek kayıt tutulur. Yarın tekrar gelebilirsin.</p>
@@ -393,8 +495,9 @@ export default function CheckIn() {
   }
 
   return (
-    <div className={`min-h-screen ${theme.bg} pb-24`}>
-      <div className="max-w-lg mx-auto px-4 py-8">
+    <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+      <ThemePatternOverlay pattern={theme.pattern} />
+      <div className="max-w-lg mx-auto px-4 py-8 relative z-[1]">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-xl font-bold text-gray-900">Günlük Check-in</h1>
@@ -540,26 +643,11 @@ export default function CheckIn() {
 
         {/* Koşullu: su (endişe / düşük profil suyu) */}
         {showWaterExtra && (
-          <div className="card mb-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Droplets className="w-5 h-5 text-sky-500" />
-              <h3 className="text-sm font-bold text-gray-800">Bugün tahmini toplam su</h3>
-            </div>
-            <p className="text-[11px] text-gray-500 mb-2 leading-relaxed">
-              Boş bırakırsan uygulama içi su takibi veya profil hedefin kullanılır. Yaklaşık ml yazman risk özetine girer.
-            </p>
-            <input
-              type="number"
-              min={0}
-              max={8000}
-              step={50}
-              placeholder="Örn. 1500"
-              value={waterMlToday}
-              onChange={(e) => setWaterMlToday(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm"
-            />
-            <span className="text-[10px] text-gray-400 mt-1 block">ml (mililitre)</span>
-          </div>
+          <WaterMlCheckInCard
+            value={waterMlToday}
+            onChange={setWaterMlToday}
+            theme={theme}
+          />
         )}
 
         {/* Koşullu: makyaj (sık makyaj profili) */}

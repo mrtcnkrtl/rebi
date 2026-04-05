@@ -11,6 +11,7 @@ import {
   saveRoutineSnapshot,
 } from "../lib/routineTracking";
 import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
+import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import {
   Sparkles, PlusCircle, CloudSun, Droplets, Sun, Thermometer,
   Calendar, ArrowRight, Leaf, AlertTriangle, Heart, Apple,
@@ -341,14 +342,16 @@ export default function Dashboard() {
   if (!routine.length) {
     if (uid && supabase && uid !== DEMO_USER_ID && fetchingDbRoutine) {
       return (
-        <div className={`min-h-screen ${theme.bg} flex items-center justify-center pb-24`}>
-          <div className="w-10 h-10 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin" />
+        <div className={`min-h-screen ${theme.bg} flex items-center justify-center pb-24 relative`}>
+          <ThemePatternOverlay pattern={theme.pattern} />
+          <div className="w-10 h-10 border-4 border-teal-200 border-t-teal-600 rounded-full animate-spin relative z-[1]" />
         </div>
       );
     }
     return (
-      <div className={`min-h-screen ${theme.bg} pb-24`}>
-        <div className="max-w-lg mx-auto px-4 py-16 text-center">
+      <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+        <ThemePatternOverlay pattern={theme.pattern} />
+        <div className="max-w-lg mx-auto px-4 py-16 text-center relative z-[1]">
           {nav?.flashNeedAccept && (
             <div className="mb-4 text-left card !p-3 border-amber-200 bg-amber-50/80 text-sm text-amber-900">
               Günlük check-in için önce analiz sonucunda rutinini kabul etmen gerekir.
@@ -384,8 +387,9 @@ export default function Dashboard() {
 
   if (trackingMode) {
     return (
-      <div className={`min-h-screen ${theme.bg} pb-24`}>
-        <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+        <ThemePatternOverlay pattern={theme.pattern} />
+        <div className="max-w-2xl mx-auto px-4 py-8 relative z-[1]">
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Rutin takibi</h1>
             <p className="text-gray-500 mt-1 text-sm">
@@ -542,6 +546,13 @@ export default function Dashboard() {
             Tüm haftayı, detayları ve yaşam önerilerini göster
           </button>
           <Link
+            to="/dashboard/analyze?photo=1"
+            className="btn-secondary w-full !mt-0 mb-2 inline-flex justify-center text-sm"
+            style={{ borderColor: theme.primaryLight, color: theme.primary }}
+          >
+            <PlusCircle className="w-5 h-5" /> Fotoğraf yükle (hızlı)
+          </Link>
+          <Link
             to="/dashboard/analyze"
             className="btn-secondary w-full !mt-0 inline-flex justify-center"
             style={{ borderColor: theme.primaryLight, color: theme.primary }}
@@ -554,8 +565,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className={`min-h-screen ${theme.bg} pb-24`}>
-      <div className="max-w-2xl mx-auto px-4 py-8">
+    <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+      <ThemePatternOverlay pattern={theme.pattern} />
+      <div className="max-w-2xl mx-auto px-4 py-8 relative z-[1]">
         {/* Header */}
         <div className="mb-6">
           {nav?.flashNeedAccept && (
@@ -830,7 +842,7 @@ export default function Dashboard() {
                     <StructuredRoutineBadges item={item} />
                     {item.detail ? (
                       <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
-                        <span className="font-medium text-gray-600">Sana neden uygun: </span>
+                        <span className="font-medium text-gray-600">Kısaca: </span>
                         {item.detail}
                       </p>
                     ) : null}
@@ -1000,8 +1012,10 @@ function getDefaultUsage(stepOrder) {
 
 function ProductStep({ item, theme, step }) {
   const [showDetail, setShowDetail] = useState(false);
-  const usage = item.usage || getDefaultUsage(item.step_order);
-  const hasContent = item.detail || usage;
+  const isSkincare = item.category === "Bakım" || item.category === "Koruma";
+  const usageRaw = item.usage != null ? String(item.usage).trim() : "";
+  const usage = usageRaw || (isSkincare ? getDefaultUsage(item.step_order) : "");
+  const hasContent = Boolean(item.detail || usage);
   const showNumber = step != null && step !== undefined;
   return (
     <div className="card !p-3 flex items-start gap-3 hover:shadow-md transition-shadow">
@@ -1034,14 +1048,23 @@ function ProductStep({ item, theme, step }) {
               className="mt-2 block text-xs font-medium rounded-lg px-2 py-1 border transition-colors"
               style={{ borderColor: theme.primaryLight, color: theme.primary }}
             >
-              {showDetail ? "Gizle" : "Neden bu ürün / madde?"}
+              {showDetail ? "Gizle" : isSkincare ? "Neden bu ürün / madde?" : "Detay"}
             </button>
             {showDetail && (
               <div className="text-xs text-gray-600 mt-2 space-y-2 leading-relaxed">
                 {item.detail && (
-                  <p><strong>Sana neden öneriyoruz:</strong> {item.detail}</p>
+                  <p>
+                    <strong>
+                      {isSkincare ? "Kısaca neden:" : usage ? "Kısaca neden:" : "Özet:"}
+                    </strong>{" "}
+                    {item.detail}
+                  </p>
                 )}
-                <p><strong>Nasıl uygularsın:</strong> {usage}</p>
+                {usage ? (
+                  <p>
+                    <strong>{isSkincare ? "Nasıl uygularsın:" : "Nasıl yaparsın:"}</strong> {usage}
+                  </p>
+                ) : null}
               </div>
             )}
           </>

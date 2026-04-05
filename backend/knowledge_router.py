@@ -39,6 +39,7 @@ async def execute_query_plan(query_plan: list[dict]) -> dict:
         try:
             kategori = query.get("kategori", "")
             alt_kategori = query.get("alt_kategori", "")
+            doc_type = (query.get("doc_type") or "").strip()
             limit = query.get("limit", 10)
             purpose = query.get("purpose", "")
             search_text = query.get("search_text", "")
@@ -49,6 +50,8 @@ async def execute_query_plan(query_plan: list[dict]) -> dict:
                 q = q.filter("metadata->>kategori", "eq", kategori)
             if alt_kategori:
                 q = q.filter("metadata->>alt_kategori", "eq", alt_kategori)
+            if doc_type:
+                q = q.filter("metadata->>doc_type", "eq", doc_type)
             if search_text:
                 q = q.ilike("content", f"%{search_text}%")
 

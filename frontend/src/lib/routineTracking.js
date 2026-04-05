@@ -44,7 +44,14 @@ export function saveRoutineSnapshot(userId, partial) {
 /** Rutini kabul: tam dashboard meta + rutin satırı. */
 export function acceptRoutineTracking(userId, snapshot) {
   if (!userId) return;
-  saveRoutineSnapshot(userId, snapshot);
+  const prev = getRoutineSnapshot(userId) || {};
+  const merged = {
+    ...snapshot,
+    /** İlk kabul zamanı (profil: hedef gün / yolculuk süresi). */
+    acceptedAt: typeof prev.acceptedAt === "number" ? prev.acceptedAt : Date.now(),
+    updatedAt: Date.now(),
+  };
+  saveRoutineSnapshot(userId, merged);
   try {
     localStorage.setItem(trackAcceptedKey(userId), "1");
   } catch {

@@ -62,6 +62,18 @@ const themes = {
     bg: "bg-gradient-to-b from-orange-50/40 to-amber-50/20",
     pattern: "cats",
   },
+  teddy: {
+    id: "teddy", label: "Ayıcık", emoji: "🧸",
+    primary: "#b45309", primaryLight: "#fef3c7", primaryDark: "#78350f",
+    accent: "#d97706", gradientFrom: "from-amber-50/60", gradientTo: "to-orange-50/30",
+    cardBorder: "border-amber-200", navBg: "bg-amber-50/90",
+    btnBg: "bg-amber-700", btnHover: "hover:bg-amber-800", btnShadow: "shadow-amber-700/25",
+    btnSecBorder: "border-amber-200", btnSecText: "text-amber-900",
+    inputFocus: "focus:border-amber-400 focus:ring-amber-100",
+    chipActive: "border-amber-600 bg-amber-50 text-amber-950",
+    bg: "bg-gradient-to-b from-amber-50/55 via-orange-50/25 to-rose-50/20",
+    pattern: "bears",
+  },
   /** Rebi Plus — premium */
   sunset: {
     id: "sunset", label: "Gün Batımı", emoji: "🌅", premium: true,
