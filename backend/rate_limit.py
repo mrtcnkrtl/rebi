@@ -100,6 +100,7 @@ LIMIT_DAILY_CHECKIN_STATUS = _make_limiter(90, 60.0, "daily_checkin_status")
 LIMIT_GENERATE_ROUTINE = _make_limiter(25, 3600.0, "generate_routine")
 LIMIT_CHAT = _make_limiter(45, 60.0, "chat")
 LIMIT_UPLOAD_PHOTO = _make_limiter(40, 3600.0, "upload_photo")
+LIMIT_ACCOUNT_DELETE = _make_limiter(3, 3600.0, "account_delete")
 
 
 def rate_limit_backend_label() -> str:

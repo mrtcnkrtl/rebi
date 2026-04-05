@@ -753,14 +753,6 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                 için net bir yüz fotoğrafı <span className="font-medium text-gray-700">çok önerilir</span> — galeri, kamera veya web kamerası.
               </p>
             </div>
-            <div className="card border-sky-100 bg-sky-50/90 text-[11px] text-sky-950 leading-relaxed space-y-2">
-              <p className="font-semibold text-sky-950">Fotoğraf telefonda klasöre kaydolur mu?</p>
-              <p className="text-sky-900/95">
-                Hayır. Rebi tarayıcı/PWA üzerinden çalıştığında seçtiğin fotoğraf genelde{" "}
-                <strong>uygulamanın bağlı olduğu güvenli bulut depoya</strong> (ör. Supabase Storage) yüklenir;
-                telefonda otomatik bir &quot;Rebi&quot; klasörü oluşmaz. İndirmediğin sürece galerinde ekstra kopya da oluşmayabilir.
-              </p>
-            </div>
             <div className="card space-y-3">
               {photoPreview ? (
                 <div className="space-y-3">

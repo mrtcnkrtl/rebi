@@ -59,22 +59,6 @@ if GEMINI_API_KEY:
         log.error("Gemini client hatası: %s", e)
 
 
-def _polish_user_message(exc: Exception) -> str:
-    """Kullanıcıya gösterilecek kısa açıklama (log ayrıntılı kalır)."""
-    text = str(exc).lower()
-    if "429" in text or "quota" in text or "resource_exhausted" in text:
-        return (
-            "Yapay zeka metin düzenlemesi şu an kullanılamıyor (servis kotası doldu veya geçici limit). "
-            "Rutinin bilimsel içeriği aynen korundu; sadece cümle cilası atlandı."
-        )
-    if not GEMINI_API_KEY:
-        return "Yapay zeka anahtarı tanımlı değil; rutin motor çıktısı olduğu gibi sunuldu."
-    return (
-        "Metin düzenleme adımı tamamlanamadı (bağlantı veya servis hatası). "
-        "Rutin önerileri yine de geçerlidir."
-    )
-
-
 async def polish_routine_with_ai(
     routine_items: list[dict],
     context_summary: str,
@@ -88,8 +72,10 @@ async def polish_routine_with_ai(
     if not gemini_client:
         log.warning("Gemini client yok, orijinal rutin döndürülüyor")
         if not GEMINI_API_KEY:
-            return routine_items, _polish_user_message(Exception("no key"))
-        return routine_items, "Gemini istemcisi başlatılamadı; rutin motor çıktısı kullanıldı."
+            log.info("GEMINI_API_KEY yok; polish atlandı")
+        else:
+            log.warning("Gemini istemcisi başlatılamadı; polish atlandı")
+        return routine_items, None
 
     items_text = ""
     for i, item in enumerate(routine_items):
@@ -146,11 +132,11 @@ SADECE JSON array döndür (sadece detail güncellenebilir, action/time/category
             return routine_items, None
 
         log.warning("AI geçersiz format döndürdü, orijinal kullanılıyor")
-        return routine_items, "Yapay zeka beklenmeyen formatta yanıt verdi; rutin metinleri değiştirilmedi."
+        return routine_items, None
 
     except Exception as e:
         log.error("AI polish hatası: %s — orijinal rutin kullanılıyor", e)
-        return routine_items, _polish_user_message(e)
+        return routine_items, None
 
 
 async def assessment_chat(

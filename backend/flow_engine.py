@@ -1663,13 +1663,16 @@ def compute_holistic_recommendations(
     for n in nutrition:
         items.append(n)
 
-    # ── EGZERSİZ ──
+    # ── EGZERSİZ (Günlük: takip ekranında “gün boyunca” ile birlikte görünsün) ──
     items.append({
-        "time": "Sabah", "category": "Yaşam", "icon": "🏃",
-        "action": "Günlük 30 dk Orta Yoğunlukta Hareket",
-        "detail": "Yürüyüş, yoga veya hafif kardiyo. Kan dolaşımını artırır, "
-                 "cilde oksijen ve besin taşınmasını hızlandırır.",
+        "time": "Günlük",
+        "category": "Yaşam",
+        "icon": "🚶",
+        "action": "Yürüyüş veya hafif hareket",
+        "detail": "Gün içinde toplam yaklaşık 20–30 dakika tempolu yürüyüş, bisiklet veya hafif kardiyo "
+        "kan dolaşımını destekler; nefes ve stres rutinleriyle birlikte düşünüldüğünde cilt için dolaylı fayda sağlayabilir.",
         "priority": 4,
+        "step_order": 8,
     })
 
     # ── SUPPLEMENT ──
@@ -2845,10 +2848,7 @@ def run_flow(
         "category": "Yaşam",
         "icon": "📍",
         "action": f"Günlük denge: {rl_tr}",
-        "detail": (
-            ("Düşük risk: plan standart ilerliyor. " if risk_level == "normal" else "")
-            + (risk_info.get("detail") or "")
-        ).strip(),
+        "detail": (risk_info.get("detail") or "").strip(),
         "priority": 0,
         "step_order": 0,
     }

@@ -682,6 +682,65 @@ SCENARIO_PROTOCOLS = {
 # 3. RİSK SKORU HESAPLAMA
 # ═══════════════════════════════════════════════════════════════
 
+def _risk_detail_for_user(
+    stress: int,
+    water_intake: float,
+    humidity: float,
+    sleep_hours: float,
+    makeup_frequency: int,
+    makeup_removal: str,
+    cycle_phase: str,
+    gender: str,
+    level: str,
+) -> str:
+    """Kullanıcıya gösterilecek düz Türkçe özet (formül satırı değil)."""
+    hints: list[str] = []
+    if stress >= 9:
+        hints.append("Stres puanın oldukça yüksek; bu dönemde cilt daha kolay tepki verebilir.")
+    elif stress >= 6:
+        hints.append("Stres orta–yüksek banda yakın; yatıştırıcı yaşam adımları faydalı olur.")
+
+    if water_intake < 1.5:
+        hints.append("Günlük su hedefine henüz tam yaklaşmamış görünüyorsun; hidrasyon bariyer ve elastikiyeti destekler.")
+    elif water_intake < 2.0:
+        hints.append("Su tüketimin hedefin biraz altında kalabilir; gün içine birkaç bardak eklemek iyi olur.")
+
+    if humidity < 40:
+        hints.append("Ortam nemi düşük sayılır; nemlendirme ve bariyer bakımı özellikle önemli.")
+    elif humidity < 60:
+        hints.append("Ortam nemi orta; rutindeki nem adımlarını sürdürmek yeterli olabilir.")
+
+    if sleep_hours < 6:
+        hints.append("Uyku süren kısa; gece onarımı için süreyi kademeli olarak artırmayı düşünebilirsin.")
+    elif sleep_hours < 7:
+        hints.append("Uyku süren idealin biraz altında; düzenli yatış-kalkış saatleri bariyer onarımına yardım eder.")
+
+    mf = int(makeup_frequency or 0)
+    mr = (makeup_removal or "cleanser").lower()
+    if mf >= 5:
+        hints.append("Makyajı sık kullanıyorsun; gözenek ve bariyer için nazik ve eksiksiz temizlik önemli.")
+    if mf > 0 and mr in ("none", "water"):
+        hints.append("Makyaj sonrası yalnızca su veya temizlik yok denmiş; hafif çift aşama temizlik cildi daha rahat bırakır.")
+
+    g = (gender or "").lower()
+    cp = (cycle_phase or "").lower()
+    if g in ("female", "kadın", "kadin") and cp in ("luteal", "menstrual"):
+        hints.append("Döngünün bu fazında cilt biraz daha yağlı veya hassas olabilir; rutin buna göre muhafazakâr tutuldu.")
+
+    band = {
+        "normal": "Genel tablo bugün daha sakin; rutin standart güvenli çekirdekte ilerliyor.",
+        "moderate": "Birkaç yaşam faktörü bir araya gelince orta düzeyde bir yük oluşuyor; rutin buna göre hafif yumuşatıldı.",
+        "high": "Stres, uyku, su ve nem gibi faktörler birlikte değerlendirilince risk bandı yükseldi; koruyucu ve yatıştırıcı adımlar öne alındı.",
+        "crisis": "İşaretler yüksek yük gösteriyor; şimdilik en güvenli ve sade çekirdek rutin öneriliyor.",
+    }.get(level, "Rutin, güncel yaşam verilerine göre ayarlandı.")
+
+    body = " ".join(hints) if hints else ""
+    closing = " Bu özet rutini kişiselleştirmek içindir; tıbbi tanı veya tedavi yerine geçmez."
+    if body:
+        return f"{body} {band}{closing}"
+    return f"{band}{closing}"
+
+
 def compute_risk_score(
     stress: int,
     water_intake: float,
@@ -755,14 +814,28 @@ def compute_risk_score(
         level = "normal"
         label = "Normal"
 
+    detail_user = _risk_detail_for_user(
+        stress=stress,
+        water_intake=water_intake,
+        humidity=humidity,
+        sleep_hours=sleep_hours,
+        makeup_frequency=mf,
+        makeup_removal=mr,
+        cycle_phase=cp_raw,
+        gender=g,
+        level=level,
+    )
+    detail_formula = (
+        f"Stres:{stress} + Su:{water_intake}L + Nem:{humidity}% + Uyku:{sleep_hours}s"
+        f" + makyaj:{mf}/{mr} + döngü:{cp_raw or '-'} = {score}"
+    )
+
     return {
         "score": score,
         "level": level,
         "label": label,
-        "detail": (
-            f"Stres:{stress} + Su:{water_intake}L + Nem:{humidity}% + Uyku:{sleep_hours}s"
-            f" + makyaj:{mf}/{mr} + döngü:{cp_raw or '-'} = {score}"
-        ),
+        "detail": detail_user,
+        "detail_formula": detail_formula,
     }
 
 

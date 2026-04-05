@@ -14,7 +14,7 @@ import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
 import {
   Sparkles, PlusCircle, CloudSun, Droplets, Sun, Thermometer,
   Calendar, ArrowRight, Leaf, AlertTriangle, Heart, Apple,
-  Droplet, Moon, Dumbbell, MessageCircle, ClipboardCheck, Info,
+  Droplet, Moon, MessageCircle, ClipboardCheck, Info,
   CalendarDays, Activity,
 } from "lucide-react";
 
@@ -141,7 +141,6 @@ export default function Dashboard() {
   const [fetchedRoutine, setFetchedRoutine] = useState(null);
   const [fetchingDbRoutine, setFetchingDbRoutine] = useState(false);
   const [showPlanExpanded, setShowPlanExpanded] = useState(false);
-  const [dismissAiPolish, setDismissAiPolish] = useState(false);
 
   const accepted = uid ? isRoutineTrackingAccepted(uid) : false;
 
@@ -211,8 +210,6 @@ export default function Dashboard() {
     };
   }, [nav, uid, accepted, fetchedRoutine, user]);
 
-  const aiPolishNote = !dismissAiPolish && (nav?.aiPolishNote || null);
-
   const routine = merged.routine;
   const weather = merged.weather;
   const userName = merged.userName;
@@ -274,6 +271,25 @@ export default function Dashboard() {
       })
       .sort((a, b) => (a.step_order ?? 50) - (b.step_order ?? 50));
   }, [lifestyleItems]);
+
+  /** Sabah yaşam / zihin (nefes vb.) — ürün sabah listesinde yoktu; takip ekranına eklendi. */
+  const wellnessMorningItems = useMemo(() => {
+    return wellnessItems
+      .filter((r) => {
+        const t = String(r.time || "").trim().toLowerCase();
+        return t === "sabah" || t === "morning";
+      })
+      .sort((a, b) => (a.step_order ?? 50) - (b.step_order ?? 50));
+  }, [wellnessItems]);
+
+  const wellnessEveningItems = useMemo(() => {
+    return wellnessItems
+      .filter((r) => {
+        const t = String(r.time || "").trim().toLowerCase();
+        return t === "akşam" || t === "evening";
+      })
+      .sort((a, b) => (a.step_order ?? 50) - (b.step_order ?? 50));
+  }, [wellnessItems]);
 
   const eveningMorningHints = useMemo(() => computeEveningActivesMorningHints(routine), [routine]);
 
@@ -378,22 +394,6 @@ export default function Dashboard() {
             <p className="text-sm text-gray-600 mt-2">Merhaba {userName}, bugünkü adımların ve check-in aşağıda.</p>
           </div>
 
-          {aiPolishNote && (
-            <div className="mb-5 card !p-3 border-sky-200 bg-sky-50/90 text-sm text-sky-950 flex gap-3 justify-between items-start">
-              <div className="flex gap-2 min-w-0">
-                <Info className="w-5 h-5 shrink-0 mt-0.5 text-sky-700" />
-                <p className="leading-relaxed">{aiPolishNote}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDismissAiPolish(true)}
-                className="text-xs font-semibold text-sky-800 shrink-0 underline-offset-2 hover:underline"
-              >
-                Kapat
-              </button>
-            </div>
-          )}
-
           <Link
             to="/dashboard/checkin"
             className="card mb-5 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer group"
@@ -448,12 +448,36 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+              {wellnessMorningItems.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
+                    ☀️ Sabah — yaşam
+                  </div>
+                  <div className="space-y-1.5">
+                    {wellnessMorningItems.map((item, i) => (
+                      <ProductStep key={`t-wm-${i}`} item={item} theme={theme} />
+                    ))}
+                  </div>
+                </div>
+              )}
               {todayPlan.evening.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">🌙 Akşam</div>
                   <div className="space-y-1.5">
                     {todayPlan.evening.map((item, i) => (
                       <ProductStep key={`t-e-${i}`} item={item} step={i + 1} theme={theme} />
+                    ))}
+                  </div>
+                </div>
+              )}
+              {wellnessEveningItems.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
+                    🌙 Akşam — yaşam
+                  </div>
+                  <div className="space-y-1.5">
+                    {wellnessEveningItems.map((item, i) => (
+                      <ProductStep key={`t-we-${i}`} item={item} theme={theme} />
                     ))}
                   </div>
                 </div>
@@ -468,7 +492,11 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-              {!todayPlan.morning.length && !todayPlan.evening.length && !dailyLifestyleItems.length && (
+              {!todayPlan.morning.length &&
+                !todayPlan.evening.length &&
+                !dailyLifestyleItems.length &&
+                !wellnessMorningItems.length &&
+                !wellnessEveningItems.length && (
                 <p className="text-sm text-gray-500">Bugün için planlı bakım adımı yok; haftalık kullanım günlerine bak.</p>
               )}
             </div>
@@ -533,21 +561,6 @@ export default function Dashboard() {
           {nav?.flashNeedAccept && (
             <div className="mb-4 card !p-3 border-amber-200 bg-amber-50/80 text-sm text-amber-900">
               Günlük check-in için önce aşağıdan &quot;Rutini kabul ediyorum&quot; ile takibe başla.
-            </div>
-          )}
-          {aiPolishNote && (
-            <div className="mb-4 card !p-3 border-sky-200 bg-sky-50/90 text-sm text-sky-950 flex gap-3 justify-between items-start">
-              <div className="flex gap-2 min-w-0">
-                <Info className="w-5 h-5 shrink-0 mt-0.5 text-sky-700" />
-                <p className="leading-relaxed">{aiPolishNote}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDismissAiPolish(true)}
-                className="text-xs font-semibold text-sky-800 shrink-0 underline-offset-2 hover:underline"
-              >
-                Kapat
-              </button>
             </div>
           )}
           <h1 className="text-2xl font-bold text-gray-900">
@@ -723,7 +736,8 @@ export default function Dashboard() {
             </div>
             <div className="p-3 space-y-1.5">
               <p className="text-[10px] text-gray-500 mb-2">
-                Bu adımlar haftanın her günü geçerlidir (su, beslenme, nefes, hafif hareket vb.).
+                Her gün tekrarlanır: su, yürüyüş/hareket, günlük denge özeti ve beslenme notları. Nefes ve akşam uyku
+                rutini aşağıdaki gün kartlarında sabah/akşam yaşam başlığıyla listelenir.
               </p>
               {dailyLifestyleItems.map((item, i) => (
                 <ProductStep key={`all-days-${i}`} item={item} theme={theme} />
@@ -734,7 +748,11 @@ export default function Dashboard() {
 
         {WEEK_DAYS.map((dayLabel, dayIndex) => {
           const { morning, evening } = routineByDay[dayIndex] || { morning: [], evening: [] };
-          const hasAny = morning.length > 0 || evening.length > 0;
+          const hasAny =
+            morning.length > 0 ||
+            evening.length > 0 ||
+            wellnessMorningItems.length > 0 ||
+            wellnessEveningItems.length > 0;
           if (!hasAny) return null;
           return (
             <div key={dayIndex} className="card mb-4 overflow-hidden">
@@ -753,12 +771,36 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
+                {wellnessMorningItems.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
+                      ☀️ Sabah — yaşam
+                    </div>
+                    <div className="space-y-1.5">
+                      {wellnessMorningItems.map((item, i) => (
+                        <ProductStep key={`${dayIndex}-wm-${i}`} item={item} theme={theme} />
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {evening.length > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">🌙 Akşam</div>
                     <div className="space-y-1.5">
                       {evening.map((item, i) => (
                         <ProductStep key={`${dayIndex}-e-${i}`} item={item} step={i + 1} theme={theme} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {wellnessEveningItems.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
+                      🌙 Akşam — yaşam
+                    </div>
+                    <div className="space-y-1.5">
+                      {wellnessEveningItems.map((item, i) => (
+                        <ProductStep key={`${dayIndex}-we-${i}`} item={item} theme={theme} />
                       ))}
                     </div>
                   </div>
@@ -857,17 +899,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Always show exercise tip */}
-        <div className="card !p-4 border-green-100 bg-green-50/30 mb-5">
-          <div className="flex items-start gap-3">
-            <Dumbbell className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-bold text-gray-900 text-xs">Egzersiz</h4>
-              <p className="text-[11px] text-gray-600 mt-0.5">Haftada 3-4 gün 30dk hareket et. Kan dolaşımı artar, cildin parlar. Egzersiz sonrası yüzünü temizle.</p>
-            </div>
-          </div>
-        </div>
-
         {/* Photo */}
         {photoUrl && (
           <div className="card mb-5">
@@ -933,15 +964,12 @@ function DailyBalanceCard({ item, flowDebug, theme }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 gap-y-1 mb-1">
-            <h3 className="text-sm font-bold text-gray-900">Günlük denge özeti</h3>
+            <h3 className="text-sm font-bold text-gray-900">Bugünkü yaşam dengesi</h3>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${pill}`}>
               {flowDebug?.risk_info?.label || item.action?.replace(/^Günlük denge:\s*/i, "").trim() || "—"}
             </span>
           </div>
           <p className="text-xs text-gray-700 leading-relaxed">{item.detail}</p>
-          <p className="text-[10px] text-gray-500 mt-2">
-            Bu özet uyku, su, stres, nem ve benzeri faktörlerin rutine nasıl yansıdığını gösterir; tıbbi teşhis değildir.
-          </p>
         </div>
       </div>
     </div>

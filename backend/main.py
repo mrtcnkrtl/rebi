@@ -5,6 +5,7 @@ Mimari: Flow Engine (deterministik) -> Knowledge Router (metadata) -> AI (polish
 Yeni: /daily_checkin endpoint, adaptif rutin sistemi, risk skoru
 """
 
+import httpx
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -59,6 +60,7 @@ from rate_limit import (
     LIMIT_GENERATE_ROUTINE,
     LIMIT_CHAT,
     LIMIT_UPLOAD_PHOTO,
+    LIMIT_ACCOUNT_DELETE,
 )
 
 log = get_logger("api")
@@ -91,6 +93,10 @@ _OPENAPI_TAGS = [
     {
         "name": "media",
         "description": "Cilt fotoğrafı yükleme (Supabase Storage).",
+    },
+    {
+        "name": "account",
+        "description": "Hesap yönetimi (kalıcı silme).",
     },
 ]
 
@@ -368,6 +374,14 @@ class DailyTrackingTodayResponse(BaseModel):
     events: list[dict] = []
 
 
+_ACCOUNT_DELETE_CONFIRM = "HESABIMI_SIL"
+
+
+class AccountDeleteRequest(BaseModel):
+    user_id: str
+    confirm_text: str
+
+
 # ═══════════════════════════════════════════════════════
 # Endpoints
 # ═══════════════════════════════════════════════════════
@@ -386,6 +400,7 @@ async def root():
             "/daily_checkin",
             "/daily_checkin/status",
             "/upload_photo",
+            "/account/delete",
             "/health",
         ],
     }
@@ -1226,6 +1241,91 @@ def _generate_fallback_note(risk_level: str, skin_feeling: str) -> str:
 
 _MAX_PHOTO_BYTES = 8 * 1024 * 1024
 _ALLOWED_PHOTO_EXT = frozenset({"jpg", "jpeg", "png", "webp", "heic", "heif"})
+
+
+def _delete_skin_photos_for_user(supabase, user_id: str) -> None:
+    """skin-photos bucket içinde {user_id}/ altındaki dosyaları siler (CASCADE storage’da yok)."""
+    prefix = (user_id or "").strip()
+    if not prefix or ".." in prefix or any(c in prefix for c in "/\\"):
+        return
+    try:
+        items = supabase.storage.from_("skin-photos").list(prefix)
+    except Exception as e:
+        log.warning("skin-photos list atlanıyor (%s): %s", prefix, e)
+        return
+    if not items:
+        return
+    paths: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if name and str(name).strip():
+            paths.append(f"{prefix}/{name}")
+    if not paths:
+        return
+    try:
+        supabase.storage.from_("skin-photos").remove(paths)
+        log.info("skin-photos silindi: user=%s count=%d", prefix, len(paths))
+    except Exception as e:
+        log.warning("skin-photos remove kısmen başarısız (%s): %s", prefix, e)
+
+
+async def _auth_admin_delete_user(user_id: str) -> None:
+    base = (SUPABASE_URL or "").rstrip("/")
+    key = (SUPABASE_SERVICE_KEY or "").strip()
+    if not base or not key:
+        raise HTTPException(status_code=500, detail="Supabase yapılandırması eksik")
+    url = f"{base}/auth/v1/admin/users/{user_id}"
+    headers = {
+        "apikey": key,
+        "Authorization": f"Bearer {key}",
+    }
+    async with httpx.AsyncClient(timeout=45.0) as client:
+        r = await client.delete(url, headers=headers)
+    if r.status_code not in (200, 204):
+        log.error("GoTrue admin delete_user: %s %s", r.status_code, r.text[:500])
+        raise HTTPException(
+            status_code=502,
+            detail="Kimlik sağlayıcı hesabı silinemedi. Daha sonra tekrar deneyin veya destek ile iletişime geçin.",
+        )
+
+
+@app.post(
+    "/account/delete",
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_ACCOUNT_DELETE))],
+)
+async def account_delete(request: Request, req: AccountDeleteRequest):
+    """
+    Oturum sahibinin Supabase auth kullanıcısını ve ilişkili uygulama verisini kaldırır
+    (şema ON DELETE CASCADE). Storage’daki cilt fotoğrafları ayrıca temizlenir.
+    İstemci `confirm_text` olarak tam metin `HESABIMI_SIL` göndermelidir.
+    """
+    if (req.confirm_text or "").strip() != _ACCOUNT_DELETE_CONFIRM:
+        raise HTTPException(
+            status_code=400,
+            detail=f'Onay metni tam olarak "{_ACCOUNT_DELETE_CONFIRM}" olmalıdır.',
+        )
+    uid = (req.user_id or "").strip()
+    if not uid or ".." in uid or any(c in uid for c in "/\\"):
+        raise HTTPException(status_code=400, detail="Geçersiz kullanıcı kimliği")
+    try:
+        uuid.UUID(uid)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Geçersiz kullanıcı kimliği")
+    enforce_supabase_user(request, uid)
+    if is_demo_user_id(uid):
+        raise HTTPException(status_code=400, detail="Demo hesap uygulama üzerinden silinemez.")
+
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+
+    _delete_skin_photos_for_user(supabase, uid)
+    await _auth_admin_delete_user(uid)
+    log.info("Hesap kalıcı silindi: user_id=%s", uid)
+    return {"ok": True}
 
 
 @app.post(
