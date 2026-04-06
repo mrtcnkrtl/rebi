@@ -113,7 +113,7 @@ const guideSteps = [
       { skin: "Kuru", sign: "Gergin hissediyorsun, hafif pul pul olabilir" },
       { skin: "Karma", sign: "Sadece burun/alın parlıyor, yanaklar mat veya gergin" },
       { skin: "Normal", sign: "Rahat hissediyorsun, ne yağlı ne kuru" },
-      { skin: "Hassas", sign: "Kızarıklık var, hafif yanma veya batma hissi" },
+      { skin: "Hassas", sign: "Kolay kızarır/ısınır; ürün sürünce veya sıcak-soğukta daha çabuk tepki verir" },
     ],
   },
   {
@@ -124,7 +124,7 @@ const guideSteps = [
       { skin: "Kuru", sign: "Mendilde hiç yağ yok" },
       { skin: "Karma", sign: "Sadece burun/alın bölgesinde yağ izi var" },
       { skin: "Normal", sign: "Çok hafif, eşit dağılmış nem izi" },
-      { skin: "Hassas", sign: "Mendili bastırdığında kızarıklık oluştu" },
+      { skin: "Hassas", sign: "Bastırınca kızarıklık/iz daha uzun süre kalır; sık sürtünmede kolay tahriş olur" },
     ],
   },
 ];

@@ -321,6 +321,8 @@ class AssessmentRequest(BaseModel):
     actives_tolerance: Optional[dict] = None  # { "bha": "never"|"good"|"mild"|"bad", ... }
     makeup_frequency: int = 0  # 0 yok, 1 seyrek, 3 haftada birkaç, 5 günlük
     makeup_removal: str = "cleanser"  # none | water | cleanser | double
+    # UI: karışıklığı azaltan netleştirici işaretler (şimdilik opsiyonel)
+    special_flags: Optional[dict] = None
 
 
 class RoutineResponse(BaseModel):
@@ -646,6 +648,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
         actives_tolerance=req.actives_tolerance,
         makeup_frequency=req.makeup_frequency,
         makeup_removal=req.makeup_removal or "cleanser",
+        special_flags=req.special_flags,
     )
 
     routine_items = flow_result["routine_items"]
@@ -714,6 +717,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
                     "actives_tolerance": req.actives_tolerance or {},
                     "makeup_frequency": req.makeup_frequency,
                     "makeup_removal": req.makeup_removal or "cleanser",
+                    "special_flags": req.special_flags or {},
                 },
                 "photo_url": req.photo_url,
                 "weather_data": weather_data,
@@ -768,6 +772,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
             "actives_unused": req.actives_unused or [],
             "actives_tolerance": req.actives_tolerance or {},
             "personalization": flow_result.get("personalization"),
+            "special_flags": flow_result.get("special_flags_normalized") or {},
             "absolute_enforcement_prefinal": flow_result.get("absolute_enforcement_report"),
             "knowledge_retrieved": knowledge_result.get("total_retrieved", 0),
             "sources": knowledge_result.get("sources", []),

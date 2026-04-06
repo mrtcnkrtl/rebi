@@ -41,6 +41,7 @@ export default function Auth() {
       }
     } catch (err) {
       const raw = err?.message || String(err);
+      const lower = String(raw || "").toLowerCase();
       const isNetwork =
         raw === "Failed to fetch" ||
         raw.includes("NetworkError") ||
@@ -51,6 +52,17 @@ export default function Auth() {
             "Supabase Dashboard → Project Settings → API ile .env içindeki VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY aynı mı; " +
             ".env değiştirdiysen `npm run dev` sunucusunu durdurup yeniden başlat. " +
             "Ayrıntı için tarayıcıda F12 → Ağ (Network) sekmesi."
+        );
+      } else if (
+        lower.includes("rate limit") ||
+        lower.includes("too many") ||
+        lower.includes("exceeded") ||
+        lower.includes("quota") ||
+        lower.includes("429")
+      ) {
+        setError(
+          "Kısa süre içinde çok fazla deneme yapıldığı için geçici olarak sınır aşıldı. " +
+            "1-2 dakika bekleyip tekrar dener misin? Devam ederse VPN / kurumsal ağ kullanıyorsan kapatıp dene."
         );
       } else {
         setError(raw || "Bir hata oluştu");

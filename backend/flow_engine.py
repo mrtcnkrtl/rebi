@@ -2782,6 +2782,155 @@ def _deduplicate_and_limit(items: list) -> list:
 
 
 # ══════════════════════════════════════════════════════════════════════
+# 14b. ANALİZ NETLEŞTİRİCİ İŞARETLER (UI special_flags → rutin + özet)
+# ══════════════════════════════════════════════════════════════════════
+
+_SPECIAL_FLAG_KEYS = (
+    "frown_lines",
+    "smile_lines",
+    "eye_crows_feet",
+    "redness_diffuse",
+    "redness_acne_marks",
+    "cold_sensitive",
+    "stings_with_products",
+)
+
+
+def _normalize_special_flags(raw: Optional[dict]) -> dict:
+    """İstemciden gelen dict'i güvenli bool haritaya çevirir."""
+    if not raw or not isinstance(raw, dict):
+        return {}
+    out = {}
+    for k in _SPECIAL_FLAG_KEYS:
+        v = raw.get(k)
+        if v is True or v == 1 or (isinstance(v, str) and v.lower() in ("true", "1", "yes")):
+            out[k] = True
+    return out
+
+
+def build_special_flags_routine_items(
+    flags: dict,
+    *,
+    concern: str,
+    temperature: float,
+) -> list:
+    """
+    Kullanıcının işaretlediği özel durumlar için 1–2 adet Yaşam satırı (bilgilendirme + yönlendirme).
+    Bakım satırı eklemez; finalize içindeki etken-madde mantığına girmez.
+    """
+    if not flags:
+        return []
+    items = []
+
+    line_bits = []
+    if flags.get("frown_lines"):
+        line_bits.append("kaş çatınca belirginleşen alın/kaş arası çizgiler")
+    if flags.get("eye_crows_feet"):
+        line_bits.append("gülünce göz kenarında belirginleşen ince çizgiler")
+    if flags.get("smile_lines"):
+        line_bits.append("gülünce burun–ağız çevresinde belirginleşen çizgiler")
+
+    if line_bits:
+        detail = (
+            "İşaretlediğin bölgeler: " + "; ".join(line_bits) + ". "
+            "Bu çizgiler çoğu zaman mimik + zamanla birlikte oluşur; tıbbi işlem önerisi değildir. "
+            "Günlük geniş spektrum güneş koruma ve düzenli nem/bariyer katmanı, çizgilerin daha hızlı belirginleşmesini "
+            "yavaşlatmaya yardımcı olabilir."
+        )
+        usage = (
+            "Yüz kaslarını sürekli germeden (özellikle kaş çatmadan) güne başla; akşam rutininde nem/bariyeri atlama. "
+            "Yeni güçlü aktifleri aynı haftada üst üste deneme."
+        )
+        items.append(
+            {
+                "time": "Günlük",
+                "category": "Yaşam",
+                "icon": "✨",
+                "action": "Çizgi bölgeleri — kişisel not",
+                "detail": detail,
+                "usage": usage,
+                "priority": 3,
+                "step_order": 96,
+            }
+        )
+
+    sens_bits = []
+    if flags.get("redness_diffuse"):
+        sens_bits.append("yüzde daha yaygın (difüz) kızarıklık / ısınma hissi")
+    if flags.get("redness_acne_marks"):
+        sens_bits.append("sivilce veya leke sonrası kırmızılık / iz görünümü")
+    if flags.get("cold_sensitive"):
+        sens_bits.append("soğuk hava veya rüzgârda hassasiyetin artması")
+    if flags.get("stings_with_products"):
+        sens_bits.append("ürün sürünce batma, yanma veya ani kızarma")
+
+    if sens_bits:
+        detail = "Senin tarifin: " + "; ".join(sens_bits) + ". "
+        if flags.get("redness_acne_marks") and concern == "sensitivity":
+            detail += (
+                "Eğer asıl şikâyetin sivilce sonrası kırmızılık ve lekeler ise, bazen ana endişeyi "
+                "'Akne' seçmek iz ve renk eşitliği yönetimini daha netleştirir (bu planda hassasiyet reaktivitesi de dikkate alındı). "
+            )
+        if flags.get("redness_diffuse") and concern == "acne":
+            detail += (
+                "Yaygın kızarıklık sivilce lekesinden farklı olabilir; kızarıklık baskınsa ve sivilce azsa "
+                "'Hassasiyet / Kızarıklık' endişesiyle ikinci bir analiz değerlendirilebilir. "
+            )
+        if flags.get("stings_with_products"):
+            detail += (
+                "Batma/yanma varsa yeni ürünleri tek tek ekle; mümkünse 24–48 saat küçük bölge (kulak arkası veya yanak) yama testi yap. "
+                "Aynı gece birden fazla güçlü aktif üst üste kullanmaktan kaçın. "
+            )
+        if flags.get("cold_sensitive"):
+            cold_hint = (
+                f"Bugünkü sıcaklık yaklaşık {temperature:.0f}°C; soğuk tetikliyorsa bariyer nemini sabit tut, "
+                "rüzgâra maruz kaldıktan sonra ani sıcak suyla yüzü yıkamaktan kaçın."
+                if temperature is not None
+                else "Soğuk tetikliyorsa bariyer nemini sabit tut, rüzgâra maruz kaldıktan sonra ani sıcak suyla yüzü yıkamaktan kaçın."
+            )
+            detail += cold_hint
+
+        items.append(
+            {
+                "time": "Günlük",
+                "category": "Yaşam",
+                "icon": "🌸",
+                "action": "Hassasiyet / kızarıklık — netleştirme notu",
+                "detail": detail.strip(),
+                "usage": (
+                    "Bu madde cilt tipinden (yağlı/kuru/karma) bağımsız bir reaktivite tarifidir; "
+                    "normal ciltte bile soğuk veya ürünle tetiklenen hassasiyet görülebilir."
+                ),
+                "priority": 2,
+                "step_order": 95,
+            }
+        )
+
+    return items
+
+
+def _special_flags_context_tr(flags: dict) -> str:
+    if not flags:
+        return ""
+    parts = []
+    if flags.get("frown_lines"):
+        parts.append("alın/kaş çatma çizgisi")
+    if flags.get("eye_crows_feet"):
+        parts.append("göz kenarı çizgileri")
+    if flags.get("smile_lines"):
+        parts.append("gülme çizgileri")
+    if flags.get("redness_diffuse"):
+        parts.append("difüz kızarıklık")
+    if flags.get("redness_acne_marks"):
+        parts.append("sivilce sonrası kırmızılık")
+    if flags.get("cold_sensitive"):
+        parts.append("soğukta hassasiyet")
+    if flags.get("stings_with_products"):
+        parts.append("ürünle batma/yanma")
+    return " Kullanıcı ek işaretleri: " + ", ".join(parts) + "."
+
+
+# ══════════════════════════════════════════════════════════════════════
 # 15. MASTER ORCHESTRATOR - Tüm dalları birleştirir
 # ══════════════════════════════════════════════════════════════════════
 
@@ -2811,6 +2960,7 @@ def run_flow(
     actives_tolerance: Optional[dict] = None,
     makeup_frequency: int = 0,
     makeup_removal: str = "cleanser",
+    special_flags: Optional[dict] = None,
 ) -> dict:
     """
     Ana akış fonksiyonu. Tüm dalları çalıştırır, sıfır token harcar.
@@ -2835,6 +2985,8 @@ def run_flow(
     """
     if acne_zones is None:
         acne_zones = []
+
+    special_flags_norm = _normalize_special_flags(special_flags)
 
     # 1. Concern route
     concern_map = CONCERN_KNOWLEDGE_MAP.get(concern, CONCERN_KNOWLEDGE_MAP["acne"])
@@ -2889,6 +3041,9 @@ def run_flow(
     _strength_stage = _active_strength_stage(
         _normalize_actives_experience(actives_experience), merged_actives_tol, risk_level
     )
+    # UI netleştirme: ürünle batma/yanma işaretliyse daha yumuşak başlangıç (yüzde + sıklık)
+    if special_flags_norm.get("stings_with_products"):
+        _strength_stage = "starter"
     _apply_niacinamide_pct_to_skin_profile(skin_type, _na_pct)
     personalization = compute_personalization_profile(
         risk_info, severity_score, skin_type_key, merged_actives_tol, concern
@@ -2983,6 +3138,21 @@ def run_flow(
 
     routine_items, absolute_enforcement_report = enforce_absolute_rules_on_routine(routine_items)
 
+    routine_items.extend(
+        build_special_flags_routine_items(
+            special_flags_norm,
+            concern=concern,
+            temperature=float(temperature or 0),
+        )
+    )
+    routine_items.sort(
+        key=lambda x: (
+            time_order.get(x["time"], 2),
+            x.get("step_order", 50),
+            x.get("priority", 5),
+        )
+    )
+
     # 15x. Tüm Bakım/Koruma satırlarına kullanıcı dilinde gerekçe + (varsa) yaşam riski notu
     routine_items = finalize_user_routine_item_details(
         routine_items,
@@ -2994,14 +3164,28 @@ def run_flow(
     )
 
     # 15a. Aktif deneyimi + tolerans: sıklık / alıştırma metinleri (weekly_days atamasından önce)
+    actives_experience_for_ramp = actives_experience
+    if special_flags_norm.get("stings_with_products"):
+        actives_experience_for_ramp = "none"
     _apply_actives_experience_ramp(
-        routine_items, actives_experience,
+        routine_items, actives_experience_for_ramp,
         actives_unused=None,
         actives_tolerance=merged_actives_tol,
     )
 
     # 15b. Haftalık kullanım: hangi günler? (sistem atar; check-in/geri dönüşe göre sonra güncellenebilir)
     _assign_weekly_days(routine_items)
+    # Ürünle batma/yanma: güçlü aktiflerin haftalık gün sayısını daha konservatif tut
+    if special_flags_norm.get("stings_with_products"):
+        for it in routine_items:
+            if it.get("category") != "Bakım":
+                continue
+            fam = _strong_actives_families_for_item(it)
+            if not fam:
+                continue
+            wd = it.get("weekly_days")
+            if isinstance(wd, list) and len(wd) > 3:
+                it["weekly_days"] = _spread_n_days_across_week(3)
     _sync_morning_c_with_strong_evening_days(routine_items)
     _ensure_weekly_days_for_strong_evening_actives(routine_items)
     routine_items = _split_arrow_chained_evening_steps(routine_items)
@@ -3062,6 +3246,8 @@ def run_flow(
         f"(katman {personalization['tier']}/3, özet skor {personalization['composite_score']}/100; "
         f"yaşam riski {personalization['risk_score']} puan → {personalization['risk_level']})."
     )
+    special_ctx = _special_flags_context_tr(special_flags_norm)
+
     context_summary = (
         f"Kullanıcı: {age} yaşında ({age_group['label_tr']}), {gender}, "
         f"cilt tipi: {skin_type['label_tr']}, "
@@ -3072,7 +3258,7 @@ def run_flow(
         f"Sigara: {'evet (' + str(smoking_per_day) + '/gün, ' + str(smoking_years) + ' yıl)' if smoking_per_day > 0 else 'hayır'}, "
         f"alkol: {'evet (haftalık ~' + str(alcohol_frequency * alcohol_amount) + ' kadeh)' if alcohol_frequency > 0 else 'hayır'}. "
         f"Hava: {temperature}°C, UV {uv_index}, nem %{humidity}."
-        f"{hormonal_ctx}{zone_ctx} "
+        f"{hormonal_ctx}{zone_ctx}{special_ctx} "
         f"Önerilen ajanlar: {', '.join(severity['preferred_agents'][:4])}. "
         f"Kaçınılacaklar: {', '.join(severity['avoid'][:3]) if severity['avoid'] else 'yok'}."
     )
@@ -3096,6 +3282,7 @@ def run_flow(
         "care_guide": care_guide,
         "absolute_rules_catalog": get_absolute_rules_catalog(),
         "absolute_enforcement_report": absolute_enforcement_report,
+        "special_flags_normalized": special_flags_norm,
     }
 
 

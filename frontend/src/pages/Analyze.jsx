@@ -245,7 +245,7 @@ function AnalyzePhotoOnly({ user, navigate }) {
   }
 
   return (
-    <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+    <div className={`min-h-screen ${theme.bg} pb-[calc(8rem+env(safe-area-inset-bottom))] relative`}>
       <ThemePatternOverlay pattern={theme.pattern} />
       <div className="relative z-[1] max-w-lg mx-auto px-4 py-8 space-y-4">
         <button
@@ -441,6 +441,17 @@ export default function Analyze() {
   const [nutrition, setNutrition] = useState({ fastfood: 0, sugar: 0, dairy: 0, veggies: 3 });
   const [makeupFreq, setMakeupFreq] = useState(0);
   const [makeupRemoval, setMakeupRemoval] = useState("cleanser");
+  const [specialFlags, setSpecialFlags] = useState({
+    // aging / lines
+    frown_lines: false,
+    smile_lines: false,
+    eye_crows_feet: false,
+    // sensitivity / redness nuances
+    redness_diffuse: false,
+    redness_acne_marks: false,
+    cold_sensitive: false,
+    stings_with_products: false,
+  });
 
   // Step 3 - Kullanım soruları (tek tek: şiddet → tetikleyici → tedavi → beklenti)
   const [step3Section, setStep3Section] = useState(0);
@@ -484,6 +495,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
   const zones = [...new Set(Object.values(concernZones).flat())];
   const primaryConcern = concerns[0] || "acne";
   const toggleArr = (a, s, v) => s(a.includes(v) ? a.filter((x) => x !== v) : [...a, v]);
+  const toggleFlag = (k) => setSpecialFlags((p) => ({ ...p, [k]: !p[k] }));
   const setFamilyTolerance = (familyId, level) => {
     setActivesTolerance((prev) => ({ ...prev, [familyId]: level }));
   };
@@ -572,6 +584,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
         actives_tolerance: activesTolerance,
         makeup_frequency: makeupFreq,
         makeup_removal: makeupRemoval,
+        special_flags: Object.values(specialFlags).some(Boolean) ? specialFlags : null,
       };
       const auth = await apiAuthHeaders();
       const response = await fetch(`${API_URL}/generate_routine`, {
@@ -627,7 +640,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
 
   if (showCompactHub) {
     return (
-      <div className={`min-h-screen ${theme.bg} pb-24 relative`}>
+      <div className={`min-h-screen ${theme.bg} pb-[calc(8rem+env(safe-area-inset-bottom))] relative`}>
         <ThemePatternOverlay pattern={theme.pattern} />
         <div className="relative z-[1] max-w-lg mx-auto px-4 py-10">
           <div
@@ -681,7 +694,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
   }
 
   return (
-    <div className={`min-h-screen ${theme.bg} relative`}>
+    <div className={`min-h-screen ${theme.bg} pb-[calc(8rem+env(safe-area-inset-bottom))] relative`}>
       <ThemePatternOverlay pattern={theme.pattern} />
       <div className="relative z-[1] max-w-lg mx-auto px-4 py-8">
         {/* Progress */}
@@ -807,6 +820,105 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                 ))}
               </div>
             </div>
+
+            {/* Soruna göre netleştirici mini sorular (karışıklığı azaltır) */}
+            {(concerns.includes("aging") || concerns.includes("sensitivity")) && (
+              <div className="card space-y-3 border-slate-100 bg-slate-50/60">
+                <p className="text-xs font-bold text-gray-800">Kısa netleştirme</p>
+                {concerns.includes("aging") && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-gray-600 leading-relaxed">
+                      <strong className="text-gray-800">Kırışıklık/yaşlanma</strong> seçtiysen,
+                      aşağıdaki çizgilerden hangisi daha çok sende var?
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleFlag("frown_lines")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 ${
+                          specialFlags.frown_lines ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        Kaş çatınca alın/iki kaş arası
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFlag("eye_crows_feet")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 ${
+                          specialFlags.eye_crows_feet ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        Gülünce göz kenarı (kaz ayağı)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFlag("smile_lines")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 ${
+                          specialFlags.smile_lines ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        Gülme çizgileri (burun–ağız)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {concerns.includes("sensitivity") && (
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-gray-600 leading-relaxed">
+                      <strong className="text-gray-800">Hassasiyet / Kızarıklık</strong> seçtiysen:
+                      bu madde <strong>genel kızarıklık ve reaktivite</strong> içindir.
+                      <span className="text-gray-500">
+                        {" "}
+                        Eğer “sivilce sonrası kırmızılık/iz” diyorsan, Akne seçimi daha doğru olabilir.
+                      </span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleFlag("redness_diffuse")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 ${
+                          specialFlags.redness_diffuse ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        Genel/difüz kızarıklık
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFlag("redness_acne_marks")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 ${
+                          specialFlags.redness_acne_marks ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        Sivilce sonrası kırmızılık
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFlag("cold_sensitive")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 ${
+                          specialFlags.cold_sensitive ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        Soğukta hassaslaşıyor
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFlag("stings_with_products")}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 ${
+                          specialFlags.stings_with_products ? "border-teal-500 bg-teal-50 text-teal-800" : "border-gray-200 text-gray-600"
+                        }`}
+                      >
+                        Ürün sürünce batma/yanma
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">
+                      Not: Bu işaretler <strong>cilt tipi</strong> (yağlı/kuru/karma/normal) ile aynı şey
+                      değil; bazen normal cilt olup soğukta hassaslaşmak mümkündür.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Su & Uyku */}
             <div className="card space-y-3">
