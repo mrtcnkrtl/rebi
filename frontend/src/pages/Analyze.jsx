@@ -8,6 +8,8 @@ import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import { hasCompletedOnboarding } from "../lib/routineTracking";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
+import { analyzeSkinPhotoQuality } from "../lib/imageQuality";
+import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import LoadingScreen from "../components/LoadingScreen";
 import SkinTypeVisual from "../components/SkinTypeVisual";
 import SeverityTest from "../components/SeverityTest";
@@ -173,15 +175,20 @@ function AnalyzePhotoOnly({ user, navigate }) {
   const [showWebcam, setShowWebcam] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState({ type: "", text: "" });
+  const [photoContext, setPhotoContext] = useState("unsure");
+  const [photoQuality, setPhotoQuality] = useState(null);
 
-  const applyPhotoFile = (file) => {
+  const applyPhotoFile = async (file) => {
     if (!file) return;
     if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
     setPhotoFile(file);
     const url = URL.createObjectURL(file);
     previewUrlRef.current = url;
     setPhotoPreview(url);
+    setPhotoQuality(null);
     setMsg({ type: "", text: "" });
+    const q = await analyzeSkinPhotoQuality(file);
+    setPhotoQuality(q);
   };
 
   const clearPhoto = () => {
@@ -189,11 +196,12 @@ function AnalyzePhotoOnly({ user, navigate }) {
     previewUrlRef.current = null;
     setPhotoFile(null);
     setPhotoPreview(null);
+    setPhotoQuality(null);
   };
 
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) applyPhotoFile(file);
+    if (file) await applyPhotoFile(file);
     e.target.value = "";
   };
 
@@ -220,6 +228,13 @@ function AnalyzePhotoOnly({ user, navigate }) {
       const path = `${uid}/${Date.now()}.${ext}`;
       const { error } = await supabase.storage.from("skin-photos").upload(path, photoFile);
       if (error) throw error;
+      await ingestDailyTrackingEvent(uid, "photo_meta", {
+        context: photoContext,
+        meanLuma: photoQuality?.meanLuma ?? null,
+        variance: photoQuality?.variance ?? null,
+        sharpnessApprox: photoQuality?.sharpnessApprox ?? null,
+        flow: "photo_only",
+      });
       setMsg({
         type: "ok",
         text: "Fotoğraf güvenli depoya yüklendi. Profil → Cilt fotoğrafları bölümünde görebilirsin.",
@@ -290,6 +305,34 @@ function AnalyzePhotoOnly({ user, navigate }) {
               <button type="button" onClick={clearPhoto} className="btn-secondary w-full text-sm">
                 Değiştir
               </button>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-700">{t("analyze.photoContextLabel")}</label>
+                <select
+                  value={photoContext}
+                  onChange={(e) => setPhotoContext(e.target.value)}
+                  className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white"
+                >
+                  <option value="first">{t("analyze.photoContextFirst")}</option>
+                  <option value="same_light">{t("analyze.photoContextSame")}</option>
+                  <option value="progress">{t("analyze.photoContextProgress")}</option>
+                  <option value="unsure">{t("analyze.photoContextUnsure")}</option>
+                </select>
+                {photoQuality?.tooDark ? (
+                  <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                    {t("analyze.photoTooDark")}
+                  </p>
+                ) : null}
+                {photoQuality?.tooBlurry ? (
+                  <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                    {t("analyze.photoTooBlurry")}
+                  </p>
+                ) : null}
+                {photoQuality && !photoQuality.tooDark && !photoQuality.tooBlurry ? (
+                  <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1.5">
+                    {t("analyze.photoQualityOk")}
+                  </p>
+                ) : null}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -468,6 +511,8 @@ export default function Analyze() {
   // Step 4 - Foto + rutin oluştur (Rebi bu sayfada yok; rutin sonrası başka yerde kullanılabilir)
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoContext, setPhotoContext] = useState("unsure");
+  const [photoQuality, setPhotoQuality] = useState(null);
   const [showRoutineModal, setShowRoutineModal] = useState(false);
   const [showSkipPhotoModal, setShowSkipPhotoModal] = useState(false);
   const [showWebcam, setShowWebcam] = useState(false);
@@ -524,7 +569,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
   };
 
   /* ─── Foto: galeri / mobil kamera / webcam ─── */
-  const applyPhotoFile = (file) => {
+  const applyPhotoFile = async (file) => {
     if (!file) return;
     allowRoutineWithoutPhotoRef.current = false;
     if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
@@ -532,6 +577,9 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
     const url = URL.createObjectURL(file);
     previewUrlRef.current = url;
     setPhotoPreview(url);
+    setPhotoQuality(null);
+    const q = await analyzeSkinPhotoQuality(file);
+    setPhotoQuality(q);
   };
 
   const clearPhoto = () => {
@@ -540,11 +588,12 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
     previewUrlRef.current = null;
     setPhotoFile(null);
     setPhotoPreview(null);
+    setPhotoQuality(null);
   };
 
-  const handlePhotoChange = (e) => {
+  const handlePhotoChange = async (e) => {
     const file = e.target.files?.[0];
-    if (file) applyPhotoFile(file);
+    if (file) await applyPhotoFile(file);
     e.target.value = "";
   };
 
@@ -568,6 +617,15 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
           );
         } else {
           photoUrl = supabase.storage.from("skin-photos").getPublicUrl(path)?.data?.publicUrl;
+          if (photoUrl && user?.id) {
+            ingestDailyTrackingEvent(user.id, "photo_meta", {
+              context: photoContext,
+              meanLuma: photoQuality?.meanLuma ?? null,
+              variance: photoQuality?.variance ?? null,
+              sharpnessApprox: photoQuality?.sharpnessApprox ?? null,
+              flow: "analyze_full",
+            }).catch(() => {});
+          }
         }
       } else if (photoFile && !supabase) {
         setSubmitError(
@@ -1120,6 +1178,34 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                   <button type="button" onClick={clearPhoto} className="btn-secondary w-full text-sm">
                     Değiştir
                   </button>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-700">{t("analyze.photoContextLabel")}</label>
+                    <select
+                      value={photoContext}
+                      onChange={(e) => setPhotoContext(e.target.value)}
+                      className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm bg-white"
+                    >
+                      <option value="first">{t("analyze.photoContextFirst")}</option>
+                      <option value="same_light">{t("analyze.photoContextSame")}</option>
+                      <option value="progress">{t("analyze.photoContextProgress")}</option>
+                      <option value="unsure">{t("analyze.photoContextUnsure")}</option>
+                    </select>
+                    {photoQuality?.tooDark ? (
+                      <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                        {t("analyze.photoTooDark")}
+                      </p>
+                    ) : null}
+                    {photoQuality?.tooBlurry ? (
+                      <p className="text-[11px] text-amber-900 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1.5">
+                        {t("analyze.photoTooBlurry")}
+                      </p>
+                    ) : null}
+                    {photoQuality && !photoQuality.tooDark && !photoQuality.tooBlurry ? (
+                      <p className="text-[11px] text-emerald-800 bg-emerald-50 border border-emerald-100 rounded-lg px-2 py-1.5">
+                        {t("analyze.photoQualityOk")}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
               ) : (
                 <>

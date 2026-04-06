@@ -13,6 +13,7 @@ import {
 import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { useTranslation } from "react-i18next";
+import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import {
   Sparkles, PlusCircle, CloudSun, Droplets, Sun, Thermometer,
   Calendar, ArrowRight, Leaf, AlertTriangle, Heart, Apple,
@@ -144,6 +145,7 @@ export default function Dashboard() {
   const [fetchedRoutine, setFetchedRoutine] = useState(null);
   const [fetchingDbRoutine, setFetchingDbRoutine] = useState(false);
   const [showPlanExpanded, setShowPlanExpanded] = useState(false);
+  const [quickLogMsg, setQuickLogMsg] = useState("");
 
   const accepted = uid ? isRoutineTrackingAccepted(uid) : false;
 
@@ -356,7 +358,7 @@ export default function Dashboard() {
         <div className="max-w-lg mx-auto px-4 py-16 text-center relative z-[1]">
           {nav?.flashNeedAccept && (
             <div className="mb-4 text-left card !p-3 border-amber-200 bg-amber-50/80 text-sm text-amber-900">
-              Günlük check-in için önce analiz sonucunda rutinini kabul etmen gerekir.
+              {t("dashboard.acceptHint")}
             </div>
           )}
           <div className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl"
@@ -386,6 +388,27 @@ export default function Dashboard() {
 
   const todayIdx = getTurkeyWeekdayIndex();
   const todayPlan = routineByDay[todayIdx] || { morning: [], evening: [] };
+
+  const handleQuickLog = async (kind) => {
+    if (!uid) return;
+    let type;
+    const payload = {};
+    if (kind === "spf") {
+      type = "spf_refresh";
+      payload.n = 1;
+    } else if (kind === "morning") {
+      type = "routine_completed_block";
+      payload.morning = true;
+    } else {
+      type = "routine_completed_block";
+      payload.evening = true;
+    }
+    const r = await ingestDailyTrackingEvent(uid, type, payload);
+    if (r.ok && !r.skipped) {
+      setQuickLogMsg(t("dashboard.quickLogged"));
+      window.setTimeout(() => setQuickLogMsg(""), 2200);
+    }
+  };
 
   if (trackingMode) {
     return (
@@ -421,12 +444,44 @@ export default function Dashboard() {
             <ArrowRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
           </Link>
 
+          <div className="card mb-4 !p-3">
+            <p className="text-xs font-bold text-gray-800 mb-0.5">{t("dashboard.quickLogTitle")}</p>
+            <p className="text-[10px] text-gray-500 mb-2 leading-relaxed">{t("dashboard.quickLogHint")}</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickLog("spf")}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-xl border border-amber-200 bg-amber-50 text-amber-900"
+              >
+                <Sun className="w-3.5 h-3.5 inline mr-1" />
+                {t("dashboard.quickSpf")}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLog("morning")}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-700"
+              >
+                {t("dashboard.quickMorning")}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickLog("evening")}
+                className="text-[11px] font-semibold px-3 py-1.5 rounded-xl border border-gray-200 bg-white text-gray-700"
+              >
+                {t("dashboard.quickEvening")}
+              </button>
+            </div>
+            {quickLogMsg ? (
+              <p className="text-[10px] text-emerald-700 mt-2 font-medium">{quickLogMsg}</p>
+            ) : null}
+          </div>
+
           {checkinResult && checkinResult.ai_note && (
             <div className="card mb-5 border-l-4" style={{ borderLeftColor: theme.primary }}>
               <div className="flex items-start gap-3">
                 <Sparkles className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
                 <div>
-                  <h3 className="text-xs font-bold text-gray-700 mb-1">Son check-in notu</h3>
+                  <h3 className="text-xs font-bold text-gray-700 mb-1">{t("dashboard.lastCheckinNoteTitle")}</h3>
                   <p className="text-sm text-gray-600 leading-relaxed">{checkinResult.ai_note}</p>
                 </div>
               </div>
@@ -441,12 +496,12 @@ export default function Dashboard() {
               style={{ backgroundColor: theme.primary + "12" }}
             >
               <CalendarDays className="w-4 h-4" style={{ color: theme.primary }} />
-              Bugün — {WEEK_DAYS[todayIdx]}
+              {t("dashboard.todayTitle")} — {WEEK_DAYS[todayIdx]}
             </div>
             <div className="p-3 space-y-4">
               {todayPlan.morning.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">☀️ Sabah</div>
+                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">☀️ {t("dashboard.morning")}</div>
                   <div className="space-y-1.5">
                     {todayPlan.morning.map((item, i) => (
                       <ProductStep key={`t-m-${i}`} item={item} step={i + 1} theme={theme} />
@@ -457,7 +512,7 @@ export default function Dashboard() {
               {wellnessMorningItems.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
-                    ☀️ Sabah — yaşam
+                    ☀️ {t("dashboard.morning")} — {t("dashboard.lifestyleSuffix")}
                   </div>
                   <div className="space-y-1.5">
                     {wellnessMorningItems.map((item, i) => (
@@ -468,7 +523,7 @@ export default function Dashboard() {
               )}
               {todayPlan.evening.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">🌙 Akşam</div>
+                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">🌙 {t("dashboard.evening")}</div>
                   <div className="space-y-1.5">
                     {todayPlan.evening.map((item, i) => (
                       <ProductStep key={`t-e-${i}`} item={item} step={i + 1} theme={theme} />
@@ -479,7 +534,7 @@ export default function Dashboard() {
               {wellnessEveningItems.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
-                    🌙 Akşam — yaşam
+                    🌙 {t("dashboard.evening")} — {t("dashboard.lifestyleSuffix")}
                   </div>
                   <div className="space-y-1.5">
                     {wellnessEveningItems.map((item, i) => (
@@ -490,7 +545,7 @@ export default function Dashboard() {
               )}
               {dailyLifestyleItems.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">📌 Gün boyunca</div>
+                  <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">📌 {t("dashboard.allDay")}</div>
                   <div className="space-y-1.5">
                     {dailyLifestyleItems.map((item, i) => (
                       <ProductStep key={`t-d-${i}`} item={item} theme={theme} />
@@ -503,14 +558,14 @@ export default function Dashboard() {
                 !dailyLifestyleItems.length &&
                 !wellnessMorningItems.length &&
                 !wellnessEveningItems.length && (
-                <p className="text-sm text-gray-500">Bugün için planlı bakım adımı yok; haftalık kullanım günlerine bak.</p>
+                <p className="text-sm text-gray-500">{t("dashboard.noPlannedSteps")}</p>
               )}
             </div>
           </div>
 
           {weeklyItems.length > 0 && (
             <div className="card mb-5 !p-3">
-              <p className="text-xs font-bold text-gray-800 mb-2">Bu hafta — seyrek / güçlü adımlar</p>
+              <p className="text-xs font-bold text-gray-800 mb-2">{t("dashboard.weeklyTitle")}</p>
               <div className="space-y-2">
                 {weeklyItems.slice(0, 4).map((item) => (
                   <div key={item.weeklyKey} className="text-[11px] text-gray-600">
@@ -574,7 +629,7 @@ export default function Dashboard() {
         <div className="mb-6">
           {nav?.flashNeedAccept && (
             <div className="mb-4 card !p-3 border-amber-200 bg-amber-50/80 text-sm text-amber-900">
-              Günlük check-in için önce aşağıdan &quot;Rutini kabul ediyorum&quot; ile takibe başla.
+              {t("dashboard.acceptHint")}
             </div>
           )}
           <h1 className="text-2xl font-bold text-gray-900">
@@ -597,7 +652,7 @@ export default function Dashboard() {
               style={{ borderColor: theme.primaryLight, background: `${theme.primaryLight}18` }}
             >
               <p className="text-sm text-gray-800 font-medium mb-3">
-                Rutini uygulamaya hazırsan aşağıdan kabul et; günlük check-in ve takip ekranı açılır. İstemeden önce planı inceleyebilirsin.
+                {t("dashboard.acceptBanner")}
               </p>
               <button
                 type="button"
@@ -605,7 +660,7 @@ export default function Dashboard() {
                 className="w-full py-3 rounded-xl text-white font-semibold shadow-md"
                 style={{ backgroundColor: theme.primary }}
               >
-                Rutini kabul ediyorum, takibe başla
+                {t("dashboard.acceptCta")}
               </button>
             </div>
           )}
@@ -633,7 +688,7 @@ export default function Dashboard() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <p className="text-sm font-bold text-amber-950 mb-2">Sabah kullanımı</p>
+                <p className="text-sm font-bold text-amber-950 mb-2">{t("dashboard.morningUsageTitle")}</p>
                 <ul className="text-sm text-gray-800 space-y-1.5 list-disc list-inside">
                   {eveningMorningHints.map((line, i) => (
                     <li key={i}>{line}</li>
@@ -650,8 +705,8 @@ export default function Dashboard() {
           <>
             <SectionHeader
               icon="🧪"
-              title="Ürün listesi"
-              subtitle="Rutinde geçen etken maddeler"
+              title={t("dashboard.productListTitle")}
+              subtitle={t("dashboard.productListSubtitle")}
               color={theme.primary}
               className="!mt-2"
             />
@@ -681,8 +736,8 @@ export default function Dashboard() {
               <ClipboardCheck className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-sm font-bold text-gray-800">Günlük Check-in</h3>
-              <p className="text-xs text-gray-500">Bugün nasıl hissediyorsun? Rutinin buna göre uyarlanacak.</p>
+              <h3 className="text-sm font-bold text-gray-800">{t("dashboard.dailyCheckinTitle")}</h3>
+              <p className="text-xs text-gray-500">{t("dashboard.feelsTodayHint")}</p>
             </div>
             <ArrowRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -694,12 +749,12 @@ export default function Dashboard() {
             <div className="flex items-start gap-3">
               <Sparkles className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
               <div>
-                <h3 className="text-xs font-bold text-gray-700 mb-1">Rebi'den Not</h3>
+                <h3 className="text-xs font-bold text-gray-700 mb-1">{t("dashboard.lastCheckinNoteTitle")}</h3>
                 <p className="text-sm text-gray-600 leading-relaxed">{checkinResult.ai_note}</p>
                 {checkinResult.changes && checkinResult.changes.length > 0 && (
                   <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600">
                     <Info className="w-3.5 h-3.5" />
-                    <span>{checkinResult.changes.length} değişiklik yapıldı</span>
+                    <span>{t("checkin.changesCount", { count: checkinResult.changes.length })}</span>
                   </div>
                 )}
               </div>
@@ -1067,21 +1122,21 @@ function ProductStep({ item, theme, step }) {
               className="mt-2 block text-xs font-medium rounded-lg px-2 py-1 border transition-colors"
               style={{ borderColor: theme.primaryLight, color: theme.primary }}
             >
-              {showDetail ? t("common.hide") : isSkincare ? "Neden bu ürün / madde?" : t("common.details")}
+              {showDetail ? t("common.hide") : isSkincare ? t("dashboard.whySkincareButton") : t("common.details")}
             </button>
             {showDetail && (
               <div className="text-xs text-gray-600 mt-2 space-y-2 leading-relaxed">
                 {item.detail && (
                   <p>
                     <strong>
-                      {isSkincare ? "Kısaca neden:" : usage ? "Kısaca neden:" : "Özet:"}
+                      {isSkincare ? t("dashboard.shortWhy") : usage ? t("dashboard.shortWhy") : t("dashboard.summary")}
                     </strong>{" "}
                     {item.detail}
                   </p>
                 )}
                 {usage ? (
                   <p>
-                    <strong>{isSkincare ? "Nasıl uygularsın:" : "Nasıl yaparsın:"}</strong> {usage}
+                    <strong>{isSkincare ? t("dashboard.howToApply") : t("dashboard.howToDo")}</strong> {usage}
                   </p>
                 ) : null}
               </div>
@@ -1109,7 +1164,7 @@ function LifestyleCard({ item }) {
                 onClick={() => setShowDetail((v) => !v)}
                 className="mt-1 text-[11px] font-medium rounded-lg px-2 py-0.5 border border-green-200 text-green-700"
               >
-                {showDetail ? t("common.hide") : "Bu madde"}
+                {showDetail ? t("common.hide") : t("dashboard.lifestyleThisItem")}
               </button>
               {showDetail && (
                 <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{item.detail}</p>

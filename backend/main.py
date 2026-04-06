@@ -8,7 +8,7 @@ Yeni: /daily_checkin endpoint, adaptif rutin sistemi, risk skoru
 import httpx
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal
 import re
 import uuid
@@ -36,6 +36,11 @@ from checkin_carryover import (
     fetch_past_daily_logs,
 )
 from concern_checkin_extras import apply_concern_extra_risk
+from symptom_risk import (
+    apply_symptom_tags_risk,
+    apply_tracking_risk_bonus,
+    normalize_symptom_tags,
+)
 from auth_deps import enforce_supabase_user, jwt_auth_enabled, user_is_rebi_plus
 from free_chat_quota import (
     free_chat_limit,
@@ -125,6 +130,20 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def _bootstrap_database_schema() -> None:
+    """Supabase Postgres şifresi/URI varsa supabase/migrations/*.sql dosyalarını uygular."""
+    try:
+        from db_bootstrap import ensure_daily_events_schema
+
+        if ensure_daily_events_schema() == "error":
+            log.warning(
+                "daily_events şeması uygulanamadı; API çalışmaya devam ediyor."
+            )
+    except Exception as e:
+        log.warning("DB bootstrap çalıştırılamadı (yok sayılıyor): %s", e)
+
+
 def get_supabase():
     if not SUPABASE_URL:
         return None
@@ -166,6 +185,10 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
     sleep_hours = None
     last_location = None
     last_weather = None
+    routine_steps_done = 0
+    spf_refreshes = 0
+    last_photo_meta = None
+    checkin_feedback_events = 0
 
     for ev in events or []:
         t = (ev.get("type") or "").lower()
@@ -194,6 +217,21 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         elif t == "weather":
             if isinstance(payload, dict):
                 last_weather = payload
+        elif t == "routine_step":
+            if bool(payload.get("done")):
+                routine_steps_done += 1
+        elif t == "routine_completed_block":
+            if bool(payload.get("morning")):
+                routine_steps_done += 1
+            if bool(payload.get("evening")):
+                routine_steps_done += 1
+        elif t == "spf_refresh":
+            spf_refreshes += 1
+        elif t == "photo_meta":
+            if isinstance(payload, dict):
+                last_photo_meta = payload
+        elif t == "checkin_feedback":
+            checkin_feedback_events += 1
 
     avg_stress = None
     if stress_vals:
@@ -207,6 +245,10 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         "last_location": last_location,
         "weather": last_weather,
         "events_count": len(events or []),
+        "routine_steps_done": routine_steps_done,
+        "spf_refreshes": spf_refreshes,
+        "last_photo_meta": last_photo_meta,
+        "checkin_feedback_events": checkin_feedback_events,
     }
 
 
@@ -332,6 +374,32 @@ class AssessmentRequest(BaseModel):
     # UI: karışıklığı azaltan netleştirici işaretler (şimdilik opsiyonel)
     special_flags: Optional[dict] = None
 
+    @model_validator(mode="after")
+    def _normalize_assessment(self):
+        self.age = max(13, min(100, int(self.age)))
+        self.severity_score = max(0, min(10, int(self.severity_score)))
+        self.water_intake = max(0.0, min(8.0, float(self.water_intake)))
+        self.sleep_hours = max(0.0, min(14.0, float(self.sleep_hours)))
+        self.stress_score = max(0, min(40, int(self.stress_score)))
+        self.smoking_per_day = max(0, min(60, int(self.smoking_per_day)))
+        self.smoking_years = max(0, min(80, int(self.smoking_years)))
+        self.alcohol_frequency = max(0, min(7, int(self.alcohol_frequency)))
+        self.alcohol_amount = max(0, min(30, int(self.alcohol_amount)))
+        self.makeup_frequency = max(0, min(7, int(self.makeup_frequency)))
+        if self.location_lat is not None and self.location_lon is not None:
+            try:
+                la, lo = float(self.location_lat), float(self.location_lon)
+                if la < -90 or la > 90 or lo < -180 or lo > 180:
+                    self.location_lat = None
+                    self.location_lon = None
+                else:
+                    self.location_lat = la
+                    self.location_lon = lo
+            except Exception:
+                self.location_lat = None
+                self.location_lon = None
+        return self
+
 
 class RoutineResponse(BaseModel):
     routine: list[dict]
@@ -396,6 +464,32 @@ class DailyCheckinRequest(BaseModel):
     very_dry_environment_today: Optional[bool] = None
     long_hot_shower_today: Optional[bool] = None
     fragrance_new_product_today: Optional[bool] = None
+    # Semptom etiketleri (UI çoklu seçim)
+    symptom_tags: Optional[list[str]] = None
+    # Aktif reaksiyon şiddeti (irritasyon/kırık + rutin değişimi olduysa tolerans öğrenimi)
+    active_reaction_severity: Optional[int] = None  # 1=hafif, 3=şiddetli
+    # Önceki gün önerisi / bugünkü deneyim (analitik + ince ayar)
+    recommendation_helpful: Optional[Literal["helpful", "not_helpful", "skip"]] = None
+    recommendation_feedback_note: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _normalize_daily_checkin(self):
+        self.sleep_hours = max(0.0, min(14.0, float(self.sleep_hours)))
+        self.stress_today = int(max(1, min(5, int(self.stress_today))))
+        allowed_skin = {"iyi", "kuru", "yagli", "kirik", "irritasyon"}
+        sf = (self.skin_feeling or "iyi").strip().lower()
+        self.skin_feeling = sf if sf in allowed_skin else "iyi"
+        if self.water_ml_today is not None:
+            self.water_ml_today = int(max(0, min(8000, int(self.water_ml_today))))
+        if self.notes:
+            self.notes = str(self.notes).strip()[:2000] or None
+        if self.recommendation_feedback_note:
+            n = str(self.recommendation_feedback_note).strip()[:500]
+            self.recommendation_feedback_note = n or None
+        self.symptom_tags = normalize_symptom_tags(self.symptom_tags)
+        if self.active_reaction_severity is not None:
+            self.active_reaction_severity = int(max(1, min(3, int(self.active_reaction_severity))))
+        return self
 
 
 class DailyCheckinResponse(BaseModel):
@@ -411,15 +505,37 @@ class DailyCheckinResponse(BaseModel):
     lifestyle_carryover_detail: Optional[str] = None
 
 
-DailyTrackingEventType = Literal["water_intake", "nutrition", "stress", "sleep", "location"]
+DailyTrackingClientEventType = Literal[
+    "water_intake",
+    "nutrition",
+    "stress",
+    "sleep",
+    "location",
+    "routine_step",
+    "spf_refresh",
+    "photo_meta",
+    "routine_completed_block",
+    "checkin_feedback",
+]
 
 
 class DailyTrackingIngestRequest(BaseModel):
     user_id: str
     timestamp: Optional[str] = None
-    type: DailyTrackingEventType
-    payload: dict
+    type: DailyTrackingClientEventType
+    payload: dict = Field(default_factory=dict)
     source: str = "mobile"
+
+    @model_validator(mode="after")
+    def _cap_payload(self):
+        if self.payload is None:
+            self.payload = {}
+        if not isinstance(self.payload, dict):
+            self.payload = {}
+        # Aşırı büyük payload’ları kes (güvenlik + DB)
+        if len(str(self.payload)) > 8000:
+            self.payload = {"truncated": True}
+        return self
 
 
 class DailyTrackingIngestResponse(BaseModel):
@@ -1124,6 +1240,14 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
         risk_info = apply_concern_extra_risk(concern_for_carry, req, past_logs, risk_info)
     except Exception as e:
         log.error("concern_checkin_extras hatası (ignored): %s", e)
+    try:
+        risk_info = apply_symptom_tags_risk(risk_info, req.symptom_tags)
+    except Exception as e:
+        log.error("symptom_tags risk hatası (ignored): %s", e)
+    try:
+        risk_info = apply_tracking_risk_bonus(risk_info, tracking_today)
+    except Exception as e:
+        log.error("tracking risk bonus hatası (ignored): %s", e)
     risk_detail_out = risk_info.get("detail", "")
     carryover_blob = build_carryover_notes(
         sleep_carry_note,
@@ -1175,10 +1299,20 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
                 return "niacinamide"
             return None
 
+        try:
+            sev_raw = getattr(req, "active_reaction_severity", None)
+            sev_i = int(sev_raw) if sev_raw is not None else 1
+        except Exception:
+            sev_i = 1
+        sev_i = max(1, min(3, sev_i))
+
         for c in adaptation["changes"]:
             fam = _family_from_action(c.get("item", ""))
             if fam:
-                learned_tol[fam] = "mild"
+                if sev_i >= 3:
+                    learned_tol[fam] = "bad"
+                else:
+                    learned_tol[fam] = "mild"
 
         # En son assessment'ın lifestyle_data.actives_tolerance alanına merge et (varsa).
         try:
@@ -1258,9 +1392,29 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
                         "very_dry_environment_today": req.very_dry_environment_today,
                         "long_hot_shower_today": req.long_hot_shower_today,
                         "fragrance_new_product_today": req.fragrance_new_product_today,
+                        "symptom_tags": req.symptom_tags or [],
+                        "active_reaction_severity": req.active_reaction_severity,
+                        "recommendation_helpful": req.recommendation_helpful,
+                        "recommendation_feedback_note": req.recommendation_feedback_note,
                     },
                 },
             }).execute()
+
+            if req.recommendation_helpful and req.recommendation_helpful != "skip":
+                try:
+                    supabase.table("daily_events").insert({
+                        "user_id": req.user_id,
+                        "event_time": _utc_now_iso(),
+                        "log_date": today_str,
+                        "type": "checkin_feedback",
+                        "payload": {
+                            "helpful": req.recommendation_helpful,
+                            "note": (req.recommendation_feedback_note or "")[:500],
+                        },
+                        "source": "checkin",
+                    }).execute()
+                except Exception as e:
+                    log.error("checkin_feedback daily_events (ignored): %s", e)
 
             if adaptation["changes"]:
                 supabase.table("routines").update({

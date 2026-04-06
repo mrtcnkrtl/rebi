@@ -22,52 +22,52 @@ import {
 const features = [
   {
     icon: Camera,
-    title: "Kamera ile Takip",
-    desc: "Cildini fotoğrafla, yapay zeka değişimleri izlesin.",
+    titleKey: "landing.features.cameraTitle",
+    descKey: "landing.features.cameraDesc",
     color: "from-pink-500 to-rose-500",
     bg: "bg-pink-50",
   },
   {
     icon: Brain,
-    title: "Bütüncül Analiz",
-    desc: "Uyku, stres ve su tüketimini cilt sağlığınla birlikte değerlendirir.",
+    titleKey: "landing.features.holisticTitle",
+    descKey: "landing.features.holisticDesc",
     color: "from-purple-500 to-indigo-500",
     bg: "bg-purple-50",
   },
   {
     icon: CloudSun,
-    title: "Hava Durumuna Göre Koruma",
-    desc: "UV ve nem verilerine göre günlük koruma önerileri.",
+    titleKey: "landing.features.weatherTitle",
+    descKey: "landing.features.weatherDesc",
     color: "from-blue-500 to-cyan-500",
     bg: "bg-blue-50",
   },
 ];
 
 const steps = [
-  { num: "01", title: "Bilgilerini Gir", desc: "Cilt tipin, yaşam tarzın ve konumun." },
-  { num: "02", title: "AI Analiz Etsin", desc: "Bilimsel literatür + hava durumu + yaşam tarzın." },
-  { num: "03", title: "Rutinini Al", desc: "Sana özel sabah ve akşam rutini." },
+  { num: "01", titleKey: "landing.steps.s1Title", descKey: "landing.steps.s1Desc" },
+  { num: "02", titleKey: "landing.steps.s2Title", descKey: "landing.steps.s2Desc" },
+  { num: "03", titleKey: "landing.steps.s3Title", descKey: "landing.steps.s3Desc" },
 ];
 
 const plusHighlights = [
   {
     icon: MessageCircle,
-    title: "Sınırsız Rebi AI",
-    desc: "Cilt bakımı, içerikler ve ürün sorularında kesintisiz sohbet.",
+    titleKey: "landing.plus.unlimitedAiTitle",
+    descKey: "landing.plus.unlimitedAiDesc",
     gradient: "from-violet-500 to-fuchsia-500",
     glow: "shadow-fuchsia-500/20",
   },
   {
     icon: Palette,
-    title: "Premium temalar",
-    desc: "Gün batımı, okyanus ve gece şehir gibi özel görünümler.",
+    titleKey: "landing.plus.premiumThemesTitle",
+    descKey: "landing.plus.premiumThemesDesc",
     gradient: "from-cyan-500 to-blue-600",
     glow: "shadow-cyan-500/20",
   },
   {
     icon: ClipboardCheck,
-    title: "Derin takip",
-    desc: "Günlük check-in ile rutinin cildinin cevabına göre uyarlanır.",
+    titleKey: "landing.plus.deepTrackingTitle",
+    descKey: "landing.plus.deepTrackingDesc",
     gradient: "from-amber-500 to-orange-600",
     glow: "shadow-amber-500/25",
   },
@@ -93,21 +93,18 @@ export default function Landing() {
             </div>
 
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight mb-6 tracking-tight">
-              Cildinin ve Ruhunun{" "}
+              {t("landing.heroTitle1")}{" "}
               <span className="bg-gradient-to-r from-teal-600 to-teal-500 bg-clip-text text-transparent">
-                İhtiyacı Olan
+                {t("landing.heroTitleAccent")}
               </span>{" "}
-              Bilimsel Rutin.
+              {t("landing.heroTitle2")}
             </h1>
 
             <p className="text-lg md:text-xl text-gray-500 mb-6 max-w-2xl mx-auto leading-relaxed">
-              Rebi, cildin ile birlikte uykunu, stresini ve çevreni analiz eder.
-              Bilimsel kaynaklara dayalı, sana özel bütüncül bir bakım rutini oluşturur.
+              {t("landing.heroDesc1")}
             </p>
             <p className="text-base text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-              Analiz sonunda sabah ve akşam adımların, yaşam tarzı önerilerin ve hava durumuna göre koruma
-              notların tek yerde toplanır. İstersen cilt fotoğrafını güvenli depoda saklayıp ilerlemeni
-              karşılaştırabilirsin; günlük check-in ile rutin zaman içinde sana göre esner.
+              {t("landing.heroDesc2")}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -129,15 +126,15 @@ export default function Landing() {
             <div className="mt-10 flex items-center justify-center gap-6 text-sm text-gray-400">
               <div className="flex items-center gap-1.5">
                 <Shield className="w-4 h-4 text-teal-500" />
-                Ücretsiz
+                {t("landing.badgeFree")}
               </div>
               <div className="flex items-center gap-1.5">
                 <Heart className="w-4 h-4 text-rose-400" />
-                Bilimsel
+                {t("landing.badgeScientific")}
               </div>
               <div className="flex items-center gap-1.5">
                 <Star className="w-4 h-4 text-amber-400" />
-                Kişisel
+                {t("landing.badgePersonal")}
               </div>
             </div>
           </div>
@@ -158,14 +155,13 @@ export default function Landing() {
           <div className="text-center mb-12 md:mb-14">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-2 text-sm font-medium text-amber-200 mb-6">
               <Crown className="w-4 h-4 text-amber-300" />
-              Rebi Plus
+              {t("landing.plusBadge")}
             </div>
             <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
-              Ücretsiz analizle başla; istersen derinleş
+              {t("landing.plusTitle")}
             </h2>
             <p className="text-violet-200/90 text-lg max-w-2xl mx-auto leading-relaxed">
-              Temel analiz ve rutin herkese açık. Plus ile yapay zeka sohbetinde sınır kalkar, özel temalar
-              açılır ve günlük check-in akışın tam güçle çalışır.
+              {t("landing.plusDesc")}
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-5 md:gap-6">
@@ -179,11 +175,11 @@ export default function Landing() {
                 >
                   <item.icon className="w-7 h-7 text-white" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">{item.title}</h3>
-                <p className="text-sm text-violet-100/85 leading-relaxed">{item.desc}</p>
+                <h3 className="text-xl font-bold text-white mb-2">{t(item.titleKey)}</h3>
+                <p className="text-sm text-violet-100/85 leading-relaxed">{t(item.descKey)}</p>
                 <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-amber-200/90">
                   <Lock className="w-3.5 h-3.5" />
-                  Uygulama içi Plus ile açılır
+                  {t("landing.plusUnlockHint")}
                 </div>
               </div>
             ))}
@@ -205,18 +201,9 @@ export default function Landing() {
       <section id="features" className="py-20 md:py-28">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Cilt Bakımında Yeni Nesil
-            </h2>
-            <p className="text-gray-500 text-lg max-w-xl mx-auto">
-              Sadece krem önermekle kalmaz, uyku, stres, su ve beslenme gibi yaşam tarzı sinyallerini de
-              rutinine bağlar.
-            </p>
-            <p className="text-gray-600 text-sm max-w-2xl mx-auto mt-4 leading-relaxed">
-              Rebi tıbbi teşhis veya reçete yerine geçmez; güçlü aktiflerde dikkatli sıklık ve bariyer
-              önceliği gibi güvenlik katmanlarıyla yönlendirir. Şüpheli durumda her zaman bir sağlık
-              uzmanına danışmalısın.
-            </p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{t("landing.featuresTitle")}</h2>
+            <p className="text-gray-500 text-lg max-w-xl mx-auto">{t("landing.featuresSubtitle")}</p>
+            <p className="text-gray-600 text-sm max-w-2xl mx-auto mt-4 leading-relaxed">{t("landing.disclaimer")}</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6 md:gap-8">
@@ -230,10 +217,8 @@ export default function Landing() {
                 >
                   <f.icon className={`w-7 h-7 bg-gradient-to-br ${f.color} bg-clip-text`} style={{color: f.color.includes('pink') ? '#ec4899' : f.color.includes('purple') ? '#8b5cf6' : '#3b82f6'}} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  {f.title}
-                </h3>
-                <p className="text-gray-500 leading-relaxed">{f.desc}</p>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{t(f.titleKey)}</h3>
+                <p className="text-gray-500 leading-relaxed">{t(f.descKey)}</p>
               </div>
             ))}
           </div>
@@ -245,7 +230,7 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              3 Adımda Kişisel Rutinin
+              {t("landing.howItWorksTitle")}
             </h2>
           </div>
 
@@ -260,9 +245,9 @@ export default function Landing() {
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-gray-900 mb-1">
-                    {s.title}
+                    {t(s.titleKey)}
                   </h3>
-                  <p className="text-gray-500">{s.desc}</p>
+                  <p className="text-gray-500">{t(s.descKey)}</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-gray-300 shrink-0 mt-1 ml-auto" />
               </div>
@@ -274,7 +259,7 @@ export default function Landing() {
               to={user ? "/dashboard/analyze" : "/auth"}
               className="btn-primary !px-8 !py-4 !text-lg inline-flex group"
             >
-              Hemen Başla
+              {t("landing.ctaStartNow")}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
@@ -291,7 +276,7 @@ export default function Landing() {
             <span className="font-bold text-gray-900">Rebi</span>
           </div>
           <p className="text-sm text-gray-400">
-            &copy; 2026 Rebi. Bütüncül cilt bakımı platformu.
+            {t("landing.footer")}
           </p>
         </div>
       </footer>

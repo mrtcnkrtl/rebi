@@ -40,11 +40,13 @@ export default function Chat() {
     if (history.length === 0) {
       setHistory([{
         role: "assistant",
-        content: `Merhaba ${userName}! Ben Rebi, cilt bakım asistanın. Cilt, yüz ve el bakımı hakkında her şeyi sorabilirsin. Ürünler, maddeler, bakım rutinleri, sorunlar... Nasıl yardımcı olabilirim?`,
+        content: t("chat.welcome", { name: userName }),
       }]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca ilk boş oturumda karşılama
   }, []);
+
+  // Not: t() bağımlılığı eklenmiyor; ilk boş oturumda tek seferlik karşılama metni.
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -182,7 +184,7 @@ export default function Chat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Ürünler, maddeler, sorunlar hakkında sor..."
+              placeholder={t("chat.placeholder")}
               className="flex-1 input-field !py-3 text-sm"
               disabled={loading}
             />

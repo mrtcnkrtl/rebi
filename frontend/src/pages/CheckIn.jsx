@@ -7,6 +7,7 @@ import {
   saveRoutineSnapshot,
 } from "../lib/routineTracking";
 import { recordCheckInSuccess } from "../lib/checkinStats";
+import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import { useTheme } from "../context/ThemeContext";
 import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
@@ -16,6 +17,7 @@ import {
   Moon, SmilePlus, Droplets, AlertCircle,
   CheckCircle2, Send, Loader2, ArrowRight, Sparkles,
   Palette, FlaskConical, Hand, Sun, Wind, Flower2,
+  ThumbsUp, ThumbsDown,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
@@ -41,6 +43,7 @@ const STRESS_LEVELS = [
 
 /** Evet / Hayır / Atla — check-in ek soruları */
 function ExtraTristate({ title, description, value, onChange }) {
+  const { t } = useTranslation();
   return (
     <div className="card mb-3">
       <h3 className="text-sm font-bold text-gray-800 mb-1">{title}</h3>
@@ -55,7 +58,7 @@ function ExtraTristate({ title, description, value, onChange }) {
             value === true ? "border-teal-500 bg-teal-50" : "border-gray-200"
           }`}
         >
-          Evet
+          {t("common.yes")}
         </button>
         <button
           type="button"
@@ -64,14 +67,14 @@ function ExtraTristate({ title, description, value, onChange }) {
             value === false ? "border-teal-500 bg-teal-50" : "border-gray-200"
           }`}
         >
-          Hayır
+          {t("common.no")}
         </button>
         <button
           type="button"
           onClick={() => onChange(null)}
           className="py-2 rounded-xl text-xs font-medium border-2 border-gray-200 text-gray-600"
         >
-          Atla
+          {t("common.skip")}
         </button>
       </div>
     </div>
@@ -257,6 +260,23 @@ export default function CheckIn() {
   const [alreadyCheckedIn, setAlreadyCheckedIn] = useState(false);
   const [statusLoading, setStatusLoading] = useState(true);
   const [submitError, setSubmitError] = useState("");
+  const [symptomTags, setSymptomTags] = useState([]);
+  const [reactionSeverity, setReactionSeverity] = useState(2);
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  /** null | sent | skipped */
+  const [feedbackStatus, setFeedbackStatus] = useState(null);
+  const [feedbackNote, setFeedbackNote] = useState("");
+
+  const SYMPTOM_DEFS = [
+    { id: "redness_diffuse", labelKey: "checkin.symptomRedness" },
+    { id: "burning_stinging", labelKey: "checkin.symptomBurning" },
+    { id: "flaking_peeling", labelKey: "checkin.symptomFlaking" },
+    { id: "acne_flare", labelKey: "checkin.symptomAcne" },
+  ];
+
+  const toggleSymptom = (id) => {
+    setSymptomTags((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
 
   const canSubmit = skinFeeling && !loading && !alreadyCheckedIn && !ctxLoading;
 
@@ -338,6 +358,10 @@ export default function CheckIn() {
         const v = concernExtra[k];
         if (v === true || v === false) payload[k] = v;
       }
+      if (symptomTags.length) payload.symptom_tags = symptomTags;
+      if (skinFeeling === "irritasyon" || skinFeeling === "kirik") {
+        payload.active_reaction_severity = reactionSeverity;
+      }
 
       const res = await fetch(`${API}/daily_checkin`, {
         method: "POST",
@@ -355,6 +379,8 @@ export default function CheckIn() {
         return;
       }
       recordCheckInSuccess(user?.id, { appliedRoutine });
+      setFeedbackStatus(null);
+      setFeedbackNote("");
       setResult(data);
     } catch (err) {
       console.error("Check-in error:", err);
@@ -437,6 +463,65 @@ export default function CheckIn() {
               </div>
             </div>
           )}
+
+          {feedbackStatus === null ? (
+            <div className="card mb-5 border border-gray-100">
+              <p className="text-sm font-semibold text-gray-800 mb-2">{t("checkin.feedbackTitle")}</p>
+              <textarea
+                value={feedbackNote}
+                onChange={(e) => setFeedbackNote(e.target.value)}
+                placeholder=""
+                rows={2}
+                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs mb-3 resize-none"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={feedbackBusy}
+                  onClick={async () => {
+                    setFeedbackBusy(true);
+                    await ingestDailyTrackingEvent(user?.id, "checkin_feedback", {
+                      helpful: "helpful",
+                      note: feedbackNote.slice(0, 500),
+                      source_screen: "checkin_report",
+                    });
+                    setFeedbackStatus("sent");
+                    setFeedbackBusy(false);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border-2 border-emerald-200 bg-emerald-50 text-emerald-900"
+                >
+                  <ThumbsUp className="w-4 h-4" /> OK
+                </button>
+                <button
+                  type="button"
+                  disabled={feedbackBusy}
+                  onClick={async () => {
+                    setFeedbackBusy(true);
+                    await ingestDailyTrackingEvent(user?.id, "checkin_feedback", {
+                      helpful: "not_helpful",
+                      note: feedbackNote.slice(0, 500),
+                      source_screen: "checkin_report",
+                    });
+                    setFeedbackStatus("sent");
+                    setFeedbackBusy(false);
+                  }}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border-2 border-rose-200 bg-rose-50 text-rose-900"
+                >
+                  <ThumbsDown className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  disabled={feedbackBusy}
+                  onClick={() => setFeedbackStatus("skipped")}
+                  className="px-3 py-2 rounded-xl text-xs font-medium text-gray-500 border border-gray-200"
+                >
+                  {t("checkin.feedbackSkip")}
+                </button>
+              </div>
+            </div>
+          ) : feedbackStatus === "sent" ? (
+            <p className="text-center text-xs text-emerald-700 mb-4">{t("checkin.feedbackThanks")}</p>
+          ) : null}
 
           <button
             onClick={() => {
@@ -600,6 +685,48 @@ export default function CheckIn() {
             ))}
           </div>
         </div>
+
+        <div className="card mb-4">
+          <h3 className="text-sm font-bold text-gray-800 mb-1">{t("checkin.symptomsTitle")}</h3>
+          <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">{t("checkin.symptomsHint")}</p>
+          <div className="flex flex-wrap gap-2">
+            {SYMPTOM_DEFS.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => toggleSymptom(s.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border-2 transition-all ${
+                  symptomTags.includes(s.id)
+                    ? "border-teal-500 bg-teal-50 text-teal-900"
+                    : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                }`}
+              >
+                {t(s.labelKey)}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {(skinFeeling === "irritasyon" || skinFeeling === "kirik") && (
+          <div className="card mb-4">
+            <h3 className="text-sm font-bold text-gray-800 mb-1">{t("checkin.reactionSeverityTitle")}</h3>
+            <p className="text-[11px] text-gray-500 mb-2">{t("checkin.reactionSeverityHint")}</p>
+            <input
+              type="range"
+              min={1}
+              max={3}
+              step={1}
+              value={reactionSeverity}
+              onChange={(e) => setReactionSeverity(Number(e.target.value))}
+              className="w-full accent-teal-600"
+            />
+            <div className="flex justify-between text-[10px] text-gray-400 mt-1">
+              <span>1</span>
+              <span>2</span>
+              <span>3</span>
+            </div>
+          </div>
+        )}
 
         {/* Q4: Applied Routine */}
         <div className="card mb-4">
