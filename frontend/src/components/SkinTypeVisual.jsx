@@ -1,14 +1,15 @@
 /**
- * SkinTypeVisual v2 - Gerçekçi cilt dokusu görselleri + "Cilt Tipim Ne?" kılavuzu
+ * SkinTypeVisual — texture previews + guide (labels from locale analyzeWizard pack).
  */
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronDown, HelpCircle } from "lucide-react";
+import { useAnalyzeWizardPack } from "../lib/localePacks";
 
-const skinTypes = [
+const SKIN_ORDER = ["oily", "dry", "combination", "normal", "sensitive"];
+
+const skinTextureBase = [
   {
     id: "oily",
-    label: "Yağlı",
-    desc: "T-bölgede parlaklık, geniş gözenekler",
     activeBorder: "border-amber-400",
     activeRing: "ring-amber-100",
     textureStyle: {
@@ -26,8 +27,6 @@ const skinTypes = [
   },
   {
     id: "dry",
-    label: "Kuru",
-    desc: "Gerginlik, pul pul dökülme, mat görünüm",
     activeBorder: "border-orange-400",
     activeRing: "ring-orange-100",
     textureStyle: {
@@ -48,8 +47,6 @@ const skinTypes = [
   },
   {
     id: "combination",
-    label: "Karma",
-    desc: "T-bölge yağlı, yanaklar kuru veya normal",
     activeBorder: "border-violet-400",
     activeRing: "ring-violet-100",
     textureStyle: {
@@ -71,8 +68,6 @@ const skinTypes = [
   },
   {
     id: "normal",
-    label: "Normal",
-    desc: "Dengeli nem, düzgün doku, sorunsuz",
     activeBorder: "border-emerald-400",
     activeRing: "ring-emerald-100",
     textureStyle: {
@@ -87,69 +82,68 @@ const skinTypes = [
   },
   {
     id: "sensitive",
-    label: "Hassas",
-    desc: "Kolay kızarır, batma hissi, tahriş",
     activeBorder: "border-pink-400",
     activeRing: "ring-pink-100",
     textureStyle: {
       background: "linear-gradient(135deg, #fef2f2 0%, #fce7e7 50%, #fef2f2 100%)",
     },
     textureOverlay: (
-      <>
-        <div className="absolute inset-0 opacity-30" style={{
-          background: "radial-gradient(circle at 30% 40%, rgba(239,68,68,0.2) 0%, transparent 50%), radial-gradient(circle at 70% 60%, rgba(239,68,68,0.15) 0%, transparent 45%), radial-gradient(circle at 50% 70%, rgba(239,68,68,0.1) 0%, transparent 40%)",
-        }} />
-      </>
+      <div className="absolute inset-0 opacity-30" style={{
+        background: "radial-gradient(circle at 30% 40%, rgba(239,68,68,0.2) 0%, transparent 50%), radial-gradient(circle at 70% 60%, rgba(239,68,68,0.15) 0%, transparent 45%), radial-gradient(circle at 50% 70%, rgba(239,68,68,0.1) 0%, transparent 40%)",
+      }} />
     ),
   },
 ];
 
-const guideSteps = [
-  {
-    title: "Sabah Testi",
-    desc: "Sabah uyandığında yüzünü yıkamadan aynaya bak:",
-    items: [
-      { skin: "Yağlı", sign: "Yüzün her yerde parlıyor, özellikle alın ve burun" },
-      { skin: "Kuru", sign: "Gergin hissediyorsun, hafif pul pul olabilir" },
-      { skin: "Karma", sign: "Sadece burun/alın parlıyor, yanaklar mat veya gergin" },
-      { skin: "Normal", sign: "Rahat hissediyorsun, ne yağlı ne kuru" },
-      { skin: "Hassas", sign: "Kolay kızarır/ısınır; ürün sürünce veya sıcak-soğukta daha çabuk tepki verir" },
-    ],
-  },
-  {
-    title: "Kağıt Mendil Testi",
-    desc: "Temiz bir kağıt mendili yüzüne bastır ve 30 saniye bekle:",
-    items: [
-      { skin: "Yağlı", sign: "Mendil her yerde yağ izi bırakıyor" },
-      { skin: "Kuru", sign: "Mendilde hiç yağ yok" },
-      { skin: "Karma", sign: "Sadece burun/alın bölgesinde yağ izi var" },
-      { skin: "Normal", sign: "Çok hafif, eşit dağılmış nem izi" },
-      { skin: "Hassas", sign: "Bastırınca kızarıklık/iz daha uzun süre kalır; sık sürtünmede kolay tahriş olur" },
-    ],
-  },
-];
-
 export default function SkinTypeVisual({ value, onChange }) {
+  const pack = useAnalyzeWizardPack();
+  const sp = pack.skinPicker || {};
   const [showGuide, setShowGuide] = useState(false);
+
+  const skinTypes = useMemo(() => {
+    const byId = Object.fromEntries(skinTextureBase.map((b) => [b.id, b]));
+    return SKIN_ORDER.map((id) => {
+      const base = byId[id];
+      const labels = sp[id] || {};
+      return {
+        ...base,
+        label: labels.label || id,
+        desc: labels.desc || "",
+      };
+    });
+  }, [sp]);
+
+  const guideSteps = useMemo(
+    () => [
+      {
+        title: sp.morningTitle,
+        desc: sp.morningDesc,
+        signKey: "morningSign",
+      },
+      {
+        title: sp.tissueTitle,
+        desc: sp.tissueDesc,
+        signKey: "tissueSign",
+      },
+    ],
+    [sp]
+  );
 
   return (
     <div className="space-y-3">
-      {/* Skin type cards */}
       <div className="grid grid-cols-1 gap-2">
         {skinTypes.map((st) => {
           const isActive = value === st.id;
           return (
-            <button key={st.id} onClick={() => onChange(st.id)}
+            <button key={st.id} type="button" onClick={() => onChange(st.id)}
               className={`relative flex items-center gap-3 p-2.5 rounded-2xl border-2 text-left transition-all duration-200 ${
                 isActive
                   ? `${st.activeBorder} ring-2 ${st.activeRing}`
                   : "border-gray-200 hover:border-gray-300"
               }`}>
-              {/* Texture preview */}
               <div className="relative shrink-0 w-14 h-14 rounded-xl overflow-hidden" style={st.textureStyle}>
                 {st.textureOverlay}
               </div>
-              {/* Text */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className={`font-semibold text-sm ${isActive ? "text-gray-900" : "text-gray-700"}`}>{st.label}</span>
@@ -166,43 +160,43 @@ export default function SkinTypeVisual({ value, onChange }) {
         })}
       </div>
 
-      {/* "Cilt Tipim Ne?" Guide Toggle */}
-      <button onClick={() => setShowGuide(!showGuide)}
+      <button type="button" onClick={() => setShowGuide(!showGuide)}
         className="w-full flex items-center justify-center gap-1.5 py-2 text-xs text-teal-600 hover:text-teal-700 transition-colors">
         <HelpCircle className="w-3.5 h-3.5" />
-        <span>{showGuide ? "Kılavuzu kapat" : "Cilt tipimi nasıl anlarım?"}</span>
+        <span>{showGuide ? sp.guideClose : sp.guideOpen}</span>
         <ChevronDown className={`w-3 h-3 transition-transform ${showGuide ? "rotate-180" : ""}`} />
       </button>
 
-      {/* Guide content */}
       {showGuide && (
         <div className="bg-teal-50/50 rounded-2xl p-4 space-y-4 border border-teal-100">
           <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
             <HelpCircle className="w-4 h-4 text-teal-600" />
-            Cilt Tipini Nasıl Tespit Edersin?
+            {sp.guideTitle}
           </h4>
 
-          {guideSteps.map((step, si) => (
-            <div key={si} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="w-5 h-5 bg-teal-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">{si + 1}</span>
-                <p className="text-xs font-semibold text-gray-800">{step.title}</p>
+          {guideSteps.map((step, si) => {
+            const signs = sp[step.signKey] || {};
+            return (
+              <div key={si} className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 bg-teal-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold shrink-0">{si + 1}</span>
+                  <p className="text-xs font-semibold text-gray-800">{step.title}</p>
+                </div>
+                <p className="text-[11px] text-gray-500 ml-7">{step.desc}</p>
+                <div className="ml-7 space-y-1">
+                  {SKIN_ORDER.map((kid) => (
+                    <div key={kid} className="flex items-start gap-2 text-[11px]">
+                      <span className="font-semibold text-gray-700 w-14 shrink-0">{(sp[kid]?.label || kid)}:</span>
+                      <span className="text-gray-500">{signs[kid]}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <p className="text-[11px] text-gray-500 ml-7">{step.desc}</p>
-              <div className="ml-7 space-y-1">
-                {step.items.map((item, ii) => (
-                  <div key={ii} className="flex items-start gap-2 text-[11px]">
-                    <span className="font-semibold text-gray-700 w-14 shrink-0">{item.skin}:</span>
-                    <span className="text-gray-500">{item.sign}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           <div className="bg-white rounded-xl p-3 text-[11px] text-gray-500">
-            <span className="font-semibold text-teal-700">İpucu:</span> Emin olamıyorsan
-            <span className="font-medium text-gray-700"> "Normal"</span> seç. Rebi diğer verilerden cildinin ihtiyacını tespit edecek.
+            {sp.tipLine}
           </div>
         </div>
       )}

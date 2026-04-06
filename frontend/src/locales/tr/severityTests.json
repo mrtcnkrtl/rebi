@@ -1,0 +1,282 @@
+{
+  "ui": {
+    "answeredProgress": "{{answered}}/{{total}} cevaplandı",
+    "computedScoreLabel": "Hesaplanan Şiddet Skoru",
+    "answerAllHint": "Tüm soruları cevapla, şiddet skorun otomatik hesaplansın",
+    "mild": "Hafif",
+    "moderate": "Orta",
+    "severe": "Şiddetli"
+  },
+  "acne": {
+    "title": "Akne Değerlendirme Testi",
+    "subtitle": "Şu an yüzündeki durumu en iyi tanımlayan seçenekleri işaretle",
+    "icon": "😤",
+    "questions": [
+      {
+        "id": "active_count",
+        "text": "Yüzünde kaç aktif sivilce/kızarıklık var?",
+        "options": [
+          { "label": "Yok veya 1-2 tane", "score": 0 },
+          { "label": "3-10 tane", "score": 1 },
+          { "label": "10-25 tane", "score": 2 },
+          { "label": "25'ten fazla / sayamıyorum", "score": 3 }
+        ]
+      },
+      {
+        "id": "blackheads",
+        "text": "Siyah nokta veya beyaz nokta durumun?",
+        "options": [
+          { "label": "Yok veya çok az", "score": 0 },
+          { "label": "Burun çevresinde var", "score": 1 },
+          { "label": "Burun + alın + çene yaygın", "score": 2 }
+        ]
+      },
+      {
+        "id": "cystic",
+        "text": "Derin, ağrılı, şişmiş sivilceler (kistik) var mı?",
+        "options": [
+          { "label": "Hayır, yüzeysel sivilceler", "score": 0 },
+          { "label": "Ara sıra 1-2 tane oluyor", "score": 1 },
+          { "label": "Sık sık derin sivilceler çıkıyor", "score": 2 },
+          { "label": "Sürekli var, çok ağrılı", "score": 3 }
+        ]
+      },
+      {
+        "id": "frequency",
+        "text": "Yeni sivilceler ne sıklıkla çıkıyor?",
+        "options": [
+          { "label": "Ayda 1-2 kez", "score": 0 },
+          { "label": "Haftada 1-2 kez", "score": 1 },
+          { "label": "Neredeyse her gün yenisi çıkıyor", "score": 2 }
+        ]
+      },
+      {
+        "id": "scarring",
+        "text": "Sivilce izi (skar) kalıyor mu?",
+        "options": [
+          { "label": "Hayır, iz kalmıyor", "score": 0 },
+          { "label": "Hafif kırmızı izler kalıyor (geçici)", "score": 1 },
+          { "label": "Kalıcı çukur veya kabartı izleri var", "score": 2 }
+        ]
+      }
+    ]
+  },
+  "aging": {
+    "title": "Yaşlanma Belirtileri Testi",
+    "subtitle": "Aynada yüzünü incele ve en uygun seçenekleri işaretle",
+    "icon": "✨",
+    "questions": [
+      {
+        "id": "fine_lines",
+        "text": "İnce çizgiler (mimik çizgileri) durumun?",
+        "options": [
+          { "label": "Hiç yok veya sadece gülünce belli", "score": 0 },
+          { "label": "Göz çevresi ve alında hafif çizgiler", "score": 1 },
+          { "label": "Dinlenirken de belirgin çizgiler var", "score": 2 }
+        ]
+      },
+      {
+        "id": "deep_wrinkles",
+        "text": "Derin kırışıklıklar var mı?",
+        "options": [
+          { "label": "Hayır", "score": 0 },
+          { "label": "Alın veya göz kenarında 1-2 tane", "score": 1 },
+          { "label": "Birden fazla bölgede belirgin kırışıklıklar", "score": 2 },
+          { "label": "Yüz genelinde derin kırışıklıklar", "score": 3 }
+        ]
+      },
+      {
+        "id": "sagging",
+        "text": "Cilt sarkması hissediyor musun?",
+        "options": [
+          { "label": "Hayır, cildim sıkı", "score": 0 },
+          { "label": "Çene hattında hafif gevşeklik", "score": 1 },
+          { "label": "Yanak ve çene belirgin sarkıyor", "score": 2 },
+          { "label": "Boyun dahil genel sarkma var", "score": 3 }
+        ]
+      },
+      {
+        "id": "elasticity",
+        "text": "Cildin elastikiyetini test et: yanağını hafifçe çimdikle ve bırak. Ne oluyor?",
+        "options": [
+          { "label": "Anında geri dönüyor", "score": 0 },
+          { "label": "1-2 saniye gecikiyor", "score": 1 },
+          { "label": "Yavaş geri dönüyor (3+ saniye)", "score": 2 }
+        ]
+      },
+      {
+        "id": "spots",
+        "text": "Yaş lekeleri veya pigment değişiklikleri var mı?",
+        "options": [
+          { "label": "Hayır", "score": 0 },
+          { "label": "Birkaç küçük leke", "score": 1 },
+          { "label": "Belirgin ve yaygın lekelenmeler", "score": 2 }
+        ]
+      }
+    ]
+  },
+  "dryness": {
+    "title": "Kuruluk Değerlendirme Testi",
+    "subtitle": "Cildin nemsiz halini düşünerek cevapla",
+    "icon": "🏜️",
+    "questions": [
+      {
+        "id": "tightness",
+        "text": "Yüzünü yıkadıktan sonra ne hissediyorsun?",
+        "options": [
+          { "label": "Normal, rahat hissediyorum", "score": 0 },
+          { "label": "Hafif bir sıkılık hissi", "score": 1 },
+          { "label": "Belirgin gerginlik, nemlendirici sürmem lazım", "score": 2 },
+          { "label": "Çok gergin, acıyabilir", "score": 3 }
+        ]
+      },
+      {
+        "id": "flaking",
+        "text": "Pul pul dökülme var mı?",
+        "options": [
+          { "label": "Hayır", "score": 0 },
+          { "label": "Burun kenarlarında hafif", "score": 1 },
+          { "label": "Yanak ve alın bölgesinde belirgin", "score": 2 },
+          { "label": "Yüz genelinde yaygın", "score": 3 }
+        ]
+      },
+      {
+        "id": "itching",
+        "text": "Cildin kaşınıyor mu?",
+        "options": [
+          { "label": "Hayır", "score": 0 },
+          { "label": "Ara sıra, özellikle soğukta", "score": 1 },
+          { "label": "Sık sık kaşıntı oluyor", "score": 2 }
+        ]
+      },
+      {
+        "id": "cracking",
+        "text": "Çatlak veya yarık oluşuyor mu?",
+        "options": [
+          { "label": "Hayır", "score": 0 },
+          { "label": "Dudak çevresinde", "score": 1 },
+          { "label": "Birden fazla bölgede çatlaklar", "score": 2 },
+          { "label": "Derin çatlaklar, kanayabilir", "score": 3 }
+        ]
+      },
+      {
+        "id": "makeup",
+        "text": "Makyaj veya nemlendirici uygulama deneyimin?",
+        "options": [
+          { "label": "Normal tutuyor, sorun yok", "score": 0 },
+          { "label": "Topaklanıyor veya çabuk kuruyor", "score": 1 },
+          { "label": "Nemlendirici bile yetmiyor, hemen emiyor", "score": 2 }
+        ]
+      }
+    ]
+  },
+  "pigmentation": {
+    "title": "Leke Değerlendirme Testi",
+    "subtitle": "Yüzündeki leke/ton eşitsizliği durumunu değerlendir",
+    "icon": "🎯",
+    "questions": [
+      {
+        "id": "spot_count",
+        "text": "Yüzünde kaç leke/koyu alan var?",
+        "options": [
+          { "label": "1-2 küçük leke", "score": 0 },
+          { "label": "3-5 leke", "score": 1 },
+          { "label": "5'ten fazla veya geniş alanlar", "score": 2 }
+        ]
+      },
+      {
+        "id": "area_size",
+        "text": "Etkilenen toplam alan ne kadar büyük?",
+        "options": [
+          { "label": "Çok küçük, nokta noktalar", "score": 0 },
+          { "label": "Yanaklar veya alında bölgesel", "score": 1 },
+          { "label": "Yüzün büyük bölümünde", "score": 2 },
+          { "label": "Tüm yüz genelinde ton eşitsizliği", "score": 3 }
+        ]
+      },
+      {
+        "id": "color_intensity",
+        "text": "Lekelerin renk yoğunluğu?",
+        "options": [
+          { "label": "Çok hafif, yakından bakınca belli", "score": 0 },
+          { "label": "Belirgin ama makyajla kapatılır", "score": 1 },
+          { "label": "Koyu, zor kapatılır", "score": 2 },
+          { "label": "Çok koyu, belirgin kontrast", "score": 3 }
+        ]
+      },
+      {
+        "id": "sun_effect",
+        "text": "Güneşe çıkınca lekeler koyulaşıyor mu?",
+        "options": [
+          { "label": "Fark etmedim", "score": 0 },
+          { "label": "Biraz koyulaşıyor", "score": 1 },
+          { "label": "Çok belirgin koyulaşma", "score": 2 }
+        ]
+      },
+      {
+        "id": "spreading",
+        "text": "Son 6 ayda lekeler arttı mı?",
+        "options": [
+          { "label": "Aynı kaldı", "score": 0 },
+          { "label": "Biraz arttı", "score": 1 },
+          { "label": "Belirgin şekilde arttı / yenileri çıktı", "score": 2 }
+        ]
+      }
+    ]
+  },
+  "sensitivity": {
+    "title": "Hassasiyet Değerlendirme Testi",
+    "subtitle": "Cildin tepkilerini en iyi tanımlayan seçenekleri işaretle",
+    "icon": "🌸",
+    "questions": [
+      {
+        "id": "redness_freq",
+        "text": "Cildinde kızarıklık ne sıklıkla oluyor?",
+        "options": [
+          { "label": "Nadiren", "score": 0 },
+          { "label": "Haftada 1-2 kez", "score": 1 },
+          { "label": "Neredeyse her gün", "score": 2 },
+          { "label": "Sürekli kırmızı", "score": 3 }
+        ]
+      },
+      {
+        "id": "stinging",
+        "text": "Batma veya yanma hissi yaşıyor musun?",
+        "options": [
+          { "label": "Hayır", "score": 0 },
+          { "label": "Bazı maddelerle oluyor", "score": 1 },
+          { "label": "Çoğu maddede batıyor", "score": 2 },
+          { "label": "Su bile batıyor", "score": 3 }
+        ]
+      },
+      {
+        "id": "product_reaction",
+        "text": "Yeni madde denediğinde ne oluyor?",
+        "options": [
+          { "label": "Genellikle sorun olmuyor", "score": 0 },
+          { "label": "Bazen kızarıklık/kaşıntı yapıyor", "score": 1 },
+          { "label": "Çoğu yeni maddeye tepki veriyor", "score": 2 }
+        ]
+      },
+      {
+        "id": "redness_duration",
+        "text": "Kızarıklık ne kadar sürüyor?",
+        "options": [
+          { "label": "Birkaç dakika", "score": 0 },
+          { "label": "Saatlerce", "score": 1 },
+          { "label": "Günlerce / hiç geçmiyor", "score": 2 }
+        ]
+      },
+      {
+        "id": "triggers",
+        "text": "Aşağıdakilerden kaç tanesi cildini tetikliyor? (Güneş, rüzgar, soğuk, sıcak su, parfüm, stres)",
+        "options": [
+          { "label": "0-1 tanesi", "score": 0 },
+          { "label": "2-3 tanesi", "score": 1 },
+          { "label": "4-5 tanesi", "score": 2 },
+          { "label": "Hepsi veya çoğu", "score": 3 }
+        ]
+      }
+    ]
+  }
+}

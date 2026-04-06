@@ -1,0 +1,282 @@
+{
+  "ui": {
+    "answeredProgress": "{{answered}}/{{total}} answered",
+    "computedScoreLabel": "Computed severity score",
+    "answerAllHint": "Answer all questions to calculate your severity score automatically.",
+    "mild": "Mild",
+    "moderate": "Moderate",
+    "severe": "Severe"
+  },
+  "acne": {
+    "title": "Acne assessment",
+    "subtitle": "Pick the options that best describe your face right now",
+    "icon": "😤",
+    "questions": [
+      {
+        "id": "active_count",
+        "text": "How many active pimples or inflamed spots do you have?",
+        "options": [
+          { "label": "None or 1–2", "score": 0 },
+          { "label": "3–10", "score": 1 },
+          { "label": "10–25", "score": 2 },
+          { "label": "More than 25 / too many to count", "score": 3 }
+        ]
+      },
+      {
+        "id": "blackheads",
+        "text": "Blackheads or whiteheads?",
+        "options": [
+          { "label": "None or very few", "score": 0 },
+          { "label": "Around the nose", "score": 1 },
+          { "label": "Widespread on nose, forehead, and chin", "score": 2 }
+        ]
+      },
+      {
+        "id": "cystic",
+        "text": "Any deep, painful, swollen (cystic) breakouts?",
+        "options": [
+          { "label": "No, mostly surface spots", "score": 0 },
+          { "label": "Occasionally 1–2", "score": 1 },
+          { "label": "Frequent deep breakouts", "score": 2 },
+          { "label": "Constant, very painful", "score": 3 }
+        ]
+      },
+      {
+        "id": "frequency",
+        "text": "How often do new breakouts appear?",
+        "options": [
+          { "label": "Once or twice a month", "score": 0 },
+          { "label": "Once or twice a week", "score": 1 },
+          { "label": "Almost every day", "score": 2 }
+        ]
+      },
+      {
+        "id": "scarring",
+        "text": "Do you get lasting marks or scars?",
+        "options": [
+          { "label": "No lasting marks", "score": 0 },
+          { "label": "Mild red marks that fade", "score": 1 },
+          { "label": "Pitted or raised scars", "score": 2 }
+        ]
+      }
+    ]
+  },
+  "aging": {
+    "title": "Aging signs assessment",
+    "subtitle": "Look in the mirror and pick what fits best",
+    "icon": "✨",
+    "questions": [
+      {
+        "id": "fine_lines",
+        "text": "Fine lines (expression lines)?",
+        "options": [
+          { "label": "None or only when smiling", "score": 0 },
+          { "label": "Mild lines around eyes or forehead", "score": 1 },
+          { "label": "Visible at rest", "score": 2 }
+        ]
+      },
+      {
+        "id": "deep_wrinkles",
+        "text": "Deep wrinkles?",
+        "options": [
+          { "label": "No", "score": 0 },
+          { "label": "1–2 on forehead or eye area", "score": 1 },
+          { "label": "Several areas with clear wrinkles", "score": 2 },
+          { "label": "Deep wrinkles across the face", "score": 3 }
+        ]
+      },
+      {
+        "id": "sagging",
+        "text": "Do you notice sagging or loss of firmness?",
+        "options": [
+          { "label": "No, skin feels firm", "score": 0 },
+          { "label": "Slight along the jawline", "score": 1 },
+          { "label": "Noticeable on cheeks and jaw", "score": 2 },
+          { "label": "Including neck / general laxity", "score": 3 }
+        ]
+      },
+      {
+        "id": "elasticity",
+        "text": "Gently pinch your cheek and release. What happens?",
+        "options": [
+          { "label": "Bounces back immediately", "score": 0 },
+          { "label": "1–2 second delay", "score": 1 },
+          { "label": "Slow return (3+ seconds)", "score": 2 }
+        ]
+      },
+      {
+        "id": "spots",
+        "text": "Age spots or uneven pigmentation?",
+        "options": [
+          { "label": "No", "score": 0 },
+          { "label": "A few small spots", "score": 1 },
+          { "label": "Obvious, widespread uneven tone", "score": 2 }
+        ]
+      }
+    ]
+  },
+  "dryness": {
+    "title": "Dryness assessment",
+    "subtitle": "Answer based on how your skin feels without moisturizer",
+    "icon": "🏜️",
+    "questions": [
+      {
+        "id": "tightness",
+        "text": "After cleansing, how does your skin feel?",
+        "options": [
+          { "label": "Comfortable", "score": 0 },
+          { "label": "Slightly tight", "score": 1 },
+          { "label": "Clearly tight; need moisturizer", "score": 2 },
+          { "label": "Very tight or sore", "score": 3 }
+        ]
+      },
+      {
+        "id": "flaking",
+        "text": "Any flaking or peeling?",
+        "options": [
+          { "label": "No", "score": 0 },
+          { "label": "Mild around the nose", "score": 1 },
+          { "label": "Visible on cheeks or forehead", "score": 2 },
+          { "label": "Widespread on the face", "score": 3 }
+        ]
+      },
+      {
+        "id": "itching",
+        "text": "Does your skin itch?",
+        "options": [
+          { "label": "No", "score": 0 },
+          { "label": "Sometimes, especially in cold", "score": 1 },
+          { "label": "Often", "score": 2 }
+        ]
+      },
+      {
+        "id": "cracking",
+        "text": "Cracks or painful splits?",
+        "options": [
+          { "label": "No", "score": 0 },
+          { "label": "Around the lips", "score": 1 },
+          { "label": "Several areas", "score": 2 },
+          { "label": "Deep cracks, may bleed", "score": 3 }
+        ]
+      },
+      {
+        "id": "makeup",
+        "text": "How does makeup or moisturizer sit on the skin?",
+        "options": [
+          { "label": "Fine, no issues", "score": 0 },
+          { "label": "Clumps or dries out quickly", "score": 1 },
+          { "label": "Moisturizer is not enough, absorbs instantly", "score": 2 }
+        ]
+      }
+    ]
+  },
+  "pigmentation": {
+    "title": "Pigmentation assessment",
+    "subtitle": "Rate uneven tone and dark spots on your face",
+    "icon": "🎯",
+    "questions": [
+      {
+        "id": "spot_count",
+        "text": "How many spots or darker patches?",
+        "options": [
+          { "label": "1–2 small spots", "score": 0 },
+          { "label": "3–5 spots", "score": 1 },
+          { "label": "More than 5 or large areas", "score": 2 }
+        ]
+      },
+      {
+        "id": "area_size",
+        "text": "How large is the affected area overall?",
+        "options": [
+          { "label": "Tiny, scattered dots", "score": 0 },
+          { "label": "Regional on cheeks or forehead", "score": 1 },
+          { "label": "Large part of the face", "score": 2 },
+          { "label": "Whole-face uneven tone", "score": 3 }
+        ]
+      },
+      {
+        "id": "color_intensity",
+        "text": "How dark or intense are the spots?",
+        "options": [
+          { "label": "Very faint, visible up close", "score": 0 },
+          { "label": "Clear but coverable with makeup", "score": 1 },
+          { "label": "Dark, hard to cover", "score": 2 },
+          { "label": "Very dark, strong contrast", "score": 3 }
+        ]
+      },
+      {
+        "id": "sun_effect",
+        "text": "Do spots darken after sun exposure?",
+        "options": [
+          { "label": "Not sure / no change", "score": 0 },
+          { "label": "Slightly darker", "score": 1 },
+          { "label": "Much darker", "score": 2 }
+        ]
+      },
+      {
+        "id": "spreading",
+        "text": "In the last 6 months, have spots increased?",
+        "options": [
+          { "label": "Stable", "score": 0 },
+          { "label": "Slightly worse", "score": 1 },
+          { "label": "Clearly worse / new spots", "score": 2 }
+        ]
+      }
+    ]
+  },
+  "sensitivity": {
+    "title": "Sensitivity assessment",
+    "subtitle": "Pick the reactions that best match your skin",
+    "icon": "🌸",
+    "questions": [
+      {
+        "id": "redness_freq",
+        "text": "How often is your skin red or flushed?",
+        "options": [
+          { "label": "Rarely", "score": 0 },
+          { "label": "1–2 times a week", "score": 1 },
+          { "label": "Almost daily", "score": 2 },
+          { "label": "Constantly red", "score": 3 }
+        ]
+      },
+      {
+        "id": "stinging",
+        "text": "Burning or stinging?",
+        "options": [
+          { "label": "No", "score": 0 },
+          { "label": "With some products", "score": 1 },
+          { "label": "With most products", "score": 2 },
+          { "label": "Even water can sting", "score": 3 }
+        ]
+      },
+      {
+        "id": "product_reaction",
+        "text": "When you try a new product, what usually happens?",
+        "options": [
+          { "label": "Usually fine", "score": 0 },
+          { "label": "Sometimes redness or itch", "score": 1 },
+          { "label": "Reacts to most new products", "score": 2 }
+        ]
+      },
+      {
+        "id": "redness_duration",
+        "text": "How long does redness last?",
+        "options": [
+          { "label": "A few minutes", "score": 0 },
+          { "label": "Hours", "score": 1 },
+          { "label": "Days / barely fades", "score": 2 }
+        ]
+      },
+      {
+        "id": "triggers",
+        "text": "How many of these trigger your skin? (Sun, wind, cold, hot water, fragrance, stress)",
+        "options": [
+          { "label": "0–1", "score": 0 },
+          { "label": "2–3", "score": 1 },
+          { "label": "4–5", "score": 2 },
+          { "label": "Most or all", "score": 3 }
+        ]
+      }
+    ]
+  }
+}

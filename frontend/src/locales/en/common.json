@@ -84,7 +84,8 @@
     "it": "Italiano",
     "fr": "Français",
     "pt": "Português",
-    "ar": "العربية"
+    "ar": "العربية",
+    "az": "Azərbaycanca"
   },
   "common": {
     "continue": "Continue",
@@ -206,4 +207,3 @@
     "refresh": "Refresh"
   }
 }
-
