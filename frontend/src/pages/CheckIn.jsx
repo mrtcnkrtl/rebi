@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
+import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -191,6 +192,7 @@ export default function CheckIn() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const id = user?.id;
@@ -376,7 +378,7 @@ export default function CheckIn() {
               style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}>
               <Sparkles className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Bugünün Raporu</h1>
+            <h1 className="text-xl font-bold text-gray-900">{t("checkin.todayReport")}</h1>
             <p className="text-sm text-gray-500 mt-1">
               Risk: <span className="font-semibold" style={{ color: theme.primary }}>{result.risk_level}</span>
               {result.adaptation_type === "major" && " — Büyük değişiklikler yapıldı"}
@@ -457,7 +459,7 @@ export default function CheckIn() {
             className="w-full py-3 rounded-xl text-white font-semibold flex items-center justify-center gap-2"
             style={{ backgroundColor: theme.primary }}
           >
-            Dashboard'a Git <ArrowRight className="w-4 h-4" />
+            {t("checkin.backToDashboard")} <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       </div>
@@ -479,15 +481,15 @@ export default function CheckIn() {
         <ThemePatternOverlay pattern={theme.pattern} />
         <div className="max-w-lg mx-auto px-4 py-8 text-center relative z-[1]">
           <CheckCircle2 className="w-14 h-14 mx-auto mb-4 text-teal-500" />
-          <h1 className="text-xl font-bold text-gray-900">Bugün check-in yaptın</h1>
-          <p className="text-sm text-gray-500 mt-2">Her gün tek kayıt tutulur. Yarın tekrar gelebilirsin.</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("checkin.alreadyTitle")}</h1>
+          <p className="text-sm text-gray-500 mt-2">{t("checkin.alreadyDesc")}</p>
           <button
             type="button"
             onClick={() => navigate("/dashboard")}
             className="mt-6 w-full py-3 rounded-xl text-white font-semibold"
             style={{ backgroundColor: theme.primary }}
           >
-            Dashboard&apos;a dön
+            {t("checkin.backToDashboard")}
           </button>
         </div>
       </div>
@@ -500,8 +502,8 @@ export default function CheckIn() {
       <div className="max-w-lg mx-auto px-4 py-8 relative z-[1]">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-xl font-bold text-gray-900">Günlük Check-in</h1>
-          <p className="text-sm text-gray-500 mt-1">Bugün nasıl hissediyorsun?</p>
+          <h1 className="text-xl font-bold text-gray-900">{t("checkin.title")}</h1>
+          <p className="text-sm text-gray-500 mt-1">{t("checkin.subtitle")}</p>
           <p className="text-[11px] text-gray-400 mt-2 max-w-sm mx-auto leading-relaxed">
             Uyku ve stres cevapların, geçmiş check-in kayıtlarınla kısa süreli harmanlanarak risk özetine girer.
           </p>
@@ -836,7 +838,7 @@ export default function CheckIn() {
           {loading ? (
             <><Loader2 className="w-5 h-5 animate-spin" /> Analiz ediliyor...</>
           ) : (
-            <><Send className="w-5 h-5" /> Check-in Gönder</>
+            <><Send className="w-5 h-5" /> {t("checkin.submit")}</>
           )}
         </button>
       </div>

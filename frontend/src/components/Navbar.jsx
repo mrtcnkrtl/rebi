@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Leaf, Menu, X, LogOut, Crown } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import LanguageSelect from "./LanguageSelect";
 
 export default function Navbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   const handleSignOut = async () => {
     await signOut();
@@ -25,42 +28,44 @@ export default function Navbar() {
 
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-4">
+          <LanguageSelect />
           {user ? (
             <>
               <Link
                 to="/dashboard"
                 className="text-gray-600 hover:text-teal-600 font-medium transition-colors"
               >
-                Dashboard
+                {t("nav.dashboard")}
               </Link>
               <Link
                 to="/dashboard/profile"
                 className="text-gray-600 hover:text-teal-600 font-medium text-sm"
               >
-                Profil
+                {t("nav.profile")}
               </Link>
               <Link
                 to="/dashboard/subscribe"
                 className="text-amber-700 hover:text-amber-900 font-medium text-sm flex items-center gap-1"
               >
-                <Crown className="w-4 h-4" /> Plus
+                <Crown className="w-4 h-4" /> {t("nav.plus")}
               </Link>
               <Link
                 to="/dashboard/analyze"
                 className="btn-primary !py-2 !px-4 !text-sm"
               >
-                Yeni Analiz
+                {t("nav.newAnalyze")}
               </Link>
               <button
                 onClick={handleSignOut}
                 className="text-gray-400 hover:text-red-500 transition-colors p-2"
+                aria-label={t("nav.logout")}
               >
                 <LogOut className="w-5 h-5" />
               </button>
             </>
           ) : (
             <Link to="/auth" className="btn-primary !py-2 !px-5 !text-sm">
-              Giriş Yap
+              {t("nav.login")}
             </Link>
           )}
         </div>
@@ -77,6 +82,9 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-100 bg-white px-4 py-4 space-y-3">
+          <div className="pb-2">
+            <LanguageSelect />
+          </div>
           {user ? (
             <>
               <Link
@@ -84,28 +92,28 @@ export default function Navbar() {
                 onClick={() => setMenuOpen(false)}
                 className="block py-2 text-gray-700 font-medium"
               >
-                Dashboard
+                {t("nav.dashboard")}
               </Link>
               <Link
                 to="/dashboard/profile"
                 onClick={() => setMenuOpen(false)}
                 className="block py-2 text-gray-700 font-medium"
               >
-                Profil
+                {t("nav.profile")}
               </Link>
               <Link
                 to="/dashboard/subscribe"
                 onClick={() => setMenuOpen(false)}
                 className="block py-2 text-amber-700 font-medium"
               >
-                Rebi Plus
+                {t("nav.plus")}
               </Link>
               <Link
                 to="/dashboard/analyze"
                 onClick={() => setMenuOpen(false)}
                 className="block py-2 text-teal-600 font-medium"
               >
-                Yeni Analiz
+                {t("nav.newAnalyze")}
               </Link>
               <button
                 onClick={() => {
@@ -114,7 +122,7 @@ export default function Navbar() {
                 }}
                 className="block py-2 text-red-500 font-medium"
               >
-                Çıkış Yap
+                {t("nav.logout")}
               </button>
             </>
           ) : (
@@ -123,7 +131,7 @@ export default function Navbar() {
               onClick={() => setMenuOpen(false)}
               className="btn-primary w-full"
             >
-              Giriş Yap
+              {t("nav.login")}
             </Link>
           )}
         </div>

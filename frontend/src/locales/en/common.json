@@ -1,0 +1,115 @@
+{
+  "appName": "Rebi",
+  "nav": {
+    "dashboard": "Dashboard",
+    "profile": "Profile",
+    "plus": "Plus",
+    "newAnalyze": "New analysis",
+    "login": "Sign in",
+    "logout": "Sign out",
+    "home": "Home",
+    "checkin": "Check-in",
+    "chat": "Rebi AI",
+    "analyze": "Analyze",
+    "reanalyze": "Again",
+    "theme": "Themes"
+  },
+  "landing": {
+    "heroBadge": "AI-powered skincare",
+    "ctaFreeAnalyze": "Start free analysis",
+    "ctaHowItWorks": "How it works",
+    "plusCta": "Explore Plus"
+  },
+  "auth": {
+    "welcome": "Welcome",
+    "createAccount": "Create account",
+    "loginToAccount": "Sign in to your Rebi account",
+    "createFreeAccount": "Create your free account",
+    "email": "Email",
+    "password": "Password",
+    "fullName": "Full name",
+    "login": "Sign in",
+    "signup": "Sign up",
+    "haveNoAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?"
+  },
+  "lang": {
+    "label": "Language",
+    "tr": "Türkçe",
+    "en": "English",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "fr": "Français",
+    "pt": "Português",
+    "ar": "العربية"
+  },
+  "common": {
+    "continue": "Continue",
+    "back": "Back",
+    "close": "Close",
+    "hide": "Hide",
+    "details": "Details"
+  },
+  "subscribe": {
+    "title": "Rebi Plus",
+    "subtitle": "Unlimited AI chat and premium themes"
+  },
+  "themes": {
+    "title": "Choose a theme",
+    "subtitle": "Free themes are available to everyone. Plus unlocks premium looks."
+  },
+  "analyze": {
+    "photoOnlyBack": "Back",
+    "photoOnlyTitle": "Upload a skin photo",
+    "routineReadyTitle": "Your routine is ready",
+    "quickPhotoUpload": "Upload a skin photo (quick)",
+    "newAnalyzeFull": "Start a new analysis (full form)",
+    "generateFailedTitle": "Couldn't generate routine",
+    "location": "Location",
+    "locationSet": "Location set",
+    "continue": "Continue",
+    "skinType": "Your skin type",
+    "concerns": "Your concerns (multi-select)",
+    "finalStep": "Final step"
+  },
+  "checkin": {
+    "todayReport": "Today's report",
+    "alreadyTitle": "You already checked in today",
+    "alreadyDesc": "Only one check-in is saved per day. Come back tomorrow.",
+    "backToDashboard": "Back to dashboard",
+    "title": "Daily check-in",
+    "subtitle": "How do you feel today?",
+    "submit": "Submit check-in"
+  },
+  "chat": {
+    "subtitle": "Skincare for face & hands",
+    "clear": "Clear",
+    "thinking": "Rebi is thinking..."
+  },
+  "dashboard": {
+    "noAnalyzeTitle": "Hi, {{name}}!",
+    "noAnalyzeDesc": "You haven't completed an analysis yet. Start your analysis or chat with Rebi AI. Daily check-in becomes available after you accept your routine.",
+    "startAnalyze": "Start analysis",
+    "chatWithAi": "Chat with Rebi AI",
+    "trackingTitle": "Routine tracking",
+    "dailyCheckinTitle": "Daily check-in",
+    "dailyCheckinSubtitle": "How do you feel today? Your routine adapts accordingly."
+  },
+  "profile": {
+    "title": "Profile",
+    "subtitle": "Account, security and your skin photos",
+    "accountSummary": "Account summary",
+    "membership": "Member since: {{date}}",
+    "plusActive": "Rebi Plus is active",
+    "routineSummaryTitle": "Routine & check-in summary",
+    "streak": "Streak",
+    "totalCheckins": "Total check-ins",
+    "adherence": "Routine adherence",
+    "quickUpload": "quick upload",
+    "fullAnalyze": "analysis form",
+    "photosTitle": "Skin photos",
+    "refresh": "Refresh"
+  }
+}
+

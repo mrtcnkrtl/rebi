@@ -12,6 +12,7 @@ import {
 } from "../lib/routineTracking";
 import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
+import { useTranslation } from "react-i18next";
 import {
   Sparkles, PlusCircle, CloudSun, Droplets, Sun, Thermometer,
   Calendar, ArrowRight, Leaf, AlertTriangle, Heart, Apple,
@@ -136,6 +137,7 @@ export default function Dashboard() {
   const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const nav = location.state;
   const uid = user?.id;
 
@@ -361,16 +363,16 @@ export default function Dashboard() {
             style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}>
             <Leaf className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Merhaba, {userName}!</h1>
-          <p className="text-gray-500 mb-6 max-w-sm mx-auto">Henüz bir analiz yapmadın. Analizini başlat veya Rebi AI ile sohbet et. Günlük check-in, rutinini kabul ettikten sonra açılır.</p>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">{t("dashboard.noAnalyzeTitle", { name: userName })}</h1>
+          <p className="text-gray-500 mb-6 max-w-sm mx-auto">{t("dashboard.noAnalyzeDesc")}</p>
           <div className="space-y-3">
             <Link to="/dashboard/analyze" className="btn-primary inline-flex !px-8 !py-4 !text-lg group w-full justify-center"
               style={{ backgroundColor: theme.primary }}>
-              <PlusCircle className="w-5 h-5" /> Analiz Başlat <ArrowRight className="w-5 h-5" />
+              <PlusCircle className="w-5 h-5" /> {t("dashboard.startAnalyze")} <ArrowRight className="w-5 h-5" />
             </Link>
             <Link to="/dashboard/chat" className="btn-secondary inline-flex !px-8 !py-3 w-full justify-center"
               style={{ borderColor: theme.primaryLight, color: theme.primary }}>
-              <MessageCircle className="w-5 h-5" /> Rebi AI ile Sohbet
+              <MessageCircle className="w-5 h-5" /> {t("dashboard.chatWithAi")}
             </Link>
           </div>
         </div>
@@ -391,7 +393,7 @@ export default function Dashboard() {
         <ThemePatternOverlay pattern={theme.pattern} />
         <div className="max-w-2xl mx-auto px-4 py-8 relative z-[1]">
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Rutin takibi</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{t("dashboard.trackingTitle")}</h1>
             <p className="text-gray-500 mt-1 text-sm">
               {new Date().toLocaleDateString("tr-TR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
@@ -413,8 +415,8 @@ export default function Dashboard() {
               <ClipboardCheck className="w-6 h-6 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="text-base font-bold text-gray-800">Günlük Check-in</h3>
-              <p className="text-xs text-gray-500">Bugün nasıl hissediyorsun? Rutinin buna göre uyarlanır.</p>
+              <h3 className="text-base font-bold text-gray-800">{t("dashboard.dailyCheckinTitle")}</h3>
+              <p className="text-xs text-gray-500">{t("dashboard.dailyCheckinSubtitle")}</p>
             </div>
             <ArrowRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
           </Link>
@@ -649,7 +651,7 @@ export default function Dashboard() {
             <SectionHeader
               icon="🧪"
               title="Ürün listesi"
-              subtitle="Rutinde geçen etken maddeler — etikette bu maddeleri ara"
+              subtitle="Rutinde geçen etken maddeler"
               color={theme.primary}
               className="!mt-2"
             />
@@ -730,7 +732,7 @@ export default function Dashboard() {
               <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
                 <li><strong>Tek üründe hepsi olmayabilir:</strong> Bir satırda birden fazla madde yazıyorsa (ör. seramid + skualan veya nem + BHA), bunlar genelde aynı şişede değil; ayrı ürünlerle de kurulur. Rutindeki sıra = uygulama sırası: önce daha sulu/aktif tonik-serum, sonra yağlı/krem nemlendirici.</li>
                 <li><strong>Konsantrasyon:</strong> Tam % eşleşmese de yakın ve düşükten başlamak genelde yeterli; çok daha güçlü formül almadan önce cildinin tolere ettiğini kontrol et.</li>
-                <li><strong>Seçerken:</strong> Etikette önerilen etkenleri INCI’de ara. İçerik listesi net, güvenilir satıcı veya eczacılık kanalı tercih et.</li>
+                <li><strong>Seçerken:</strong> İçerik listesi net, güvenilir satıcı veya eczacılık kanalı tercih et.</li>
                 <li><strong>Dikkat:</strong> Parfüm/alkol hassasiyetin varsa içeriği kontrol et. İlk kullanımda yama testi yap. Şüphen varsa eczacıya veya dermatoloğa danış.</li>
               </ul>
             </div>
@@ -1012,11 +1014,21 @@ function getDefaultUsage(stepOrder) {
 
 function ProductStep({ item, theme, step }) {
   const [showDetail, setShowDetail] = useState(false);
+  const { t } = useTranslation();
   const isSkincare = item.category === "Bakım" || item.category === "Koruma";
   const usageRaw = item.usage != null ? String(item.usage).trim() : "";
   const usage = usageRaw || (isSkincare ? getDefaultUsage(item.step_order) : "");
   const hasContent = Boolean(item.detail || usage);
   const showNumber = step != null && step !== undefined;
+  const actionLower = String(item.action || "").toLowerCase();
+  const hasPlusCombo = isSkincare && String(item.action || "").includes("+");
+  const looksLikeMoisturizerCombo =
+    hasPlusCombo &&
+    (actionLower.includes("nemlendirici") ||
+      actionLower.includes("bariyer") ||
+      actionLower.includes("onarım") ||
+      actionLower.includes("onarim") ||
+      actionLower.includes("krem"));
   return (
     <div className="card !p-3 flex items-start gap-3 hover:shadow-md transition-shadow">
       {showNumber ? (
@@ -1040,6 +1052,13 @@ function ProductStep({ item, theme, step }) {
           )}
         </div>
         <StructuredRoutineBadges item={item} />
+        {looksLikeMoisturizerCombo && (
+          <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+            <strong className="text-gray-700">Tek üründe hepsi şart değil:</strong>{" "}
+            Bu satır “hedef içerik örnekleri” gibi düşün; hepsini tek üründe bulamazsan benzerlerinden{" "}
+            <strong className="text-gray-700">birini</strong> seçebilirsin.
+          </p>
+        )}
         {hasContent && (
           <>
             <button
@@ -1048,7 +1067,7 @@ function ProductStep({ item, theme, step }) {
               className="mt-2 block text-xs font-medium rounded-lg px-2 py-1 border transition-colors"
               style={{ borderColor: theme.primaryLight, color: theme.primary }}
             >
-              {showDetail ? "Gizle" : isSkincare ? "Neden bu ürün / madde?" : "Detay"}
+              {showDetail ? t("common.hide") : isSkincare ? "Neden bu ürün / madde?" : t("common.details")}
             </button>
             {showDetail && (
               <div className="text-xs text-gray-600 mt-2 space-y-2 leading-relaxed">
@@ -1076,6 +1095,7 @@ function ProductStep({ item, theme, step }) {
 
 function LifestyleCard({ item }) {
   const [showDetail, setShowDetail] = useState(false);
+  const { t } = useTranslation();
   return (
     <div className="card !p-3 border-green-100 bg-green-50/20">
       <div className="flex items-start gap-3">
@@ -1089,7 +1109,7 @@ function LifestyleCard({ item }) {
                 onClick={() => setShowDetail((v) => !v)}
                 className="mt-1 text-[11px] font-medium rounded-lg px-2 py-0.5 border border-green-200 text-green-700"
               >
-                {showDetail ? "Gizle" : "Bu madde"}
+                {showDetail ? t("common.hide") : "Bu madde"}
               </button>
               {showDetail && (
                 <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{item.detail}</p>

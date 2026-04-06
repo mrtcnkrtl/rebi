@@ -3,6 +3,7 @@ import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { Check, Sparkles, Lock } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
+import { useTranslation } from "react-i18next";
 
 const patternPreviews = {
   "": null,
@@ -159,6 +160,7 @@ export default function Themes() {
   const { theme, themeId, setThemeId, themes } = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const plus = userHasRebiPlus(user);
 
   const pickTheme = (t) => {
@@ -179,9 +181,9 @@ export default function Themes() {
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Sparkles className="w-6 h-6" style={{ color: theme.primary }} />
-            Tema Seç
+            {t("themes.title")}
           </h2>
-          <p className="text-gray-500 text-sm mt-1">Ücretsiz temalar herkese açık; Plus ile özel görünümler açılır.</p>
+          <p className="text-gray-500 text-sm mt-1">{t("themes.subtitle")}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">

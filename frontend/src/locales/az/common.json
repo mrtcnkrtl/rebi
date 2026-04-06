@@ -1,0 +1,116 @@
+{
+  "appName": "Rebi",
+  "nav": {
+    "dashboard": "Panel",
+    "profile": "Profil",
+    "plus": "Plus",
+    "newAnalyze": "Yeni analiz",
+    "login": "Daxil ol",
+    "logout": "Çıxış",
+    "home": "Ana səhifə",
+    "checkin": "Check-in",
+    "chat": "Rebi AI",
+    "analyze": "Analiz",
+    "reanalyze": "Yenidən",
+    "theme": "Tema"
+  },
+  "landing": {
+    "heroBadge": "AI dəstəkli dəri baxımı",
+    "ctaFreeAnalyze": "Pulsuz analiz başlat",
+    "ctaHowItWorks": "Necə işləyir?",
+    "plusCta": "Plus-u kəşf et"
+  },
+  "auth": {
+    "welcome": "Xoş gəldin",
+    "createAccount": "Hesab yarat",
+    "loginToAccount": "Rebi hesabına daxil ol",
+    "createFreeAccount": "Pulsuz hesabını yarat",
+    "email": "E-poçt",
+    "password": "Şifrə",
+    "fullName": "Ad Soyad",
+    "login": "Daxil ol",
+    "signup": "Qeydiyyat",
+    "haveNoAccount": "Hesabın yoxdur?",
+    "haveAccount": "Artıq hesabın var?"
+  },
+  "lang": {
+    "label": "Dil",
+    "tr": "Türkçe",
+    "en": "English",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "fr": "Français",
+    "pt": "Português",
+    "ar": "العربية",
+    "az": "Azərbaycanca"
+  },
+  "common": {
+    "continue": "Davam et",
+    "back": "Geri",
+    "close": "Bağla",
+    "hide": "Gizlə",
+    "details": "Detallar"
+  },
+  "subscribe": {
+    "title": "Rebi Plus",
+    "subtitle": "Limitsiz AI söhbət və premium temalar"
+  },
+  "themes": {
+    "title": "Tema seç",
+    "subtitle": "Pulsuz temalar hamı üçün açıqdır; Plus premium görünüşləri açır."
+  },
+  "analyze": {
+    "photoOnlyBack": "Geri",
+    "photoOnlyTitle": "Dəri fotosu yüklə",
+    "routineReadyTitle": "Rutinin hazırdır",
+    "quickPhotoUpload": "Dəri fotosu yüklə (tez)",
+    "newAnalyzeFull": "Yeni analiz başlat (tam forma)",
+    "generateFailedTitle": "Rutin yaradıla bilmədi",
+    "location": "Məkan",
+    "locationSet": "Məkan təyin edildi",
+    "continue": "Davam et",
+    "skinType": "Dəri tipin",
+    "concerns": "Problemlərin (çoxlu seçim)",
+    "finalStep": "Son addım"
+  },
+  "checkin": {
+    "todayReport": "Bugünkü hesabat",
+    "alreadyTitle": "Bu gün check-in etmisən",
+    "alreadyDesc": "Gündə yalnız bir qeyd saxlanılır. Sabah yenidən gələ bilərsən.",
+    "backToDashboard": "Panelə qayıt",
+    "title": "Gündəlik check-in",
+    "subtitle": "Bu gün özünü necə hiss edirsən?",
+    "submit": "Check-in göndər"
+  },
+  "chat": {
+    "subtitle": "Dəri, üz & əl baxımı mütəxəssisi",
+    "clear": "Təmizlə",
+    "thinking": "Rebi düşünür..."
+  },
+  "dashboard": {
+    "noAnalyzeTitle": "Salam, {{name}}!",
+    "noAnalyzeDesc": "Hələ analiz etməmisən. Analizi başlat və ya Rebi AI ilə söhbət et. Gündəlik check-in, rutini qəbul etdikdən sonra açılır.",
+    "startAnalyze": "Analizi başlat",
+    "chatWithAi": "Rebi AI ilə söhbət",
+    "trackingTitle": "Rutin izləmə",
+    "dailyCheckinTitle": "Gündəlik check-in",
+    "dailyCheckinSubtitle": "Bu gün özünü necə hiss edirsən? Rutin buna görə uyğunlaşır."
+  },
+  "profile": {
+    "title": "Profil",
+    "subtitle": "Hesab, təhlükəsizlik və dəri fotoların",
+    "accountSummary": "Hesab xülasəsi",
+    "membership": "Üzvlük: {{date}}",
+    "plusActive": "Rebi Plus aktivdir",
+    "routineSummaryTitle": "Rutin & check-in xülasəsi",
+    "streak": "Seriya",
+    "totalCheckins": "Cəmi check-in",
+    "adherence": "Rutinə sadiqlik",
+    "quickUpload": "tez yükləmə",
+    "fullAnalyze": "analiz formu",
+    "photosTitle": "Dəri fotoları",
+    "refresh": "Yenilə"
+  }
+}
+

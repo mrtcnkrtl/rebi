@@ -1,0 +1,48 @@
+{
+  "appName": "Rebi",
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "profile": "الملف الشخصي",
+    "plus": "بلس",
+    "newAnalyze": "تحليل جديد",
+    "login": "تسجيل الدخول",
+    "logout": "تسجيل الخروج",
+    "home": "الرئيسية",
+    "checkin": "تسجيل يومي",
+    "chat": "Rebi AI",
+    "analyze": "تحليل",
+    "reanalyze": "مرة أخرى",
+    "theme": "الثيمات"
+  },
+  "landing": {
+    "heroBadge": "عناية بالبشرة مدعومة بالذكاء الاصطناعي",
+    "ctaFreeAnalyze": "ابدأ التحليل مجاناً",
+    "ctaHowItWorks": "كيف يعمل؟",
+    "plusCta": "استكشف بلس"
+  },
+  "auth": {
+    "welcome": "أهلاً بك",
+    "createAccount": "إنشاء حساب",
+    "loginToAccount": "سجّل الدخول إلى حساب Rebi",
+    "createFreeAccount": "أنشئ حسابك المجاني",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "fullName": "الاسم الكامل",
+    "login": "تسجيل الدخول",
+    "signup": "إنشاء حساب",
+    "haveNoAccount": "ليس لديك حساب؟",
+    "haveAccount": "لديك حساب بالفعل؟"
+  },
+  "lang": {
+    "label": "اللغة",
+    "tr": "Türkçe",
+    "en": "English",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "fr": "Français",
+    "pt": "Português",
+    "ar": "العربية"
+  }
+}
+

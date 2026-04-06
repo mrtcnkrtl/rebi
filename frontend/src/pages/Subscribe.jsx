@@ -3,12 +3,14 @@ import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { Sparkles, Crown, MessageCircle, Palette, ExternalLink } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
+import { useTranslation } from "react-i18next";
 
 const CHECKOUT_URL = import.meta.env.VITE_REBI_PLUS_CHECKOUT_URL || "";
 
 export default function Subscribe() {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const plus =
     user?.user_metadata?.rebi_plus === true ||
     ["plus", "pro", "premium"].includes(
@@ -27,8 +29,8 @@ export default function Subscribe() {
             <Crown className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Rebi Plus</h1>
-            <p className="text-sm text-gray-500">Sınırsız AI sohbet ve premium temalar</p>
+            <h1 className="text-2xl font-bold text-gray-900">{t("subscribe.title")}</h1>
+            <p className="text-sm text-gray-500">{t("subscribe.subtitle")}</p>
           </div>
         </div>
 

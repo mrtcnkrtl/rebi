@@ -8,10 +8,12 @@ import { DEMO_USER_ID } from "../lib/demoUser";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { Bot, Send, Loader2, Sparkles } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
+import { useTranslation } from "react-i18next";
 
 export default function Chat() {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -119,7 +121,7 @@ export default function Chat() {
   const clearChat = () => {
     setHistory([{
       role: "assistant",
-      content: `Sohbet temizlendi. Yeniden başlayalım! Cilt bakımı hakkında ne merak ediyorsun?`,
+      content: "Sohbet temizlendi. Yeniden başlayalım! Cilt bakımı hakkında ne merak ediyorsun?",
     }]);
     try {
       localStorage.removeItem("rebi-chat-history");
@@ -140,10 +142,10 @@ export default function Chat() {
           </div>
           <div className="flex-1">
             <h3 className="font-bold text-gray-900 text-sm">Rebi AI</h3>
-            <p className="text-[11px] text-gray-400">Cilt, yüz & el bakımı uzmanı</p>
+            <p className="text-[11px] text-gray-400">{t("chat.subtitle")}</p>
           </div>
           <button onClick={clearChat} className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">
-            Temizle
+            {t("chat.clear")}
           </button>
         </div>
 
@@ -164,7 +166,7 @@ export default function Chat() {
             <div className="flex justify-start">
               <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.primary }} />
-                <span className="text-sm text-gray-400">Rebi düşünüyor...</span>
+                <span className="text-sm text-gray-400">{t("chat.thinking")}</span>
               </div>
             </div>
           )}

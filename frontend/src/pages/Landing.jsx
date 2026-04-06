@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useTranslation } from "react-i18next";
 import {
   Leaf,
   Camera,
@@ -74,6 +75,7 @@ const plusHighlights = [
 
 export default function Landing() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-warm-50 via-white to-teal-50/30">
@@ -87,7 +89,7 @@ export default function Landing() {
           <div className="text-center max-w-3xl mx-auto">
             <div className="inline-flex items-center gap-2 bg-teal-50 text-teal-700 px-4 py-2 rounded-full text-sm font-medium mb-8 border border-teal-100">
               <Sparkles className="w-4 h-4" />
-              Yapay Zeka Destekli Cilt Bakımı
+              {t("landing.heroBadge")}
             </div>
 
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight mb-6 tracking-tight">
@@ -113,14 +115,14 @@ export default function Landing() {
                 to={user ? "/dashboard/analyze" : "/auth"}
                 className="btn-primary !px-8 !py-4 !text-lg !rounded-2xl group"
               >
-                Ücretsiz Analiz Başlat
+                {t("landing.ctaFreeAnalyze")}
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
               <a
                 href="#features"
                 className="btn-secondary !px-8 !py-4 !text-lg !rounded-2xl"
               >
-                Nasıl Çalışır?
+                {t("landing.ctaHowItWorks")}
               </a>
             </div>
 
@@ -192,7 +194,7 @@ export default function Landing() {
               className="inline-flex items-center gap-2 rounded-2xl bg-white text-violet-950 font-bold px-8 py-4 text-base shadow-lg shadow-black/20 hover:bg-violet-50 transition-colors"
             >
               <Crown className="w-5 h-5 text-amber-600" />
-              Plus&apos;ı keşfet
+              {t("landing.plusCta")}
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>

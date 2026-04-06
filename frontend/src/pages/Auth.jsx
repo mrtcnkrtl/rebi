@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Leaf, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Info } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function Auth() {
+  const { t } = useTranslation();
   const [mode, setMode] = useState("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -81,12 +83,12 @@ export default function Auth() {
             <Leaf className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {mode === "login" ? "Hoş Geldin" : "Hesap Oluştur"}
+            {mode === "login" ? t("auth.welcome") : t("auth.createAccount")}
           </h1>
           <p className="text-gray-500 mt-1">
             {mode === "login"
-              ? "Rebi hesabına giriş yap"
-              : "Ücretsiz hesabını oluştur"}
+              ? t("auth.loginToAccount")
+              : t("auth.createFreeAccount")}
           </p>
         </div>
 
@@ -109,7 +111,7 @@ export default function Auth() {
             {mode === "signup" && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Ad Soyad
+                  {t("auth.fullName")}
                 </label>
                 <div className="relative">
                   <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -127,7 +129,7 @@ export default function Auth() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                E-posta
+                {t("auth.email")}
               </label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -144,7 +146,7 @@ export default function Auth() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Şifre
+                {t("auth.password")}
               </label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -180,7 +182,7 @@ export default function Auth() {
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  {mode === "login" ? "Giriş Yap" : "Kayıt Ol"}
+                  {mode === "login" ? t("auth.login") : t("auth.signup")}
                   <ArrowRight className="w-5 h-5" />
                 </>
               )}
@@ -190,22 +192,22 @@ export default function Auth() {
           <p className="text-center text-sm text-gray-500 mt-6">
             {mode === "login" ? (
               <>
-                Hesabın yok mu?{" "}
+                {t("auth.haveNoAccount")}{" "}
                 <button
                   onClick={() => { setMode("signup"); setError(""); setInfoMessage(""); }}
                   className="text-teal-600 font-semibold hover:underline"
                 >
-                  Kayıt Ol
+                  {t("auth.signup")}
                 </button>
               </>
             ) : (
               <>
-                Zaten hesabın var mı?{" "}
+                {t("auth.haveAccount")}{" "}
                 <button
                   onClick={() => { setMode("login"); setError(""); setInfoMessage(""); }}
                   className="text-teal-600 font-semibold hover:underline"
                 >
-                  Giriş Yap
+                  {t("auth.login")}
                 </button>
               </>
             )}

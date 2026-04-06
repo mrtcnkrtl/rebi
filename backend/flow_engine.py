@@ -1115,8 +1115,8 @@ def _add_morning_actives(
                 "time": "Sabah", "category": "Bakım", "icon": "✨",
                 "action": _skin_vitc_laa("%10-15"),
                 "detail": (
-                    "Temiz cilde ince katman; tam emilince nemlendirici ve SPF. Güçlü gece adımları yalnızca haftalık planda; "
-                    "aynı sabaha başka yüzey asiti ekleme."
+                    "Temiz cilde ince katman; tam emilince nemlendirici ve SPF. "
+                    "Hassasiyet olursa daha seyrek başla ve toleransa göre artır."
                 ),
                 "priority": 2, "step_order": 20,
             })
@@ -1125,8 +1125,8 @@ def _add_morning_actives(
                 "time": "Sabah", "category": "Bakım", "icon": "✨",
                 "action": _skin_vitc_laa("%15-20"),
                 "detail": (
-                    "İnce katman, göz çevresinden kaçın; kuruyunca nem ve SPF. Gece güçlü adımlar takvimdeki akşamlarda; "
-                    "sabaha ek asit ekleme."
+                    "İnce katman, göz çevresinden kaçın; kuruyunca nemlendirici ve SPF. "
+                    "Hassasiyet olursa daha düşük konsantrasyon veya daha seyrek kullanım tercih et."
                 ),
                 "priority": 2, "step_order": 20,
             })
@@ -1135,7 +1135,8 @@ def _add_morning_actives(
                 "time": "Sabah", "category": "Bakım", "icon": "✨",
                 "action": _skin_vitc_cef(),
                 "detail": (
-                    "Kuru veya hafif nemli cilde uygula; kuruyunca nemlendirici ve SPF. Gece retinol yalnızca plandaki akşamlarda."
+                    "Kuru veya hafif nemli cilde uygula; kuruyunca nemlendirici ve SPF. "
+                    "Tahriş olursa daha seyrek başla veya daha düşük güçte C vitamini seç."
                 ),
                 "priority": 2, "step_order": 20,
             })
@@ -3497,6 +3498,41 @@ def finalize_user_routine_item_details(
     """
     from ingredient_db import get_risk_adjustment
 
+    def _looks_like_usage(text: str) -> bool:
+        """
+        `detail` alanına yanlışlıkla yazılmış uygulama talimatlarını yakalamak için basit sezgisel.
+        Amaç: "neden" paragrafına talimat (temiz cilde, SPF, durula vb.) kaçmasını engellemek.
+        """
+        if not text:
+            return False
+        t = " " + text.lower().strip() + " "
+        triggers = (
+            " temiz cilde ",
+            " ince katman",
+            " nohut ",
+            " damla",
+            " durula",
+            " köpürt",
+            " masaj",
+            " göz çevresi",
+            " emilince",
+            " kuruyunca",
+            " nemlendirici",
+            " spf",
+            " güneş",
+            " gunes",
+            " 2 saatte",
+            " yenile",
+            " haftalık planda",
+            " takvim",
+            " gün aşırı",
+            " gun asiri",
+            " yama testi",
+            " kulak arkası",
+            " bekle",
+        )
+        return any(k in t for k in triggers)
+
     out = []
     for item in items:
         cat = item.get("category", "")
@@ -3508,6 +3544,13 @@ def finalize_user_routine_item_details(
         ik = _detect_ingredient_key(orig.get("action", "").lower())
         motor_detail = (orig.get("detail") or "").strip()
         motor_usage = (orig.get("usage") or "").strip()
+
+        # Motor bazı satırlarda talimatı `detail` içine yazmış olabilir.
+        # Bu durumda talimatı `usage` tarafına taşır, `detail` sadece "neden" için kalır.
+        moved_usage = ""
+        if motor_detail and not motor_usage and _looks_like_usage(motor_detail):
+            moved_usage = motor_detail
+            motor_detail = ""
 
         why = _why_this_step_for_user(
             ik,
@@ -3549,7 +3592,7 @@ def finalize_user_routine_item_details(
 
         orig["detail"] = sanitize_routine_detail_system_voice(" ".join(detail_parts).strip())
 
-        usage_bits = [b for b in [motor_usage, motor_detail, risk_usage_addon] if b]
+        usage_bits = [b for b in [motor_usage, moved_usage, risk_usage_addon] if b]
         if usage_bits:
             orig["usage"] = sanitize_routine_detail_system_voice(" ".join(usage_bits).strip())
         elif not motor_usage:

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { getProfileRoutineStats, ROUTINE_STREAK_GOAL_DAYS } from "../lib/checkinStats";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
+import { useTranslation } from "react-i18next";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 const ACCOUNT_DELETE_PHRASE = "HESABIMI_SIL";
@@ -49,6 +50,7 @@ export default function Profile() {
   const { user, refreshUser, signOut } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const [displayName, setDisplayName] = useState("");
   const [profileMsg, setProfileMsg] = useState({ type: "", text: "" });
@@ -267,8 +269,8 @@ export default function Profile() {
             <User className="w-7 h-7" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Profil</h1>
-            <p className="text-sm text-gray-500">Hesap, güvenlik ve cilt fotoğrafların</p>
+            <h1 className="text-xl font-bold text-gray-900">{t("profile.title")}</h1>
+            <p className="text-sm text-gray-500">{t("profile.subtitle")}</p>
           </div>
         </div>
 
@@ -287,11 +289,11 @@ export default function Profile() {
                   to="/dashboard/analyze?photo=1"
                   className="font-semibold underline underline-offset-2"
                 >
-                  hızlı yükleme
+                  {t("profile.quickUpload")}
                 </Link>{" "}
                 ile ekleyebilir veya tam{" "}
                 <Link to="/dashboard/analyze" className="font-semibold underline underline-offset-2">
-                  analiz formu
+                  {t("profile.fullAnalyze")}
                 </Link>
                 na gidebilirsin. Aşağıda yüklediğin görseller listelenir.
               </p>
@@ -307,7 +309,7 @@ export default function Profile() {
         <div className="card !p-4 space-y-3">
           <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
             <Shield className="w-4 h-4" style={{ color: theme.primary }} />
-            Hesap özeti
+            {t("profile.accountSummary")}
           </h2>
           <div className="space-y-2 text-sm">
             <div className="flex items-start gap-2 text-gray-700">
@@ -316,11 +318,11 @@ export default function Profile() {
             </div>
             <div className="flex items-center gap-2 text-gray-700">
               <Calendar className="w-4 h-4 shrink-0 text-gray-400" />
-              <span>Üyelik: {formatJoined(user?.created_at)}</span>
+              <span>{t("profile.membership", { date: formatJoined(user?.created_at) })}</span>
             </div>
             {plus && (
               <p className="text-xs font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5 w-fit">
-                Rebi Plus aktif
+                {t("profile.plusActive")}
               </p>
             )}
           </div>
@@ -334,7 +336,7 @@ export default function Profile() {
           >
             <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
               <Target className="w-4 h-4" style={{ color: theme.primary }} />
-              Rutin &amp; check-in özeti
+              {t("profile.routineSummaryTitle")}
             </h2>
             <p className="text-[11px] text-gray-500 leading-relaxed">
               Günlük check-in yaptıkça seri ve sadakat burada güncellenir. Hedef: üst üste{" "}
@@ -345,20 +347,20 @@ export default function Profile() {
                 <p className="text-2xl font-bold tabular-nums" style={{ color: theme.primary }}>
                   {routineStats.streak}
                 </p>
-                <p className="text-[10px] text-gray-500 font-medium mt-0.5">Günlük seri</p>
+                <p className="text-[10px] text-gray-500 font-medium mt-0.5">{t("profile.streak")}</p>
               </div>
               <div className="rounded-xl p-3 bg-white border border-gray-100">
                 <p className="text-2xl font-bold tabular-nums text-gray-800">
                   {routineStats.totalCheckIns}
                 </p>
-                <p className="text-[10px] text-gray-500 font-medium mt-0.5">Toplam check-in</p>
+                <p className="text-[10px] text-gray-500 font-medium mt-0.5">{t("profile.totalCheckins")}</p>
               </div>
             </div>
             {routineStats.appliedRatePercent != null && (
               <div className="flex items-center gap-2 rounded-xl px-3 py-2 bg-gray-50 border border-gray-100">
                 <ClipboardCheck className="w-4 h-4 shrink-0 text-gray-500" />
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-800">Rutine sadakat</p>
+                  <p className="text-xs font-semibold text-gray-800">{t("profile.adherence")}</p>
                   <p className="text-[11px] text-gray-500">
                     Check-in kayıtlarında rutini uyguladım dediğin günler:{" "}
                     <span className="font-bold text-gray-800">{routineStats.appliedRatePercent}%</span>
@@ -545,7 +547,7 @@ export default function Profile() {
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
               <Camera className="w-4 h-4" style={{ color: theme.primary }} />
-              Cilt fotoğrafları
+              {t("profile.photosTitle")}
             </h2>
             <button
               type="button"
@@ -553,7 +555,7 @@ export default function Profile() {
               className="text-xs font-semibold underline-offset-2 hover:underline"
               style={{ color: theme.primary }}
             >
-              Yenile
+              {t("profile.refresh")}
             </button>
           </div>
           <p className="text-xs text-gray-500">
@@ -578,7 +580,7 @@ export default function Profile() {
                 className="text-sm font-semibold underline-offset-2 hover:underline"
                 style={{ color: theme.primary }}
               >
-                Hızlı fotoğraf yükle
+                {t("analyze.quickPhotoUpload")}
               </Link>
             </div>
           ) : (

@@ -246,33 +246,37 @@ def _optional_natural_examples_routine_item(concern: str) -> list:
     c = (concern or "acne").lower().strip()
     if c == "acne":
         examples = (
-            "Örnek (isteğe bağlı): lavanta uçucu yağını taşıyıcı yağla seyreltik kullanım; "
-            "çay ağacı yağı yalnızca noktasal ve seyreltik. Rehberde sık geçen oral takviye örnekleri: çinko, omega-3 "
-            "(doz ve süre için eczacı veya hekim)."
+            "Bitkisel/topikal örnekler (isteğe bağlı): çay ağacı yağı yalnızca noktasal ve çok seyreltik (taşıyıcı yağ ile). "
+            "Lavanta gibi uçucu yağlar bazı kişilerde irrite edebilir; kullanacaksan yine çok seyreltik ve önce küçük alanda dene. "
+            "Oral destek örnekleri (isteğe bağlı): çinko, omega-3 gibi takviyeler bazı kişilerde destekleyici olabilir; doz/uygunluk için eczacı veya hekim."
         )
     elif c in ("aging", "pigmentation"):
         examples = (
-            "Örnek (isteğe bağlı): topikal bitkisel antioksidanlar (ör. yeşil çay, resveratrol kaynakları); "
-            "C vitamini gibi oral takviyeler yalnızca uygunluk varsa hekim önerisiyle."
+            "Bitkisel/topikal örnekler (isteğe bağlı): yeşil çay türevleri, resveratrol kaynakları gibi antioksidan içerikler. "
+            "Oral destek örnekleri (isteğe bağlı): C vitamini, omega-3 gibi takviyeler yalnızca uygunluk varsa hekim/eczacı önerisiyle."
         )
     elif c == "dryness":
         examples = (
-            "Örnek (isteğe bağlı): shea veya jojoba gibi doğal yağlar nem kilidine ek okslüzif katman olarak; "
-            "papatya özü yatıştırıcı formlarda örnek gösterilebilir."
+            "Bitkisel/topikal örnekler (isteğe bağlı): shea veya jojoba gibi bitkisel yağlar, nem kilidine ek okslüzif katman olarak; "
+            "papatya gibi yatıştırıcı bitki özleri içeren formlar. "
+            "Oral destek örnekleri (isteğe bağlı): omega-3 gibi destekler bazı kişilerde bariyer konforuna yardımcı olabilir; uygunluk için eczacı/hekim."
         )
     elif c == "sensitivity":
         examples = (
-            "Örnek (isteğe bağlı): papatya, aloe gibi yatıştırıcı bitki özleri; lavanta uçucu yağı varsa çok seyreltik "
-            "ve önce küçük alanda 24–48 saat yama testi."
+            "Bitkisel/topikal örnekler (isteğe bağlı): aloe, papatya gibi yatıştırıcı bitki özleri içeren ürünler. "
+            "Uçucu yağ varsa (lavanta vb.) çok seyreltik olmalı ve önce 24–48 saat yama testi yapılmalı. "
+            "Oral destek örnekleri (isteğe bağlı): bazı destekler (omega-3 vb.) uygun kişide yardımcı olabilir; doz/uygunluk için eczacı/hekim."
         )
     else:
         examples = (
-            "Örnek (isteğe bağlı): lavanta uçucu yağı (seyreltik), papatya veya centella içeren yatıştırıcı formlar; "
-            "vitamin, mineral veya omega-3 takviyeleri için doz ve uygunluk hekim veya eczacı ile."
+            "Bitkisel/topikal örnekler (isteğe bağlı): aloe/papatya gibi yatıştırıcı bitki özleri; yeşil çay gibi antioksidan bitkisel içerikler. "
+            "Uçucu yağ kullanacaksan çok seyreltik ve önce küçük alanda dene. "
+            "Oral destek örnekleri (isteğe bağlı): vitamin/mineral veya omega-3 gibi takviyeler için doz ve uygunluk hekim veya eczacı ile."
         )
 
     closing = (
-        " Bu satır ana rutin adımlarının yerine geçmez; hamilelik, emzirme veya ilaç kullanıyorsan danış."
+        " Bu satır ana rutin adımlarının yerine geçmez. Uçucu yağlar hassas cildi irrite edebilir. "
+        "Hamilelik, emzirme, kronik hastalık veya ilaç kullanımında oral takviyeleri mutlaka hekim/eczacı ile değerlendir."
     )
 
     return [
@@ -280,8 +284,12 @@ def _optional_natural_examples_routine_item(concern: str) -> list:
             "time": "Günlük",
             "category": "Yaşam",
             "icon": "🌿",
-            "action": "İsteğe bağlı — bitkisel / takviye örnekleri",
-            "detail": examples + closing,
+            "action": "Opsiyonel — bitkisel alternatif (istersen)",
+            "detail": (
+                "Bu madde tamamen opsiyonel: rutinini kurmak için şart değil. "
+                "İstersen 'doğal' içeriklerden örnek fikirler aşağıda."
+            ),
+            "usage": (examples + closing).strip(),
             "step_order": 95,
             "natural_alternative": True,
             "natural_examples_only": True,

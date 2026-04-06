@@ -1,0 +1,48 @@
+{
+  "appName": "Rebi",
+  "nav": {
+    "dashboard": "Panel",
+    "profile": "Perfil",
+    "plus": "Plus",
+    "newAnalyze": "Nuevo análisis",
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "home": "Inicio",
+    "checkin": "Check-in",
+    "chat": "Rebi AI",
+    "analyze": "Analizar",
+    "reanalyze": "Otra vez",
+    "theme": "Temas"
+  },
+  "landing": {
+    "heroBadge": "Cuidado de la piel con IA",
+    "ctaFreeAnalyze": "Empezar análisis gratis",
+    "ctaHowItWorks": "Cómo funciona",
+    "plusCta": "Descubre Plus"
+  },
+  "auth": {
+    "welcome": "Bienvenido",
+    "createAccount": "Crear cuenta",
+    "loginToAccount": "Inicia sesión en tu cuenta Rebi",
+    "createFreeAccount": "Crea tu cuenta gratuita",
+    "email": "Correo",
+    "password": "Contraseña",
+    "fullName": "Nombre completo",
+    "login": "Entrar",
+    "signup": "Registrarse",
+    "haveNoAccount": "¿No tienes cuenta?",
+    "haveAccount": "¿Ya tienes una cuenta?"
+  },
+  "lang": {
+    "label": "Idioma",
+    "tr": "Türkçe",
+    "en": "English",
+    "es": "Español",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "fr": "Français",
+    "pt": "Português",
+    "ar": "العربية"
+  }
+}
+

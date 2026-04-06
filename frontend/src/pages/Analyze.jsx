@@ -12,6 +12,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import SkinTypeVisual from "../components/SkinTypeVisual";
 import SeverityTest from "../components/SeverityTest";
 import WebcamCapture from "../components/WebcamCapture";
+import { useTranslation } from "react-i18next";
 import {
   MapPin, ArrowRight, ArrowLeft, Camera, ImagePlus, Monitor,
   Droplets, Moon, Cigarette, Wine, AlertCircle, CheckCircle,
@@ -162,6 +163,7 @@ function calcCyclePhase(lastPeriodDate, cycleLength) {
 /** Profilden veya rutin hazır ekranından: yalnızca depoya foto yükle (tam analiz zorunlu değil). */
 function AnalyzePhotoOnly({ user, navigate }) {
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const cameraUserRef = useRef(null);
   const cameraEnvRef = useRef(null);
   const galleryRef = useRef(null);
@@ -253,7 +255,7 @@ function AnalyzePhotoOnly({ user, navigate }) {
           onClick={() => navigate(-1)}
           className="text-xs font-medium text-gray-500 hover:text-gray-800 flex items-center gap-1"
         >
-          <ArrowLeft className="w-4 h-4" /> Geri
+          <ArrowLeft className="w-4 h-4" /> {t("analyze.photoOnlyBack")}
         </button>
         <div className="text-center space-y-2">
           <div
@@ -262,7 +264,7 @@ function AnalyzePhotoOnly({ user, navigate }) {
           >
             <Camera className="w-7 h-7" />
           </div>
-          <h1 className="text-xl font-bold text-gray-900">Cilt fotoğrafı yükle</h1>
+          <h1 className="text-xl font-bold text-gray-900">{t("analyze.photoOnlyTitle")}</h1>
           <p className="text-sm text-gray-600 leading-relaxed">
             Tam analiz formuna girmeden sadece görüntüyü kaydedebilirsin. İlerleyişi kıyaslamak veya
             arşiv tutmak için kullan.
@@ -397,6 +399,7 @@ export default function Analyze() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { theme } = useTheme();
+  const { t } = useTranslation();
   const photoOnlyMode = searchParams.get("photo") === "1";
   const cameraUserRef = useRef(null);
   const cameraEnvRef = useRef(null);
@@ -653,7 +656,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
             >
               <Sparkles className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Rutinin hazır</h1>
+            <h1 className="text-xl font-bold text-gray-900">{t("analyze.routineReadyTitle")}</h1>
             <p className="text-sm text-gray-600 leading-relaxed">
               İlk analizini tamamladın; uzun formu her gün tekrarlamana gerek yok. Sadece cilt fotoğrafı
               eklemek için aşağıdaki kısayolu kullan; büyük bir değişiklikte tam formu aç.
@@ -673,7 +676,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                 style={{ borderColor: theme.primaryLight, color: theme.primary }}
               >
                 <Camera className="w-5 h-5" />
-                Cilt fotoğrafı yükle (hızlı)
+                {t("analyze.quickPhotoUpload")}
               </Link>
               <button
                 type="button"
@@ -684,7 +687,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                 className="btn-secondary w-full justify-center text-sm"
                 style={{ borderColor: theme.primaryLight, color: theme.primary }}
               >
-                Yeni analiz başlat (tam form)
+                {t("analyze.newAnalyzeFull")}
               </button>
             </div>
           </div>
@@ -709,7 +712,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
           <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-900">
             <AlertCircle className="w-5 h-5 shrink-0 text-red-600 mt-0.5" />
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-red-950">Rutin oluşturulamadı</p>
+              <p className="font-semibold text-red-950">{t("analyze.generateFailedTitle")}</p>
               <p className="mt-1 text-red-900/95 leading-relaxed">{submitError}</p>
             </div>
             <button
@@ -741,8 +744,8 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                       className={`flex-1 py-2.5 rounded-xl text-xs font-medium border-2 transition-all ${gender === g.id ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-500"}`}>{g.label}</button>))}
                   </div></div>
               </div>
-              <div>{locationSet ? (<div className="flex items-center gap-2 p-2.5 bg-teal-50 rounded-xl text-teal-700 text-xs"><CheckCircle className="w-4 h-4" /> Konum alındı</div>
-              ) : (<button onClick={getLocation} disabled={locationLoading} className="btn-secondary w-full text-sm">{locationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><MapPin className="w-4 h-4" />Konum</>}</button>)}
+              <div>{locationSet ? (<div className="flex items-center gap-2 p-2.5 bg-teal-50 rounded-xl text-teal-700 text-xs"><CheckCircle className="w-4 h-4" /> {t("analyze.locationSet")}</div>
+              ) : (<button onClick={getLocation} disabled={locationLoading} className="btn-secondary w-full text-sm">{locationLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><MapPin className="w-4 h-4" />{t("analyze.location")}</>}</button>)}
                 {locationError && <p className="text-red-500 text-xs mt-1">{locationError}</p>}</div>
             </div>
             {isFemale && (
@@ -768,7 +771,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
               }
               className="btn-primary w-full"
             >
-              Devam Et <ArrowRight className="w-5 h-5" />
+              {t("analyze.continue")} <ArrowRight className="w-5 h-5" />
             </button>
             {isFemale && (hormonalStatus === "regular" || hormonalStatus === "irregular") && !lastPeriodDate && (
               <p className="text-center text-xs text-amber-700 mt-2">Son adet tarihini seçerek devam edebilirsin.</p>
@@ -783,13 +786,13 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
 
             {/* Cilt Tipi */}
             <div className="card space-y-3">
-              <label className="block text-sm font-medium text-gray-700">Cilt Tipin</label>
+              <label className="block text-sm font-medium text-gray-700">{t("analyze.skinType")}</label>
               <SkinTypeVisual value={skinType} onChange={setSkinType} />
             </div>
 
             {/* Sorunlar + her biri için etkilenen bölgeler */}
             <div className="card space-y-3">
-              <label className="block text-sm font-medium text-gray-700">Sorunların (çoklu seç)</label>
+              <label className="block text-sm font-medium text-gray-700">{t("analyze.concerns")}</label>
               <div className="grid grid-cols-1 gap-1.5">
                 {concernOptions.map((c) => (
                   <div key={c.id} className="space-y-2">
@@ -1093,7 +1096,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
                 </div>
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setStep3Section(3)} className="btn-secondary flex-1"><ArrowLeft className="w-5 h-5" />Geri</button>
-                  <button type="button" onClick={() => setStep(4)} className="btn-primary flex-1">Devam Et <ArrowRight className="w-5 h-5" /></button>
+                  <button type="button" onClick={() => setStep(4)} className="btn-primary flex-1">{t("analyze.continue")} <ArrowRight className="w-5 h-5" /></button>
                 </div>
               </>
             )}
@@ -1104,7 +1107,7 @@ const stressScore = pssAnswers.reduce((acc, v, i) => {
         {step === 4 && (
           <div className="space-y-5 animate-in fade-in">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Son Adım</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-1">{t("analyze.finalStep")}</h2>
               <p className="text-gray-500 text-sm">
                 İstersen hemen rutin oluşturabilirsin. <span className="font-medium text-gray-700">Süreç takibi</span> (ilerleyişi karşılaştırmak)
                 için net bir yüz fotoğrafı <span className="font-medium text-gray-700">çok önerilir</span> — galeri, kamera veya web kamerası.

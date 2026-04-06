@@ -3,23 +3,25 @@ import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
 import { isRoutineTrackingAccepted, hasCompletedOnboarding } from "../lib/routineTracking";
 import { Home, MessageCircle, Scan, Palette, ClipboardCheck, UserRound } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const analyzeLabel =
-    user?.id && hasCompletedOnboarding(user.id) ? "Yeniden" : "Analiz";
+    user?.id && hasCompletedOnboarding(user.id) ? t("nav.reanalyze") : t("nav.analyze");
 
   const tabs = [
-    { id: "/dashboard", label: "Ana Sayfa", icon: Home },
-    { id: "/dashboard/checkin", label: "Check-in", icon: ClipboardCheck },
-    { id: "/dashboard/chat", label: "Rebi AI", icon: MessageCircle },
+    { id: "/dashboard", label: t("nav.home"), icon: Home },
+    { id: "/dashboard/checkin", label: t("nav.checkin"), icon: ClipboardCheck },
+    { id: "/dashboard/chat", label: t("nav.chat"), icon: MessageCircle },
     { id: "/dashboard/analyze", label: analyzeLabel, icon: Scan },
-    { id: "/dashboard/themes", label: "Tema", icon: Palette },
-    { id: "/dashboard/profile", label: "Profil", icon: UserRound },
+    { id: "/dashboard/themes", label: t("nav.theme"), icon: Palette },
+    { id: "/dashboard/profile", label: t("nav.profile"), icon: UserRound },
   ];
 
   const active =
