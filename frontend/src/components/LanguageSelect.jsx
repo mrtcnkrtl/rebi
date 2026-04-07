@@ -5,13 +5,6 @@ import { SUPPORTED_LANGS } from "../i18n";
 const LABELS = {
   tr: "Türkçe",
   en: "English",
-  es: "Español",
-  de: "Deutsch",
-  it: "Italiano",
-  fr: "Français",
-  pt: "Português",
-  ar: "العربية",
-  az: "Azərbaycanca",
 };
 
 export default function LanguageSelect({ className = "" }) {

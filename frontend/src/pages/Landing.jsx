@@ -120,37 +120,6 @@ export default function Landing() {
                   </div>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-3 mt-5">
-                  <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                      <Camera className="w-4 h-4 text-rose-500" />
-                      {t("landing.difference.scanTitle")}
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{t("landing.difference.scanDesc")}</p>
-                  </div>
-                  <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                      <Brain className="w-4 h-4 text-indigo-500" />
-                      {t("landing.difference.collectTitle")}
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{t("landing.difference.collectDesc")}</p>
-                  </div>
-                  <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                      <ClipboardCheck className="w-4 h-4 text-amber-600" />
-                      {t("landing.difference.adaptTitle")}
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{t("landing.difference.adaptDesc")}</p>
-                  </div>
-                  <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
-                      <Sparkles className="w-4 h-4 text-teal-600" />
-                      {t("landing.difference.ingredientsTitle")}
-                    </div>
-                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{t("landing.difference.ingredientsDesc")}</p>
-                  </div>
-                </div>
-
                 {/* Schema: Others vs Rebi */}
                 <div className="mt-5 grid md:grid-cols-2 gap-3">
                   <div className="rounded-2xl border border-gray-200 bg-white p-4">
@@ -173,22 +142,26 @@ export default function Landing() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border-2 border-teal-200 bg-teal-50/30 p-4">
-                    <div className="text-xs font-bold text-teal-800 mb-3">{t("landing.differenceSchemaUs")}</div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 rounded-xl border border-teal-100 bg-white px-3 py-2 text-sm text-gray-900">
-                        <Brain className="w-4 h-4 text-teal-700" />
-                        {t("landing.differenceSchemaUsS1")}
-                      </div>
-                      <div className="flex justify-center text-teal-300">↓</div>
-                      <div className="flex items-center gap-2 rounded-xl border border-teal-100 bg-white px-3 py-2 text-sm text-gray-900">
-                        <ClipboardCheck className="w-4 h-4 text-teal-700" />
-                        {t("landing.differenceSchemaUsS2")}
-                      </div>
-                      <div className="flex justify-center text-teal-300">↓</div>
-                      <div className="flex items-center gap-2 rounded-xl border border-teal-100 bg-white px-3 py-2 text-sm text-gray-900">
-                        <Sparkles className="w-4 h-4 text-teal-700" />
-                        {t("landing.differenceSchemaUsS3")}
+                  <div className="relative rounded-2xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-4 overflow-hidden">
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-teal-300/25 rounded-full blur-3xl" />
+                    <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-300/20 rounded-full blur-3xl" />
+                    <div className="relative">
+                      <div className="text-xs font-bold text-teal-900 mb-3">{t("landing.differenceSchemaUs")}</div>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 rounded-xl border border-teal-200/70 bg-white/85 backdrop-blur px-3 py-2 text-sm text-gray-900 shadow-sm">
+                          <Brain className="w-4 h-4 text-teal-700" />
+                          {t("landing.differenceSchemaUsS1")}
+                        </div>
+                        <div className="flex justify-center text-teal-500/70 font-bold">↓</div>
+                        <div className="flex items-center gap-2 rounded-xl border border-teal-200/70 bg-white/85 backdrop-blur px-3 py-2 text-sm text-gray-900 shadow-sm">
+                          <ClipboardCheck className="w-4 h-4 text-teal-700" />
+                          {t("landing.differenceSchemaUsS2")}
+                        </div>
+                        <div className="flex justify-center text-teal-500/70 font-bold">↓</div>
+                        <div className="flex items-center gap-2 rounded-xl border border-teal-200/70 bg-white/85 backdrop-blur px-3 py-2 text-sm text-gray-900 shadow-sm">
+                          <Sparkles className="w-4 h-4 text-teal-700" />
+                          {t("landing.differenceSchemaUsS3")}
+                        </div>
                       </div>
                     </div>
                   </div>

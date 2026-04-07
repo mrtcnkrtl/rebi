@@ -4,26 +4,13 @@ import { initReactI18next } from "react-i18next";
 
 import tr from "./locales/tr/common.json";
 import en from "./locales/en/common.json";
-import es from "./locales/es/common.json";
-import de from "./locales/de/common.json";
-import it from "./locales/it/common.json";
-import fr from "./locales/fr/common.json";
-import pt from "./locales/pt/common.json";
-import ar from "./locales/ar/common.json";
-import az from "./locales/az/common.json";
 
-export const SUPPORTED_LANGS = ["tr", "en", "es", "de", "it", "fr", "pt", "ar", "az"];
+// UI dilleri: TR/EN. Diğer diller hazır değil (fallback EN oluyordu ve kafa karıştırıyordu).
+export const SUPPORTED_LANGS = ["tr", "en"];
 
 const resources = {
   tr: { common: tr },
   en: { common: en },
-  es: { common: es },
-  de: { common: de },
-  it: { common: it },
-  fr: { common: fr },
-  pt: { common: pt },
-  ar: { common: ar },
-  az: { common: az },
 };
 
 function applyDocumentDir(lang) {
