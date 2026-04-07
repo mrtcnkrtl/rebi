@@ -150,6 +150,49 @@ export default function Landing() {
                   </div>
                 </div>
 
+                {/* Schema: Others vs Rebi */}
+                <div className="mt-5 grid md:grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-gray-200 bg-white p-4">
+                    <div className="text-xs font-bold text-gray-700 mb-3">{t("landing.differenceSchemaOthers")}</div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+                        <Camera className="w-4 h-4 text-gray-600" />
+                        {t("landing.differenceSchemaOthersS1")}
+                      </div>
+                      <div className="flex justify-center text-gray-300">↓</div>
+                      <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                        {t("landing.differenceSchemaOthersS2")}
+                      </div>
+                      <div className="flex justify-center text-gray-300">↓</div>
+                      <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+                        <Shield className="w-4 h-4 text-gray-600" />
+                        {t("landing.differenceSchemaOthersS3")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border-2 border-teal-200 bg-teal-50/30 p-4">
+                    <div className="text-xs font-bold text-teal-800 mb-3">{t("landing.differenceSchemaUs")}</div>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 rounded-xl border border-teal-100 bg-white px-3 py-2 text-sm text-gray-900">
+                        <Brain className="w-4 h-4 text-teal-700" />
+                        {t("landing.differenceSchemaUsS1")}
+                      </div>
+                      <div className="flex justify-center text-teal-300">↓</div>
+                      <div className="flex items-center gap-2 rounded-xl border border-teal-100 bg-white px-3 py-2 text-sm text-gray-900">
+                        <ClipboardCheck className="w-4 h-4 text-teal-700" />
+                        {t("landing.differenceSchemaUsS2")}
+                      </div>
+                      <div className="flex justify-center text-teal-300">↓</div>
+                      <div className="flex items-center gap-2 rounded-xl border border-teal-100 bg-white px-3 py-2 text-sm text-gray-900">
+                        <Sparkles className="w-4 h-4 text-teal-700" />
+                        {t("landing.differenceSchemaUsS3")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="mt-5 text-xs font-semibold text-gray-500">{t("landing.entryHint")}</div>
                 <div className="grid sm:grid-cols-2 gap-3 mt-3">
                   <Link
