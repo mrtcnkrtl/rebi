@@ -43,7 +43,7 @@ const STRESS_LEVELS = [
 
 /** Evet / Hayır / Atla — check-in ek soruları */
 function ExtraTristate({ title, description, value, onChange }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
     <div className="card mb-3">
       <h3 className="text-sm font-bold text-gray-800 mb-1">{title}</h3>
@@ -195,7 +195,7 @@ export default function CheckIn() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     const id = user?.id;
@@ -442,7 +442,7 @@ export default function CheckIn() {
           )}
 
           {/* Today's Routine Summary */}
-          {result.today_routine && result.today_routine.length > 0 && (
+              {result.today_routine && result.today_routine.length > 0 && (
             <div className="mb-5">
               <h3 className="text-sm font-bold text-gray-700 mb-2">Bugünün Rutini</h3>
               <div className="space-y-1.5">
@@ -450,9 +450,9 @@ export default function CheckIn() {
                   <div key={i} className="card !p-3 flex items-start gap-2.5">
                     <span className="text-sm shrink-0">{item.icon || "•"}</span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-gray-800">{item.action}</p>
+                          <p className="text-xs font-semibold text-gray-800">{((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] !== "tr") ? (item.action_localized || item.action) : item.action}</p>
                       <StructuredRoutineBadges item={item} />
-                      <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{item.detail}</p>
+                          <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] !== "tr") ? (item.detail_localized || item.detail) : item.detail}</p>
                     </div>
                     <span className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5"
                       style={{ backgroundColor: theme.primaryLight, color: theme.primaryDark }}>

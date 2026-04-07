@@ -13,7 +13,7 @@ AI şu işleri YAPMAZ:
 """
 
 import json
-from typing import Optional
+from typing import Optional, Literal
 from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY, get_logger
@@ -63,6 +63,7 @@ async def polish_routine_with_ai(
     routine_items: list[dict],
     context_summary: str,
     knowledge_context: str,
+    lang: str = "tr",
 ) -> tuple[list[dict], Optional[str]]:
     """
     Flow Engine'den gelen rutin öğelerini alır,
@@ -77,11 +78,49 @@ async def polish_routine_with_ai(
             log.warning("Gemini istemcisi başlatılamadı; polish atlandı")
         return routine_items, None
 
+    def _norm_lang(v: str) -> Literal["tr", "en"]:
+        s = (v or "").strip().lower()
+        if not s:
+            return "tr"
+        # Accept-Language like: "en-US,en;q=0.9,tr;q=0.8"
+        primary = s.split(",")[0].split(";")[0].strip()
+        primary = primary.split("-")[0]
+        return "en" if primary == "en" else "tr"
+
+    lng = _norm_lang(lang)
+
     items_text = ""
     for i, item in enumerate(routine_items):
         items_text += f"{i+1}. [{item['time']}] {item['action']}: {item['detail']}\n"
 
-    prompt = f"""Bağlam: {context_summary}
+    if lng == "en":
+        prompt = f"""Context: {context_summary}
+
+Scientific notes (reference):
+{knowledge_context[:1500] if knowledge_context else 'None'}
+
+Improve the routine items below, keeping the plan deterministic:
+- Do NOT change action/time/category/icon; ONLY update the \"detail\" field
+- Detail: max 2 short sentences, user-facing and clear (avoid system/third-person tone)
+- Do NOT add: \"if needed\", \"optional\", \"when tolerated\", \"start slowly\"; frequency is already handled by the engine
+- Do NOT give commands; explain in an informative tone
+
+FORBIDDEN: Any brand or product names. Use only active ingredients and concentrations (e.g., Adapalene 0.1%, Retinol 0.3%).
+
+Current items:
+{items_text}
+
+Return ONLY a JSON array (detail can change; action/time/category/icon must not change):
+[{{"time":"...","category":"...","icon":"...","action":"...","detail":"new detail"}}]"""
+
+        system_instruction = (
+            "You are Rebi. Write in English, short and clear. The routine decisions are made by the engine; "
+            "you only polish the detail text. NEVER write brand/product names; only actives + concentrations. "
+            "Do not defer frequency to the user; avoid 'if needed', 'optional', 'when tolerated', 'start slowly'. "
+            "Return ONLY JSON."
+        )
+    else:
+        prompt = f"""Bağlam: {context_summary}
 
 Bilimsel Veri (referans):
 {knowledge_context[:1500] if knowledge_context else 'Yok'}
@@ -102,17 +141,19 @@ Mevcut öğeler:
 SADECE JSON array döndür (sadece detail güncellenebilir, action/time/category/icon değiştirme):
 [{{"time":"...","category":"...","icon":"...","action":"...","detail":"yeni detay"}}]"""
 
+        system_instruction = (
+            "Sen Rebi. Türkçe, kısa ve net. Rutin kararları motorda; sen sadece detail metnini cilala. "
+            "ASLA marka veya ürün adı yazma; sadece etken madde ve konsantrasyon. "
+            "Kullanıcıya sıklığı bırakma; 'gerekirse', 'isteğe bağlı', 'tolere edince', 'ilk haftalar' kullanma. "
+            "SADECE JSON döndür."
+        )
+
     try:
         response = gemini_client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt,
             config=types.GenerateContentConfig(
-                system_instruction=(
-                    "Sen Rebi. Türkçe, kısa ve net. Rutin kararları motorda; sen sadece detail metnini cilala. "
-                    "ASLA marka veya ürün adı yazma; sadece etken madde ve konsantrasyon. "
-                    "Kullanıcıya sıklığı bırakma; 'gerekirse', 'isteğe bağlı', 'tolere edince', 'ilk haftalar' kullanma. "
-                    "SADECE JSON döndür."
-                ),
+                system_instruction=system_instruction,
                 temperature=0.6,
                 max_output_tokens=1200,
                 response_mime_type="application/json",
@@ -137,6 +178,86 @@ SADECE JSON array döndür (sadece detail güncellenebilir, action/time/category
     except Exception as e:
         log.error("AI polish hatası: %s — orijinal rutin kullanılıyor", e)
         return routine_items, None
+
+
+def _primary_lang_from_header(accept_language: str) -> str:
+    s = (accept_language or "").strip().lower()
+    if not s:
+        return "tr"
+    primary = s.split(",")[0].split(";")[0].strip()
+    return primary.split("-")[0] or "tr"
+
+
+async def translate_routine_items(
+    routine_items: list[dict],
+    target_lang: str,
+) -> list[dict]:
+    """
+    Motor Türkçe üretir. Bu fonksiyon response'a çeviri alanları ekler:
+      - action_localized
+      - detail_localized
+    Orijinal action/detail korunur (parsing/kurallar bozulmasın diye).
+    """
+    if not gemini_client:
+        return routine_items
+
+    tl = (target_lang or "").strip().lower().split("-")[0]
+    if not tl or tl == "tr":
+        return routine_items
+
+    payload = []
+    for idx, it in enumerate(routine_items):
+        payload.append(
+            {
+                "i": idx,
+                "action": (it.get("action") or ""),
+                "detail": (it.get("detail") or ""),
+            }
+        )
+
+    prompt = (
+        "Translate the following routine item texts from Turkish to the target language.\n"
+        f"Target language: {tl}\n\n"
+        "Rules:\n"
+        "- Keep active ingredient names and concentrations unchanged (e.g., Retinol %0.3 stays the same).\n"
+        "- Do not add new advice; translate only.\n"
+        "- Output ONLY JSON array with objects: {i, action_localized, detail_localized}\n\n"
+        f"Input JSON:\n{json.dumps(payload, ensure_ascii=False)}"
+    )
+
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=(
+                    "You are a careful medical-adjacent translator. Do NOT add content. "
+                    "Preserve ingredient names and concentrations verbatim. Return ONLY JSON."
+                ),
+                temperature=0.2,
+                max_output_tokens=1400,
+                response_mime_type="application/json",
+            ),
+        )
+        parsed = json.loads(_gemini_response_text(response) or "[]")
+        if not isinstance(parsed, list):
+            return routine_items
+        by_i = {x.get("i"): x for x in parsed if isinstance(x, dict) and x.get("i") is not None}
+        out = []
+        for idx, it in enumerate(routine_items):
+            tr = by_i.get(idx) or {}
+            it2 = dict(it)
+            al = tr.get("action_localized")
+            dl = tr.get("detail_localized")
+            if isinstance(al, str) and al.strip():
+                it2["action_localized"] = al.strip()
+            if isinstance(dl, str) and dl.strip():
+                it2["detail_localized"] = dl.strip()
+            out.append(it2)
+        return out
+    except Exception as e:
+        log.error("translate_routine_items hatası: %s", e)
+        return routine_items
 
 
 async def assessment_chat(

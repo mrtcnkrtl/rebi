@@ -21,7 +21,7 @@ import {
   CalendarDays, Activity,
 } from "lucide-react";
 
-const WEEK_DAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+// Week day labels come from i18n (dashboard.weekDays)
 
 /**
  * Rutin metninde geçen akşam / planda sınırlı aktifler için tek satırlık sabah uyarısı.
@@ -116,8 +116,8 @@ function getDefaultWeeklyDays(detail) {
 }
 
 /** Uzun rutin satırından okunur kısa başlık (INCI ve kimyasal ön ek gizlenir). */
-function friendlyRoutineTitle(action) {
-  if (!action) return "Bu adım";
+function friendlyRoutineTitle(action, fallbackTitle = "This step") {
+  if (!action) return fallbackTitle;
   let s = String(action)
     .replace(/^⏸️\s*/u, "")
     .replace(/\s*—\s*ARA VER\s*$/iu, "")
@@ -130,7 +130,7 @@ function friendlyRoutineTitle(action) {
   }
   let one = parts[0] || s;
   one = one.replace(/\s*\(INCI[^)]*\)\s*/gi, "").trim();
-  return one || "Bu adım";
+  return one || fallbackTitle;
 }
 
 export default function Dashboard() {
@@ -138,7 +138,12 @@ export default function Dashboard() {
   const { theme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const WEEK_DAYS = t("dashboard.weekDays", { returnObjects: true, defaultValue: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] });
+  const fallbackStepTitle = t("dashboard.fallbackStepTitle", { defaultValue: "This step" });
+  const prefersLocalized = ((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] || "tr") !== "tr";
+  const pickAction = (item) => (prefersLocalized ? (item?.action_localized || item?.action) : item?.action);
+  const pickDetail = (item) => (prefersLocalized ? (item?.detail_localized || item?.detail) : item?.detail);
   const nav = location.state;
   const uid = user?.id;
 
@@ -204,7 +209,7 @@ export default function Dashboard() {
     return {
       routine,
       weather: st.weather ?? snap?.weather ?? null,
-      userName: st.userName ?? snap?.userName ?? user?.user_metadata?.full_name ?? "Kullanıcı",
+      userName: st.userName ?? snap?.userName ?? user?.user_metadata?.full_name ?? t("common.user", { defaultValue: "User" }),
       photoUrl: st.photoUrl ?? snap?.photoUrl ?? null,
       flowDebug: st.flowDebug ?? snap?.flowDebug ?? null,
       checkinResult: st.checkinResult ?? snap?.checkinResult ?? null,
@@ -570,7 +575,7 @@ export default function Dashboard() {
                 {weeklyItems.slice(0, 4).map((item) => (
                   <div key={item.weeklyKey} className="text-[11px] text-gray-600">
                     <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                      <span className="font-semibold text-gray-800">{friendlyRoutineTitle(item.action)}</span>
+                      <span className="font-semibold text-gray-800">{friendlyRoutineTitle(pickAction(item), fallbackStepTitle)}</span>
                       <span>
                         {" · "}
                         {(item.displayDays || []).length
@@ -589,7 +594,7 @@ export default function Dashboard() {
             <div className="card mb-5 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100 !p-3">
               <div className="flex items-center gap-2 text-xs font-bold text-gray-800">
                 <CloudSun className="w-4 h-4 text-blue-500" />
-                Hava — {weather.temperature}°C · UV {weather.uv_index}
+                {t("dashboard.weatherTitle")} — {weather.temperature}°C · UV {weather.uv_index}
               </div>
             </div>
           )}
@@ -765,7 +770,7 @@ export default function Dashboard() {
         {/* Weather */}
         {weather?.temperature && (
           <div className="card mb-5 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-100">
-            <div className="flex items-center gap-2 mb-3"><CloudSun className="w-4 h-4 text-blue-500" /><h2 className="font-bold text-gray-900 text-xs">Hava</h2></div>
+            <div className="flex items-center gap-2 mb-3"><CloudSun className="w-4 h-4 text-blue-500" /><h2 className="font-bold text-gray-900 text-xs">{t("dashboard.weatherTitle")}</h2></div>
             <div className="grid grid-cols-3 gap-2">
               <div className="bg-white/70 rounded-xl p-2.5 text-center"><Thermometer className="w-4 h-4 text-orange-500 mx-auto mb-0.5" /><p className="text-base font-bold text-gray-800">{weather.temperature}°C</p></div>
               <div className="bg-white/70 rounded-xl p-2.5 text-center"><Sun className="w-4 h-4 text-amber-500 mx-auto mb-0.5" /><p className="text-base font-bold text-gray-800">{weather.uv_index}</p><p className="text-[10px] text-gray-500">UV</p></div>
@@ -775,20 +780,20 @@ export default function Dashboard() {
         )}
 
         {/* ═══ SECTION 1: Gün gün rutin + uygulama sırası ═══ */}
-        <SectionHeader icon="🧴" title="Gün gün rutin" subtitle="Her gün için sabah ve akşam adımları; sıra numarası uygulama sırasını gösterir." color={theme.primary} />
+        <SectionHeader icon="🧴" title={t("dashboard.routineByDayTitle")} subtitle={t("dashboard.routineByDaySubtitle")} color={theme.primary} />
 
         {/* Yönlendirme: Marka kullanıcı seçer, biz sadece yönlendiririz */}
         <div className="card mb-4 border-teal-100 bg-teal-50/30">
           <div className="flex items-start gap-3">
             <Info className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
             <div>
-              <h3 className="font-bold text-gray-900 text-sm mb-1">Önerilen maddeleri nasıl seçersin?</h3>
-              <p className="text-xs text-gray-600 mb-2">Hangi markayı alacağına sen karar verirsin; Rebi etken madde ve konsantrasyonla yönlendirir. Haftalık güçlü aktifler aşağıda hangi günlerde kullanılacağını gösterir; gün kartları buna göre filtrelenir.</p>
+              <h3 className="font-bold text-gray-900 text-sm mb-1">{t("dashboard.howToChooseTitle")}</h3>
+              <p className="text-xs text-gray-600 mb-2">{t("dashboard.howToChooseDesc")}</p>
               <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
-                <li><strong>Tek üründe hepsi olmayabilir:</strong> Bir satırda birden fazla madde yazıyorsa (ör. seramid + skualan veya nem + BHA), bunlar genelde aynı şişede değil; ayrı ürünlerle de kurulur. Rutindeki sıra = uygulama sırası: önce daha sulu/aktif tonik-serum, sonra yağlı/krem nemlendirici.</li>
-                <li><strong>Konsantrasyon:</strong> Tam % eşleşmese de yakın ve düşükten başlamak genelde yeterli; çok daha güçlü formül almadan önce cildinin tolere ettiğini kontrol et.</li>
-                <li><strong>Seçerken:</strong> İçerik listesi net, güvenilir satıcı veya eczacılık kanalı tercih et.</li>
-                <li><strong>Dikkat:</strong> Parfüm/alkol hassasiyetin varsa içeriği kontrol et. İlk kullanımda yama testi yap. Şüphen varsa eczacıya veya dermatoloğa danış.</li>
+                <li><strong>{t("dashboard.howToChooseBullet1Title")}</strong>{" "}{t("dashboard.howToChooseBullet1Body")}</li>
+                <li><strong>{t("dashboard.howToChooseBullet2Title")}</strong>{" "}{t("dashboard.howToChooseBullet2Body")}</li>
+                <li><strong>{t("dashboard.howToChooseBullet3Title")}</strong>{" "}{t("dashboard.howToChooseBullet3Body")}</li>
+                <li><strong>{t("dashboard.howToChooseBullet4Title")}</strong>{" "}{t("dashboard.howToChooseBullet4Body")}</li>
               </ul>
             </div>
           </div>
@@ -801,13 +806,10 @@ export default function Dashboard() {
               style={{ backgroundColor: theme.primary + "10" }}
             >
               <Leaf className="w-4 h-4" style={{ color: theme.primary }} />
-              Her gün — gün boyunca
+              {t("dashboard.everyDayAllDayTitle")}
             </div>
             <div className="p-3 space-y-1.5">
-              <p className="text-[10px] text-gray-500 mb-2">
-                Her gün tekrarlanır: su, yürüyüş/hareket, günlük denge özeti ve beslenme notları. Nefes ve akşam uyku
-                rutini aşağıdaki gün kartlarında sabah/akşam yaşam başlığıyla listelenir.
-              </p>
+              <p className="text-[10px] text-gray-500 mb-2">{t("dashboard.everyDayAllDayHint")}</p>
               {dailyLifestyleItems.map((item, i) => (
                 <ProductStep key={`all-days-${i}`} item={item} theme={theme} />
               ))}
@@ -832,7 +834,7 @@ export default function Dashboard() {
               <div className="p-3 space-y-4">
                 {morning.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">☀️ Sabah</div>
+                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">☀️ {t("dashboard.morning")}</div>
                     <div className="space-y-1.5">
                       {morning.map((item, i) => (
                         <ProductStep key={`${dayIndex}-m-${i}`} item={item} step={i + 1} theme={theme} />
@@ -843,7 +845,7 @@ export default function Dashboard() {
                 {wellnessMorningItems.length > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
-                      ☀️ Sabah — yaşam
+                      ☀️ {t("dashboard.morningLifestyleLabel", { time: t("dashboard.morning") })}
                     </div>
                     <div className="space-y-1.5">
                       {wellnessMorningItems.map((item, i) => (
@@ -854,7 +856,7 @@ export default function Dashboard() {
                 )}
                 {evening.length > 0 && (
                   <div>
-                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">🌙 Akşam</div>
+                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">🌙 {t("dashboard.evening")}</div>
                     <div className="space-y-1.5">
                       {evening.map((item, i) => (
                         <ProductStep key={`${dayIndex}-e-${i}`} item={item} step={i + 1} theme={theme} />
@@ -865,7 +867,7 @@ export default function Dashboard() {
                 {wellnessEveningItems.length > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
-                      🌙 Akşam — yaşam
+                      🌙 {t("dashboard.morningLifestyleLabel", { time: t("dashboard.evening") })}
                     </div>
                     <div className="space-y-1.5">
                       {wellnessEveningItems.map((item, i) => (
@@ -887,20 +889,20 @@ export default function Dashboard() {
                 <CalendarDays className="w-4 h-4" style={{ color: theme.primary }} />
               </div>
               <div>
-                <h2 className="text-base font-bold text-gray-900">Haftalık kullanım</h2>
-                <p className="text-[10px] text-gray-500">Bu adımlar yalnızca işaretli günlerde yukarıdaki gün kartlarında listelenir.</p>
+                    <h2 className="text-base font-bold text-gray-900">{t("dashboard.weeklyTitle")}</h2>
+                    <p className="text-[10px] text-gray-500">{t("dashboard.weeklyHint")}</p>
               </div>
             </div>
             <div className="space-y-4 mb-4">
               {weeklyItems.map((item) => (
                 <div key={item.weeklyKey} className="card !p-3 space-y-3">
                   <div>
-                    <h4 className="font-bold text-gray-900 text-sm">{item.action}</h4>
+                    <h4 className="font-bold text-gray-900 text-sm">{pickAction(item)}</h4>
                     <StructuredRoutineBadges item={item} />
-                    {item.detail ? (
+                    {pickDetail(item) ? (
                       <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
                         <span className="font-medium text-gray-600">Kısaca: </span>
-                        {item.detail}
+                        {pickDetail(item)}
                       </p>
                     ) : null}
                   </div>
@@ -932,12 +934,12 @@ export default function Dashboard() {
         )}
 
         {/* ═══ Yaşamsal Destekler ═══ */}
-        <SectionHeader icon="🌿" title="Yaşamsal Destekler" subtitle="Beslenme, su, uyku ve yaşam önerileri" color="#16a34a" />
+        <SectionHeader icon="🌿" title={t("dashboard.lifestyleSupportsTitle")} subtitle={t("dashboard.lifestyleSupportsSubtitle")} color="#16a34a" />
 
         {/* Nutrition */}
         {nutritionItems.length > 0 && (
           <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2"><Apple className="w-4 h-4 text-green-600" /><h3 className="text-sm font-bold text-gray-700">Beslenme</h3></div>
+            <div className="flex items-center gap-2 mb-2"><Apple className="w-4 h-4 text-green-600" /><h3 className="text-sm font-bold text-gray-700">{t("dashboard.nutritionTitle")}</h3></div>
             <div className="space-y-2">
               {nutritionItems.map((item, i) => <LifestyleCard key={`n-${i}`} item={item} />)}
             </div>
@@ -961,7 +963,7 @@ export default function Dashboard() {
         {/* Wellness */}
         {wellnessItems.length > 0 && (
           <div className="mb-4">
-            <div className="flex items-center gap-2 mb-2"><Heart className="w-4 h-4 text-purple-600" /><h3 className="text-sm font-bold text-gray-700">Zihin & Hareket</h3></div>
+            <div className="flex items-center gap-2 mb-2"><Heart className="w-4 h-4 text-purple-600" /><h3 className="text-sm font-bold text-gray-700">{t("dashboard.mindMovementTitle")}</h3></div>
             <div className="space-y-2">
               {wellnessItems.map((item, i) => <LifestyleCard key={`w-${i}`} item={item} />)}
             </div>
@@ -1035,10 +1037,10 @@ function DailyBalanceCard({ item, flowDebug, theme }) {
           <div className="flex flex-wrap items-center gap-2 gap-y-1 mb-1">
             <h3 className="text-sm font-bold text-gray-900">Bugünkü yaşam dengesi</h3>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${pill}`}>
-              {flowDebug?.risk_info?.label || item.action?.replace(/^Günlük denge:\s*/i, "").trim() || "—"}
+              {flowDebug?.risk_info?.label || (pickAction(item) || "").replace(/^Günlük denge:\s*/i, "").trim() || "—"}
             </span>
           </div>
-          <p className="text-xs text-gray-700 leading-relaxed">{item.detail}</p>
+          <p className="text-xs text-gray-700 leading-relaxed">{pickDetail(item)}</p>
         </div>
       </div>
     </div>
@@ -1069,11 +1071,14 @@ function getDefaultUsage(stepOrder) {
 
 function ProductStep({ item, theme, step }) {
   const [showDetail, setShowDetail] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const prefersLocalized = ((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] || "tr") !== "tr";
+  const pickAction = (it) => (prefersLocalized ? (it?.action_localized || it?.action) : it?.action);
+  const pickDetail = (it) => (prefersLocalized ? (it?.detail_localized || it?.detail) : it?.detail);
   const isSkincare = item.category === "Bakım" || item.category === "Koruma";
   const usageRaw = item.usage != null ? String(item.usage).trim() : "";
   const usage = usageRaw || (isSkincare ? getDefaultUsage(item.step_order) : "");
-  const hasContent = Boolean(item.detail || usage);
+  const hasContent = Boolean((item.detail || item.detail_localized) || usage);
   const showNumber = step != null && step !== undefined;
   const actionLower = String(item.action || "").toLowerCase();
   const hasPlusCombo = isSkincare && String(item.action || "").includes("+");
@@ -1098,7 +1103,7 @@ function ProductStep({ item, theme, step }) {
       )}
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2 gap-y-1">
-          <h4 className="font-bold text-gray-900 text-sm">{item.action}</h4>
+          <h4 className="font-bold text-gray-900 text-sm">{pickAction(item)}</h4>
           {item.category && (
             <span className="inline-block text-[9px] font-medium px-2 py-0.5 rounded-full shrink-0"
               style={{ backgroundColor: theme.primaryLight, color: theme.primaryDark }}>
@@ -1126,12 +1131,12 @@ function ProductStep({ item, theme, step }) {
             </button>
             {showDetail && (
               <div className="text-xs text-gray-600 mt-2 space-y-2 leading-relaxed">
-                {item.detail && (
+                {pickDetail(item) && (
                   <p>
                     <strong>
                       {isSkincare ? t("dashboard.shortWhy") : usage ? t("dashboard.shortWhy") : t("dashboard.summary")}
                     </strong>{" "}
-                    {item.detail}
+                    {pickDetail(item)}
                   </p>
                 )}
                 {usage ? (
@@ -1150,14 +1155,17 @@ function ProductStep({ item, theme, step }) {
 
 function LifestyleCard({ item }) {
   const [showDetail, setShowDetail] = useState(false);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const prefersLocalized = ((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] || "tr") !== "tr";
+  const pickAction = (it) => (prefersLocalized ? (it?.action_localized || it?.action) : it?.action);
+  const pickDetail = (it) => (prefersLocalized ? (it?.detail_localized || it?.detail) : it?.detail);
   return (
     <div className="card !p-3 border-green-100 bg-green-50/20">
       <div className="flex items-start gap-3">
         <span className="text-lg shrink-0">{item.icon || "🌿"}</span>
         <div className="flex-1 min-w-0">
-          <h4 className="font-bold text-gray-900 text-xs">{item.action}</h4>
-          {item.detail && (
+          <h4 className="font-bold text-gray-900 text-xs">{pickAction(item)}</h4>
+          {pickDetail(item) && (
             <>
               <button
                 type="button"
@@ -1167,7 +1175,7 @@ function LifestyleCard({ item }) {
                 {showDetail ? t("common.hide") : t("dashboard.lifestyleThisItem")}
               </button>
               {showDetail && (
-                <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{item.detail}</p>
+                <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{pickDetail(item)}</p>
               )}
             </>
           )}

@@ -25,7 +25,7 @@ from flow_engine import (
 )
 from skincare_absolute_rules import enforce_absolute_rules_on_routine, get_absolute_rules_catalog
 from knowledge_router import execute_query_plan, get_targeted_context
-from rag_service import polish_routine_with_ai, chat_with_knowledge
+from rag_service import polish_routine_with_ai, chat_with_knowledge, translate_routine_items, _primary_lang_from_header
 from ingredient_db import compute_risk_score, build_ingredient_context_for_ai
 from hydration_window import compute_effective_water_liters, load_water_series_7d
 from checkin_carryover import (
@@ -790,10 +790,13 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     routine_items.extend(_optional_natural_examples_routine_item(req.concern))
 
     # ADIM 4: AI Polish (~400 TOKEN)
+    accept_lang = (request.headers.get("accept-language") or "").strip()
+    target_lang = _primary_lang_from_header(accept_lang)
     polished_routine, ai_polish_note = await polish_routine_with_ai(
         routine_items=routine_items,
         context_summary=context_summary,
         knowledge_context=knowledge_context,
+        lang=accept_lang or "tr",
     )
 
     for item in polished_routine:
@@ -803,6 +806,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
 
     polished_routine, rule_enforcement_final = enforce_absolute_rules_on_routine(polished_routine)
     sanitize_routine_items_details(polished_routine)
+    polished_routine = await translate_routine_items(polished_routine, target_lang=target_lang)
 
     # ADIM 5: Veritabanına Kaydet (demo kullanıcı: auth.users FK yok, atla)
     assessment_id = str(uuid.uuid4())
