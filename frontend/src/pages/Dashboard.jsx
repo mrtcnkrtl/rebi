@@ -1006,6 +1006,14 @@ function dailyBalanceLevel(item, flowDebug) {
 
 function DailyBalanceCard({ item, flowDebug, theme }) {
   if (!item) return null;
+  // daily balance card can render outside the main component scope; pick localized fields here too
+  // (backend keeps TR source in action/detail, adds *_localized for selected language)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const { i18n } = useTranslation();
+  const prefersLocalized =
+    ((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] || "tr") !== "tr";
+  const action = prefersLocalized ? (item.action_localized || item.action) : item.action;
+  const detail = prefersLocalized ? (item.detail_localized || item.detail) : item.detail;
   const level = dailyBalanceLevel(item, flowDebug);
   const borderBg =
     level === "crisis"
@@ -1037,10 +1045,10 @@ function DailyBalanceCard({ item, flowDebug, theme }) {
           <div className="flex flex-wrap items-center gap-2 gap-y-1 mb-1">
             <h3 className="text-sm font-bold text-gray-900">Bugünkü yaşam dengesi</h3>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${pill}`}>
-              {flowDebug?.risk_info?.label || (pickAction(item) || "").replace(/^Günlük denge:\s*/i, "").trim() || "—"}
+              {flowDebug?.risk_info?.label || (action || "").replace(/^Günlük denge:\s*/i, "").trim() || "—"}
             </span>
           </div>
-          <p className="text-xs text-gray-700 leading-relaxed">{pickDetail(item)}</p>
+          <p className="text-xs text-gray-700 leading-relaxed">{detail}</p>
         </div>
       </div>
     </div>

@@ -206,7 +206,15 @@
     "quickMorning": "Did morning routine",
     "quickEvening": "Did evening routine",
     "quickLogged": "Saved",
-    "weekDays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "weekDays": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
+    ],
     "weatherTitle": "Weather",
     "routineByDayTitle": "Day-by-day routine",
     "routineByDaySubtitle": "AM/PM steps per day; the number indicates the application order.",

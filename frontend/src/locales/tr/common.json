@@ -206,7 +206,15 @@
     "quickMorning": "Sabah rutinini yaptım",
     "quickEvening": "Akşam rutinini yaptım",
     "quickLogged": "Kaydedildi",
-    "weekDays": ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"],
+    "weekDays": [
+      "Pzt",
+      "Sal",
+      "Çar",
+      "Per",
+      "Cum",
+      "Cmt",
+      "Paz"
+    ],
     "weatherTitle": "Hava",
     "routineByDayTitle": "Gün gün rutin",
     "routineByDaySubtitle": "Her gün için sabah ve akşam adımları; sıra numarası uygulama sırasını gösterir.",
