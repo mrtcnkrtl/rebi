@@ -29,6 +29,8 @@
     "plusDesc": "Temel analiz ve rutin herkese açık. Plus ile yapay zeka sohbetinde sınır kalkar, özel temalar açılır ve günlük check-in akışın tam güçle çalışır.",
     "plusUnlockHint": "Uygulama içi Plus ile açılır",
     "ctaFreeAnalyze": "Ücretsiz Analiz Başlat",
+    "ctaChat": "Rebi ile konuş",
+    "ctaBuildRoutine": "Rutini oluştur",
     "ctaHowItWorks": "Nasıl Çalışır?",
     "plusCta": "Plus'ı keşfet",
     "featuresTitle": "Cilt Bakımında Yeni Nesil",
@@ -37,6 +39,19 @@
     "howItWorksTitle": "3 Adımda Kişisel Rutinin",
     "ctaStartNow": "Hemen Başla",
     "footer": "© 2026 Rebi. Bütüncül cilt bakımı platformu.",
+    "differenceTitle": "Diğerlerinden farkımız ne?",
+    "differenceSubtitle": "“Sivilcen var → sivilce kremi kullan” yaklaşımı değil. Sinyallerini toplar, rutini zamanla sana göre uyarlarız.",
+    "entryHint": "Başlamak için birini seç:",
+    "difference": {
+      "scanTitle": "Yüz fotoğrafını tara",
+      "scanDesc": "Opsiyonel fotoğraf taraması; takip ve ilerleme kıyasını güçlendirir.",
+      "collectTitle": "Ürün değil, verini toplar",
+      "collectDesc": "Uyku, stres, su, konum/hava, belirtiler ve alışkanlıkları birlikte değerlendirir.",
+      "adaptTitle": "Sürekli takip ve günlük geri dönüş",
+      "adaptDesc": "Günlük check-in ve takip olaylarına göre rutin zamanla değişebilir.",
+      "ingredientsTitle": "Marka değil madde odaklı AI",
+      "ingredientsDesc": "Etken madde ve konsantrasyonla yönlendirir; marka itelemez."
+    },
     "features": {
       "cameraTitle": "Kamera ile Takip",
       "cameraDesc": "Cildini fotoğrafla, yapay zeka değişimleri izlesin.",

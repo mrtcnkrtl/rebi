@@ -29,6 +29,8 @@
     "plusDesc": "Core analysis and routine are free for everyone. With Plus, the AI chat limit is removed, premium themes unlock, and your daily check-in flow runs at full strength.",
     "plusUnlockHint": "Unlock in-app with Plus",
     "ctaFreeAnalyze": "Start free analysis",
+    "ctaChat": "Talk to Rebi",
+    "ctaBuildRoutine": "Build my routine",
     "ctaHowItWorks": "How it works",
     "plusCta": "Explore Plus",
     "featuresTitle": "A new generation of skincare",
@@ -37,6 +39,19 @@
     "howItWorksTitle": "Your routine in 3 steps",
     "ctaStartNow": "Start now",
     "footer": "© 2026 Rebi. Holistic skincare platform.",
+    "differenceTitle": "How Rebi is different",
+    "differenceSubtitle": "Not “you have acne → use acne cream”. We collect your signals and adapt your plan over time.",
+    "entryHint": "Choose one to start:",
+    "difference": {
+      "scanTitle": "Scan your face photo",
+      "scanDesc": "Optional photo scan improves tracking and progress comparisons over time.",
+      "collectTitle": "Collect your data, not one-off guesses",
+      "collectDesc": "Sleep, stress, water, location/weather, symptoms and habits are used together.",
+      "adaptTitle": "Continuous tracking and daily feedback",
+      "adaptDesc": "Your routine can change with daily check-ins and tracking events.",
+      "ingredientsTitle": "Ingredient-first AI (not brands)",
+      "ingredientsDesc": "Guides by active ingredients and concentrations—never pushes specific brands."
+    },
     "features": {
       "cameraTitle": "Photo tracking",
       "cameraDesc": "Take skin photos and let AI track changes over time.",

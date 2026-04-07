@@ -107,20 +107,90 @@ export default function Landing() {
               {t("landing.heroDesc2")}
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to={user ? "/dashboard/analyze" : "/auth"}
-                className="btn-primary !px-8 !py-4 !text-lg !rounded-2xl group"
-              >
-                {t("landing.ctaFreeAnalyze")}
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <a
-                href="#features"
-                className="btn-secondary !px-8 !py-4 !text-lg !rounded-2xl"
-              >
-                {t("landing.ctaHowItWorks")}
-              </a>
+            <div className="max-w-3xl mx-auto text-left">
+              <div className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur-md shadow-sm p-5 md:p-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
+                    <Leaf className="w-5 h-5 text-teal-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-base md:text-lg font-bold text-gray-900">{t("landing.differenceTitle")}</h3>
+                    <p className="text-sm text-gray-600 mt-1 leading-relaxed">{t("landing.differenceSubtitle")}</p>
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-3 mt-5">
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <Camera className="w-4 h-4 text-rose-500" />
+                      {t("landing.difference.scanTitle")}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{t("landing.difference.scanDesc")}</p>
+                  </div>
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <Brain className="w-4 h-4 text-indigo-500" />
+                      {t("landing.difference.collectTitle")}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{t("landing.difference.collectDesc")}</p>
+                  </div>
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <ClipboardCheck className="w-4 h-4 text-amber-600" />
+                      {t("landing.difference.adaptTitle")}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{t("landing.difference.adaptDesc")}</p>
+                  </div>
+                  <div className="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+                      <Sparkles className="w-4 h-4 text-teal-600" />
+                      {t("landing.difference.ingredientsTitle")}
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 leading-relaxed">{t("landing.difference.ingredientsDesc")}</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 text-xs font-semibold text-gray-500">{t("landing.entryHint")}</div>
+                <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                  <Link
+                    to={user ? "/dashboard/chat" : "/auth"}
+                    className="group rounded-2xl border-2 border-teal-200 bg-teal-50/60 hover:bg-teal-50 px-5 py-4 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-white border border-teal-100 flex items-center justify-center">
+                        <MessageCircle className="w-5 h-5 text-teal-700" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-sm font-bold text-gray-900">{t("landing.ctaChat")}</div>
+                        <div className="text-xs text-gray-600">{t("nav.chat")}</div>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-teal-700 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+
+                  <Link
+                    to={user ? "/dashboard/analyze" : "/auth"}
+                    className="group rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 px-5 py-4 flex items-center justify-between transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-teal-600 flex items-center justify-center shadow-sm">
+                        <Sparkles className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-sm font-bold text-gray-900">{t("landing.ctaBuildRoutine")}</div>
+                        <div className="text-xs text-gray-600">{t("nav.newAnalyze")}</div>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-gray-700 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </div>
+
+                <div className="mt-4 flex justify-center">
+                  <a href="#features" className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-gray-900">
+                    {t("landing.ctaHowItWorks")} <ChevronRight className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
             </div>
 
             <div className="mt-10 flex items-center justify-center gap-6 text-sm text-gray-400">
