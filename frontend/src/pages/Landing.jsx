@@ -17,6 +17,7 @@ import {
   Palette,
   ClipboardCheck,
   Lock,
+  AlertTriangle,
 } from "lucide-react";
 
 const features = [

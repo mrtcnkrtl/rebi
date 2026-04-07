@@ -5,6 +5,13 @@ import { SUPPORTED_LANGS } from "../i18n";
 const LABELS = {
   tr: "Türkçe",
   en: "English",
+  es: "Español",
+  de: "Deutsch",
+  it: "Italiano",
+  fr: "Français",
+  pt: "Português",
+  ar: "العربية",
+  az: "Azərbaycanca",
 };
 
 export default function LanguageSelect({ className = "" }) {
@@ -32,7 +39,7 @@ export default function LanguageSelect({ className = "" }) {
     <label className={`flex items-center gap-2 ${className}`.trim()}>
       <span className="text-[11px] font-semibold text-gray-500">{t("lang.label")}</span>
       <select
-        value={(i18n.language || "en").toLowerCase().split("-")[0]}
+        value={(i18n.resolvedLanguage || i18n.language || "en").toLowerCase().split("-")[0]}
         onChange={(e) => {
           const lng = e.target.value;
           try {
