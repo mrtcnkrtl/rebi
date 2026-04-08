@@ -240,7 +240,9 @@ export default function Landing() {
             <div
               ref={revealRef}
               className={`transition-all duration-700 ${
-                phase === "reveal" ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none select-none"
+                phase === "reveal"
+                  ? "opacity-100 translate-y-0"
+                  : "hidden opacity-0 translate-y-3 pointer-events-none select-none"
               }`}
             >
               <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur px-4 py-2 rounded-full text-sm font-bold mb-6 border border-gray-200">
