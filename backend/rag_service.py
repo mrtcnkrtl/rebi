@@ -21,6 +21,22 @@ from flow_engine import sanitize_routine_items_details
 
 log = get_logger("rag_service")
 
+def _polish_user_message(err: Exception) -> str:
+    """
+    Convert common upstream errors (quota, timeouts) into a user-safe message.
+    Must never raise — used inside exception handlers.
+    """
+    try:
+        s = str(err or "")
+        sl = s.lower()
+        if "429" in sl or "quota" in sl or "resource_exhausted" in sl or "rate limit" in sl:
+            return "İşlem tamamlanamadı. Bir süre sonra tekrar dene."
+        if "timeout" in sl or "timed out" in sl:
+            return "Şu an yanıt gecikti. Biraz sonra tekrar dener misin?"
+        return "Bir hata oluştu, tekrar dener misin?"
+    except Exception:
+        return "Bir hata oluştu, tekrar dener misin?"
+
 
 def _gemini_response_text(response) -> str:
     """
