@@ -63,6 +63,10 @@
     "rebiInfoPill": "Rebi ile sohbet",
     "rebiInfoTitle": "Ne yapıyor?",
     "rebiInfoDesc": "Cildin ve içerikler hakkında sorularını yanıtlar; verilerini toplar ve seni rastgele değil, takip edilebilir bir akışla yönlendirir. Aşağıda farkımızın kısa şemasını görüyorsun.",
+    "routineInfoPill": "Rutin oluştur",
+    "routineInfoTitle": "Ne oluyor?",
+    "routineInfoDesc": "Kısa bir analizle cildinin ihtiyaçlarına göre rutin kurarız. Sonra günlük check-in ile zaman içinde uyarlarsın. Aşağıda farkımızın kısa şemasını görüyorsun.",
+    "routineOk": "Tamam",
     "difference": {
       "scanTitle": "Yüz fotoğrafını tara",
       "scanDesc": "Opsiyonel fotoğraf taraması; takip ve ilerleme kıyasını güçlendirir.",

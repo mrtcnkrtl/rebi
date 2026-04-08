@@ -63,6 +63,10 @@
     "rebiInfoPill": "Chat with Rebi",
     "rebiInfoTitle": "What does it do?",
     "rebiInfoDesc": "Ask about your skin or ingredients. Rebi collects your signals and guides you with a trackable flow—not random tips. Here’s a quick “why we’re different” schema.",
+    "routineInfoPill": "Build a routine",
+    "routineInfoTitle": "What happens?",
+    "routineInfoDesc": "We’ll build your routine with a short analysis, then adapt it over time with daily check-ins. Here’s a quick “why we’re different” schema.",
+    "routineOk": "OK",
     "difference": {
       "scanTitle": "Scan your face photo",
       "scanDesc": "Optional photo scan improves tracking and progress comparisons over time.",
