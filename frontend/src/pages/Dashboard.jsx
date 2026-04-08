@@ -179,6 +179,34 @@ export default function Dashboard() {
     };
   }, [uid]);
 
+  // If UI is EN but routine items are stored in TR, enrich them once via backend translation endpoint.
+  useEffect(() => {
+    if (!prefersLocalized) return;
+    if (!uid) return;
+    if (!Array.isArray(fetchedRoutine) || fetchedRoutine.length === 0) return;
+    const anyMissing = fetchedRoutine.some((it) => !(it?.action_localized || it?.detail_localized));
+    if (!anyMissing) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const auth = await apiAuthHeaders();
+        const res = await fetch(`${API_URL}/routine/translate_items`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...auth },
+          body: JSON.stringify({ user_id: uid, routine_items: fetchedRoutine }),
+        });
+        const data = await res.json().catch(() => ({}));
+        const items = data?.routine_items;
+        if (!cancelled && Array.isArray(items) && items.length) setFetchedRoutine(items);
+      } catch {
+        /* ignore: fallback to TR fields */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [prefersLocalized, uid, fetchedRoutine]);
+
   useEffect(() => {
     if (!uid) return;
     if (!accepted) return;
@@ -639,7 +667,8 @@ export default function Dashboard() {
             </div>
           )}
           <h1 className="text-2xl font-bold text-gray-900">
-            Senin Rutinin, {userName} <Sparkles className="w-5 h-5 inline" style={{ color: theme.accent }} />
+            {t("dashboard.myRoutineTitle", { name: userName })}{" "}
+            <Sparkles className="w-5 h-5 inline" style={{ color: theme.accent }} />
           </h1>
           <p className="text-gray-500 mt-1 text-sm">
             {new Date().toLocaleDateString(uiLocale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
@@ -651,7 +680,7 @@ export default function Dashboard() {
               className="mt-3 text-sm font-semibold underline-offset-2 hover:underline"
               style={{ color: theme.primary }}
             >
-              ← Sadece takip görünümüne dön
+              {t("dashboard.backToTracking")}
             </button>
           )}
           {showAcceptBar && (
@@ -684,7 +713,10 @@ export default function Dashboard() {
                   flowDebug.risk_info.level === "moderate" ? "bg-yellow-100 text-yellow-700" :
                   "bg-green-100 text-green-700"
                 }`}>
-                  Risk: {flowDebug.risk_info.label || flowDebug.risk_info.level}
+                  {t("dashboard.riskPrefix")}:{" "}
+                  {prefersLocalized
+                    ? t(`dashboard.riskLevels.${flowDebug.risk_info.level || "normal"}`)
+                    : (flowDebug.risk_info.label || flowDebug.risk_info.level)}
                 </span>
               )}
             </div>
@@ -981,7 +1013,12 @@ export default function Dashboard() {
               <img src={photoUrl} alt="" className="w-full h-40 object-cover" />
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
               <div className="absolute bottom-2 left-2 flex items-center gap-2">
-                <div className="text-white px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ backgroundColor: theme.primary }}>GÜN 1</div>
+                <div
+                  className="text-white px-2 py-0.5 rounded-full text-[10px] font-bold"
+                  style={{ backgroundColor: theme.primary }}
+                >
+                  {t("dashboard.dayLabel", { n: 1 })}
+                </div>
                 <span className="text-white/80 text-[10px]">{new Date().toLocaleDateString(uiLocale)}</span>
               </div>
             </div>
@@ -989,7 +1026,7 @@ export default function Dashboard() {
         )}
 
         <Link to="/dashboard/analyze" className="btn-secondary w-full !mt-4" style={{ borderColor: theme.primaryLight, color: theme.primary }}>
-          <PlusCircle className="w-5 h-5" /> Yeni Analiz Yap
+          <PlusCircle className="w-5 h-5" /> {t("dashboard.newAnalyzeCta")}
         </Link>
       </div>
     </div>
@@ -1048,7 +1085,11 @@ function DailyBalanceCard({ item, flowDebug, theme }) {
           <div className="flex flex-wrap items-center gap-2 gap-y-1 mb-1">
             <h3 className="text-sm font-bold text-gray-900">{t("dashboard.dailyBalanceTitle")}</h3>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${pill}`}>
-              {flowDebug?.risk_info?.label || (action || "").replace(/^Günlük denge:\s*/i, "").trim() || "—"}
+              {(() => {
+                const lv = flowDebug?.risk_info?.level;
+                if (prefersLocalized && lv) return t(`dashboard.riskLevels.${lv}`);
+                return flowDebug?.risk_info?.label || (action || "").replace(/^Günlük denge:\s*/i, "").trim() || "—";
+              })()}
             </span>
           </div>
           <p className="text-xs text-gray-700 leading-relaxed">{detail}</p>

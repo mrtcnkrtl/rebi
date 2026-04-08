@@ -201,6 +201,8 @@
     "startAnalyze": "Start analysis",
     "chatWithAi": "Chat with Rebi AI",
     "trackingTitle": "Routine tracking",
+    "myRoutineTitle": "Your routine, {{name}}",
+    "backToTracking": "← Back to tracking view",
     "dailyCheckinTitle": "Daily check-in",
     "dailyCheckinSubtitle": "How do you feel today? Your routine adapts accordingly.",
     "helloToday": "Hi {{name}} — today’s steps and check-in are below.",
@@ -217,6 +219,14 @@
     "productListTitle": "Product list",
     "productListSubtitle": "Active ingredients mentioned in your routine",
     "dailyBalanceTitle": "Today’s balance",
+    "riskPrefix": "Risk",
+    "riskLevels": {
+      "crisis": "Crisis",
+      "high": "High",
+      "moderate": "Moderate",
+      "normal": "Normal"
+    },
+    "dayLabel": "DAY {{n}}",
     "defaultUsage": {
       "cleanser": "Wet your face, lather or apply, rinse, and pat dry.",
       "serum": "Apply a thin layer (2–3 drops or a pea-sized amount) on clean skin. Then moisturize.",
@@ -240,6 +250,7 @@
     "quickMorning": "Did morning routine",
     "quickEvening": "Did evening routine",
     "quickLogged": "Saved",
+    "newAnalyzeCta": "Start a new analysis",
     "weekDays": [
       "Mon",
       "Tue",

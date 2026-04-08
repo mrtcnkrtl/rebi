@@ -441,6 +441,11 @@ class AssessmentChatResponse(BaseModel):
     chat_quota_exceeded: bool = False
 
 
+class TranslateRoutineItemsRequest(BaseModel):
+    user_id: str
+    routine_items: list[dict] = Field(default_factory=list)
+
+
 class DailyCheckinRequest(BaseModel):
     user_id: str
     sleep_hours: float
@@ -1020,6 +1025,24 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
         free_chat_limit=lim if is_free and jwt_auth_enabled() and not plus else None,
         chat_quota_exceeded=False,
     )
+
+
+@app.post(
+    "/routine/translate_items",
+    tags=["routine"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
+)
+async def translate_routine_items_endpoint(request: Request, req: TranslateRoutineItemsRequest):
+    """
+    Frontend can store routines in DB/local snapshot in Turkish.
+    This endpoint adds `action_localized` and `detail_localized` for the selected UI language.
+    """
+    enforce_supabase_user(request, req.user_id)
+    from rag_service import translate_routine_items, _primary_lang_from_header
+
+    target_lang = _primary_lang_from_header(request.headers.get("accept-language", "") or "")
+    items = await translate_routine_items(req.routine_items or [], target_lang=target_lang)
+    return {"routine_items": items}
 
 
 @app.get(

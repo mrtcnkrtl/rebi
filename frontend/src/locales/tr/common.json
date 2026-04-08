@@ -201,6 +201,8 @@
     "startAnalyze": "Analiz Başlat",
     "chatWithAi": "Rebi AI ile Sohbet",
     "trackingTitle": "Rutin takibi",
+    "myRoutineTitle": "Senin Rutinin, {{name}}",
+    "backToTracking": "← Sadece takip görünümüne dön",
     "dailyCheckinTitle": "Günlük Check-in",
     "dailyCheckinSubtitle": "Bugün nasıl hissediyorsun? Rutinin buna göre uyarlanır.",
     "helloToday": "Merhaba {{name}} — bugünkü adımların ve check-in aşağıda.",
@@ -217,6 +219,14 @@
     "productListTitle": "Ürün listesi",
     "productListSubtitle": "Rutinde geçen etken maddeler",
     "dailyBalanceTitle": "Bugünkü yaşam dengesi",
+    "riskPrefix": "Risk",
+    "riskLevels": {
+      "crisis": "Kriz",
+      "high": "Yüksek",
+      "moderate": "Orta",
+      "normal": "Normal"
+    },
+    "dayLabel": "GÜN {{n}}",
     "defaultUsage": {
       "cleanser": "Yüzü ıslat, köpürt veya uygula, durula, kurula.",
       "serum": "Temiz cilde, ince katman (2–3 damla veya nohut büyüklüğünde). Sonra nemlendirici.",
@@ -240,6 +250,7 @@
     "quickMorning": "Sabah rutinini yaptım",
     "quickEvening": "Akşam rutinini yaptım",
     "quickLogged": "Kaydedildi",
+    "newAnalyzeCta": "Yeni Analiz Yap",
     "weekDays": [
       "Pzt",
       "Sal",
