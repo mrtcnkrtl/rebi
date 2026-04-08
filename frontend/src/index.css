@@ -69,3 +69,42 @@
     @apply bg-white/80 backdrop-blur-xl border border-white/20;
   }
 }
+
+@keyframes hero-video-drift {
+  0%,
+  100% {
+    transform: scale(1.12) translate(0%, 0%);
+  }
+  50% {
+    transform: scale(1.22) translate(-1.2%, 0.8%);
+  }
+}
+
+@keyframes hero-mesh-shift {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1) translate(0%, 0%);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.08) translate(2%, -1%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-video-drift,
+  .hero-mesh-shift {
+    animation: none !important;
+  }
+}
+
+.hero-video-drift {
+  animation: hero-video-drift 32s ease-in-out infinite;
+  will-change: transform;
+}
+
+.hero-mesh-shift {
+  animation: hero-mesh-shift 18s ease-in-out infinite;
+  will-change: transform, opacity;
+}

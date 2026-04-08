@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import HeroBackgroundVideo from "../components/HeroBackgroundVideo";
@@ -18,7 +18,6 @@ import {
   MessageCircle,
   Palette,
   ClipboardCheck,
-  Lock,
   AlertTriangle,
 } from "lucide-react";
 
@@ -79,13 +78,11 @@ const plusHighlights = [
 export default function Landing() {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const [choice, setChoice] = useState(null); // "rebi" | "routine" | null
   const [phase, setPhase] = useState("choice"); // "choice" | "reveal"
   const revealRef = useRef(null);
   const isAuthed = Boolean(user);
   const nextAnalyze = "/dashboard/analyze";
-  const nextSubscribe = "/dashboard/subscribe";
 
   const cta = useMemo(() => {
     if (choice === "routine") {
@@ -120,14 +117,14 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-warm-50 via-white to-teal-50/30">
       {/* Hero */}
-      <section className="relative overflow-hidden">
+      <section className="relative min-h-[min(100dvh,980px)] overflow-hidden">
         <HeroBackgroundVideo />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-100/40 via-transparent to-transparent" />
-        <div className="absolute top-20 right-10 w-72 h-72 bg-teal-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 left-10 w-96 h-96 bg-purple-200/10 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-100/35 via-transparent to-transparent" />
+        <div className="absolute top-10 right-[-5%] w-[min(90vw,520px)] h-[min(90vw,520px)] bg-teal-200/25 rounded-full blur-3xl" />
+        <div className="absolute bottom-[-10%] left-[-8%] w-[min(95vw,640px)] h-[min(95vw,640px)] bg-purple-200/15 rounded-full blur-3xl" />
 
-        <div className="relative max-w-6xl mx-auto px-4 pt-20 pb-24 md:pt-32 md:pb-36">
-          <div className="text-center max-w-3xl mx-auto">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-20 md:pt-24 md:pb-28">
+          <div className="text-center max-w-6xl mx-auto w-full">
             <div
               className={`transition-all duration-700 ${
                 phase === "choice" ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none select-none"
@@ -138,69 +135,64 @@ export default function Landing() {
                 {t("landing.heroBadge")}
               </div>
 
-              <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight mb-4 tracking-tight">
-                Bugün hangisi?
+              <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-gray-900 leading-[1.05] mb-5 tracking-tight drop-shadow-sm">
+                {t("landing.choiceTitle")}
               </h1>
-              <p className="text-base md:text-lg text-gray-600 mb-8">
-                <span className="font-semibold text-gray-900">Rebi</span> ile sohbet mi, yoksa{" "}
-                <span className="font-semibold text-gray-900">Rutin</span> mi?
+              <p className="text-lg md:text-xl text-gray-700 mb-10 max-w-2xl mx-auto">
+                {t("landing.choiceSubtitle")}
               </p>
 
-              <div className="grid sm:grid-cols-2 gap-4 text-left">
+              <div className="grid md:grid-cols-2 gap-5 md:gap-8 text-left">
                 <button
                   type="button"
                   onClick={() => pick("rebi")}
-                  className="group relative rounded-3xl border-2 border-teal-200 bg-white/70 backdrop-blur hover:bg-white px-6 py-6 shadow-sm hover:shadow-xl transition-all"
+                  className="group relative min-h-[200px] md:min-h-[240px] rounded-[2rem] border-2 border-teal-200/90 bg-white/75 backdrop-blur-md hover:bg-white/90 px-8 py-8 shadow-md hover:shadow-2xl hover:shadow-teal-500/10 transition-all"
                 >
-                  <div className="absolute -top-10 -right-10 w-44 h-44 bg-teal-300/25 rounded-full blur-3xl" />
-                  <div className="relative flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-teal-600 flex items-center justify-center shadow-lg shadow-teal-600/20">
-                        <MessageCircle className="w-6 h-6 text-white" />
+                  <div className="absolute -top-16 -right-16 w-56 h-56 bg-teal-300/30 rounded-full blur-3xl" />
+                  <div className="relative flex items-start justify-between gap-5">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-teal-600 flex items-center justify-center shadow-xl shadow-teal-600/25 shrink-0">
+                        <MessageCircle className="w-7 h-7 md:w-8 md:h-8 text-white" />
                       </div>
                       <div>
-                        <div className="text-lg font-black text-gray-900">Rebi</div>
-                        <div className="text-sm text-gray-600 mt-1 leading-relaxed">
-                          Sor, fotoğrafla, takip et. Dalgalar gibi akarak yönlendirsin.
-                        </div>
-                        <div className="mt-3 text-xs font-semibold text-teal-800/90">
-                          Demo ile başla → sınırda giriş + Plus
+                        <div className="text-xl md:text-2xl font-black text-gray-900">{t("appName")}</div>
+                        <div className="text-base md:text-lg text-gray-600 mt-2 leading-relaxed">
+                          {t("landing.choiceRebiDesc")}
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className="w-6 h-6 text-teal-700 group-hover:translate-x-1 transition-transform" />
+                    <ChevronRight className="w-7 h-7 text-teal-700 shrink-0 group-hover:translate-x-1 transition-transform mt-1" />
                   </div>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => pick("routine")}
-                  className="group relative rounded-3xl border-2 border-gray-200 bg-white hover:bg-gray-50 px-6 py-6 shadow-sm hover:shadow-xl transition-all"
+                  className="group relative min-h-[200px] md:min-h-[240px] rounded-[2rem] border-2 border-gray-200 bg-white/90 hover:bg-white px-8 py-8 shadow-md hover:shadow-2xl transition-all"
                 >
-                  <div className="absolute -bottom-10 -left-10 w-44 h-44 bg-purple-300/15 rounded-full blur-3xl" />
-                  <div className="relative flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-600/15">
-                        <Sparkles className="w-6 h-6 text-white" />
+                  <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-purple-300/20 rounded-full blur-3xl" />
+                  <div className="relative flex items-start justify-between gap-5">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-xl shadow-emerald-600/20 shrink-0">
+                        <Sparkles className="w-7 h-7 md:w-8 md:h-8 text-white" />
                       </div>
                       <div>
-                        <div className="text-lg font-black text-gray-900">Rutin</div>
-                        <div className="text-sm text-gray-600 mt-1 leading-relaxed">
-                          Profilini çıkar, rutini kur, günlük check-in ile güncelle.
+                        <div className="text-xl md:text-2xl font-black text-gray-900">
+                          {t("landing.choiceRoutineName")}
                         </div>
-                        <div className="mt-3 text-xs font-semibold text-gray-700">
-                          Başlamadan önce kayıt/giriş gerekli
+                        <div className="text-base md:text-lg text-gray-600 mt-2 leading-relaxed">
+                          {t("landing.choiceRoutineDesc")}
                         </div>
                       </div>
                     </div>
-                    <ArrowRight className="w-6 h-6 text-gray-700 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-7 h-7 text-gray-700 shrink-0 group-hover:translate-x-1 transition-transform mt-1" />
                   </div>
                 </button>
               </div>
 
               {/* subtle wave footer */}
-              <div className="mt-10 opacity-70">
-                <svg viewBox="0 0 1440 120" className="w-full h-16">
+              <div className="mt-12 md:mt-16 opacity-80">
+                <svg viewBox="0 0 1440 120" className="w-full h-20 md:h-28">
                   <path
                     fill="rgba(20,184,166,0.12)"
                     d="M0,64L80,58.7C160,53,320,43,480,48C640,53,800,75,960,80C1120,85,1280,75,1360,69.3L1440,64L1440,120L1360,120C1280,120,1120,120,960,120C800,120,640,120,480,120C320,120,160,120,80,120L0,120Z"
@@ -228,44 +220,46 @@ export default function Landing() {
             >
               <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur px-4 py-2 rounded-full text-sm font-bold mb-6 border border-gray-200">
                 <Leaf className="w-4 h-4 text-teal-600" />
-                Seçim:{" "}
-                <span className="text-teal-700">{choice === "routine" ? "Rutin" : "Rebi"}</span>
+                {t("landing.choicePicked")}{" "}
+                <span className="text-teal-700">
+                  {choice === "routine" ? t("landing.choiceRoutineName") : t("appName")}
+                </span>
               </div>
 
-              <div className="rounded-3xl border border-gray-200 bg-white/80 backdrop-blur-md shadow-sm p-5 md:p-6 text-left">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
-                    <Leaf className="w-5 h-5 text-teal-600" />
+              <div className="rounded-[2rem] border border-gray-200/90 bg-white/85 backdrop-blur-xl shadow-lg p-6 md:p-10 lg:p-12 text-left">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
+                    <Leaf className="w-6 h-6 text-teal-600" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-base md:text-lg font-bold text-gray-900">{t("landing.differenceTitle")}</h3>
-                    <p className="text-sm text-gray-600 mt-1 leading-relaxed">{t("landing.differenceSubtitle")}</p>
+                    <h3 className="text-xl md:text-2xl font-bold text-gray-900">{t("landing.differenceTitle")}</h3>
+                    <p className="text-base text-gray-600 mt-2 leading-relaxed">{t("landing.differenceSubtitle")}</p>
                   </div>
                 </div>
 
                 {/* Schema: Others vs Rebi */}
-                <div className="mt-5 grid md:grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-gray-200 bg-white p-4">
-                    <div className="text-xs font-bold text-gray-700 mb-3">{t("landing.differenceSchemaOthers")}</div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800">
-                        <Camera className="w-4 h-4 text-gray-600" />
+                <div className="mt-8 grid lg:grid-cols-2 gap-5 md:gap-6">
+                  <div className="rounded-3xl border border-gray-200 bg-white/95 p-5 md:p-7 shadow-sm">
+                    <div className="text-sm font-bold text-gray-700 mb-4">{t("landing.differenceSchemaOthers")}</div>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
+                        <Camera className="w-5 h-5 text-gray-600 shrink-0" />
                         {t("landing.differenceSchemaOthersS1")}
                       </div>
-                      <div className="flex justify-center text-gray-300">↓</div>
-                      <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800">
-                        <AlertTriangle className="w-4 h-4 text-amber-600" />
+                      <div className="flex justify-center text-gray-300 text-lg">↓</div>
+                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
                         {t("landing.differenceSchemaOthersS2")}
                       </div>
-                      <div className="flex justify-center text-gray-300">↓</div>
-                      <div className="flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-sm text-gray-800">
-                        <Shield className="w-4 h-4 text-gray-600" />
+                      <div className="flex justify-center text-gray-300 text-lg">↓</div>
+                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
+                        <Shield className="w-5 h-5 text-gray-600 shrink-0" />
                         {t("landing.differenceSchemaOthersS3")}
                       </div>
                     </div>
                   </div>
 
-                  <div className="relative rounded-2xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-4 overflow-hidden">
+                  <div className="relative rounded-3xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-5 md:p-7 overflow-hidden shadow-md">
                     <div className="absolute -top-10 -right-10 w-40 h-40 bg-teal-300/25 rounded-full blur-3xl" />
                     <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-300/20 rounded-full blur-3xl" />
                     <div className="absolute inset-0 opacity-50">
@@ -294,20 +288,20 @@ export default function Landing() {
                       </svg>
                     </div>
                     <div className="relative">
-                      <div className="text-xs font-bold text-teal-900 mb-3">{t("landing.differenceSchemaUs")}</div>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 rounded-xl border border-teal-200/70 bg-white/85 backdrop-blur px-3 py-2 text-sm text-gray-900 shadow-sm">
-                          <Brain className="w-4 h-4 text-teal-700" />
+                      <div className="text-sm font-bold text-teal-900 mb-4">{t("landing.differenceSchemaUs")}</div>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
+                          <Brain className="w-5 h-5 text-teal-700 shrink-0" />
                           {t("landing.differenceSchemaUsS1")}
                         </div>
-                        <div className="flex justify-center text-teal-500/70 font-bold">↓</div>
-                        <div className="flex items-center gap-2 rounded-xl border border-teal-200/70 bg-white/85 backdrop-blur px-3 py-2 text-sm text-gray-900 shadow-sm">
-                          <ClipboardCheck className="w-4 h-4 text-teal-700" />
+                        <div className="flex justify-center text-teal-500/70 font-bold text-lg">↓</div>
+                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
+                          <ClipboardCheck className="w-5 h-5 text-teal-700 shrink-0" />
                           {t("landing.differenceSchemaUsS2")}
                         </div>
-                        <div className="flex justify-center text-teal-500/70 font-bold">↓</div>
-                        <div className="flex items-center gap-2 rounded-xl border border-teal-200/70 bg-white/85 backdrop-blur px-3 py-2 text-sm text-gray-900 shadow-sm">
-                          <Sparkles className="w-4 h-4 text-teal-700" />
+                        <div className="flex justify-center text-teal-500/70 font-bold text-lg">↓</div>
+                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
+                          <Sparkles className="w-5 h-5 text-teal-700 shrink-0" />
                           {t("landing.differenceSchemaUsS3")}
                         </div>
                       </div>
@@ -315,27 +309,21 @@ export default function Landing() {
                   </div>
                 </div>
 
-                <div className="mt-5 text-xs font-semibold text-gray-500">
-                  {choice === "routine"
-                    ? "Rutin için kayıt/giriş zorunlu. (Devam edince yönlendireceğim.)"
-                    : "Rebi demo ile başlar; sınırı geçince giriş + Rebi Plus önerilir."}
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-3 mt-3">
+                <div className="grid sm:grid-cols-2 gap-4 mt-8">
                   <Link
                     to={cta.href}
-                    className="group rounded-2xl border-2 border-teal-200 bg-teal-50/60 hover:bg-teal-50 px-5 py-4 flex items-center justify-between transition-colors"
+                    className="group rounded-[1.25rem] border-2 border-teal-200 bg-teal-50/70 hover:bg-teal-50 px-6 py-5 md:py-6 flex items-center justify-between transition-colors min-h-[88px]"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-white border border-teal-100 flex items-center justify-center">
-                        <cta.icon className="w-5 h-5 text-teal-700" />
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white border border-teal-100 flex items-center justify-center shrink-0">
+                        <cta.icon className="w-6 h-6 text-teal-700" />
                       </div>
                       <div className="text-left">
-                        <div className="text-sm font-bold text-gray-900">{cta.label}</div>
-                        <div className="text-xs text-gray-600">{cta.sub}</div>
+                        <div className="text-base font-bold text-gray-900">{cta.label}</div>
+                        <div className="text-sm text-gray-600">{cta.sub}</div>
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-teal-700 group-hover:translate-x-0.5 transition-transform" />
+                    <ChevronRight className="w-6 h-6 text-teal-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
                   </Link>
 
                   <button
@@ -345,40 +333,20 @@ export default function Landing() {
                       setChoice(null);
                       window.scrollTo({ top: 0, behavior: "smooth" });
                     }}
-                    className="group rounded-2xl border-2 border-gray-200 bg-white hover:bg-gray-50 px-5 py-4 flex items-center justify-between transition-colors"
+                    className="group rounded-[1.25rem] border-2 border-gray-200 bg-white hover:bg-gray-50 px-6 py-5 md:py-6 flex items-center justify-between transition-colors min-h-[88px]"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center shadow-sm">
-                        <ChevronRight className="w-5 h-5 text-white rotate-180" />
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-gray-900 flex items-center justify-center shadow-sm shrink-0">
+                        <ChevronRight className="w-6 h-6 text-white rotate-180" />
                       </div>
                       <div className="text-left">
-                        <div className="text-sm font-bold text-gray-900">Değiştir</div>
-                        <div className="text-xs text-gray-600">Başa dön</div>
+                        <div className="text-base font-bold text-gray-900">{t("landing.changeChoice")}</div>
+                        <div className="text-sm text-gray-600">{t("landing.changeChoiceSub")}</div>
                       </div>
                     </div>
-                    <ArrowRight className="w-5 h-5 text-gray-700 group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight className="w-6 h-6 text-gray-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
                   </button>
                 </div>
-
-                {!isAuthed && choice === "rebi" && (
-                  <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900 flex items-start gap-2">
-                    <Lock className="w-4 h-4 mt-0.5 shrink-0" />
-                    <div className="min-w-0">
-                      <div className="font-bold">Sınırda ne olacak?</div>
-                      <div className="mt-0.5">
-                        Demo sohbetten sonra <span className="font-semibold">giriş</span> ve{" "}
-                        <span className="font-semibold">Rebi Plus</span> isteyeceğiz.
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/auth?next=${encodeURIComponent(nextSubscribe)}`)}
-                          className="ml-2 underline underline-offset-2 font-semibold"
-                        >
-                          Şimdiden Plus’a geç
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="mt-10 flex items-center justify-center gap-6 text-sm text-gray-400">

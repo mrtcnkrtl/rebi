@@ -139,6 +139,7 @@ export default function Dashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
+  const uiLocale = (i18n.resolvedLanguage || i18n.language || "tr").toLowerCase();
   const WEEK_DAYS = t("dashboard.weekDays", { returnObjects: true, defaultValue: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] });
   const fallbackStepTitle = t("dashboard.fallbackStepTitle", { defaultValue: "This step" });
   const prefersLocalized = ((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] || "tr") !== "tr";
@@ -423,9 +424,9 @@ export default function Dashboard() {
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">{t("dashboard.trackingTitle")}</h1>
             <p className="text-gray-500 mt-1 text-sm">
-              {new Date().toLocaleDateString("tr-TR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              {new Date().toLocaleDateString(uiLocale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
-            <p className="text-sm text-gray-600 mt-2">Merhaba {userName}, bugünkü adımların ve check-in aşağıda.</p>
+            <p className="text-sm text-gray-600 mt-2">{t("dashboard.helloToday", { name: userName })}</p>
           </div>
 
           <Link
@@ -640,7 +641,9 @@ export default function Dashboard() {
           <h1 className="text-2xl font-bold text-gray-900">
             Senin Rutinin, {userName} <Sparkles className="w-5 h-5 inline" style={{ color: theme.accent }} />
           </h1>
-          <p className="text-gray-500 mt-1 text-sm">{new Date().toLocaleDateString("tr-TR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</p>
+          <p className="text-gray-500 mt-1 text-sm">
+            {new Date().toLocaleDateString(uiLocale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+          </p>
           {accepted && showPlanExpanded && (
             <button
               type="button"
@@ -979,7 +982,7 @@ export default function Dashboard() {
               <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
               <div className="absolute bottom-2 left-2 flex items-center gap-2">
                 <div className="text-white px-2 py-0.5 rounded-full text-[10px] font-bold" style={{ backgroundColor: theme.primary }}>GÜN 1</div>
-                <span className="text-white/80 text-[10px]">{new Date().toLocaleDateString("tr-TR")}</span>
+                <span className="text-white/80 text-[10px]">{new Date().toLocaleDateString(uiLocale)}</span>
               </div>
             </div>
           </div>
@@ -1009,7 +1012,7 @@ function DailyBalanceCard({ item, flowDebug, theme }) {
   // daily balance card can render outside the main component scope; pick localized fields here too
   // (backend keeps TR source in action/detail, adds *_localized for selected language)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const prefersLocalized =
     ((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] || "tr") !== "tr";
   const action = prefersLocalized ? (item.action_localized || item.action) : item.action;
@@ -1043,7 +1046,7 @@ function DailyBalanceCard({ item, flowDebug, theme }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2 gap-y-1 mb-1">
-            <h3 className="text-sm font-bold text-gray-900">Bugünkü yaşam dengesi</h3>
+            <h3 className="text-sm font-bold text-gray-900">{t("dashboard.dailyBalanceTitle")}</h3>
             <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${pill}`}>
               {flowDebug?.risk_info?.label || (action || "").replace(/^Günlük denge:\s*/i, "").trim() || "—"}
             </span>
@@ -1070,11 +1073,8 @@ function SectionHeader({ icon, title, subtitle, color, className = "" }) {
 
 function getDefaultUsage(stepOrder) {
   const so = stepOrder ?? 50;
-  if (so <= 15) return "Yüzü ıslat, köpürt veya uygula, durula, kurula.";
-  if (so <= 25) return "Temiz cilde, ince katman (2–3 damla veya nohut büyüklüğünde). Sonra nemlendirici.";
-  if (so <= 35) return "Tüm yüze ince katman. Göz çevresi ince uygulanabilir.";
-  if (so >= 40) return "Son adım. Bol sür, 2 saatte bir yenile.";
-  return "Önerilen sırada, temiz cilde uygula.";
+  // Note: default usage text should be localized, so this helper expects a t() function.
+  return { so };
 }
 
 function ProductStep({ item, theme, step }) {
@@ -1085,7 +1085,20 @@ function ProductStep({ item, theme, step }) {
   const pickDetail = (it) => (prefersLocalized ? (it?.detail_localized || it?.detail) : it?.detail);
   const isSkincare = item.category === "Bakım" || item.category === "Koruma";
   const usageRaw = item.usage != null ? String(item.usage).trim() : "";
-  const usage = usageRaw || (isSkincare ? getDefaultUsage(item.step_order) : "");
+  const so = item.step_order ?? 50;
+  const usage =
+    usageRaw ||
+    (isSkincare
+      ? so <= 15
+        ? t("dashboard.defaultUsage.cleanser")
+        : so <= 25
+          ? t("dashboard.defaultUsage.serum")
+          : so <= 35
+            ? t("dashboard.defaultUsage.moisturizer")
+            : so >= 40
+              ? t("dashboard.defaultUsage.sunscreen")
+              : t("dashboard.defaultUsage.generic")
+      : "");
   const hasContent = Boolean((item.detail || item.detail_localized) || usage);
   const showNumber = step != null && step !== undefined;
   const actionLower = String(item.action || "").toLowerCase();
