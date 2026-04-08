@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
-import { Sparkles, Crown, MessageCircle, Palette, ExternalLink } from "lucide-react";
+import { Sparkles, Crown, MessageCircle, Palette, ExternalLink, Check, Shield } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { useTranslation } from "react-i18next";
 
@@ -18,57 +18,84 @@ export default function Subscribe() {
     );
 
   return (
-    <div className={`min-h-screen ${theme.bg} pb-28 relative`}>
+    <div className={`min-h-screen ${theme.bg} pb-28 relative overflow-hidden`}>
       <ThemePatternOverlay pattern={theme.pattern} />
-      <div className="max-w-lg mx-auto px-4 py-8 relative z-[1]">
-        <div className="flex items-center gap-3 mb-2">
+      <div className="absolute inset-0">
+        <div className="absolute inset-0 bg-gradient-to-b from-slate-950 via-violet-950/95 to-slate-900 opacity-90" />
+        <div
+          className="absolute inset-0 opacity-55"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 18% 25%, rgba(167,139,250,0.45) 0%, transparent 44%), radial-gradient(circle at 82% 70%, rgba(244,114,182,0.28) 0%, transparent 40%), radial-gradient(circle at 40% 110%, rgba(34,211,238,0.18) 0%, transparent 45%)",
+          }}
+        />
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 py-10 relative z-[1]">
+        <div className="text-center mb-7">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"
+            className="w-16 h-16 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-fuchsia-500/15 mx-auto mb-4"
             style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}
           >
-            <Crown className="w-6 h-6" />
+            <Crown className="w-8 h-8" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{t("subscribe.title")}</h1>
-            <p className="text-sm text-gray-500">{t("subscribe.subtitle")}</p>
+          <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-2 text-sm font-semibold text-amber-200 mb-4">
+            <Sparkles className="w-4 h-4 text-amber-300" />
+            Rebi Plus
           </div>
+          <h1 className="text-3xl font-black text-white tracking-tight">{t("subscribe.title")}</h1>
+          <p className="text-sm text-violet-100/80 mt-2 leading-relaxed">{t("subscribe.subtitle")}</p>
         </div>
 
         {plus && (
           <div
-            className="mb-6 card !p-4 border-emerald-200 bg-emerald-50/90 text-emerald-900 text-sm"
+            className="mb-6 rounded-3xl border border-emerald-300/25 bg-emerald-500/10 backdrop-blur px-5 py-4 text-emerald-100 text-sm"
           >
-            Hesabında Rebi Plus aktif görünüyor. Teşekkürler.
+            <div className="flex items-start gap-2">
+              <Check className="w-4 h-4 mt-0.5 text-emerald-300 shrink-0" />
+              <div className="min-w-0">
+                <div className="font-bold text-emerald-100">Plus aktif</div>
+                <div className="text-emerald-100/80 mt-0.5">Hesabında Rebi Plus görünüyor. Teşekkürler.</div>
+              </div>
+            </div>
           </div>
         )}
 
-        <div className="card space-y-4 !p-5 mb-6">
-          <h2 className="font-bold text-gray-900 text-sm">Neler dahil?</h2>
-          <ul className="space-y-3 text-sm text-gray-700">
+        <div className="rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-7 mb-6 shadow-2xl shadow-black/20">
+          <h2 className="font-black text-white mb-4 tracking-tight">Neler dahil?</h2>
+          <ul className="space-y-3 text-sm text-white/80">
             <li className="flex gap-3">
-              <MessageCircle className="w-5 h-5 shrink-0" style={{ color: theme.primary }} />
+              <MessageCircle className="w-5 h-5 shrink-0 text-amber-200" />
               <span>
-                <strong className="text-gray-900">Rebi AI</strong> — günlük ücretsiz mesaj limiti olmadan
-                cilt bakımı sohbeti (kotayı sunucu tarafında Plus ile kaldırırsın).
+                <strong className="text-white">Sınırsız Rebi AI</strong> — günlük ücretsiz mesaj limiti kalkar.
               </span>
             </li>
             <li className="flex gap-3">
-              <Palette className="w-5 h-5 shrink-0" style={{ color: theme.primary }} />
+              <Palette className="w-5 h-5 shrink-0 text-cyan-200" />
               <span>
-                <strong className="text-gray-900">Premium temalar</strong> — ayırt edici renkler ve desenler.
+                <strong className="text-white">Premium temalar</strong> — ayırt edici renkler ve desenler.
               </span>
             </li>
             <li className="flex gap-3">
-              <Sparkles className="w-5 h-5 shrink-0" style={{ color: theme.primary }} />
-              <span>Yeni özellikler önce Plus üyelerinde.</span>
+              <Sparkles className="w-5 h-5 shrink-0 text-fuchsia-200" />
+              <span>
+                <strong className="text-white">Öncelikli yenilikler</strong> — yeni özellikler önce Plus’ta.
+              </span>
+            </li>
+            <li className="flex gap-3">
+              <Shield className="w-5 h-5 shrink-0 text-emerald-200" />
+              <span>
+                <strong className="text-white">Daha derin takip</strong> — check-in akışı daha güçlü çalışır.
+              </span>
             </li>
           </ul>
         </div>
 
-        <div className="card !p-5 space-y-3 bg-gray-50/80 border-gray-200">
-          <p className="text-xs text-gray-600 leading-relaxed">
+        <div className="rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-7 space-y-3 shadow-2xl shadow-black/20">
+          <p className="text-xs text-white/70 leading-relaxed">
             Ödeme bağlantısı hazır olduğunda buraya yönlendirileceksin. Şimdilik ödeme altyapısı
-            (Stripe, iyzico vb.) projeye eklendiğinde <code className="text-[11px] bg-white px-1 rounded">VITE_REBI_PLUS_CHECKOUT_URL</code>{" "}
+            (Stripe, iyzico vb.) projeye eklendiğinde{" "}
+            <code className="text-[11px] bg-white/10 px-1 rounded">VITE_REBI_PLUS_CHECKOUT_URL</code>{" "}
             ortam değişkeni ile ödeme sayfası açılır.
           </p>
           {CHECKOUT_URL ? (
@@ -76,22 +103,23 @@ export default function Subscribe() {
               href={CHECKOUT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-primary w-full inline-flex items-center justify-center gap-2 !py-3"
-              style={{ backgroundColor: theme.primary }}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-violet-950 font-extrabold px-6 py-4 shadow-xl shadow-black/25 hover:bg-violet-50 transition-colors"
             >
-              Ödemeye git <ExternalLink className="w-4 h-4" />
+              Plus’ı aç <ExternalLink className="w-4 h-4" />
             </a>
           ) : (
-            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              Ödeme URL’si tanımlı değil. Hostinger / Stripe panelinden linki alıp frontend ortamına ekleyin.
-            </p>
+            <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100/90">
+              Ödeme URL’si tanımlı değil. Stripe/iyzico linkini alıp frontend ortamına ekleyin.
+              <div className="mt-1 text-[11px] text-amber-100/70">
+                (Dev: <code className="bg-white/10 px-1 rounded">VITE_REBI_PLUS_CHECKOUT_URL</code>)
+              </div>
+            </div>
           )}
         </div>
 
         <Link
           to="/dashboard/chat"
-          className="mt-6 block text-center text-sm font-medium underline-offset-2 hover:underline"
-          style={{ color: theme.primary }}
+          className="mt-7 block text-center text-sm font-semibold underline-offset-2 hover:underline text-white/80 hover:text-white transition-colors"
         >
           Sohbete dön
         </Link>

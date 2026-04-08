@@ -118,13 +118,23 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-warm-50 via-white to-teal-50/30">
       {/* Hero */}
-      <section className="relative min-h-[min(100dvh,980px)] overflow-hidden">
+      <section className="relative min-h-[min(92dvh,900px)] overflow-hidden">
         <HeroBackgroundVideo />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-100/35 via-transparent to-transparent" />
         <div className="absolute top-10 right-[-5%] w-[min(90vw,520px)] h-[min(90vw,520px)] bg-teal-200/25 rounded-full blur-3xl" />
         <div className="absolute bottom-[-10%] left-[-8%] w-[min(95vw,640px)] h-[min(95vw,640px)] bg-purple-200/15 rounded-full blur-3xl" />
+        <div className="absolute -top-16 left-8 w-40 h-40 rounded-[2.5rem] bg-gradient-to-br from-fuchsia-300/25 via-purple-300/10 to-transparent rotate-12 blur-xl" />
+        <div className="absolute top-28 left-[55%] w-28 h-28 rounded-full bg-gradient-to-br from-amber-300/18 via-orange-300/10 to-transparent blur-xl" />
+        <div className="absolute bottom-20 right-10 w-44 h-44 rounded-[3rem] bg-gradient-to-br from-sky-300/20 via-cyan-300/10 to-transparent -rotate-12 blur-xl" />
+        <div
+          className="absolute inset-0 opacity-[0.35] mix-blend-soft-light"
+          style={{
+            backgroundImage:
+              "linear-gradient(135deg, rgba(255,255,255,0.65) 0%, transparent 35%, rgba(255,255,255,0.15) 65%, transparent 100%)",
+          }}
+        />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-16 pb-20 md:pt-24 md:pb-28">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-14 pb-14 md:pt-20 md:pb-18">
           <div className="text-center max-w-6xl mx-auto w-full">
             <div
               className={`transition-all duration-700 ${
@@ -162,7 +172,7 @@ export default function Landing() {
                         </div>
                       </div>
                     </div>
-                    <ChevronRight className="w-7 h-7 text-teal-700 shrink-0 group-hover:translate-x-1 transition-transform mt-1" />
+                    <ArrowRight className="w-7 h-7 text-teal-700 shrink-0 group-hover:translate-x-1 transition-transform mt-1" />
                   </div>
                 </button>
 
@@ -370,7 +380,7 @@ export default function Landing() {
       </section>
 
       {/* Rebi Plus — premium görsel blok */}
-      <section className="py-16 md:py-20 relative overflow-hidden">
+      <section className="py-12 md:py-14 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-violet-950/95 to-slate-900" />
         <div
           className="absolute inset-0 opacity-40"
