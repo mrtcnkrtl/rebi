@@ -614,7 +614,7 @@ export default function Landing() {
       )}
 
       {/* Differences (horizontal section) */}
-      <section className="-mt-10 md:-mt-12 pt-0 pb-6 md:pb-8 relative z-[1]">
+      <section className="mt-8 md:mt-10 py-6 md:py-8 relative z-[1]">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-end justify-between gap-4 mb-5">
             <div>
