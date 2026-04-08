@@ -401,7 +401,7 @@ export default function Landing() {
 
       {/* Rebi info overlay (front) */}
       {rebiInfoOpen && (
-        <div className="fixed inset-0 z-[60] px-4 py-6 flex items-center justify-center">
+        <div className="fixed inset-0 z-[60] px-4 pt-8 pb-[max(16px,env(safe-area-inset-bottom))] flex items-end md:items-center justify-center">
           <div
             className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
             onClick={() => setRebiInfoOpen(false)}
@@ -409,7 +409,7 @@ export default function Landing() {
           />
           <div className="relative w-full max-w-4xl">
             <div className="absolute -inset-4 bg-gradient-to-br from-teal-200/20 via-fuchsia-200/15 to-cyan-200/15 blur-2xl rounded-[3rem]" />
-            <div className="relative rounded-[2.25rem] border border-white/15 bg-white/80 backdrop-blur-xl shadow-2xl p-5 md:p-8">
+            <div className="relative rounded-t-[2.25rem] md:rounded-[2.25rem] border border-white/15 bg-white/85 backdrop-blur-xl shadow-2xl p-5 md:p-8 max-h-[85dvh] overflow-y-auto">
               <div className="text-left mb-4 md:mb-6">
                 <div className="inline-flex items-center gap-2 bg-teal-50 text-teal-700 px-3.5 py-1.5 rounded-full text-xs font-bold border border-teal-100">
                   <MessageCircle className="w-4 h-4" />
@@ -508,7 +508,7 @@ export default function Landing() {
 
       {/* Routine info overlay (front) */}
       {routineInfoOpen && (
-        <div className="fixed inset-0 z-[60] px-4 py-6 flex items-center justify-center">
+        <div className="fixed inset-0 z-[60] px-4 pt-8 pb-[max(16px,env(safe-area-inset-bottom))] flex items-end md:items-center justify-center">
           <div
             className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
             onClick={() => setRoutineInfoOpen(false)}
@@ -516,7 +516,7 @@ export default function Landing() {
           />
           <div className="relative w-full max-w-4xl">
             <div className="absolute -inset-4 bg-gradient-to-br from-emerald-200/18 via-teal-200/14 to-cyan-200/14 blur-2xl rounded-[3rem]" />
-            <div className="relative rounded-[2.25rem] border border-white/15 bg-white/80 backdrop-blur-xl shadow-2xl p-5 md:p-8">
+            <div className="relative rounded-t-[2.25rem] md:rounded-[2.25rem] border border-white/15 bg-white/85 backdrop-blur-xl shadow-2xl p-5 md:p-8 max-h-[85dvh] overflow-y-auto">
               <div className="text-left mb-4 md:mb-6">
                 <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-800 px-3.5 py-1.5 rounded-full text-xs font-bold border border-emerald-100">
                   <Sparkles className="w-4 h-4" />
@@ -630,7 +630,53 @@ export default function Landing() {
             </a>
           </div>
 
-          <div className="overflow-x-auto pb-2 -mx-4 px-4">
+          {/* Mobile: snap carousel */}
+          <div className="md:hidden -mx-4 px-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-3 snap-x snap-mandatory">
+              <div className="snap-start shrink-0 w-[86vw] max-w-[360px] rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="text-sm font-bold text-gray-700 mb-4">{t("landing.differenceSchemaOthers")}</div>
+                <div className="space-y-2.5">
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
+                    <Camera className="w-4 h-4 text-gray-600 shrink-0" />
+                    <span className="min-w-0">{t("landing.differenceSchemaOthersS1")}</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="min-w-0">{t("landing.differenceSchemaOthersS2")}</span>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
+                    <Shield className="w-4 h-4 text-gray-600 shrink-0" />
+                    <span className="min-w-0">{t("landing.differenceSchemaOthersS3")}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="snap-start shrink-0 w-[86vw] max-w-[360px] relative rounded-3xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-5 shadow-sm overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-44 h-44 bg-teal-300/25 rounded-full blur-3xl" />
+                <div className="absolute -bottom-12 -left-12 w-56 h-56 bg-emerald-300/20 rounded-full blur-3xl" />
+                <div className="relative">
+                  <div className="text-sm font-bold text-teal-900 mb-4">{t("landing.differenceSchemaUs")}</div>
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
+                      <Brain className="w-4 h-4 text-teal-700 shrink-0" />
+                      <span className="min-w-0">{t("landing.differenceSchemaUsS1")}</span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
+                      <ClipboardCheck className="w-4 h-4 text-teal-700 shrink-0" />
+                      <span className="min-w-0">{t("landing.differenceSchemaUsS2")}</span>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
+                      <Sparkles className="w-4 h-4 text-teal-700 shrink-0" />
+                      <span className="min-w-0">{t("landing.differenceSchemaUsS3")}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Desktop: single-line schema */}
+          <div className="hidden md:block overflow-x-auto pb-2 -mx-4 px-4">
             <div className="min-w-[900px] grid grid-cols-9 gap-3 items-stretch">
               <div className="col-span-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
                 <div className="text-sm font-bold text-gray-700 mb-4">{t("landing.differenceSchemaOthers")}</div>
@@ -682,8 +728,8 @@ export default function Landing() {
             </div>
           </div>
 
-          <div className="mt-4 text-[11px] text-gray-500 md:hidden">
-            Yatay kaydırarak tamamını görebilirsin.
+          <div className="mt-3 text-[11px] text-gray-500 md:hidden">
+            Kaydırarak devam et.
           </div>
         </div>
       </section>
