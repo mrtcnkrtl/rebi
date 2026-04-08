@@ -16,6 +16,7 @@ import Profile from "./pages/Profile";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
+  const location = useLocation();
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-teal-50">
@@ -23,7 +24,10 @@ function ProtectedRoute({ children }) {
       </div>
     );
   }
-  if (!user) return <Navigate to="/auth" replace />;
+  if (!user) {
+    const next = `${location.pathname}${location.search || ""}`;
+    return <Navigate to={`/auth?next=${encodeURIComponent(next)}`} replace />;
+  }
   return children;
 }
 
@@ -31,13 +35,16 @@ function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
+  const nextParam = new URLSearchParams(location.search || "").get("next");
+  const next = nextParam ? String(nextParam) : "/dashboard";
 
   return (
     <>
       <Navbar />
       <Routes>
         <Route path="/" element={<Landing />} />
-        <Route path="/auth" element={user ? <Navigate to="/dashboard" replace /> : <Auth />} />
+        <Route path="/auth" element={user ? <Navigate to={next} replace /> : <Auth />} />
+        <Route path="/rebi" element={<Chat />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />
         <Route path="/dashboard/checkin" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />

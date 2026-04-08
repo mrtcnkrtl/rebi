@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Leaf, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -16,6 +16,8 @@ export default function Auth() {
   const [infoMessage, setInfoMessage] = useState("");
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const next = new URLSearchParams(location.search || "").get("next") || "/dashboard";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,7 +29,7 @@ export default function Auth() {
       if (mode === "login") {
         const { error } = await signIn(email, password);
         if (error) throw error;
-        navigate("/dashboard");
+        navigate(next);
       } else {
         const { error, needsEmailConfirmation } = await signUp(email, password, fullName);
         if (error) throw error;
@@ -39,7 +41,7 @@ export default function Auth() {
           );
           return;
         }
-        navigate("/dashboard");
+        navigate(next);
       }
     } catch (err) {
       const raw = err?.message || String(err);

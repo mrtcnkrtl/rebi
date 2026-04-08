@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { API_URL } from "../lib/supabase";
 import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
-import { Bot, Send, Loader2, Sparkles } from "lucide-react";
+import { Bot, Send, Loader2, Sparkles, Crown, Lock, ArrowRight, X } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { useTranslation } from "react-i18next";
 
@@ -14,6 +14,7 @@ export default function Chat() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -28,6 +29,7 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [quota, setQuota] = useState(null);
+  const [paywallOpen, setPaywallOpen] = useState(false);
 
   const userName = user?.user_metadata?.full_name || "Kullanıcı";
   const isPlus =
@@ -35,6 +37,8 @@ export default function Chat() {
     ["plus", "pro", "premium"].includes(
       String(user?.user_metadata?.subscription_tier || "").toLowerCase()
     );
+  const subscribeHref = user ? "/dashboard/subscribe" : "/auth?next=/dashboard/subscribe";
+  const loginForChatHref = "/auth?next=/dashboard/chat";
 
   useEffect(() => {
     if (history.length === 0) {
@@ -66,10 +70,11 @@ export default function Chat() {
 
   useEffect(() => {
     setQuota(null);
+    setPaywallOpen(false);
   }, [user?.id]);
 
   const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    if (!input.trim() || loading || paywallOpen) return;
     const msg = input.trim();
     setInput("");
     const newHist = [...history, { role: "user", content: msg }];
@@ -99,6 +104,7 @@ export default function Chat() {
           remaining: data.free_chat_remaining ?? 0,
           limit: data.free_chat_limit ?? 0,
         });
+        setPaywallOpen(true);
       } else if (data.free_chat_remaining != null && data.free_chat_limit != null) {
         setQuota({ remaining: data.free_chat_remaining, limit: data.free_chat_limit });
       }
@@ -125,6 +131,7 @@ export default function Chat() {
       role: "assistant",
       content: "Sohbet temizlendi. Yeniden başlayalım! Cilt bakımı hakkında ne merak ediyorsun?",
     }]);
+    setPaywallOpen(false);
     try {
       localStorage.removeItem("rebi-chat-history");
     } catch {
@@ -186,11 +193,11 @@ export default function Chat() {
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
               placeholder={t("chat.placeholder")}
               className="flex-1 input-field !py-3 text-sm"
-              disabled={loading}
+              disabled={loading || paywallOpen}
             />
             <button
               onClick={sendMessage}
-              disabled={loading || !input.trim()}
+              disabled={loading || paywallOpen || !input.trim()}
               className="w-12 h-12 text-white rounded-2xl flex items-center justify-center transition-colors shrink-0 disabled:bg-gray-300"
               style={!loading && input.trim() ? { backgroundColor: theme.primary } : {}}
             >
@@ -208,7 +215,7 @@ export default function Chat() {
               {quota.limit ? ` / ${quota.limit}` : ""}
               {" · "}
               <Link
-                to="/dashboard/subscribe"
+                to={subscribeHref}
                 className="font-semibold underline-offset-2 hover:underline"
                 style={{ color: theme.primary }}
               >
@@ -222,6 +229,121 @@ export default function Chat() {
           )}
         </div>
       </div>
+
+      {/* Paywall / Gate overlay */}
+      {paywallOpen && (
+        <div className="absolute inset-0 z-[20] flex items-center justify-center px-4 py-8">
+          <div
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            onClick={() => setPaywallOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative w-full max-w-md rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-slate-950 via-violet-950/95 to-slate-950" />
+            <div
+              className="absolute inset-0 opacity-55"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle at 18% 25%, rgba(167,139,250,0.45) 0%, transparent 42%), radial-gradient(circle at 82% 70%, rgba(244,114,182,0.28) 0%, transparent 38%)",
+              }}
+            />
+            <div className="relative p-6">
+              <button
+                type="button"
+                onClick={() => setPaywallOpen(false)}
+                className="absolute top-4 right-4 w-9 h-9 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/10 flex items-center justify-center"
+                aria-label="Kapat"
+              >
+                <X className="w-4 h-4 text-white/80" />
+              </button>
+
+              <div className="flex items-start gap-3">
+                <div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"
+                  style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}
+                >
+                  <Crown className="w-6 h-6" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-amber-200/90">REBI PLUS</div>
+                  <h3 className="text-2xl font-black text-white leading-tight mt-1">
+                    Günlük ücretsiz limit doldu
+                  </h3>
+                  <p className="text-sm text-violet-100/85 mt-2 leading-relaxed">
+                    Rebi, hızlı “tek öneri” değil; verini toplar, takip eder ve her gün yeniden ayarlar.
+                    Sınırsız sohbet için Plus’a geç.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-3">
+                {!user ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => navigate(loginForChatHref)}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-violet-950 font-extrabold px-5 py-3 shadow-lg shadow-black/20 hover:bg-violet-50 transition-colors"
+                    >
+                      <Lock className="w-4 h-4" />
+                      Giriş yap
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate(subscribeHref)}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold px-5 py-3 transition-colors"
+                    >
+                      <Crown className="w-4 h-4 text-amber-300" />
+                      Plus’a geç
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <div className="text-[11px] text-white/60 text-center mt-1">
+                      Not: Rutin tarafına geçmek istersen zaten kayıt/giriş gerekiyor.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => navigate("/dashboard/subscribe")}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-violet-950 font-extrabold px-5 py-3 shadow-lg shadow-black/20 hover:bg-violet-50 transition-colors"
+                    >
+                      <Crown className="w-4 h-4 text-amber-600" />
+                      Rebi Plus’ı aç
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaywallOpen(false)}
+                      className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/15 text-white font-bold px-5 py-3 transition-colors"
+                    >
+                      Şimdilik kapat
+                    </button>
+                  </>
+                )}
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
+                <div className="text-xs font-bold text-white/90">Plus ile</div>
+                <ul className="mt-2 space-y-1.5 text-xs text-white/70">
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-300/90 shrink-0" />
+                    Günlük mesaj kotası yok
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-300/90 shrink-0" />
+                    Takip + check-in verisiyle daha tutarlı öneriler
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-300/90 shrink-0" />
+                    Premium temalar ve yeni özellikler
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
