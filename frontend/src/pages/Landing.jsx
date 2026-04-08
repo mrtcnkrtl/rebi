@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import HeroBackgroundVideo from "../components/HeroBackgroundVideo";
+import ChatPreview from "../components/ChatPreview";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Leaf,
@@ -84,6 +85,7 @@ export default function Landing() {
   const revealRef = useRef(null);
   const isAuthed = Boolean(user);
   const nextAnalyze = "/dashboard/analyze";
+  const rebiHref = isAuthed ? "/dashboard/chat" : "/rebi";
 
   const cta = useMemo(() => {
     if (choice === "routine") {
@@ -95,12 +97,12 @@ export default function Landing() {
       };
     }
     return {
-      href: isAuthed ? "/dashboard/chat" : "/rebi",
+      href: rebiHref,
       label: t("landing.ctaChat"),
       sub: t("nav.chat"),
       icon: MessageCircle,
     };
-  }, [choice, isAuthed, t]);
+  }, [choice, isAuthed, nextAnalyze, rebiHref, t]);
 
   useEffect(() => {
     if (phase !== "reveal") return;
@@ -229,6 +231,19 @@ export default function Landing() {
                 phase === "reveal" ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none select-none"
               }`}
             >
+              {choice === "rebi" && (
+                <div className="mb-6 md:mb-8">
+                  <div className="relative">
+                    <div className="absolute -inset-4 bg-gradient-to-br from-teal-200/20 via-fuchsia-200/15 to-cyan-200/15 blur-2xl rounded-[3rem]" />
+                    <div className="relative">
+                      <div className="h-[420px] md:h-[460px]">
+                        <ChatPreview />
+                      </div>
+                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-white/30 rounded-[2rem]" />
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur px-4 py-2 rounded-full text-sm font-bold mb-6 border border-gray-200">
                 <Leaf className="w-4 h-4 text-teal-600" />
                 {t("landing.choicePicked")}{" "}
@@ -322,7 +337,7 @@ export default function Landing() {
 
                 <div className="grid sm:grid-cols-2 gap-4 mt-8">
                   <Link
-                    to={cta.href}
+                    to={choice === "rebi" ? rebiHref : cta.href}
                     className="group rounded-[1.25rem] border-2 border-teal-200 bg-teal-50/70 hover:bg-teal-50 px-6 py-5 md:py-6 flex items-center justify-between transition-colors min-h-[88px]"
                   >
                     <div className="flex items-center gap-4">
@@ -330,8 +345,12 @@ export default function Landing() {
                         <cta.icon className="w-6 h-6 text-teal-700" />
                       </div>
                       <div className="text-left">
-                        <div className="text-base font-bold text-gray-900">{cta.label}</div>
-                        <div className="text-sm text-gray-600">{cta.sub}</div>
+                        <div className="text-base font-bold text-gray-900">
+                          {choice === "rebi" ? t("landing.rebiOk") : cta.label}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          {choice === "rebi" ? t("landing.rebiOkSub") : cta.sub}
+                        </div>
                       </div>
                     </div>
                     <ChevronRight className="w-6 h-6 text-teal-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
@@ -436,9 +455,9 @@ export default function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-20 md:py-28">
+      <section id="features" className="py-12 md:py-16">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 md:mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{t("landing.featuresTitle")}</h2>
             <p className="text-gray-500 text-lg max-w-xl mx-auto">{t("landing.featuresSubtitle")}</p>
             <p className="text-gray-600 text-sm max-w-2xl mx-auto mt-4 leading-relaxed">{t("landing.disclaimer")}</p>
@@ -464,9 +483,9 @@ export default function Landing() {
       </section>
 
       {/* How It Works */}
-      <section className="py-20 bg-gradient-to-b from-white to-teal-50/50">
+      <section className="py-12 md:py-16 bg-gradient-to-b from-white to-teal-50/50">
         <div className="max-w-4xl mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center mb-10 md:mb-12">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               {t("landing.howItWorksTitle")}
             </h2>
@@ -492,7 +511,7 @@ export default function Landing() {
             ))}
           </div>
 
-          <div className="text-center mt-12">
+          <div className="text-center mt-10">
             <Link
               to={user ? "/dashboard/analyze" : "/auth"}
               className="btn-primary !px-8 !py-4 !text-lg inline-flex group"

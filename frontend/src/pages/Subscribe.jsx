@@ -62,33 +62,69 @@ export default function Subscribe() {
         )}
 
         <div className="rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-7 mb-6 shadow-2xl shadow-black/20">
-          <h2 className="font-black text-white mb-4 tracking-tight">Neler dahil?</h2>
-          <ul className="space-y-3 text-sm text-white/80">
-            <li className="flex gap-3">
-              <MessageCircle className="w-5 h-5 shrink-0 text-amber-200" />
-              <span>
-                <strong className="text-white">Sınırsız Rebi AI</strong> — günlük ücretsiz mesaj limiti kalkar.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <Palette className="w-5 h-5 shrink-0 text-cyan-200" />
-              <span>
-                <strong className="text-white">Premium temalar</strong> — ayırt edici renkler ve desenler.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <Sparkles className="w-5 h-5 shrink-0 text-fuchsia-200" />
-              <span>
-                <strong className="text-white">Öncelikli yenilikler</strong> — yeni özellikler önce Plus’ta.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <Shield className="w-5 h-5 shrink-0 text-emerald-200" />
-              <span>
-                <strong className="text-white">Daha derin takip</strong> — check-in akışı daha güçlü çalışır.
-              </span>
-            </li>
-          </ul>
+          <h2 className="font-black text-white mb-5 tracking-tight text-xl">Neler dahil?</h2>
+
+          <div className="grid gap-4">
+            <div className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-5 overflow-hidden shadow-xl shadow-black/20 hover:bg-white/10 transition-colors">
+              <div className="absolute -top-12 -right-12 w-44 h-44 bg-amber-400/15 rounded-full blur-3xl" />
+              <div className="relative flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-6 h-6 text-amber-200" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-lg font-extrabold text-white">Sınırsız Rebi AI</div>
+                  <div className="text-sm text-white/75 mt-1 leading-relaxed">
+                    Günlük ücretsiz mesaj limiti kalkar; sohbet kesilmez.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-5 overflow-hidden shadow-xl shadow-black/20 hover:bg-white/10 transition-colors">
+              <div className="absolute -bottom-12 -left-12 w-44 h-44 bg-cyan-400/15 rounded-full blur-3xl" />
+              <div className="relative flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                  <Palette className="w-6 h-6 text-cyan-200" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-lg font-extrabold text-white">Premium temalar</div>
+                  <div className="text-sm text-white/75 mt-1 leading-relaxed">
+                    Ayırt edici renkler, desenler ve daha “premium” his.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-5 overflow-hidden shadow-xl shadow-black/20 hover:bg-white/10 transition-colors">
+              <div className="absolute -top-12 -left-12 w-44 h-44 bg-fuchsia-400/15 rounded-full blur-3xl" />
+              <div className="relative flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-6 h-6 text-fuchsia-200" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-lg font-extrabold text-white">Öncelikli yenilikler</div>
+                  <div className="text-sm text-white/75 mt-1 leading-relaxed">
+                    Yeni özellikler önce Plus’a gelir; ilk sen denersin.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="group relative rounded-3xl border border-white/10 bg-gradient-to-br from-white/10 to-white/5 p-5 overflow-hidden shadow-xl shadow-black/20 hover:bg-white/10 transition-colors">
+              <div className="absolute -bottom-12 -right-12 w-44 h-44 bg-emerald-400/15 rounded-full blur-3xl" />
+              <div className="relative flex items-start gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/10 flex items-center justify-center shrink-0">
+                  <Shield className="w-6 h-6 text-emerald-200" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-lg font-extrabold text-white">Daha derin takip</div>
+                  <div className="text-sm text-white/75 mt-1 leading-relaxed">
+                    Check-in akışı daha güçlü çalışır; rutinin daha iyi uyarlanır.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-7 space-y-3 shadow-2xl shadow-black/20">

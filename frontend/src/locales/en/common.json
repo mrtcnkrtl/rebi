@@ -58,6 +58,8 @@
     "changeChoice": "Change",
     "changeChoiceSub": "Back to start",
     "choiceRoutineName": "Routine",
+    "rebiOk": "OK",
+    "rebiOkSub": "Go to chat",
     "difference": {
       "scanTitle": "Scan your face photo",
       "scanDesc": "Optional photo scan improves tracking and progress comparisons over time.",
