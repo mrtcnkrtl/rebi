@@ -18,6 +18,7 @@ import {
   MessageCircle,
   Palette,
   ClipboardCheck,
+  Lock,
   AlertTriangle,
 } from "lucide-react";
 
