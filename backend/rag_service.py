@@ -481,6 +481,10 @@ async def chat_with_knowledge(
     user_message: str,
     knowledge_context: str,
     history: Optional[list] = None,
+    *,
+    user_id: Optional[str] = None,
+    folder_slug: Optional[str] = None,
+    accept_lang: str = "tr",
 ) -> str:
     """
     Kullanıcıyla interaktif sohbet. Bilgi tabanından gelen bağlamı kullanır.
@@ -495,11 +499,116 @@ async def chat_with_knowledge(
             role = "Kullanıcı" if msg.get("role") == "user" else "Rebi"
             history_text += f"{role}: {msg.get('content', '')}\n"
 
+    # Entity-first retrieval: if user asks about a specific ingredient/oil/extract,
+    # prefer the entity index (knowledge_entities) to avoid scanning the whole dataset.
+    entity_context = ""
+    used_entity_names: list[str] = []
+    try:
+        if user_id and folder_slug:
+            from knowledge.entity_search import find_chunks_by_entity, list_entities
+
+            msg = (user_message or "").strip()
+            msg_l = msg.lower()
+
+            # Very small, cheap candidate mining (avoid token blow-up).
+            raw_tokens = []
+            for t in (
+                msg_l.replace("/", " ")
+                .replace(",", " ")
+                .replace(".", " ")
+                .replace("(", " ")
+                .replace(")", " ")
+                .replace(":", " ")
+                .replace(";", " ")
+            ).split():
+                tt = "".join(ch for ch in t if ch.isalnum() or ch in ("+", "%", "-"))
+                if 3 <= len(tt) <= 32:
+                    raw_tokens.append(tt)
+
+            # Keep unique tokens, prioritize longer ones first.
+            seen = set()
+            tokens = []
+            for t in sorted(raw_tokens, key=lambda x: (-len(x), x))[:12]:
+                if t not in seen:
+                    tokens.append(t)
+                    seen.add(t)
+
+            # Query entity list for a few tokens; pick the best matched entity names.
+            candidate_entities: list[str] = []
+            for t in tokens[:6]:
+                ents = list_entities(user_id=user_id, folder_slug=folder_slug, q=t, k=5) or []
+                for e in ents[:3]:
+                    name = (e.get("name") or "").strip()
+                    if not name:
+                        continue
+                    name_l = name.lower()
+                    if name_l == t or t in name_l:
+                        candidate_entities.append(name)
+                if len(candidate_entities) >= 4:
+                    break
+
+            # Fetch chunks for top entities.
+            chunks_texts: list[str] = []
+            for ename in candidate_entities[:2]:
+                chunks = find_chunks_by_entity(
+                    user_id=user_id,
+                    folder_slug=folder_slug,
+                    q=ename,
+                    k=6,
+                )
+                if chunks:
+                    used_entity_names.append(ename)
+                for c in chunks[:4]:
+                    txt = (c.chunk_text or "").strip()
+                    if txt:
+                        chunks_texts.append(txt)
+                if len(chunks_texts) >= 6:
+                    break
+
+            if chunks_texts:
+                joined = "\n\n---\n\n".join(chunks_texts)
+                entity_context = joined[:2200]
+            else:
+                # If user seems to be asking specifically "about an ingredient" and we have no data, say so.
+                ingredient_intent = any(
+                    w in msg_l
+                    for w in [
+                        "nedir",
+                        "ne işe yarar",
+                        "nasıl kullan",
+                        "kullanılır",
+                        "yüzde",
+                        "%",
+                        "konsantr",
+                        "oran",
+                        "doz",
+                        "percent",
+                        "concentration",
+                        "ingredient",
+                        "active",
+                    ]
+                )
+                if ingredient_intent and any(len(t) >= 4 for t in tokens[:6]):
+                    if (accept_lang or "tr").lower().startswith("en"):
+                        return "I couldn’t find this in the current dataset yet."
+                    return "Bunu şu anki data setimde bulamadım."
+    except Exception as e:
+        log.warning("Entity-first retrieval atlandı: %s", e)
+
+    merged_context = ""
+    if entity_context:
+        hdr = ""
+        if used_entity_names:
+            hdr = f"Bulunan maddeler: {', '.join(used_entity_names[:4])}\n\n"
+        merged_context = (hdr + entity_context).strip()
+    else:
+        merged_context = (knowledge_context or "").strip()
+
     prompt = f"""Önceki konuşma:
 {history_text if history_text else 'İlk mesaj.'}
 
 Bilgi tabanından referans:
-{knowledge_context[:2000] if knowledge_context else 'İlgili veri bulunamadı.'}
+{merged_context[:2000] if merged_context else 'İlgili veri bulunamadı.'}
 
 Kullanıcı sorusu: {user_message}
 

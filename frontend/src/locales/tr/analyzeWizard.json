@@ -178,6 +178,9 @@
     "other": "Diğer"
   },
   "concern": {
+    "general": "Genel bakım (yüz sorunum yok)",
+    "oiliness": "Yağlılık / Sebum fazlalığı",
+    "pores": "Siyah nokta / Gözenek",
     "acne": "Sivilce / Akne",
     "aging": "Kırışıklık / Yaşlanma",
     "dryness": "Kuruluk",
@@ -224,14 +227,19 @@
   },
   "strongFamily": {
     "retinol": "Retinol / retinal",
+    "adapalene": "Adapalen",
     "bha": "Salisilik asit (BHA)",
     "aha": "AHA (glikolik, laktik asit)",
     "benzoyl": "Benzoil peroksit",
     "azelaic": "Azelaik asit",
     "vitamin_c": "C vitamini (askorbik) serum",
+    "vitamin_c_derivatives": "C vitamini türevleri (SAP/MAP)",
     "bakuchiol": "Bakuchiol",
     "pigment": "Arbutin / traneksamik asit",
-    "niacinamide": "Niasinamid"
+    "niacinamide": "Niasinamid",
+    "zinc_pca": "Çinko PCA",
+    "sulfur": "Kükürt",
+    "urea": "Üre"
   },
   "tolerance": {
     "never": "Hiç kullanmadım",

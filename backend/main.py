@@ -70,6 +70,11 @@ from rate_limit import (
 
 log = get_logger("api")
 
+
+class KnowledgeEntitySearchResponse(BaseModel):
+    entities: list[dict] = Field(default_factory=list)
+    chunks: list[dict] = Field(default_factory=list)
+
 _OPENAPI_TAGS = [
     {
         "name": "meta",
@@ -321,6 +326,30 @@ def _optional_natural_examples_routine_item(concern: str) -> list:
         "Hamilelik, emzirme, kronik hastalık veya ilaç kullanımında oral takviyeleri mutlaka hekim/eczacı ile değerlendir."
     )
 
+    usage_text = (examples + closing).strip()
+
+    # If knowledge store exists, enrich usage with top chunks from ingested DATA PDFs (demo folder).
+    # This is still optional and never replaces core routine.
+    try:
+        from knowledge.search import search_chunks
+
+        PUBLIC_KNOWLEDGE_USER_ID = "00000000-0000-4000-8000-000000000001"
+        folder_slug = "data-pdfs"
+        q = f"{c} doğal alternatif mekanizma kanıt klinik"
+        matches = search_chunks(user_id=PUBLIC_KNOWLEDGE_USER_ID, folder_slug=folder_slug, query=q, k=4)
+        if matches:
+            picks = []
+            for m in matches:
+                t = (m.chunk_text or "").strip()
+                t = t.replace("\n", " ")
+                t = " ".join(t.split())
+                if len(t) > 240:
+                    t = t[:240].rstrip() + "…"
+                picks.append(f"- {t} (src: {m.chunk_id})")
+            usage_text = usage_text + "\n\nBilimsel notlar (DATA PDF):\n" + "\n".join(picks)
+    except Exception:
+        pass
+
     return [
         {
             "time": "Günlük",
@@ -331,7 +360,7 @@ def _optional_natural_examples_routine_item(concern: str) -> list:
                 "Bu madde tamamen opsiyonel: rutinini kurmak için şart değil. "
                 "İstersen 'doğal' içeriklerden örnek fikirler aşağıda."
             ),
-            "usage": (examples + closing).strip(),
+            "usage": usage_text,
             "step_order": 95,
             "natural_alternative": True,
             "natural_examples_only": True,
@@ -406,6 +435,7 @@ class RoutineResponse(BaseModel):
     weather: dict
     assessment_id: str
     holistic_insights: list[dict]
+    active_plan: Optional[list[dict]] = None
     flow_debug: Optional[dict] = None
     care_guide: Optional[dict] = None
     safety_absolute_rules: Optional[dict] = None
@@ -586,6 +616,35 @@ async def root():
             "/health",
         ],
     }
+
+
+@app.get("/knowledge/entity_search", response_model=KnowledgeEntitySearchResponse, tags=["meta"])
+async def knowledge_entity_search(
+    request: Request,
+    user_id: str,
+    folder: str = "data-pdfs",
+    q: str = "",
+    k: int = 10,
+):
+    """
+    Fast lookup by extracted entities (ingredient/oil/extract) without scanning all chunks.
+    Uses knowledge_entities + knowledge_chunk_entities index.
+    """
+    enforce_supabase_user(request, user_id)
+    from knowledge.entity_search import list_entities, find_chunks_by_entity
+
+    entities = list_entities(user_id=user_id, folder_slug=folder, q=q, k=50)
+    chunks = [
+        {
+            "entity": c.entity_name,
+            "kind": c.entity_kind,
+            "chunk_id": c.chunk_id,
+            "document_id": c.document_id,
+            "chunk_text": c.chunk_text,
+        }
+        for c in find_chunks_by_entity(user_id=user_id, folder_slug=folder, q=q, k=k)
+    ]
+    return KnowledgeEntitySearchResponse(entities=entities, chunks=chunks)
 
 
 @app.get("/health", tags=["health"])
@@ -884,11 +943,20 @@ async def generate_routine(request: Request, req: AssessmentRequest):
 
     log.info("Rutin tamamlandı: %d öğe, %d insight", len(polished_routine), len(holistic_insights))
 
+    # Active plan localization (TR/EN) based on Accept-Language
+    try:
+        from active_plan import localize_active_plan
+
+        active_plan_localized = localize_active_plan(flow_result.get("active_plan") or [], accept_lang or "tr")
+    except Exception:
+        active_plan_localized = flow_result.get("active_plan") or []
+
     return RoutineResponse(
         routine=polished_routine,
         weather=weather_data,
         assessment_id=assessment_id,
         holistic_insights=holistic_insights,
+        active_plan=active_plan_localized,
         care_guide=flow_result.get("care_guide"),
         safety_absolute_rules=get_absolute_rules_catalog(),
         rule_enforcement_report=rule_enforcement_final,
@@ -950,6 +1018,9 @@ async def chat(request: Request, req: ChatRequest):
         user_message=req.message,
         knowledge_context=knowledge_context,
         history=req.history,
+        user_id=req.user_id,
+        folder_slug="data-pdfs",
+        accept_lang=_primary_lang_from_header(request.headers.get("accept-language") or "tr"),
     )
 
     return ChatResponse(

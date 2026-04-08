@@ -178,6 +178,9 @@
     "other": "Other"
   },
   "concern": {
+    "general": "General (no specific face concern)",
+    "oiliness": "Oiliness / excess sebum",
+    "pores": "Blackheads / clogged pores",
     "acne": "Acne / breakouts",
     "aging": "Wrinkles / aging",
     "dryness": "Dryness",
@@ -224,14 +227,19 @@
   },
   "strongFamily": {
     "retinol": "Retinol / retinal",
+    "adapalene": "Adapalene",
     "bha": "Salicylic acid (BHA)",
     "aha": "AHA (glycolic, lactic)",
     "benzoyl": "Benzoyl peroxide",
     "azelaic": "Azelaic acid",
     "vitamin_c": "Vitamin C (ascorbic) serum",
+    "vitamin_c_derivatives": "Vitamin C derivatives (SAP/MAP)",
     "bakuchiol": "Bakuchiol",
     "pigment": "Arbutin / tranexamic acid",
-    "niacinamide": "Niacinamide"
+    "niacinamide": "Niacinamide",
+    "zinc_pca": "Zinc PCA",
+    "sulfur": "Sulfur",
+    "urea": "Urea"
   },
   "tolerance": {
     "never": "Never used",

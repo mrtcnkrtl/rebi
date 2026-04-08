@@ -16,10 +16,19 @@ import re
 from typing import Literal
 from pathlib import Path
 from urllib.parse import quote_plus
+from urllib.parse import urlparse
 
 log = logging.getLogger("db_bootstrap")
 
 _MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "supabase" / "migrations"
+
+# Load backend/.env so SUPABASE_URL, SUPABASE_DB_PASSWORD etc. work
+try:
+    from dotenv import load_dotenv  # type: ignore
+
+    load_dotenv()
+except Exception:
+    pass
 
 
 def _migration_sql_files() -> list[Path]:
@@ -47,18 +56,63 @@ def _postgres_dsn() -> str | None:
 
 
 def _split_sql_statements(sql: str) -> list[str]:
-    lines = []
+    """
+    Split SQL file into executable statements.
+    Needs to preserve dollar-quoted blocks (e.g., functions using $$ ... $$) which may contain ';'.
+    """
+    # strip full-line comments
+    lines: list[str] = []
     for line in sql.splitlines():
         s = line.strip()
         if s.startswith("--"):
             continue
         lines.append(line)
     text = "\n".join(lines)
+
     parts: list[str] = []
-    for chunk in text.split(";"):
-        c = chunk.strip()
-        if c:
-            parts.append(c)
+    buf: list[str] = []
+    i = 0
+    in_dollar: str | None = None
+    in_single_quote = False
+
+    while i < len(text):
+        ch = text[i]
+        # handle single-quoted strings so we don't split on ';' inside them
+        if ch == "'" and in_dollar is None:
+            # SQL escape for single quote is doubled: ''
+            nxt = text[i + 1] if i + 1 < len(text) else ""
+            if in_single_quote and nxt == "'":
+                # keep both quotes as literal and move on
+                buf.append(ch)
+                buf.append(nxt)
+                i += 2
+                continue
+            in_single_quote = not in_single_quote
+
+        # detect dollar-quote start/end: $tag$ ... $tag$
+        if ch == "$":
+            j = text.find("$", i + 1)
+            if j != -1:
+                tag = text[i : j + 1]  # includes both $
+                # tag must be like $$ or $abc$
+                if tag.count("$") == 2 and tag.startswith("$") and tag.endswith("$"):
+                    if in_dollar is None:
+                        in_dollar = tag
+                    elif in_dollar == tag:
+                        in_dollar = None
+        if ch == ";" and in_dollar is None and not in_single_quote:
+            stmt = "".join(buf).strip()
+            if stmt:
+                parts.append(stmt)
+            buf = []
+            i += 1
+            continue
+        buf.append(ch)
+        i += 1
+
+    last = "".join(buf).strip()
+    if last:
+        parts.append(last)
     return parts
 
 
@@ -74,6 +128,18 @@ def ensure_daily_events_schema() -> Literal["skipped", "ok", "error"]:
             "SUPABASE_DB_PASSWORD + SUPABASE_URL tanımlı değil."
         )
         return "skipped"
+    # Log connection target (without password)
+    try:
+        p = urlparse(dsn)
+        log.info(
+            "DB connect target: user=%s host=%s port=%s db=%s (password hidden)",
+            p.username,
+            p.hostname,
+            p.port,
+            p.path,
+        )
+    except Exception:
+        log.info("DB connect target: (could not parse DSN; password hidden)")
     files = _migration_sql_files()
     if not files:
         log.warning("Migration klasöründe .sql yok: %s", _MIGRATIONS_DIR)

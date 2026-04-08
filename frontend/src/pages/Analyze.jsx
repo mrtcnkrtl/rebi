@@ -26,17 +26,25 @@ import {
 
 const STRONG_ACTIVE_FAMILY_IDS = [
   "retinol",
+  "adapalene",
   "bha",
   "aha",
   "benzoyl",
   "azelaic",
   "vitamin_c",
+  "vitamin_c_derivatives",
   "bakuchiol",
   "pigment",
   "niacinamide",
+  "zinc_pca",
+  "sulfur",
+  "urea",
 ];
 
 const CONCERN_DEFS = [
+  { id: "general", icon: "🧼" },
+  { id: "oiliness", icon: "💧" },
+  { id: "pores", icon: "🕳️" },
   { id: "acne", icon: "🔴" },
   { id: "aging", icon: "✨" },
   { id: "dryness", icon: "🏜️" },
@@ -554,7 +562,7 @@ export default function Analyze() {
   }, [isFemale, hormonalStatus, lastPeriodDate, cycleLength]);
 
   const zones = [...new Set(Object.values(concernZones).flat())];
-  const primaryConcern = concerns[0] || "acne";
+  const primaryConcern = concerns[0] || "general";
   const toggleArr = (a, s, v) => s(a.includes(v) ? a.filter((x) => x !== v) : [...a, v]);
   const toggleFlag = (k) => setSpecialFlags((p) => ({ ...p, [k]: !p[k] }));
   const setFamilyTolerance = (familyId, level) => {
@@ -656,7 +664,7 @@ export default function Analyze() {
         actives_experience: activesExperience,
         actives_tolerance: activesTolerance,
         makeup_frequency: makeupFreq,
-        makeup_removal: makeupRemoval,
+        makeup_removal: makeupFreq > 0 ? makeupRemoval : "cleanser",
         special_flags: Object.values(specialFlags).some(Boolean) ? specialFlags : null,
       };
       const auth = await apiAuthHeaders();
@@ -1066,7 +1074,18 @@ export default function Analyze() {
 
             <div className="flex gap-3">
               <button onClick={() => setStep(1)} className="btn-secondary flex-1"><ArrowLeft className="w-5 h-5" />{t("common.back")}</button>
-              <button onClick={() => { setStep3Section(0); setStep(3); }} disabled={!skinType || concerns.length === 0} className="btn-primary flex-1">{t("common.continue")} <ArrowRight className="w-5 h-5" /></button>
+              <button
+                onClick={() => {
+                  setStep3Section(0);
+                  // If the user has no "face problem", we still generate a routine based on skin type.
+                  if (!concerns.length) setStep(4);
+                  else setStep(3);
+                }}
+                disabled={!skinType}
+                className="btn-primary flex-1"
+              >
+                {t("common.continue")} <ArrowRight className="w-5 h-5" />
+              </button>
             </div>
           </div>
         )}

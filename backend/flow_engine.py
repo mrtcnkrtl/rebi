@@ -234,6 +234,30 @@ def _apply_active_strength_ramp(items: list, stage: str) -> None:
 # ══════════════════════════════════════════════════════════════════════
 
 CONCERN_KNOWLEDGE_MAP = {
+    "general": {
+        "label_tr": "Genel Bakım",
+        "primary_kategori": "Tedavi Ajanı",
+        "primary_alt_kategoriler": ["Genel"],
+        "treatment_kategori": "Tedavi Ajanı",
+        "treatment_alt_kategoriler": ["Mekanizma"],
+        "flow_nodes": [],
+    },
+    "oiliness": {
+        "label_tr": "Yağlılık / Sebum",
+        "primary_kategori": "Tedavi Ajanı",
+        "primary_alt_kategoriler": ["Mekanizma", "Klinik Etkinlik"],
+        "treatment_kategori": "Tedavi Ajanı",
+        "treatment_alt_kategoriler": ["Kanıt Seviyesi"],
+        "flow_nodes": ["Sebum", "Genişlemiş gözenek"],
+    },
+    "pores": {
+        "label_tr": "Siyah Nokta / Gözenek",
+        "primary_kategori": "Tedavi Ajanı",
+        "primary_alt_kategoriler": ["Mekanizma", "Klinik Etkinlik"],
+        "treatment_kategori": "Tedavi Ajanı",
+        "treatment_alt_kategoriler": ["Kanıt Seviyesi"],
+        "flow_nodes": ["Komedon", "Gözenek", "Sebum"],
+    },
     "acne": {
         "label_tr": "Akne / Sivilce",
         "primary_kategori": "Akne Vulgaris",
@@ -1035,6 +1059,8 @@ def get_base_skincare_routine(
     skin_type: dict,
     actives_experience: str = "occasional",
     personalization: Optional[dict] = None,
+    makeup_frequency: int = 0,
+    makeup_removal: str = "cleanser",
 ) -> list:
     """Concern + Şiddet + Yaş + Cilt tipine göre temel bakım rutini; kişisel puan tek kaynaktan."""
     _ = _normalize_actives_experience(actives_experience)
@@ -1059,20 +1085,24 @@ def get_base_skincare_routine(
     items.append(build_morning_moisturizer_item(concern, severity, skin_type, personalization))
 
     # ── AKŞAM TEMİZLİK ──
-    if skin_type.get("label_tr") == "Hassas":
+    # Kullanıcı makyaj yapmıyorsa misel/double-cleanse önermeyelim.
+    mf = max(0, int(makeup_frequency or 0))
+    mr = (makeup_removal or "cleanser").strip().lower()
+    needs_double = mf >= 3 or mr == "double"
+    if needs_double:
         items.append({
             "time": "Akşam", "category": "Bakım", "icon": "🫧",
-            "action": "Misel su veya süt bazlı temizleyici (tek adım)",
-            "detail": "Hassas cilt için aşırı yıkamadan kaçın.",
-            "usage": "Pamukla misel su uygula veya nazik temizleyici ile tek adımda yıka, durula.",
+            "action": "Çift aşama temizlik: yağ/balm bazlı temizleyici + nazik temizleyici",
+            "detail": "Makyaj/SPF ve biriken kirlilik çözülür; ardından cilt nazikçe yıkanır.",
+            "usage": "1) Yağ/balm bazlı temizleyiciyi kuru cilde masajla uygula, emülsiye et, durula. 2) Nazik temizleyici ile yıka, durula.",
             "priority": 1, "step_order": 10,
         })
     else:
         items.append({
             "time": "Akşam", "category": "Bakım", "icon": "🫧",
-            "action": "Misel su + Nazik temizleyici (sülfat-free)",
-            "detail": "Önce makyaj/kirlilik çözülür, sonra cilt yıkanır.",
-            "usage": "1) Misel su ile pamukta yüze sür, beklet. 2) Nazik temizleyici köpürt, yıka, durula.",
+            "action": "Nazik temizleyici (tek adım, sülfat-free)",
+            "detail": "Makyaj yoksa tek adım temizlik yeterli; bariyeri yormadan günü temizle.",
+            "usage": "Yüzü ıslat, 30 sn masajla temizle, ılık suyla durula.",
             "priority": 1, "step_order": 10,
         })
 
@@ -1100,6 +1130,28 @@ def _add_morning_actives(
 
     if concern == "acne":
         # Sabahda güçlü aktif yok; BHA/niasinamid/BP akşam rutininde
+        pass
+
+    elif concern == "oiliness":
+        # Yağlılık: sabah minimal, SPF ile uyumlu sebum dengeleme
+        items.append({
+            "time": "Sabah", "category": "Bakım", "icon": "💧",
+            "action": _skin_niacinamide("%5"),
+            "detail": "Sebumu dengelemeye yardımcı, sabah SPF altında hafif katman.",
+            "priority": 2, "step_order": 20,
+        })
+
+    elif concern == "pores":
+        # Gözenek/siyah nokta: sabah nazik, bariyeri yormadan
+        items.append({
+            "time": "Sabah", "category": "Bakım", "icon": "🕳️",
+            "action": _skin_niacinamide("%5"),
+            "detail": "Gözenek görünümü ve sebum dengesi için sabah hafif katman.",
+            "priority": 2, "step_order": 20,
+        })
+
+    elif concern == "general":
+        # Genel bakım: sabah aktif şart değil; rutin temeli temizlik + nem + SPF
         pass
 
     elif concern == "aging":
@@ -1403,6 +1455,56 @@ def _add_evening_actives(
 
     elif concern == "sensitivity":
         # Akşam ayrı centella/panthenol serumu yok; şiddetli dahil gece tek katman → build_evening_moisturizer_item
+        pass
+
+    elif concern == "oiliness":
+        # Yağlılık: akne gibi agresif değil; temel dengeleme
+        if compress:
+            items.append({
+                "time": "Akşam", "category": "Bakım", "icon": "🎯",
+                "action": f"{_skin_salicylic_toner()} → ardından {_skin_niacin_zinc()}",
+                "detail": "Sebum/gözenek için BHA + niasinamid/çinko. Haftada 2-3 gece.",
+                "priority": 2, "step_order": 20,
+            })
+        else:
+            items.append({
+                "time": "Akşam", "category": "Bakım", "icon": "🎯",
+                "action": _skin_salicylic_toner(),
+                "detail": "BHA akşamda; haftada 2-3 gece. Göz çevresinden kaçın.",
+                "priority": 2, "step_order": 20,
+            })
+            items.append({
+                "time": "Akşam", "category": "Bakım", "icon": "🍯",
+                "action": _skin_niacin_zinc(),
+                "detail": "BHA sonrası veya BHA olmayan gecelerde. Sebumu dengelemeye destek olur.",
+                "priority": 2, "step_order": 25,
+            })
+
+    elif concern == "pores":
+        # Siyah nokta/gözenek: ana hedef komedon tıkacı ve sebum dengesi
+        if compress:
+            items.append({
+                "time": "Akşam", "category": "Bakım", "icon": "🕳️",
+                "action": f"{_skin_salicylic_toner()} → ardından {_skin_niacin_zinc()}",
+                "detail": "Siyah nokta ve tıkanıklık için BHA; ardından sebum dengesi için niasinamid/çinko. Haftada 2-3 gece.",
+                "priority": 2, "step_order": 20,
+            })
+        else:
+            items.append({
+                "time": "Akşam", "category": "Bakım", "icon": "🕳️",
+                "action": _skin_salicylic_toner(),
+                "detail": "Siyah nokta için en direkt adım: BHA. Akşam haftada 2-3 gece.",
+                "priority": 2, "step_order": 20,
+            })
+            items.append({
+                "time": "Akşam", "category": "Bakım", "icon": "🍯",
+                "action": _skin_niacin_zinc(),
+                "detail": "BHA sonrası veya BHA olmayan gecelerde. Gözenek/sebum dengesine destek olur.",
+                "priority": 2, "step_order": 25,
+            })
+
+    elif concern == "general":
+        # Genel bakım: gece güçlü aktif şart değil; bariyer odaklı kal
         pass
 
 
@@ -3055,7 +3157,28 @@ def run_flow(
         concern, severity, age_group, skin_type,
         actives_experience=actives_experience,
         personalization=personalization,
+        makeup_frequency=makeup_frequency,
+        makeup_removal=makeup_removal,
     )
+
+    # Ingredient-level plan (no product recommendations)
+    try:
+        from active_plan import build_active_plan
+
+        active_plan = build_active_plan(
+            concern=concern,
+            skin_type_key=skin_type_key,
+            age_group=age_group,
+            severity=severity,
+            risk_info=risk_info,
+            strength_stage=_strength_stage,
+            niacinamide_start_pct=_na_pct,
+            merged_actives_tol=merged_actives_tol,
+            is_pregnant=(is_pregnant and gender == "female"),
+            stings_with_products=bool(special_flags_norm.get("stings_with_products")),
+        )
+    except Exception:
+        active_plan = []
 
     # 7. Lifestyle branches (stress, sleep, water, smoking, alcohol)
     lifestyle_items = compute_lifestyle_branches(
@@ -3280,6 +3403,7 @@ def run_flow(
         "acne_zone_info": acne_zone_info,
         "risk_info": risk_info,
         "personalization": personalization,
+        "active_plan": active_plan,
         "care_guide": care_guide,
         "absolute_rules_catalog": get_absolute_rules_catalog(),
         "absolute_enforcement_report": absolute_enforcement_report,
