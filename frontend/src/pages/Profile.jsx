@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { supabase } from "../lib/supabase";
 import { apiAuthHeaders } from "../lib/apiAuth";
+import { API_URL } from "../lib/supabase";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import {
   getRoutineSnapshot,
@@ -30,7 +31,7 @@ import { getProfileRoutineStats, ROUTINE_STREAK_GOAL_DAYS } from "../lib/checkin
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { useTranslation } from "react-i18next";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API = API_URL;
 const ACCOUNT_DELETE_PHRASE = "HESABIMI_SIL";
 
 function formatJoined(iso) {

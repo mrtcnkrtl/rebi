@@ -7,5 +7,5 @@ export const supabase = supabaseUrl
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
-export const API_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000";
+// Prefer explicit env; otherwise use same-origin `/api` (works with Vite proxy + prod reverse-proxy)
+export const API_URL = import.meta.env.VITE_API_URL || "/api";

@@ -1,7 +1,8 @@
 import { DEMO_USER_ID } from "./demoUser";
 import { apiAuthHeaders } from "./apiAuth";
+import { API_URL } from "./supabase";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API = API_URL;
 
 /**
  * Gün içi olay: Supabase daily_events (backend ingest). Demo kullanıcıda atlanır.

@@ -12,6 +12,7 @@ import { useTheme } from "../context/ThemeContext";
 import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { apiAuthHeaders } from "../lib/apiAuth";
+import { API_URL } from "../lib/supabase";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import {
   Moon, SmilePlus, Droplets, AlertCircle,
@@ -23,7 +24,7 @@ import { supabase } from "../lib/supabase";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { useTranslation } from "react-i18next";
 
-const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
+const API = API_URL;
 
 const SKIN_FEELINGS = [
   { id: "iyi", label: "İyi", icon: "😊", desc: "Normal hissediyorum" },
