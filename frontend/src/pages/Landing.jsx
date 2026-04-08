@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
 import HeroBackgroundVideo from "../components/HeroBackgroundVideo";
-import ChatPreview from "../components/ChatPreview";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Leaf,
@@ -82,6 +81,7 @@ export default function Landing() {
   const { t } = useTranslation();
   const [choice, setChoice] = useState(null); // "rebi" | "routine" | null
   const [phase, setPhase] = useState("choice"); // "choice" | "reveal"
+  const [rebiInfoOpen, setRebiInfoOpen] = useState(false);
   const revealRef = useRef(null);
   const isAuthed = Boolean(user);
   const nextAnalyze = "/dashboard/analyze";
@@ -114,13 +114,18 @@ export default function Landing() {
 
   const pick = (next) => {
     setChoice(next);
+    if (next === "rebi") {
+      setRebiInfoOpen(true);
+      setPhase("choice");
+      return;
+    }
     setPhase("reveal");
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-warm-50 via-white to-teal-50/30">
       {/* Hero */}
-      <section className="relative min-h-[min(92dvh,900px)] overflow-hidden">
+      <section className="relative min-h-[calc(100dvh-72px)] overflow-hidden flex items-center">
         <HeroBackgroundVideo />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-100/35 via-transparent to-transparent" />
         <div className="absolute top-10 right-[-5%] w-[min(90vw,520px)] h-[min(90vw,520px)] bg-teal-200/25 rounded-full blur-3xl" />
@@ -136,7 +141,7 @@ export default function Landing() {
           }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 pt-14 pb-14 md:pt-20 md:pb-18">
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 py-10 md:py-12">
           <div className="text-center max-w-6xl mx-auto w-full">
             <div
               className={`transition-all duration-700 ${
@@ -151,7 +156,7 @@ export default function Landing() {
               <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-gray-900 leading-[1.05] mb-5 tracking-tight drop-shadow-sm">
                 {t("landing.choiceTitle")}
               </h1>
-              <p className="text-lg md:text-xl text-gray-700 mb-10 max-w-2xl mx-auto">
+              <p className="text-lg md:text-xl text-gray-700 mb-7 md:mb-8 max-w-2xl mx-auto">
                 {t("landing.choiceSubtitle")}
               </p>
 
@@ -159,7 +164,7 @@ export default function Landing() {
                 <button
                   type="button"
                   onClick={() => pick("rebi")}
-                  className="group relative min-h-[200px] md:min-h-[240px] rounded-[2rem] border-2 border-teal-200/90 bg-white/75 backdrop-blur-md hover:bg-white/90 px-8 py-8 shadow-md hover:shadow-2xl hover:shadow-teal-500/10 transition-all"
+                  className="group relative min-h-[190px] md:min-h-[220px] rounded-[2rem] border-2 border-teal-200/90 bg-white/75 backdrop-blur-md hover:bg-white/90 px-7 md:px-8 py-7 md:py-8 shadow-md hover:shadow-2xl hover:shadow-teal-500/10 transition-all"
                 >
                   <div className="absolute -top-16 -right-16 w-56 h-56 bg-teal-300/30 rounded-full blur-3xl" />
                   <div className="relative flex items-start justify-between gap-5">
@@ -181,7 +186,7 @@ export default function Landing() {
                 <button
                   type="button"
                   onClick={() => pick("routine")}
-                  className="group relative min-h-[200px] md:min-h-[240px] rounded-[2rem] border-2 border-gray-200 bg-white/90 hover:bg-white px-8 py-8 shadow-md hover:shadow-2xl transition-all"
+                  className="group relative min-h-[190px] md:min-h-[220px] rounded-[2rem] border-2 border-gray-200 bg-white/90 hover:bg-white px-7 md:px-8 py-7 md:py-8 shadow-md hover:shadow-2xl transition-all"
                 >
                   <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-purple-300/20 rounded-full blur-3xl" />
                   <div className="relative flex items-start justify-between gap-5">
@@ -204,8 +209,8 @@ export default function Landing() {
               </div>
 
               {/* subtle wave footer */}
-              <div className="mt-12 md:mt-16 opacity-80">
-                <svg viewBox="0 0 1440 120" className="w-full h-20 md:h-28">
+              <div className="mt-8 md:mt-10 opacity-80">
+                <svg viewBox="0 0 1440 120" className="w-full h-14 md:h-18">
                   <path
                     fill="rgba(20,184,166,0.12)"
                     d="M0,64L80,58.7C160,53,320,43,480,48C640,53,800,75,960,80C1120,85,1280,75,1360,69.3L1440,64L1440,120L1360,120C1280,120,1120,120,960,120C800,120,640,120,480,120C320,120,160,120,80,120L0,120Z"
@@ -231,19 +236,6 @@ export default function Landing() {
                 phase === "reveal" ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3 pointer-events-none select-none"
               }`}
             >
-              {choice === "rebi" && (
-                <div className="mb-6 md:mb-8">
-                  <div className="relative">
-                    <div className="absolute -inset-4 bg-gradient-to-br from-teal-200/20 via-fuchsia-200/15 to-cyan-200/15 blur-2xl rounded-[3rem]" />
-                    <div className="relative">
-                      <div className="h-[420px] md:h-[460px]">
-                        <ChatPreview />
-                      </div>
-                      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-white/30 rounded-[2rem]" />
-                    </div>
-                  </div>
-                </div>
-              )}
               <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur px-4 py-2 rounded-full text-sm font-bold mb-6 border border-gray-200">
                 <Leaf className="w-4 h-4 text-teal-600" />
                 {t("landing.choicePicked")}{" "}
@@ -394,6 +386,188 @@ export default function Landing() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Rebi info overlay (front) */}
+      {rebiInfoOpen && (
+        <div className="fixed inset-0 z-[60] px-4 py-6 flex items-center justify-center">
+          <div
+            className="absolute inset-0 bg-slate-950/55 backdrop-blur-sm"
+            onClick={() => setRebiInfoOpen(false)}
+            aria-hidden="true"
+          />
+          <div className="relative w-full max-w-4xl">
+            <div className="absolute -inset-4 bg-gradient-to-br from-teal-200/20 via-fuchsia-200/15 to-cyan-200/15 blur-2xl rounded-[3rem]" />
+            <div className="relative rounded-[2.25rem] border border-white/15 bg-white/80 backdrop-blur-xl shadow-2xl p-5 md:p-8">
+              <div className="text-left mb-4 md:mb-6">
+                <div className="inline-flex items-center gap-2 bg-teal-50 text-teal-700 px-3.5 py-1.5 rounded-full text-xs font-bold border border-teal-100">
+                  <MessageCircle className="w-4 h-4" />
+                  {t("landing.rebiInfoPill")}
+                </div>
+                <h3 className="text-xl md:text-2xl font-black text-gray-900 mt-3">
+                  {t("landing.rebiInfoTitle")}
+                </h3>
+                <p className="text-sm md:text-base text-gray-600 mt-2 leading-relaxed">
+                  {t("landing.rebiInfoDesc")}
+                </p>
+              </div>
+
+              {/* Differences only */}
+              <div className="rounded-[2rem] border border-gray-200/90 bg-white/85 backdrop-blur-xl shadow-lg p-5 md:p-7 text-left">
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
+                    <Leaf className="w-6 h-6 text-teal-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-lg md:text-xl font-bold text-gray-900">{t("landing.differenceTitle")}</h4>
+                    <p className="text-sm md:text-base text-gray-600 mt-1.5 leading-relaxed">
+                      {t("landing.differenceSubtitle")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-6 grid lg:grid-cols-2 gap-4 md:gap-5">
+                  <div className="rounded-3xl border border-gray-200 bg-white/95 p-5 md:p-6 shadow-sm">
+                    <div className="text-sm font-bold text-gray-700 mb-4">{t("landing.differenceSchemaOthers")}</div>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
+                        <Camera className="w-5 h-5 text-gray-600 shrink-0" />
+                        {t("landing.differenceSchemaOthersS1")}
+                      </div>
+                      <div className="flex justify-center text-gray-300 text-lg">↓</div>
+                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
+                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+                        {t("landing.differenceSchemaOthersS2")}
+                      </div>
+                      <div className="flex justify-center text-gray-300 text-lg">↓</div>
+                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
+                        <Shield className="w-5 h-5 text-gray-600 shrink-0" />
+                        {t("landing.differenceSchemaOthersS3")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative rounded-3xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-5 md:p-6 overflow-hidden shadow-md">
+                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-teal-300/25 rounded-full blur-3xl" />
+                    <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-300/20 rounded-full blur-3xl" />
+                    <div className="relative">
+                      <div className="text-sm font-bold text-teal-900 mb-4">{t("landing.differenceSchemaUs")}</div>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
+                          <Brain className="w-5 h-5 text-teal-700 shrink-0" />
+                          {t("landing.differenceSchemaUsS1")}
+                        </div>
+                        <div className="flex justify-center text-teal-500/70 font-bold text-lg">↓</div>
+                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
+                          <ClipboardCheck className="w-5 h-5 text-teal-700 shrink-0" />
+                          {t("landing.differenceSchemaUsS2")}
+                        </div>
+                        <div className="flex justify-center text-teal-500/70 font-bold text-lg">↓</div>
+                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
+                          <Sparkles className="w-5 h-5 text-teal-700 shrink-0" />
+                          {t("landing.differenceSchemaUsS3")}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                  <Link
+                    to={rebiHref}
+                    onClick={() => setRebiInfoOpen(false)}
+                    className="btn-primary w-full sm:w-auto inline-flex justify-center !px-8"
+                  >
+                    {t("landing.rebiOk")}
+                    <ArrowRight className="w-5 h-5" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => setRebiInfoOpen(false)}
+                    className="btn-secondary w-full sm:w-auto inline-flex justify-center !px-8 !border-gray-200 !text-gray-800"
+                  >
+                    {t("common.close")}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Differences (horizontal section) */}
+      <section className="py-10 md:py-12">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex items-end justify-between gap-4 mb-5">
+            <div>
+              <h2 className="text-xl md:text-2xl font-black text-gray-900">{t("landing.differenceTitle")}</h2>
+              <p className="text-sm text-gray-600 mt-1">{t("landing.differenceSubtitle")}</p>
+            </div>
+            <a
+              href="#"
+              onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              className="hidden md:inline-flex text-sm font-semibold text-teal-700 hover:text-teal-800 underline-offset-2 hover:underline"
+            >
+              {t("landing.entryHint")}
+            </a>
+          </div>
+
+          <div className="overflow-x-auto pb-2 -mx-4 px-4">
+            <div className="min-w-[900px] grid grid-cols-9 gap-3 items-stretch">
+              <div className="col-span-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="text-sm font-bold text-gray-700 mb-4">{t("landing.differenceSchemaOthers")}</div>
+                <div className="grid grid-cols-5 gap-2 items-center">
+                  <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
+                    <Camera className="w-4 h-4 text-gray-600 shrink-0" />
+                    <span className="min-w-0">{t("landing.differenceSchemaOthersS1")}</span>
+                  </div>
+                  <div className="col-span-1 flex justify-center text-gray-300 font-black">→</div>
+                  <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span className="min-w-0">{t("landing.differenceSchemaOthersS2")}</span>
+                  </div>
+                  <div className="col-span-5 flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
+                    <Shield className="w-4 h-4 text-gray-600 shrink-0" />
+                    <span className="min-w-0">{t("landing.differenceSchemaOthersS3")}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-1 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-teal-600/20">
+                  <ArrowRight className="w-6 h-6" />
+                </div>
+              </div>
+
+              <div className="col-span-4 relative rounded-3xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-5 shadow-sm overflow-hidden">
+                <div className="absolute -top-10 -right-10 w-44 h-44 bg-teal-300/25 rounded-full blur-3xl" />
+                <div className="absolute -bottom-12 -left-12 w-56 h-56 bg-emerald-300/20 rounded-full blur-3xl" />
+                <div className="relative">
+                  <div className="text-sm font-bold text-teal-900 mb-4">{t("landing.differenceSchemaUs")}</div>
+                  <div className="grid grid-cols-5 gap-2 items-center">
+                    <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
+                      <Brain className="w-4 h-4 text-teal-700 shrink-0" />
+                      <span className="min-w-0">{t("landing.differenceSchemaUsS1")}</span>
+                    </div>
+                    <div className="col-span-1 flex justify-center text-teal-500/70 font-black">→</div>
+                    <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
+                      <ClipboardCheck className="w-4 h-4 text-teal-700 shrink-0" />
+                      <span className="min-w-0">{t("landing.differenceSchemaUsS2")}</span>
+                    </div>
+                    <div className="col-span-5 flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
+                      <Sparkles className="w-4 h-4 text-teal-700 shrink-0" />
+                      <span className="min-w-0">{t("landing.differenceSchemaUsS3")}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 text-[11px] text-gray-500 md:hidden">
+            Yatay kaydırarak tamamını görebilirsin.
           </div>
         </div>
       </section>

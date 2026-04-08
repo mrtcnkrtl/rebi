@@ -60,6 +60,9 @@
     "choiceRoutineName": "Rutin",
     "rebiOk": "Tamam",
     "rebiOkSub": "Sohbete geç",
+    "rebiInfoPill": "Rebi ile sohbet",
+    "rebiInfoTitle": "Ne yapıyor?",
+    "rebiInfoDesc": "Cildin ve içerikler hakkında sorularını yanıtlar; verilerini toplar ve seni rastgele değil, takip edilebilir bir akışla yönlendirir. Aşağıda farkımızın kısa şemasını görüyorsun.",
     "difference": {
       "scanTitle": "Yüz fotoğrafını tara",
       "scanDesc": "Opsiyonel fotoğraf taraması; takip ve ilerleme kıyasını güçlendirir.",

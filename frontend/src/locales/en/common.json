@@ -60,6 +60,9 @@
     "choiceRoutineName": "Routine",
     "rebiOk": "OK",
     "rebiOkSub": "Go to chat",
+    "rebiInfoPill": "Chat with Rebi",
+    "rebiInfoTitle": "What does it do?",
+    "rebiInfoDesc": "Ask about your skin or ingredients. Rebi collects your signals and guides you with a trackable flow—not random tips. Here’s a quick “why we’re different” schema.",
     "difference": {
       "scanTitle": "Scan your face photo",
       "scanDesc": "Optional photo scan improves tracking and progress comparisons over time.",
