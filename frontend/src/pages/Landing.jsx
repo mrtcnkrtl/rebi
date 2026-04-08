@@ -132,7 +132,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-warm-50 via-white to-teal-50/30">
       {/* Hero */}
-      <section className="relative min-h-[calc(100dvh-72px)] overflow-hidden">
+      <section className="relative overflow-hidden">
         <HeroBackgroundVideo />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-100/35 via-transparent to-transparent" />
         <div className="absolute top-10 right-[-5%] w-[min(90vw,520px)] h-[min(90vw,520px)] bg-teal-200/25 rounded-full blur-3xl" />
@@ -148,7 +148,7 @@ export default function Landing() {
           }}
         />
 
-        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 pt-7 pb-10 md:pt-10 md:pb-12">
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 pt-7 pb-12 md:pt-10 md:pb-14">
           <div className="text-center max-w-6xl mx-auto w-full">
             <div
               className={`transition-all duration-700 ${
@@ -215,9 +215,9 @@ export default function Landing() {
                 </button>
               </div>
 
-              {/* subtle wave footer */}
-              <div className="mt-6 md:mt-8 opacity-80">
-                <svg viewBox="0 0 1440 120" className="w-full h-14 md:h-18">
+              {/* subtle wave footer (absolute, no extra layout height) */}
+              <div className="pointer-events-none absolute left-0 right-0 -bottom-10 md:-bottom-12 opacity-70">
+                <svg viewBox="0 0 1440 120" className="w-full h-20 md:h-24">
                   <path
                     fill="rgba(20,184,166,0.12)"
                     d="M0,64L80,58.7C160,53,320,43,480,48C640,53,800,75,960,80C1120,85,1280,75,1360,69.3L1440,64L1440,120L1360,120C1280,120,1120,120,960,120C800,120,640,120,480,120C320,120,160,120,80,120L0,120Z"
