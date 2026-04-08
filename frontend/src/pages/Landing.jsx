@@ -148,7 +148,7 @@ export default function Landing() {
           }}
         />
 
-        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 pt-7 pb-12 md:pt-10 md:pb-14">
+        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 pt-7 pb-8 md:pt-10 md:pb-10">
           <div className="text-center max-w-6xl mx-auto w-full">
             <div
               className={`transition-all duration-700 ${
@@ -612,7 +612,7 @@ export default function Landing() {
       )}
 
       {/* Differences (horizontal section) */}
-      <section className="py-6 md:py-8">
+      <section className="-mt-10 md:-mt-12 pt-0 pb-6 md:pb-8 relative z-[1]">
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-end justify-between gap-4 mb-5">
             <div>
