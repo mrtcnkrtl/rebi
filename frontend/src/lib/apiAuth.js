@@ -6,9 +6,13 @@ import { supabase } from "./supabase";
  */
 export async function apiAuthHeaders() {
   if (!supabase) return {};
-  const {
+  let {
     data: { session },
   } = await supabase.auth.getSession();
+  if (!session?.access_token) {
+    const { data } = await supabase.auth.refreshSession();
+    session = data.session;
+  }
   if (!session?.access_token) return {};
   return { Authorization: `Bearer ${session.access_token}` };
 }

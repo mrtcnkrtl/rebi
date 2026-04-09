@@ -95,7 +95,16 @@ export default function Chat() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const errText = formatApiErrorDetail(data) + (res.status ? ` (${res.status})` : "");
+        let errText = formatApiErrorDetail(data) + (res.status ? ` (${res.status})` : "");
+        if (res.status === 401) {
+          errText =
+            "Oturum süresi doldu veya giriş doğrulanamadı. Çıkış yapıp tekrar giriş yapmayı dene. " +
+            errText;
+        }
+        if (res.status === 502 || res.status === 503) {
+          errText =
+            "Sunucu geçici olarak yanıt vermiyor. Biraz sonra tekrar dene. " + errText;
+        }
         setHistory([...newHist, { role: "assistant", content: `Şu an yanıt alınamadı: ${errText}` }]);
         return;
       }
