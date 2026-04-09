@@ -1069,6 +1069,7 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
         user_message=req.message,
         history=req.history,
         user_profile=profile,
+        user_id=req.user_id,
     )
 
     remaining: Optional[int] = None
@@ -1083,6 +1084,7 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
                 or reply.startswith("Şu an kısa bir yanıt üretilemedi")
                 or reply.startswith("Üzgünüm, şu anda cevap veremiyorum")
                 or reply.startswith("Şu an çok yoğunuz")
+                or reply.startswith("İşlem tamamlanamadı")
             )
             if not err_like:
                 free_chat_record_successful_turn(req.user_id)

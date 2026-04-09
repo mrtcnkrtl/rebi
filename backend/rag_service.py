@@ -16,7 +16,7 @@ import json
 from typing import Optional, Literal
 from google import genai
 from google.genai import types
-from config import GEMINI_API_KEY, get_logger
+from config import GEMINI_API_KEY, KNOWLEDGE_CATALOG_USER_ID, get_logger
 from flow_engine import sanitize_routine_items_details
 
 log = get_logger("rag_service")
@@ -36,6 +36,136 @@ def _polish_user_message(err: Exception) -> str:
         return "Bir hata oluştu, tekrar dener misin?"
     except Exception:
         return "Bir hata oluştu, tekrar dener misin?"
+
+
+def knowledge_entity_fallback_text(
+    *,
+    user_id: str,
+    user_message: str,
+    folder_slug: str = "data-pdfs",
+    accept_lang: str = "tr",
+) -> Optional[str]:
+    """
+    AI (Gemini) yokken veya kota varken: entity index üzerinden döküman parçaları döndürür.
+    - Madde/özüt benzeri soruda chunk yoksa: veri yok mesajı
+    - Genel sohbette eşleşme yoksa: None (çağıran varsayılan hata/kota mesajını kullanır)
+    """
+    uid = (user_id or "").strip()
+    if not uid:
+        return None
+    try:
+        from knowledge.entity_search import find_chunks_by_entity, list_entities
+    except Exception as e:
+        log.warning("knowledge_entity_fallback_text import atlandı: %s", e)
+        return None
+
+    msg = (user_message or "").strip()
+    if len(msg) < 2:
+        return None
+    msg_l = msg.lower()
+
+    raw_tokens: list[str] = []
+    for t in (
+        msg_l.replace("/", " ")
+        .replace(",", " ")
+        .replace(".", " ")
+        .replace("(", " ")
+        .replace(")", " ")
+        .replace(":", " ")
+        .replace(";", " ")
+    ).split():
+        tt = "".join(ch for ch in t if ch.isalnum() or ch in ("+", "%", "-"))
+        if 3 <= len(tt) <= 32:
+            raw_tokens.append(tt)
+
+    seen: set[str] = set()
+    tokens: list[str] = []
+    for t in sorted(raw_tokens, key=lambda x: (-len(x), x))[:12]:
+        if t not in seen:
+            tokens.append(t)
+            seen.add(t)
+    if not tokens:
+        return None
+
+    candidate_entities: list[str] = []
+    try:
+        for t in tokens[:6]:
+            ents = list_entities(user_id=uid, folder_slug=folder_slug, q=t, k=5) or []
+            for e in ents[:3]:
+                name = (e.get("name") or "").strip()
+                if not name:
+                    continue
+                name_l = name.lower()
+                if name_l == t or t in name_l:
+                    candidate_entities.append(name)
+            if len(candidate_entities) >= 4:
+                break
+
+        chunks_texts: list[str] = []
+        used_entity_names: list[str] = []
+        for ename in candidate_entities[:2]:
+            chunks = find_chunks_by_entity(
+                user_id=uid,
+                folder_slug=folder_slug,
+                q=ename,
+                k=6,
+            )
+            if chunks:
+                used_entity_names.append(ename)
+            for c in chunks[:4]:
+                txt = (c.chunk_text or "").strip()
+                if txt:
+                    chunks_texts.append(txt)
+            if len(chunks_texts) >= 6:
+                break
+
+        if chunks_texts:
+            hdr = ""
+            if used_entity_names:
+                hdr = "İlgili maddeler: " + ", ".join(used_entity_names[:4]) + "\n\n"
+            body = "\n\n---\n\n".join(chunks_texts)
+            return (hdr + body)[:2400]
+
+        ingredient_intent = any(
+            w in msg_l
+            for w in [
+                "nedir",
+                "ne işe yarar",
+                "nasıl kullan",
+                "kullanılır",
+                "yüzde",
+                "%",
+                "konsantr",
+                "oran",
+                "doz",
+                "percent",
+                "concentration",
+                "ingredient",
+                "active",
+            ]
+        )
+        if ingredient_intent and any(len(t) >= 4 for t in tokens[:6]):
+            if (accept_lang or "tr").lower().startswith("en"):
+                return "I couldn't find this in the current dataset yet."
+            return "Bunu şu anki veri setimde bulamadım."
+    except Exception as e:
+        log.warning("knowledge_entity_fallback_text hatası: %s", e)
+        return None
+
+    return None
+
+
+def _knowledge_fallback_for_any_user(user_id: Optional[str], user_message: str) -> Optional[str]:
+    """Önce oturum user_id, sonra ortak katalog user_id (ingest ile aynı) ile entity araması."""
+    seen: set[str] = set()
+    for uid in ((user_id or "").strip(), (KNOWLEDGE_CATALOG_USER_ID or "").strip()):
+        if not uid or uid in seen:
+            continue
+        seen.add(uid)
+        fb = knowledge_entity_fallback_text(user_id=uid, user_message=user_message)
+        if fb:
+            return fb
+    return None
 
 
 def _gemini_response_text(response) -> str:
@@ -280,17 +410,28 @@ async def assessment_chat(
     user_message: str,
     history: list = None,
     user_profile: dict = None,
+    user_id: Optional[str] = None,
 ) -> dict:
     """
     Gemini multi-turn sohbet formatında cilt değerlendirmesi.
     Konuşma geçmişi Gemini'ye doğal user/model rolleriyle gönderilir.
     """
+    is_free_chat = user_profile and user_profile.get("mode") == "free_chat"
     if not gemini_client:
+        if is_free_chat:
+            fb = _knowledge_fallback_for_any_user(user_id, user_message)
+            if fb:
+                return {
+                    "reply": (
+                        "Şu an yapay zekâ kotası veya API kapalı; yüklü dökümanlardan derlenen notlar:\n\n"
+                        + fb
+                    ),
+                    "is_complete": False,
+                }
         return {"reply": "Bağlantı kurulamadı, lütfen tekrar dene.", "is_complete": False}
 
-    is_free_chat = user_profile and user_profile.get("mode") == "free_chat"
     if is_free_chat:
-        return await _free_chat(user_message, history, user_profile)
+        return await _free_chat(user_message, history, user_profile, user_id=user_id)
 
     profile_text = ""
     if user_profile:
@@ -431,7 +572,12 @@ Cevabının sonuna ekle:
         return {"reply": "Bir hata oluştu, tekrar dener misin?", "is_complete": False}
 
 
-async def _free_chat(user_message: str, history: list = None, user_profile: dict = None) -> dict:
+async def _free_chat(
+    user_message: str,
+    history: list = None,
+    user_profile: dict = None,
+    user_id: Optional[str] = None,
+) -> dict:
     """Serbest sohbet modu - cilt/yüz/el bakımı hakkında her şey sorulabilir."""
     hist = list(history or [])
     um = (user_message or "").strip()
@@ -484,9 +630,28 @@ async def _free_chat(user_message: str, history: list = None, user_profile: dict
     except Exception as e:
         log.error("Free chat hatası: %s", e)
         hint = _polish_user_message(e)
-        if "429" in str(e).lower() or "quota" in str(e).lower() or "resource_exhausted" in str(e).lower():
+        et = str(e).lower()
+        if "429" in et or "quota" in et or "resource_exhausted" in et:
+            fb = _knowledge_fallback_for_any_user(user_id, um)
+            if fb:
+                return {
+                    "reply": (
+                        "Şu an yapay zekâ kotası doldu; yüklü dökümanlardan derlenen notlar:\n\n" + fb
+                    ),
+                    "is_complete": False,
+                    "extracted_data": None,
+                }
             return {
                 "reply": hint,
+                "is_complete": False,
+                "extracted_data": None,
+            }
+        fb2 = _knowledge_fallback_for_any_user(user_id, um)
+        if fb2:
+            return {
+                "reply": (
+                    "Şu an yapay zekâ yanıtı alınamadı; yüklü dökümanlardan derlenen notlar:\n\n" + fb2
+                ),
                 "is_complete": False,
                 "extracted_data": None,
             }

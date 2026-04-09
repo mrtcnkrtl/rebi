@@ -1,13 +1,26 @@
 import os
 import logging
+from pathlib import Path
+
 from dotenv import load_dotenv
 
-load_dotenv()
+# backend/.env varsa buradan yükle ve shell'deki eski GEMINI_API_KEY vb. değişkenlerin üzerine yaz
+# (aksi halde süresi dolmuş bir export, .env'deki yeni key'i gölgeler)
+_env_file = Path(__file__).resolve().parent / ".env"
+if _env_file.is_file():
+    load_dotenv(_env_file, override=True)
+else:
+    load_dotenv(override=False)
 
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# PDF/knowledge ingest hangi user_id ile yapıldıysa entity araması (chat yedeği) bunu da dener
+KNOWLEDGE_CATALOG_USER_ID = os.getenv(
+    "KNOWLEDGE_CATALOG_USER_ID",
+    "00000000-0000-4000-8000-000000000001",
+)
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
 
 # CORS origins - production için environment variable'dan alınır
