@@ -282,13 +282,21 @@ def _free_chat_has_usable_rag(kb: str) -> bool:
 
 
 def _free_chat_no_dataset_reply() -> str:
-    """RAG yok veya yeterli değil; kurumsal veri iddiası yok, dış kaynak yönlendirmesi."""
+    """RAG yok veya yeterli değil; kurumsal veri iddiası yok."""
     return (
-        "Bu soru için şu an Rebi’nin seçilmiş yüklü notlarında eşleşen pasaj yok; "
-        "burada verilen metin veri tabanından seçilmiş bir bilgi olarak sunulmuyor.\n\n"
-        "Kanıta dayalı bakmak için PubMed (pubmed.ncbi.nlm.nih.gov) ve birincil literatürü kullanmanı öneririm. "
-        "İleride web veya dış kaynaktan kısa özet gösterilirse bu ayrıca etiketlenecek."
+        "Bu soru için şu an Rebi’nin seçilmiş yüklü notlarında eşleşen pasaj yok. "
+        "Aşağıdaki ek (varsa) Rebi veri tabanından seçilmiş bilgi değildir; "
+        "PubMed veya Europe PMC indeks aramasıyla otomatik listelenmiş başlık ve bağlantılardır."
     )
+
+
+async def _free_chat_no_rag_full_reply(user_message: str) -> str:
+    """Sabit uyarı + isteğe bağlı ücretsiz literatür satırları (LLM yok)."""
+    base = _free_chat_no_dataset_reply()
+    from knowledge.free_literature import fetch_skin_literature_hints
+
+    hints = await fetch_skin_literature_hints(user_message)
+    return f"{base}\n\n{hints}" if hints else base
 
 
 def _gemini_response_text(response) -> str:
@@ -550,7 +558,10 @@ async def assessment_chat(
                     ),
                     "is_complete": False,
                 }
-            return {"reply": _free_chat_no_dataset_reply(), "is_complete": False}
+            return {
+                "reply": await _free_chat_no_rag_full_reply(user_message),
+                "is_complete": False,
+            }
         return {"reply": "Bağlantı kurulamadı, lütfen tekrar dene.", "is_complete": False}
 
     if is_free_chat:
@@ -742,7 +753,7 @@ async def _free_chat(
 
     if not _free_chat_has_usable_rag(kb):
         return {
-            "reply": _free_chat_no_dataset_reply(),
+            "reply": await _free_chat_no_rag_full_reply(um),
             "is_complete": False,
             "extracted_data": None,
         }
