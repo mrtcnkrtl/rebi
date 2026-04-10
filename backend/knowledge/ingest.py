@@ -7,7 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
 
-from config import GEMINI_API_KEY, SUPABASE_URL, get_logger
+from config import GEMINI_API_KEY, get_logger
+from knowledge.db import resolve_postgres_dsn
 
 log = get_logger("knowledge.ingest")
 
@@ -19,23 +20,6 @@ def _sanitize_text_for_pg(text: str) -> str:
     if not text:
         return ""
     return str(text).replace("\x00", "").replace("\u0000", "")
-
-
-def _postgres_dsn() -> str | None:
-    u = (os.getenv("SUPABASE_DATABASE_URL") or os.getenv("DATABASE_URL") or "").strip()
-    if u:
-        return u
-    # Fallback: SUPABASE_URL + SUPABASE_DB_PASSWORD (same convention as db_bootstrap.py)
-    pw = (os.getenv("SUPABASE_DB_PASSWORD") or "").strip()
-    if pw and SUPABASE_URL:
-        m = re.search(r"https?://([^.]+)\.supabase\.co", (SUPABASE_URL or "").strip().rstrip("/"), re.I)
-        ref = m.group(1) if m else None
-        if ref:
-            # password may contain special chars -> quote
-            from urllib.parse import quote_plus
-
-            return f"postgresql://postgres:{quote_plus(pw)}@db.{ref}.supabase.co:5432/postgres"
-    return None
 
 
 def _strip_html(text: str) -> str:
@@ -222,7 +206,7 @@ def ingest_directory(
     embed_model: str = "gemini-embedding-001",
     batch_size: int = 16,
 ) -> dict:
-    dsn = _postgres_dsn()
+    dsn = resolve_postgres_dsn()
     if not dsn:
         raise RuntimeError("SUPABASE_DATABASE_URL or DATABASE_URL is required for ingestion")
     try:

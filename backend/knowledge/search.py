@@ -24,6 +24,7 @@ def _folder_id(user_id: str, folder_slug: str) -> str | None:
             cur.execute(
                 "select id from public.knowledge_folders where user_id=%s and slug=%s",
                 (user_id, folder_slug),
+                prepare=False,
             )
             row = cur.fetchone()
             return str(row[0]) if row else None
@@ -58,6 +59,7 @@ def search_chunks(
                 from public.match_knowledge_chunks(%s::uuid, %s::vector, %s, %s::uuid)
                 """,
                 (user_id, vec_lit, max(int(k), 1), folder_id),
+                prepare=False,
             )
             rows = cur.fetchall() or []
 

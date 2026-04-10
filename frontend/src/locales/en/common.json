@@ -189,12 +189,12 @@
     "feedbackSkip": "Skip"
   },
   "chat": {
-    "subtitle": "Product & ingredient info",
+    "subtitle": "Skin science & ingredients — short answers grounded in our notes",
     "clear": "Clear",
     "thinking": "Rebi is thinking...",
-    "welcome": "Hi {{name}}! Here I only answer short questions about cosmetic products and ingredients. For personal symptoms, lifestyle, and your tailored routine, use Analysis and tracking in the app.",
-    "placeholder": "e.g. niacinamide, retinol, cleanser types...",
-    "footerHint": "Product/ingredient info — your personal routine lives in the app. Free daily limit applies."
+    "welcome": "Hi {{name}}! Ask about skin science, cosmetic ingredients, and general curiosity — I’ll keep answers short and grounded in our uploaded notes when possible. For your personal routine, to-dos, and daily plan, use Analysis and tracking in the app.",
+    "placeholder": "e.g. retinol, redness, skin barrier, cleanser types...",
+    "footerHint": "Info chat (note-grounded) — your personal routine lives in the app. Free daily limit applies."
   },
   "dashboard": {
     "noAnalyzeTitle": "Hi, {{name}}!",

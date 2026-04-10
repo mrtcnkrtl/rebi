@@ -189,12 +189,12 @@
     "feedbackSkip": "Atla"
   },
   "chat": {
-    "subtitle": "Ürün ve içerik maddeleri bilgisi",
+    "subtitle": "Cilt bilimi ve içerik maddeleri — notlarımıza dayalı kısa yanıtlar",
     "clear": "Temizle",
     "thinking": "Rebi düşünüyor...",
-    "welcome": "Merhaba {{name}}! Burada yalnızca kozmetik ürünleri ve içerik maddeleri hakkında kısa bilgi verebilirim. Kişisel belirtiler, stres, uyku, su ve sana özel rutin için uygulamadaki Analiz ve takip bölümünü kullan.",
-    "placeholder": "Örn. niacinamide, retinol, temizleyici türleri...",
-    "footerHint": "Ürün/madde bilgisi — kişisel rutin uygulamada. Ücretsiz günlük limit geçerli."
+    "welcome": "Merhaba {{name}}! Cilt bilimi, içerik maddeleri ve merak ettiklerin hakkında kısa yanıt verebilirim; mümkün olduğunca yüklü bilimsel notlarımıza dayanır. Sana özel rutin, yapılacaklar ve günlük plan için uygulamadaki Analiz ve takip bölümünü kullan.",
+    "placeholder": "Örn. retinol, kızarıklık, nem bariyeri, temizleyici türleri...",
+    "footerHint": "Bilgi sohbeti (notlara dayalı) — kişisel rutin uygulamada. Ücretsiz günlük limit geçerli."
   },
   "dashboard": {
     "noAnalyzeTitle": "Merhaba, {{name}}!",

@@ -175,46 +175,120 @@ _GREETING_ONLY = re.compile(
 )
 
 
-def _free_chat_is_personal_or_lifestyle(msg: str) -> bool:
-    """Kişisel belirti, hormonal, yaşam tarzı, rutin planı — uygulama alanı; chat değil."""
+def _free_chat_requests_action_plan(msg: str) -> bool:
+    """Sadece uygulamanın vermesi gereken: yapılacaklar, kişisel rutin planı, check-in yönlendirmesi."""
     t = (msg or "").strip().lower()
     if len(t) < 2:
         return False
     needles = (
-        "yüzüm",
-        "cildim",
-        "tenim",
-        "şişti",
-        "şişme",
-        "ödem",
-        "kızardı",
-        "kızarıklığım",
-        "kızarıklık",
-        "kaşınt",
-        "yanıyor",
-        "acıyor",
-        "adet",
-        "regl",
-        "hamile",
-        "gecikme",
-        "stresliyim",
-        "çok stres",
-        "uykum",
-        "uyuyamadım",
-        "su içmedim",
-        "içemedim",
-        "yorgunum",
-        "yapılacak",
         "ne yapayım",
+        "ne yapmalıyım",
+        "yapılacak",
         "rutin öner",
-        "rutinim",
-        "kişisel öner",
         "bana rutin",
+        "rutinimi",
+        "kişisel öner",
+        "kişisel rutin",
         "check-in",
         "check in",
         "dashboard",
     )
     return any(n in t for n in needles)
+
+
+def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> str:
+    """
+    1) Entity index (düşük maliyet, madde/yağ/özüt adları)
+    2) Gerekirse vektör arama (tek sorgu embedding + az chunk) — genel cilt sorusu
+    """
+    um = (user_message or "").strip()
+    if len(um) < 2:
+        return ""
+
+    entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
+    vector_blocks: list[str] = []
+    seen_sig: set[str] = set()
+
+    # Entity zaten uzunsa embed atlamak kotayı korur
+    run_vector = len(entity_text) < 900
+
+    if run_vector:
+        from knowledge.search import search_chunks
+
+        uids: list[str] = []
+        for u in ((user_id or "").strip(), (KNOWLEDGE_CATALOG_USER_ID or "").strip()):
+            if u and u not in uids:
+                uids.append(u)
+
+        for uid in uids:
+            try:
+                hits = search_chunks(
+                    user_id=uid,
+                    folder_slug="data-pdfs",
+                    query=um,
+                    k=5,
+                )
+                for h in hits:
+                    t = (h.chunk_text or "").strip()
+                    if len(t) < 35:
+                        continue
+                    sig = t[:140]
+                    if sig in seen_sig:
+                        continue
+                    seen_sig.add(sig)
+                    vector_blocks.append(t)
+                    if len(vector_blocks) >= 4:
+                        break
+                if vector_blocks:
+                    break
+            except Exception as e:
+                log.warning("Semantik RAG atlandı (user=%s): %s", uid, e)
+
+    vec_joined = "\n\n---\n\n".join(vector_blocks[:4])[:2800]
+
+    parts: list[str] = []
+    if entity_text:
+        parts.append("[Madde / içerik endeksi]\n" + entity_text)
+    if vec_joined:
+        parts.append("[Anlamsal arama — ilgili pasajlar]\n" + vec_joined)
+
+    full = "\n\n".join(parts).strip()
+    if len(full) > 6200:
+        full = full[:6200]
+    return full
+
+
+def _free_chat_has_usable_rag(kb: str) -> bool:
+    """
+    Gerçek pasaj yoksa veya yalnızca entity tarafının 'veride yok' kısa mesajı varsa False.
+    Böyle durumda LLM çağrılmaz (giriş/çıkış token maliyeti yok).
+    """
+    s = (kb or "").strip()
+    if not s:
+        return False
+    if "Anlamsal arama — ilgili pasajlar]" in s:
+        tail = s.split("Anlamsal arama — ilgili pasajlar]", 1)[1].strip()
+        if len(tail) >= 35:
+            return True
+    if "---" in s:
+        return True
+    if len(s) >= 380:
+        return True
+    if "Bunu şu anki veri setimizde bulamadım." in s:
+        return False
+    if "i couldn't find this in the current dataset yet." in s.lower():
+        return False
+    return len(s) >= 120
+
+
+def _free_chat_no_dataset_reply() -> str:
+    """RAG yok veya yeterli değil; kurumsal veri iddiası yok, dış kaynak yönlendirmesi."""
+    return (
+        "Bu soru için şu an Rebi’nin seçilmiş yüklü notlarında eşleşen pasaj yok; "
+        "burada verilen metin veri tabanından seçilmiş bir bilgi olarak sunulmuyor.\n\n"
+        "Kanıta dayalı bakmak için PubMed (pubmed.ncbi.nlm.nih.gov) ve birincil literatürü kullanmanı öneririm. "
+        "İleride web veya dış kaynaktan kısa özet gösterilirse bu ayrıca etiketlenecek."
+    )
 
 
 def _gemini_response_text(response) -> str:
@@ -468,15 +542,15 @@ async def assessment_chat(
     is_free_chat = user_profile and user_profile.get("mode") == "free_chat"
     if not gemini_client:
         if is_free_chat:
-            fb = _knowledge_fallback_for_any_user(user_id, user_message)
-            if fb:
+            fb = _build_free_chat_rag_context(user_id, user_message)
+            if _free_chat_has_usable_rag(fb):
                 return {
                     "reply": (
-                        "Şu an yapay zekâ kotası veya API kapalı; yüklü dökümanlardan derlenen notlar:\n\n"
-                        + fb
+                        "Şu an özet üretilemiyor; yüklü RAG pasajları:\n\n" + fb[:4500]
                     ),
                     "is_complete": False,
                 }
+            return {"reply": _free_chat_no_dataset_reply(), "is_complete": False}
         return {"reply": "Bağlantı kurulamadı, lütfen tekrar dene.", "is_complete": False}
 
     if is_free_chat:
@@ -628,9 +702,8 @@ async def _free_chat(
     user_id: Optional[str] = None,
 ) -> dict:
     """
-    Uygulama içi Rebi sohbeti: yalnızca ürün / içerik maddesi bilgisi.
-    Kişisel belirti, yaşam tarzı, rutin ve yapılacaklar uygulamanın akışında kalır.
-    Mümkünse yüklü dökümanlardan gelen REFERANS ile zemini bağlar.
+    Uygulama içi Rebi: RAG (entity + gerekirse vektör) + kısa model özeti.
+    Kişisel yapılacaklar / rutin planı uygulamada; burada bilgi ve merak soruları.
     """
     hist = list(history or [])
     um = (user_message or "").strip()
@@ -643,9 +716,9 @@ async def _free_chat(
 
     redirect_app = {
         "reply": (
-            "Kişisel belirtiler, stres, uyku, su, hormonal döngü ve sana özel yapılacaklar bu sohbette değil; "
-            "bunlar uygulamadaki Analiz ve günlük takipte değerlendirilir. "
-            "Burada yalnızca kozmetik ürünleri ve içerik maddeleri (ör. niacinamide, temizleyici türleri) hakkında soru sorabilirsin."
+            "Sana özel yapılacaklar listesi ve rutin planı bu sohbette değil; "
+            "bunlar uygulamadaki Analiz ve günlük takipte oluşturulur. "
+            "Burada cilt bilimi, içerik maddeleri ve yüklü notlarımızdaki bilgiler hakkında soru sorabilirsin."
         ),
         "is_complete": False,
         "extracted_data": None,
@@ -654,30 +727,36 @@ async def _free_chat(
     if _GREETING_ONLY.match(um):
         return {
             "reply": (
-                "Merhaba! Burada yalnızca ürün ve içerik maddeleri hakkında kısa bilgi verebilirim. "
-                "Kişisel rutin ve öneriler için uygulamadaki Analiz / takip bölümünü kullan."
+                "Merhaba! Cilt bilimi, içerik maddeleri ve merak ettiklerin hakkında kısa cevap verebilirim; "
+                "cevaplar mümkün olduğunca yüklü bilimsel notlarımıza dayanır. "
+                "Kişisel rutin ve yapılacaklar için Analiz / takip bölümünü kullan."
             ),
             "is_complete": False,
             "extracted_data": None,
         }
 
-    if _free_chat_is_personal_or_lifestyle(um):
+    if _free_chat_requests_action_plan(um):
         return redirect_app
 
-    kb = _knowledge_fallback_for_any_user(user_id, um)
+    kb = _build_free_chat_rag_context(user_id, um)
 
-    # Son kullanıcı mesajı: varsa REFERANS ile (Gemini özeti yalnızca buna dayansın)
-    if kb:
-        final_user = (
-            "REFERANS (Rebi yüklü bilimsel notları — yanıtı YALNIZCA buna dayandır; "
-            "referansta olmayan bilgi uydurma; yapılacak listesi veya kişisel rutin önerme):\n\n"
-            f"{kb}\n\n---\n\nKullanıcı sorusu: {um}"
-        )
-    else:
-        final_user = um
+    if not _free_chat_has_usable_rag(kb):
+        return {
+            "reply": _free_chat_no_dataset_reply(),
+            "is_complete": False,
+            "extracted_data": None,
+        }
+
+    # Son kullanıcı mesajı: REFERANS ile (Gemini özeti yalnızca buna dayansın)
+    final_user = (
+        "REFERANS (Rebi yüklü notları — önce bunu kullan; uydurma bilgi ekleme):\n\n"
+        f"{kb}\n\n---\n\nKullanıcı sorusu: {um}\n\n"
+        "Kurallar: en fazla 2 kısa cümle; madde/ölçü iddiası varsa yalnızca referansta geçiyorsa yaz. "
+        "Sabah-akşam rutin adımı, yapılacaklar listesi veya kişiselleştirilmiş tedavi planı verme."
+    )
 
     contents: list = []
-    for msg in hist[-12:]:
+    for msg in hist[-8:]:
         role = "model" if msg.get("role") == "assistant" else "user"
         contents.append(
             types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", "") or "")])
@@ -685,38 +764,19 @@ async def _free_chat(
     contents.append(types.Content(role="user", parts=[types.Part.from_text(text=final_user)]))
 
     name = (user_profile or {}).get("name", "Kullanıcı")
-    if kb:
-        system_instruction = (
-            f"Kullanıcının görünen adı: {name}.\n"
-            "Sen Rebi bilgi asistanısın. Türkçe konuş.\n"
-            "Bu kanal SADECE kozmetik ürünleri ve içerik maddeleri hakkında kısa açıklama içindir.\n"
-            "REFERANS metnini özetle; madde/ürün dışına çıkma. Yapılacaklar listesi, sabah-akşam rutin adımları, "
-            "kişiselleştirilmiş öneri VERME.\n"
-            "Tıbbi teşhis koyma; ciddi reaksiyon şüphesinde dermatoloğa yönlendir.\n"
-            "En fazla 3–4 kısa cümle."
-        )
-    else:
-        system_instruction = (
-            f"Kullanıcının görünen adı: {name}.\n"
-            "Sen Rebi bilgi asistanısın. Türkçe konuş.\n"
-            "REFERANS yok: bu kanalda yalnızca genel düzeyde bir içerik maddesi veya ürün türü tanımı ver "
-            "(en fazla 2–3 cümle). Kişisel öneri, yapılacaklar, rutin adımları VERME.\n"
-            "Kullanıcı kişisel belirti veya yaşam tarzı anlatıyorsa kısaca uygulamadaki Analiz/takibe yönlendir.\n"
-            "Tıbbi teşhis yok."
-        )
+    system_instruction = (
+        f"Kullanıcının görünen adı: {name}.\n"
+        "Sen Rebi bilgi asistanısın. Türkçe konuş.\n"
+        "Cilt bilimi, kozmetik içerik maddeleri, ürün türleri ve genel mekanizmalar hakkında kısa yanıt ver.\n"
+        "REFERANS var; yanıtın özünü ORADAN türet; referansta olmayan kesin iddia verme.\n"
+        "Kişisel rutin, yapılacaklar, sabah-akşam adımlar VERME.\n"
+        "Tıbbi teşhis yok; ciddi belirti için dermatoloğa yönlendir.\n"
+        "Çıktı: en fazla 2 çok kısa cümle (token tasarrufu)."
+    )
 
     if not gemini_client:
-        if kb:
-            return {
-                "reply": "Şu an özet üretilemiyor; yüklü notlar:\n\n" + kb[:2400],
-                "is_complete": False,
-                "extracted_data": None,
-            }
         return {
-            "reply": (
-                "Bu konuda yüklü notlarımızda eşleşen pasaj bulamadım. "
-                "Bir içerik maddesi veya ürün türü adıyla tekrar dene."
-            ),
+            "reply": "Şu an özet üretilemiyor; yüklü notlar:\n\n" + kb[:2400],
             "is_complete": False,
             "extracted_data": None,
         }
@@ -727,8 +787,8 @@ async def _free_chat(
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
-                temperature=0.35 if kb else 0.45,
-                max_output_tokens=320,
+                temperature=0.25,
+                max_output_tokens=160,
             ),
         )
         reply = _gemini_response_text(response)
@@ -743,33 +803,22 @@ async def _free_chat(
         return {"reply": reply, "is_complete": False, "extracted_data": None}
     except Exception as e:
         log.error("Free chat hatası: %s", e)
-        hint = _polish_user_message(e)
         et = str(e).lower()
         if "429" in et or "quota" in et or "resource_exhausted" in et:
-            fb = _knowledge_fallback_for_any_user(user_id, um)
-            if fb:
-                return {
-                    "reply": (
-                        "Şu an yapay zekâ kotası doldu; yüklü dökümanlardan derlenen notlar:\n\n" + fb
-                    ),
-                    "is_complete": False,
-                    "extracted_data": None,
-                }
-            return {
-                "reply": hint,
-                "is_complete": False,
-                "extracted_data": None,
-            }
-        fb2 = _knowledge_fallback_for_any_user(user_id, um)
-        if fb2:
             return {
                 "reply": (
-                    "Şu an yapay zekâ yanıtı alınamadı; yüklü dökümanlardan derlenen notlar:\n\n" + fb2
+                    "Şu an yapay zekâ kotası doldu; yüklü RAG pasajları:\n\n" + kb[:4500]
                 ),
                 "is_complete": False,
                 "extracted_data": None,
             }
-        return {"reply": "Bir hata oluştu, tekrar dener misin?", "is_complete": False, "extracted_data": None}
+        return {
+            "reply": (
+                "Şu an yapay zekâ yanıtı alınamadı; yüklü RAG pasajları:\n\n" + kb[:4500]
+            ),
+            "is_complete": False,
+            "extracted_data": None,
+        }
 
 
 async def chat_with_knowledge(
