@@ -189,11 +189,12 @@
     "feedbackSkip": "Atla"
   },
   "chat": {
-    "subtitle": "Cilt, yüz & el bakımı uzmanı",
+    "subtitle": "Ürün ve içerik maddeleri bilgisi",
     "clear": "Temizle",
     "thinking": "Rebi düşünüyor...",
-    "welcome": "Merhaba {{name}}! Ben Rebi, cilt bakım asistanın. Cilt, yüz ve el bakımı hakkında her şeyi sorabilirsin. Ürünler, maddeler, bakım rutinleri, sorunlar... Nasıl yardımcı olabilirim?",
-    "placeholder": "Ürünler, maddeler, sorunlar hakkında sor..."
+    "welcome": "Merhaba {{name}}! Burada yalnızca kozmetik ürünleri ve içerik maddeleri hakkında kısa bilgi verebilirim. Kişisel belirtiler, stres, uyku, su ve sana özel rutin için uygulamadaki Analiz ve takip bölümünü kullan.",
+    "placeholder": "Örn. niacinamide, retinol, temizleyici türleri...",
+    "footerHint": "Ürün/madde bilgisi — kişisel rutin uygulamada. Ücretsiz günlük limit geçerli."
   },
   "dashboard": {
     "noAnalyzeTitle": "Merhaba, {{name}}!",

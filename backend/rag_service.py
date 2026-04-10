@@ -13,6 +13,7 @@ AI şu işleri YAPMAZ:
 """
 
 import json
+import re
 from typing import Optional, Literal
 from google import genai
 from google.genai import types
@@ -166,6 +167,54 @@ def _knowledge_fallback_for_any_user(user_id: Optional[str], user_message: str) 
         if fb:
             return fb
     return None
+
+
+_GREETING_ONLY = re.compile(
+    r"^(merhaba|selam|hey|hi|hello|sa|günaydın|iyi akşamlar|iyi günler)\s*!?\s*$",
+    re.I,
+)
+
+
+def _free_chat_is_personal_or_lifestyle(msg: str) -> bool:
+    """Kişisel belirti, hormonal, yaşam tarzı, rutin planı — uygulama alanı; chat değil."""
+    t = (msg or "").strip().lower()
+    if len(t) < 2:
+        return False
+    needles = (
+        "yüzüm",
+        "cildim",
+        "tenim",
+        "şişti",
+        "şişme",
+        "ödem",
+        "kızardı",
+        "kızarıklığım",
+        "kızarıklık",
+        "kaşınt",
+        "yanıyor",
+        "acıyor",
+        "adet",
+        "regl",
+        "hamile",
+        "gecikme",
+        "stresliyim",
+        "çok stres",
+        "uykum",
+        "uyuyamadım",
+        "su içmedim",
+        "içemedim",
+        "yorgunum",
+        "yapılacak",
+        "ne yapayım",
+        "rutin öner",
+        "rutinim",
+        "kişisel öner",
+        "bana rutin",
+        "check-in",
+        "check in",
+        "dashboard",
+    )
+    return any(n in t for n in needles)
 
 
 def _gemini_response_text(response) -> str:
@@ -578,7 +627,11 @@ async def _free_chat(
     user_profile: dict = None,
     user_id: Optional[str] = None,
 ) -> dict:
-    """Serbest sohbet modu - cilt/yüz/el bakımı hakkında her şey sorulabilir."""
+    """
+    Uygulama içi Rebi sohbeti: yalnızca ürün / içerik maddesi bilgisi.
+    Kişisel belirti, yaşam tarzı, rutin ve yapılacaklar uygulamanın akışında kalır.
+    Mümkünse yüklü dökümanlardan gelen REFERANS ile zemini bağlar.
+    """
     hist = list(history or [])
     um = (user_message or "").strip()
     if (
@@ -588,24 +641,85 @@ async def _free_chat(
     ):
         hist = hist[:-1]
 
+    redirect_app = {
+        "reply": (
+            "Kişisel belirtiler, stres, uyku, su, hormonal döngü ve sana özel yapılacaklar bu sohbette değil; "
+            "bunlar uygulamadaki Analiz ve günlük takipte değerlendirilir. "
+            "Burada yalnızca kozmetik ürünleri ve içerik maddeleri (ör. niacinamide, temizleyici türleri) hakkında soru sorabilirsin."
+        ),
+        "is_complete": False,
+        "extracted_data": None,
+    }
+
+    if _GREETING_ONLY.match(um):
+        return {
+            "reply": (
+                "Merhaba! Burada yalnızca ürün ve içerik maddeleri hakkında kısa bilgi verebilirim. "
+                "Kişisel rutin ve öneriler için uygulamadaki Analiz / takip bölümünü kullan."
+            ),
+            "is_complete": False,
+            "extracted_data": None,
+        }
+
+    if _free_chat_is_personal_or_lifestyle(um):
+        return redirect_app
+
+    kb = _knowledge_fallback_for_any_user(user_id, um)
+
+    # Son kullanıcı mesajı: varsa REFERANS ile (Gemini özeti yalnızca buna dayansın)
+    if kb:
+        final_user = (
+            "REFERANS (Rebi yüklü bilimsel notları — yanıtı YALNIZCA buna dayandır; "
+            "referansta olmayan bilgi uydurma; yapılacak listesi veya kişisel rutin önerme):\n\n"
+            f"{kb}\n\n---\n\nKullanıcı sorusu: {um}"
+        )
+    else:
+        final_user = um
+
     contents: list = []
     for msg in hist[-12:]:
         role = "model" if msg.get("role") == "assistant" else "user"
         contents.append(
             types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", "") or "")])
         )
-    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_message)]))
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=final_user)]))
 
     name = (user_profile or {}).get("name", "Kullanıcı")
-    system_instruction = (
-        f"Kullanıcının görünen adı: {name}.\n"
-        "Sen Rebi, profesyonel cilt bakım asistanısın. Türkçe konuş.\n"
-        "KAPSAM: SADECE cilt, yüz ve el bakımı. Ürünler, maddeler (niacinamide, retinol, AHA, BHA vb.), "
-        "cilt sorunları, bakım rutinleri, dermakozmetik bilgisi.\n"
-        "Kapsam dışı konulara: 'Bu konuda yardımcı olamam, cilt bakımıyla ilgili sorularını yanıtlayabilirim.' de.\n"
-        "KISA ve NET yanıtlar ver — en fazla 3–4 cümle. Bilgi yığını yapma.\n"
-        "Sıcak, samimi, profesyonel ol. Tıbbi teşhis koyma, gerekirse dermatoloğa yönlendir."
-    )
+    if kb:
+        system_instruction = (
+            f"Kullanıcının görünen adı: {name}.\n"
+            "Sen Rebi bilgi asistanısın. Türkçe konuş.\n"
+            "Bu kanal SADECE kozmetik ürünleri ve içerik maddeleri hakkında kısa açıklama içindir.\n"
+            "REFERANS metnini özetle; madde/ürün dışına çıkma. Yapılacaklar listesi, sabah-akşam rutin adımları, "
+            "kişiselleştirilmiş öneri VERME.\n"
+            "Tıbbi teşhis koyma; ciddi reaksiyon şüphesinde dermatoloğa yönlendir.\n"
+            "En fazla 3–4 kısa cümle."
+        )
+    else:
+        system_instruction = (
+            f"Kullanıcının görünen adı: {name}.\n"
+            "Sen Rebi bilgi asistanısın. Türkçe konuş.\n"
+            "REFERANS yok: bu kanalda yalnızca genel düzeyde bir içerik maddesi veya ürün türü tanımı ver "
+            "(en fazla 2–3 cümle). Kişisel öneri, yapılacaklar, rutin adımları VERME.\n"
+            "Kullanıcı kişisel belirti veya yaşam tarzı anlatıyorsa kısaca uygulamadaki Analiz/takibe yönlendir.\n"
+            "Tıbbi teşhis yok."
+        )
+
+    if not gemini_client:
+        if kb:
+            return {
+                "reply": "Şu an özet üretilemiyor; yüklü notlar:\n\n" + kb[:2400],
+                "is_complete": False,
+                "extracted_data": None,
+            }
+        return {
+            "reply": (
+                "Bu konuda yüklü notlarımızda eşleşen pasaj bulamadım. "
+                "Bir içerik maddesi veya ürün türü adıyla tekrar dene."
+            ),
+            "is_complete": False,
+            "extracted_data": None,
+        }
 
     try:
         response = gemini_client.models.generate_content(
@@ -613,8 +727,8 @@ async def _free_chat(
             contents=contents,
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
-                temperature=0.6,
-                max_output_tokens=350,
+                temperature=0.35 if kb else 0.45,
+                max_output_tokens=320,
             ),
         )
         reply = _gemini_response_text(response)

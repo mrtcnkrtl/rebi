@@ -233,7 +233,7 @@ export default function Chat() {
             </p>
           ) : (
             <p className="text-[10px] text-gray-400 text-center mt-1.5">
-              <Sparkles className="w-3 h-3 inline" /> Cilt, yüz ve el bakımı — ücretsiz günlük limit geçerli
+              <Sparkles className="w-3 h-3 inline" /> {t("chat.footerHint")}
             </p>
           )}
         </div>
