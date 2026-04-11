@@ -31,6 +31,46 @@ EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 EUROPE_PMC_SEARCH = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
 
 
+def skip_external_literature_for_query(q: str) -> bool:
+    """
+    Sohbet meta-sorusu veya PubMed aramasına uygun olmayan kısa ifadelerde
+    dış arama yapma (alakasız makale başlıkları önlenir).
+    """
+    t = (q or "").strip().lower()
+    if len(t) < 5:
+        return False
+    needles = (
+        "nereden alı",
+        "nerden alı",
+        "nereden geliyor",
+        "nerden geliyor",
+        "kaynak",
+        "hangi veri",
+        "veri tabanı",
+        "veritabanı",
+        "bilgini nereden",
+        "bilgileri nereden",
+        "bilgiyi nereden",
+        "nasıl öğrendin",
+        "sen kimsin",
+        "kimlisin",
+        "ne işe yarıyorsun",
+        "kaç soru",
+        "kaç mesaj",
+        "mesaj hakkı",
+        "mesaj limit",
+        "günlük kota",
+        "günlük mesaj",
+        "hakkım kaldı",
+        "kalan hakk",
+        "ücretsiz planda",
+        "hangi model",
+        "yapay zek",
+        "prompt",
+    )
+    return any(n in t for n in needles)
+
+
 def _sanitize_pubmed_term(q: str, max_len: int = 220) -> str:
     t = (q or "").strip()
     t = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", " ", t)
@@ -132,16 +172,12 @@ async def _europepmc_titles(term: str, *, max_results: int = 4) -> list[tuple[st
     return out
 
 
-def _format_hints_block(
-    lines: list[str],
-    *,
-    source_label: str,
-) -> str:
+def _format_hints_block(lines: list[str]) -> str:
     body = "\n".join(lines)
     return (
-        f"Harici — {source_label} (Rebi seçilmiş verisi değil; yalnızca indeks araması):\n"
-        f"{body}\n\n"
-        "Tam metin ve metod için makaleye git; teşhis/tedavi kararı vermez."
+        "Notlarımızda tam oturmazsa, merakını gidermek için şu yazılara göz atabilirsin:\n"
+        f"{body}\n"
+        "— Bağlantıdan tam metne ulaş; rahatsızlık veya tedavi kararı için yine doktorun en doğru adres."
     )
 
 
@@ -154,7 +190,7 @@ async def fetch_skin_literature_hints(user_message: str, *, max_results: int = 4
         return ""
 
     q = (user_message or "").strip()
-    if len(q) < 3:
+    if len(q) < 3 or skip_external_literature_for_query(q):
         return ""
 
     try:
@@ -175,7 +211,7 @@ async def fetch_skin_literature_hints(user_message: str, *, max_results: int = 4
             else:
                 url = f"https://europepmc.org/search?query={quote(q[:120])}"
             lines.append(f"{i}. {title}\n   {url}")
-        return _format_hints_block(lines, source_label=label)
+        return _format_hints_block(lines)
     except Exception as e:
         log.warning("free_literature hints failed: %s", e)
         return ""

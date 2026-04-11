@@ -5,7 +5,7 @@ import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Sequence
 
 from config import GEMINI_API_KEY, get_logger
 from knowledge.db import resolve_postgres_dsn
@@ -100,13 +100,33 @@ class IngestDoc:
     text: str
 
 
+_ALLOWED_EXT = {".pdf", ".txt", ".md", ".html", ".htm"}
+
+
 def discover_files(root: Path) -> list[Path]:
-    exts = {".pdf", ".txt", ".md", ".html", ".htm"}
     paths = []
     for p in root.rglob("*"):
-        if p.is_file() and p.suffix.lower() in exts:
+        if p.is_file() and p.suffix.lower() in _ALLOWED_EXT:
             paths.append(p)
     return sorted(paths)
+
+
+def _normalize_ingest_paths(paths: Iterable[Path]) -> list[Path]:
+    """Mutlak yol, var olan dosyalar; sırayı koru, tekrarları ele."""
+    seen: set[str] = set()
+    out: list[Path] = []
+    for raw in paths:
+        p = raw.expanduser().resolve()
+        if not p.is_file():
+            raise FileNotFoundError(f"Not a file: {raw}")
+        if p.suffix.lower() not in _ALLOWED_EXT:
+            raise ValueError(f"Unsupported extension (use {_ALLOWED_EXT}): {p}")
+        key = str(p)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+    return out
 
 
 def _ensure_gemini_client():
@@ -196,16 +216,23 @@ def _pg_vector_literal(vec: list[float]) -> str:
     return "[" + ",".join(f"{x:.8f}" for x in vec) + "]"
 
 
-def ingest_directory(
+def ingest_paths(
     *,
     user_id: str,
     folder_slug: str,
     folder_title: str,
-    root_dir: Path,
+    paths: Sequence[Path],
     store_raw_text: bool = False,
     embed_model: str = "gemini-embedding-001",
     batch_size: int = 16,
+    skip_existing: bool = True,
+    replace_existing: bool = False,
 ) -> dict:
+    """
+    Yalnızca verilen dosya yollarını işler (tek PDF veya liste).
+    skip_existing: aynı mutlak yol (source_url) bu klasörde varsa atla.
+    replace_existing: aynı yol varsa önce dokümanı sil (chunk'lar cascade), yeniden yükle.
+    """
     dsn = resolve_postgres_dsn()
     if not dsn:
         raise RuntimeError("SUPABASE_DATABASE_URL or DATABASE_URL is required for ingestion")
@@ -214,8 +241,8 @@ def ingest_directory(
     except Exception as e:
         raise RuntimeError("psycopg is required; install psycopg[binary]") from e
 
-    files = discover_files(root_dir)
-    log.info("Discovered %d files under %s", len(files), root_dir)
+    files = _normalize_ingest_paths(paths)
+    log.info("Ingesting %d file(s)", len(files))
 
     docs: list[IngestDoc] = []
     for p in files:
@@ -227,13 +254,14 @@ def ingest_directory(
         docs.append(IngestDoc(path=p, title=p.stem, source_type=st, text=text))
 
     inserted_docs = 0
+    skipped_existing = 0
+    inserted_document_ids: list[str] = []
     inserted_chunks = 0
     embedded_chunks = 0
     failed_chunks = 0
 
     with psycopg.connect(dsn, autocommit=True) as conn:
         with conn.cursor() as cur:
-            # folder upsert
             cur.execute(
                 """
                 insert into public.knowledge_folders (user_id, slug, title)
@@ -246,7 +274,28 @@ def ingest_directory(
             folder_id = cur.fetchone()[0]
 
             for d in docs:
-                # insert document
+                source_url = str(d.path.resolve())
+
+                cur.execute(
+                    """
+                    select id from public.knowledge_documents
+                    where user_id = %s and folder_id = %s and source_url = %s
+                    limit 1
+                    """,
+                    (user_id, folder_id, source_url),
+                )
+                row = cur.fetchone()
+                if row:
+                    if replace_existing:
+                        cur.execute(
+                            "delete from public.knowledge_documents where id = %s",
+                            (row[0],),
+                        )
+                    elif skip_existing:
+                        log.info("Skip existing (same path): %s", source_url)
+                        skipped_existing += 1
+                        continue
+
                 cur.execute(
                     """
                     insert into public.knowledge_documents
@@ -259,16 +308,16 @@ def ingest_directory(
                         folder_id,
                         d.source_type,
                         d.title,
-                        str(d.path),
+                        source_url,
                         d.text if store_raw_text else None,
                     ),
                 )
                 doc_id = cur.fetchone()[0]
                 inserted_docs += 1
+                inserted_document_ids.append(str(doc_id))
 
                 chunks = chunk_text(d.text)
                 chunks = [_sanitize_text_for_pg(c) for c in chunks]
-                # insert chunks without embeddings first
                 for idx, ch in enumerate(chunks):
                     cur.execute(
                         """
@@ -280,7 +329,6 @@ def ingest_directory(
                     )
                 inserted_chunks += len(chunks)
 
-                # embed and update in batches
                 for i in range(0, len(chunks), batch_size):
                     batch = chunks[i : i + batch_size]
                     try:
@@ -315,39 +363,112 @@ def ingest_directory(
     return {
         "folder_slug": folder_slug,
         "folder_title": folder_title,
-        "root_dir": str(root_dir),
-        "discovered_files": len(files),
+        "input_paths": [str(d.path.resolve()) for d in docs],
+        "files_seen": len(files),
         "inserted_docs": inserted_docs,
+        "inserted_document_ids": inserted_document_ids,
+        "skipped_existing": skipped_existing,
         "inserted_chunks": inserted_chunks,
         "embedded_chunks": embedded_chunks,
         "failed_chunks": failed_chunks,
     }
 
 
+def ingest_directory(
+    *,
+    user_id: str,
+    folder_slug: str,
+    folder_title: str,
+    root_dir: Path,
+    store_raw_text: bool = False,
+    embed_model: str = "gemini-embedding-001",
+    batch_size: int = 16,
+    skip_existing: bool = True,
+    replace_existing: bool = False,
+) -> dict:
+    """Klasördeki tüm desteklenen dosyalar; mevcut source_url ile çakışanlar varsayılan olarak atlanır."""
+    root_dir = root_dir.expanduser().resolve()
+    if not root_dir.is_dir():
+        raise NotADirectoryError(f"Not a directory: {root_dir}")
+    files = discover_files(root_dir)
+    log.info("Discovered %d files under %s", len(files), root_dir)
+    result = ingest_paths(
+        user_id=user_id,
+        folder_slug=folder_slug,
+        folder_title=folder_title,
+        paths=files,
+        store_raw_text=store_raw_text,
+        embed_model=embed_model,
+        batch_size=batch_size,
+        skip_existing=skip_existing,
+        replace_existing=replace_existing,
+    )
+    result["root_dir"] = str(root_dir)
+    result["discovered_files"] = len(files)
+    return result
+
+
 if __name__ == "__main__":
     """
-    Example:
-      SUPABASE_DATABASE_URL=... GEMINI_API_KEY=...
-      python -m knowledge.ingest --user <uuid> --folder pubmed --title "PubMed seed" --dir ./data/pubmed
+    Examples:
+      python -m knowledge.ingest --user <uuid> --folder data-pdfs --title "Katalog" --dir ./knowledge-data/data-pdfs
+      python -m knowledge.ingest --user <uuid> --folder data-pdfs --title "Katalog" --file ./yeni.pdf
     """
     import argparse
 
-    ap = argparse.ArgumentParser()
+    ap = argparse.ArgumentParser(
+        description="Ingest PDF/txt/md/html into knowledge store. Use --file for a single new PDF, or --dir for a folder.",
+    )
     ap.add_argument("--user", required=True, help="supabase auth user uuid")
-    ap.add_argument("--folder", required=True, help="folder slug, e.g. pubmed")
+    ap.add_argument("--folder", required=True, help="folder slug, e.g. data-pdfs")
     ap.add_argument("--title", required=True, help="folder title")
-    ap.add_argument("--dir", required=True, help="directory to ingest")
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--dir", help="directory to scan recursively")
+    src.add_argument(
+        "--file",
+        action="append",
+        dest="files",
+        metavar="PATH",
+        help="single file to ingest (repeat for multiple); only these paths are processed",
+    )
     ap.add_argument("--store-raw", action="store_true", help="store raw_text in documents table")
-    ap.add_argument("--model", default="text-embedding-004")
+    ap.add_argument(
+        "--replace-existing",
+        action="store_true",
+        help="if same absolute path already ingested in this folder, delete old doc+chunks and re-ingest",
+    )
+    ap.add_argument(
+        "--no-skip-existing",
+        action="store_true",
+        help="allow duplicate source_url (not recommended); default is skip same path",
+    )
+    ap.add_argument("--model", default="gemini-embedding-001", help="Google embedding model id")
     args = ap.parse_args()
 
-    result = ingest_directory(
-        user_id=args.user,
-        folder_slug=args.folder,
-        folder_title=args.title,
-        root_dir=Path(args.dir),
-        store_raw_text=bool(args.store_raw),
-        embed_model=str(args.model),
-    )
+    skip_existing = not bool(args.no_skip_existing)
+    replace_existing = bool(args.replace_existing)
+
+    if args.dir:
+        result = ingest_directory(
+            user_id=args.user,
+            folder_slug=args.folder,
+            folder_title=args.title,
+            root_dir=Path(args.dir),
+            store_raw_text=bool(args.store_raw),
+            embed_model=str(args.model),
+            skip_existing=skip_existing,
+            replace_existing=replace_existing,
+        )
+    else:
+        result = ingest_paths(
+            user_id=args.user,
+            folder_slug=args.folder,
+            folder_title=args.title,
+            paths=[Path(p) for p in (args.files or [])],
+            store_raw_text=bool(args.store_raw),
+            embed_model=str(args.model),
+            skip_existing=skip_existing,
+            replace_existing=replace_existing,
+        )
     print(json.dumps(result, indent=2, ensure_ascii=False))
 

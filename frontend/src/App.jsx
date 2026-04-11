@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-route
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider, ThemePremiumGate } from "./context/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
+import RebiIntroSplash from "./components/RebiIntroSplash";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
 import Landing from "./pages/Landing";
@@ -63,6 +64,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <BrowserRouter>
+        <RebiIntroSplash scope="app" />
         <AuthProvider>
           <ThemeProvider>
             <ThemePremiumGate />

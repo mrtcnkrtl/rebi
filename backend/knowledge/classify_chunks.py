@@ -176,6 +176,7 @@ def classify_chunks(
     *,
     user_id: str,
     folder_slug: Optional[str] = None,
+    document_id: Optional[str] = None,
     limit: int = 400,
     batch_size: int = 12,
     model: str = "gemini-2.0-flash",
@@ -206,6 +207,19 @@ def classify_chunks(
     with pg_conn(autocommit=True) as conn:
         with conn.cursor() as cur:
             folder_id = None
+            if document_id:
+                _exec(
+                    cur,
+                    """
+                    select folder_id from public.knowledge_documents
+                    where id = %s::uuid and user_id = %s
+                    """,
+                    (document_id, user_id),
+                )
+                drow = cur.fetchone()
+                if not drow or not drow[0]:
+                    raise RuntimeError(f"Document not found for user: {document_id}")
+                folder_id = drow[0]
             if folder_slug:
                 _exec(
                     cur,
@@ -213,9 +227,12 @@ def classify_chunks(
                     (user_id, folder_slug),
                 )
                 row = cur.fetchone()
-                folder_id = row[0] if row else None
-                if not folder_id:
+                fid = row[0] if row else None
+                if not fid:
                     raise RuntimeError(f"Folder not found for slug={folder_slug}")
+                if document_id and str(fid) != str(folder_id):
+                    raise RuntimeError("--document-id belongs to a different folder than --folder")
+                folder_id = fid
 
             _exec(
                 cur,
@@ -224,12 +241,20 @@ def classify_chunks(
                 from public.knowledge_chunks
                 where user_id = %s
                   and (%s::uuid is null or folder_id = %s::uuid)
+                  and (%s::uuid is null or document_id = %s::uuid)
                   and embed_ok is true
                   and embedding is not null
-                order by created_at asc
+                order by created_at desc
                 limit %s
                 """,
-                (user_id, folder_id, folder_id, max(int(limit), 1)),
+                (
+                    user_id,
+                    folder_id,
+                    folder_id,
+                    document_id,
+                    document_id,
+                    max(int(limit), 1),
+                ),
             )
             rows = cur.fetchall() or []
 
@@ -401,6 +426,7 @@ def classify_chunks(
     return {
         "user_id": user_id,
         "folder_slug": folder_slug,
+        "document_id": document_id,
         "model": model,
         "total_scanned": len(rows),
         "classified_updated": updated,
@@ -415,6 +441,12 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--user", required=True, help="supabase auth user uuid")
     ap.add_argument("--folder", default=None, help="folder slug (optional)")
+    ap.add_argument(
+        "--document-id",
+        default=None,
+        dest="document_id",
+        help="only classify chunks for this knowledge_documents.id (e.g. after single-file ingest)",
+    )
     ap.add_argument("--limit", type=int, default=400)
     ap.add_argument("--batch", type=int, default=12)
     ap.add_argument("--model", default="gemini-2.0-flash")
@@ -424,6 +456,7 @@ if __name__ == "__main__":
     result = classify_chunks(
         user_id=args.user,
         folder_slug=args.folder,
+        document_id=args.document_id,
         limit=args.limit,
         batch_size=args.batch,
         model=args.model,

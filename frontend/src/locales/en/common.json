@@ -1,5 +1,26 @@
 {
   "appName": "Rebi",
+  "intro": {
+    "skip": "Skip",
+    "appTitle": "Welcome",
+    "appSubtitle": "Rebi likes a calm start. These cards are just quick tips — nothing heavy.",
+    "chatTitle": "Rebi chat",
+    "chatSubtitle": "We try our scientific notes first; if something isn’t there, we’ll say so. For your routine, head to Analysis / tracking.",
+    "fallbackTip": "Ask what you’re curious about — we’ll keep it short and clear.",
+    "appTips": [
+      "We pull answers from the team’s scientific notes when we can — we match instead of guessing.",
+      "Your morning/evening routine is built in Analysis & daily tracking, not in this chat.",
+      "On the free plan there may be a daily message cap; your remaining count shows under the chat box.",
+      "For serious symptoms, see a dermatologist — this is info chat, not diagnosis.",
+      "As new PDF notes are added, answers here get richer over time."
+    ],
+    "chatTips": [
+      "Type an ingredient or topic — we’ll keep replies short.",
+      "If it’s not in our notes, we may suggest a few PubMed links — reading ideas, not medical orders.",
+      "Chat history can stay on your device; tap Clear above to reset.",
+      "To change your routine, use Analysis and check-in."
+    ]
+  },
   "nav": {
     "dashboard": "Dashboard",
     "profile": "Profile",
@@ -189,12 +210,12 @@
     "feedbackSkip": "Skip"
   },
   "chat": {
-    "subtitle": "Skin science & ingredients — short answers grounded in our notes",
+    "subtitle": "From our own notes — short, science-first",
     "clear": "Clear",
-    "thinking": "Rebi is thinking...",
-    "welcome": "Hi {{name}}! Ask about skin science, cosmetic ingredients, and general curiosity — I’ll keep answers short and grounded in our uploaded notes when possible. For your personal routine, to-dos, and daily plan, use Analysis and tracking in the app.",
-    "placeholder": "e.g. retinol, redness, skin barrier, cleanser types...",
-    "footerHint": "Info chat (note-grounded) — your personal routine lives in the app. Free daily limit applies."
+    "thinking": "One sec, checking our notes…",
+    "welcome": "Hey {{name}} — chatty but careful: I try to answer from our team’s scientific notes, and I’ll say honestly when something isn’t in there yet. For your personal routine and to-dos, hop to Analysis / tracking.",
+    "placeholder": "Try retinol, redness, skin barrier…",
+    "footerHint": "We lean on our own notes first; a daily message limit may apply. Your routine plan lives in Analysis."
   },
   "dashboard": {
     "noAnalyzeTitle": "Hi, {{name}}!",

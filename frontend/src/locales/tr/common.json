@@ -1,5 +1,26 @@
 {
   "appName": "Rebi",
+  "intro": {
+    "skip": "Geç",
+    "appTitle": "Hoş geldin",
+    "appSubtitle": "Rebi; notlarından beslenen, sakin bir başlangıç ister. Bu kartlar sadece kısa ipucu.",
+    "chatTitle": "Rebi sohbet",
+    "chatSubtitle": "Önce bizim bilimsel notlara bakarız; yoksa dürüstçe söyleriz. Rutin planı için Analiz tarafına geçebilirsin.",
+    "fallbackTip": "Cilt hakkında merak ettiklerini yaz; kısa ve net kalırız.",
+    "appTips": [
+      "Cevapları mümkün olduğunca ekibin derlediği bilimsel notlardan seçeriz — uydurmak yerine eşleştiririz.",
+      "Kişisel sabah-akşam rutinini burada değil; Analiz ve günlük takipte kurarız.",
+      "Ücretsiz planda günlük mesaj sınırı olabilir; kalan hakkın sohbet altında görünür.",
+      "Ciddi şikâyette mutlaka dermatoloğa danış; burası bilgi sohbeti, teşhis değil.",
+      "Yeni PDF notlar eklendikçe bu sohbet daha da zenginleşir."
+    ],
+    "chatTips": [
+      "Madde veya kavram yazman yeterli; kısa cevap veririz.",
+      "Notlarda yoksa bazen PubMed’den örnek yazı linki önerebiliriz — okuma fikri, talimat değil.",
+      "Sohbet geçmişin cihazında saklanabilir; temizlemek için üstteki Temizle’ye bas.",
+      "Rutinini değiştirmek için Analiz ve check-in ekranlarını kullan."
+    ]
+  },
   "nav": {
     "dashboard": "Dashboard",
     "profile": "Profil",
@@ -189,12 +210,12 @@
     "feedbackSkip": "Atla"
   },
   "chat": {
-    "subtitle": "Cilt bilimi ve içerik maddeleri — notlarımıza dayalı kısa yanıtlar",
+    "subtitle": "Kendi notlarımızdan — kısa ve bilim odaklı",
     "clear": "Temizle",
-    "thinking": "Rebi düşünüyor...",
-    "welcome": "Merhaba {{name}}! Cilt bilimi, içerik maddeleri ve merak ettiklerin hakkında kısa yanıt verebilirim; mümkün olduğunca yüklü bilimsel notlarımıza dayanır. Sana özel rutin, yapılacaklar ve günlük plan için uygulamadaki Analiz ve takip bölümünü kullan.",
-    "placeholder": "Örn. retinol, kızarıklık, nem bariyeri, temizleyici türleri...",
-    "footerHint": "Bilgi sohbeti (notlara dayalı) — kişisel rutin uygulamada. Ücretsiz günlük limit geçerli."
+    "thinking": "Bir saniye, notlarına bakıyorum…",
+    "welcome": "Selam {{name}}! Burada arkadaşça konuşuruz: cevapları mümkün olduğunca ekibin topladığı bilimsel notlardan çıkarırım; bir şey notlarda yoksa sana dürüstçe söylerim. Kişisel rutin ve yapılacaklar için Analiz / takip ekranına geçmen yeterli.",
+    "placeholder": "Mesela retinol, kızarıklık, nem bariyeri…",
+    "footerHint": "Önce bizim notlar; günlük mesaj limiti uygulanır. Rutin planı Analiz’de."
   },
   "dashboard": {
     "noAnalyzeTitle": "Merhaba, {{name}}!",

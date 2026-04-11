@@ -8,6 +8,7 @@ import { DEMO_USER_ID } from "../lib/demoUser";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { Bot, Send, Loader2, Sparkles, Crown, Lock, ArrowRight, X } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
+import RebiIntroSplash from "../components/RebiIntroSplash";
 import { useTranslation } from "react-i18next";
 
 export default function Chat() {
@@ -150,6 +151,7 @@ export default function Chat() {
 
   return (
     <div className={`min-h-screen ${theme.bg} relative`}>
+      <RebiIntroSplash scope="chat" accentColor={theme.accent} primaryColor={theme.primary} />
       <ThemePatternOverlay pattern={theme.pattern} />
       <div className="max-w-lg mx-auto flex flex-col h-[calc(100vh-128px)] relative z-[1]">
         {/* Header */}

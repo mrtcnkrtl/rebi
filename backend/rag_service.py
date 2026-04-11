@@ -282,16 +282,36 @@ def _free_chat_has_usable_rag(kb: str) -> bool:
 
 
 def _free_chat_no_dataset_reply() -> str:
-    """RAG yok veya yeterli değil; kurumsal veri iddiası yok."""
+    """RAG yok; samimi, kendi notları + bilim çerçevesi."""
     return (
-        "Bu soru için şu an Rebi’nin seçilmiş yüklü notlarında eşleşen pasaj yok. "
-        "Aşağıdaki ek (varsa) Rebi veri tabanından seçilmiş bilgi değildir; "
-        "PubMed veya Europe PMC indeks aramasıyla otomatik listelenmiş başlık ve bağlantılardır."
+        "Bu soruda henüz bizim notlarda tam oturan bir şey bulamadım — üzgünüm, bazen böyle oluyor. "
+        "İstersen aşağıdaki yazılara göz at; onlar bizim notlarımızdan değil, genel bilim aramasından, "
+        "yine de okurken şüpheci kal ve ciddi bir şikâyet varsa doktoruna danış."
+    )
+
+
+def _free_chat_meta_assistant_reply() -> str:
+    try:
+        from free_chat_quota import free_chat_limit
+
+        lim = free_chat_limit()
+    except Exception:
+        lim = 25
+    return (
+        "Ben burada önce ekibin derlediği bilimsel notlara bakıyorum; orada bir şey yoksa sana dürüstçe söylüyorum, "
+        "bazen de merakını gidermek için PubMed tarafında örnek yazılar önerebiliyorum — o kısım tıbbi talimat değil, sadece okuma fikri.\n\n"
+        f"Ücretsiz planda günde yaklaşık {lim} mesaj civarı bir üst sınır var; tam kalan hakkını sohbet ekranından görebilirsin."
     )
 
 
 async def _free_chat_no_rag_full_reply(user_message: str) -> str:
-    """Sabit uyarı + isteğe bağlı ücretsiz literatür satırları (LLM yok)."""
+    """Meta soru → kısa açıklama; içerik sorusu → kısa not + isteğe bağlı literatür (LLM yok)."""
+    from knowledge.free_literature import skip_external_literature_for_query
+
+    um = (user_message or "").strip()
+    if skip_external_literature_for_query(um):
+        return _free_chat_meta_assistant_reply()
+
     base = _free_chat_no_dataset_reply()
     from knowledge.free_literature import fetch_skin_literature_hints
 
@@ -727,9 +747,9 @@ async def _free_chat(
 
     redirect_app = {
         "reply": (
-            "Sana özel yapılacaklar listesi ve rutin planı bu sohbette değil; "
-            "bunlar uygulamadaki Analiz ve günlük takipte oluşturulur. "
-            "Burada cilt bilimi, içerik maddeleri ve yüklü notlarımızdaki bilgiler hakkında soru sorabilirsin."
+            "Bu kısımda sana özel yapılacaklar listesi veya sabah-akşam rutin planı çıkarmıyorum — "
+            "onlar Analiz ve günlük takipte şekilleniyor. Burada daha çok cilt bilimi ve içerik maddeleri için "
+            "bizim bilimsel notlara dayalı sohbet var; istersen oradan devam edelim."
         ),
         "is_complete": False,
         "extracted_data": None,
@@ -738,9 +758,8 @@ async def _free_chat(
     if _GREETING_ONLY.match(um):
         return {
             "reply": (
-                "Merhaba! Cilt bilimi, içerik maddeleri ve merak ettiklerin hakkında kısa cevap verebilirim; "
-                "cevaplar mümkün olduğunca yüklü bilimsel notlarımıza dayanır. "
-                "Kişisel rutin ve yapılacaklar için Analiz / takip bölümünü kullan."
+                "Selam! Burada samimi kalıp cevapları mümkün olduğunca kendi bilimsel notlarımızdan vermeye çalışıyorum; "
+                "bir şey notlarda yoksa da söylerim. Kişisel rutin ve yapılacaklar için Analiz / takip tarafına geçebilirsin."
             ),
             "is_complete": False,
             "extracted_data": None,
@@ -760,10 +779,10 @@ async def _free_chat(
 
     # Son kullanıcı mesajı: REFERANS ile (Gemini özeti yalnızca buna dayansın)
     final_user = (
-        "REFERANS (Rebi yüklü notları — önce bunu kullan; uydurma bilgi ekleme):\n\n"
-        f"{kb}\n\n---\n\nKullanıcı sorusu: {um}\n\n"
-        "Kurallar: en fazla 2 kısa cümle; madde/ölçü iddiası varsa yalnızca referansta geçiyorsa yaz. "
-        "Sabah-akşam rutin adımı, yapılacaklar listesi veya kişiselleştirilmiş tedavi planı verme."
+        "REFERANS — Rebi’nin kendi bilimsel notları (önce buna dayan, dışarıdan uydurma):\n\n"
+        f"{kb}\n\n---\n\nSoru: {um}\n\n"
+        "En fazla 2 kısa cümle, samimi arkadaş tonu; madde/ölçü iddiası yalnızca referansta geçiyorsa. "
+        "Rutin adımı / yapılacak listesi / kişisel tedavi planı verme."
     )
 
     contents: list = []
@@ -776,18 +795,20 @@ async def _free_chat(
 
     name = (user_profile or {}).get("name", "Kullanıcı")
     system_instruction = (
-        f"Kullanıcının görünen adı: {name}.\n"
-        "Sen Rebi bilgi asistanısın. Türkçe konuş.\n"
-        "Cilt bilimi, kozmetik içerik maddeleri, ürün türleri ve genel mekanizmalar hakkında kısa yanıt ver.\n"
-        "REFERANS var; yanıtın özünü ORADAN türet; referansta olmayan kesin iddia verme.\n"
-        "Kişisel rutin, yapılacaklar, sabah-akşam adımlar VERME.\n"
-        "Tıbbi teşhis yok; ciddi belirti için dermatoloğa yönlendir.\n"
-        "Çıktı: en fazla 2 çok kısa cümle (token tasarrufu)."
+        f"Kullanıcının adı: {name}.\n"
+        "Sen Rebi’sin: sıcak, samimi bir arkadaş gibi konuş ama bilimi ciddiye al; Türkçe.\n"
+        "REFERANS = ekibin bilimsel notları; cevabın özünü ORADAN çıkar, orada yoksa uydurma.\n"
+        "Cilt bilimi, içerik maddeleri, ürün türleri; kişisel rutin / yapılacak / sabah-akşam planı verme.\n"
+        "Teşhis koyma; ciddi belirtide dermatoloğa yönlendir.\n"
+        "En fazla 2 kısa cümle."
     )
 
     if not gemini_client:
         return {
-            "reply": "Şu an özet üretilemiyor; yüklü notlar:\n\n" + kb[:2400],
+            "reply": (
+                "Şu an kısa özet üretemedim ama işte bizim notlardan gelen pasajlar; "
+                "istersen buradan okuyup devam edebilirsin:\n\n" + kb[:2400]
+            ),
             "is_complete": False,
             "extracted_data": None,
         }
