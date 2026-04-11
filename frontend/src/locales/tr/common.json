@@ -1,11 +1,11 @@
 {
   "appName": "Rebi",
   "intro": {
-    "skip": "Geç",
+    "skip": "Hadi başlayalım",
     "appTitle": "Hoş geldin",
-    "appSubtitle": "Rebi; notlarından beslenen, sakin bir başlangıç ister. Bu kartlar sadece kısa ipucu.",
+    "appSubtitle": "Şimdi kısa bir tur: kendi bilimsel notlarımız, sakin cevaplar ve seni içeri alan bir ritim.",
     "chatTitle": "Rebi sohbet",
-    "chatSubtitle": "Önce bizim bilimsel notlara bakarız; yoksa dürüstçe söyleriz. Rutin planı için Analiz tarafına geçebilirsin.",
+    "chatSubtitle": "Burada önce notlarımıza kulak veriyoruz; merakını birlikte eşleştirelim.",
     "fallbackTip": "Cilt hakkında merak ettiklerini yaz; kısa ve net kalırız.",
     "appTips": [
       "Cevapları mümkün olduğunca ekibin derlediği bilimsel notlardan seçeriz — uydurmak yerine eşleştiririz.",
