@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Masaüstündeki "data aı" klasöründeki PDF/txt/md/html dosyalarını
+# Masaüstündeki "data aı" klasöründeki PDF/docx/txt/md/html dosyalarını
 # Supabase Postgres (knowledge_*) tablolarına yükler ve Gemini ile embed eder.
 #
 # Gerekli .env (backend/.env):

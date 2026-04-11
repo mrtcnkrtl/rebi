@@ -7,6 +7,7 @@ httpx==0.28.1
 python-multipart==0.0.20
 pydantic==2.10.4
 PyPDF2
+python-docx>=1.1.0
 pandas
 openpyxl
 PyJWT>=2.8.0

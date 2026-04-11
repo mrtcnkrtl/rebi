@@ -51,6 +51,24 @@ def _read_text_file(path: Path) -> tuple[str, str]:
             except Exception:
                 pages.append("")
         return _sanitize_text_for_pg("\n\n".join(pages).strip()), "pdf"
+    if ext == ".docx":
+        try:
+            from docx import Document  # type: ignore
+        except Exception as e:
+            raise RuntimeError("python-docx missing; pip install python-docx") from e
+        doc = Document(str(path))
+        parts: list[str] = []
+        for para in doc.paragraphs:
+            t = (para.text or "").strip()
+            if t:
+                parts.append(t)
+        for table in doc.tables:
+            for row in table.rows:
+                cells = [(c.text or "").strip() for c in row.cells]
+                line = " | ".join(c for c in cells if c)
+                if line:
+                    parts.append(line)
+        return _sanitize_text_for_pg("\n\n".join(parts).strip()), "docx"
     # fallback
     return _sanitize_text_for_pg(path.read_text(encoding="utf-8", errors="ignore")), "other"
 
@@ -100,7 +118,7 @@ class IngestDoc:
     text: str
 
 
-_ALLOWED_EXT = {".pdf", ".txt", ".md", ".html", ".htm"}
+_ALLOWED_EXT = {".pdf", ".txt", ".md", ".html", ".htm", ".docx"}
 
 
 def discover_files(root: Path) -> list[Path]:
@@ -420,7 +438,7 @@ if __name__ == "__main__":
     import argparse
 
     ap = argparse.ArgumentParser(
-        description="Ingest PDF/txt/md/html into knowledge store. Use --file for a single new PDF, or --dir for a folder.",
+        description="Ingest PDF/docx/txt/md/html into knowledge store. Use --file for single files, or --dir for a folder.",
     )
     ap.add_argument("--user", required=True, help="supabase auth user uuid")
     ap.add_argument("--folder", required=True, help="folder slug, e.g. data-pdfs")

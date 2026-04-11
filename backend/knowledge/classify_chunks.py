@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import re
 import os
+import time
 from typing import Optional
 
 from google.genai import types
@@ -265,6 +266,22 @@ def _looks_like_bad_json(e: BaseException) -> bool:
     return False
 
 
+def _is_transient_db_or_network(e: BaseException) -> bool:
+    """Long classify runs may hit brief Supabase or TLS blips; Gemini HTTP can time out too."""
+    blob = _collect_exception_texts(e).lower()
+    if "timeout" in blob and ("connection" in blob or "connect" in blob or "read" in blob):
+        return True
+    if "temporarily unavailable" in blob:
+        return True
+    if "server closed the connection" in blob or "connection reset" in blob:
+        return True
+    if "could not receive data from server" in blob or "could not send data to server" in blob:
+        return True
+    if "ssl" in blob and "error" in blob:
+        return True
+    return False
+
+
 def _ensure_client():
     if not gemini_client:
         raise RuntimeError("Gemini client not ready; set GEMINI_API_KEY")
@@ -290,6 +307,7 @@ def classify_chunks(
     batch_size: int = 4,
     model: str = "gemini-2.0-flash",
     force: bool = False,
+    upgrade_regex: bool = False,
 ) -> dict:
     """
     Fills `knowledge_chunks.klass` with lightweight scientific routing metadata:
@@ -343,6 +361,8 @@ def classify_chunks(
                     raise RuntimeError("--document-id belongs to a different folder than --folder")
                 folder_id = fid
 
+            # Without --force: only rows that still need klass (not "newest N rows then skip").
+            # Otherwise older chunks with empty klass never appear when limit < total table size.
             _exec(
                 cur,
                 """
@@ -353,7 +373,17 @@ def classify_chunks(
                   and (%s::uuid is null or document_id = %s::uuid)
                   and embed_ok is true
                   and embedding is not null
-                order by created_at desc
+                  and (
+                    %s::boolean
+                    or klass is null
+                    or klass = '{}'::jsonb
+                    or (
+                      %s::boolean
+                      and klass ? 'method'
+                      and klass->>'method' = 'regex'
+                    )
+                  )
+                order by created_at asc
                 limit %s
                 """,
                 (
@@ -362,6 +392,8 @@ def classify_chunks(
                     folder_id,
                     document_id,
                     document_id,
+                    bool(force),
+                    bool(upgrade_regex),
                     max(int(limit), 1),
                 ),
             )
@@ -370,13 +402,21 @@ def classify_chunks(
     # classify outside transaction loops (still updates inside new connections below)
     to_process = []
     for (chunk_id, chunk_text, klass) in rows:
-        if (not force) and (not _is_empty_klass(klass)):
-            skipped += 1
-            continue
+        if not force:
+            is_empty = _is_empty_klass(klass)
+            is_regex = isinstance(klass, dict) and klass.get("method") == "regex"
+            if not is_empty and not (upgrade_regex and is_regex):
+                skipped += 1
+                continue
         # Shorter text = smaller model JSON (fewer truncation / parse errors).
         to_process.append((chunk_id, (chunk_text or "")[:1800]))
 
-    log.info("Chunks: %d total, %d to classify, %d skipped", len(rows), len(to_process), skipped)
+    log.info(
+        "Chunks: %d DB candidates, %d to classify, %d skipped",
+        len(rows),
+        len(to_process),
+        skipped,
+    )
 
     for i in range(0, len(to_process), batch_size):
         batch = to_process[i : i + batch_size]
@@ -413,7 +453,7 @@ def classify_chunks(
                 f"Input JSON:\n{json.dumps(payload, ensure_ascii=False)}"
             )
 
-        def try_batch(sub_batch: list[tuple], depth: int = 0) -> None:
+        def try_batch(sub_batch: list[tuple], depth: int = 0, net_retries: int = 0) -> None:
             nonlocal updated, failed, client
             if not sub_batch:
                 return
@@ -447,34 +487,59 @@ def classify_chunks(
                     if cid:
                         id_to_klass[str(cid)] = item
 
-                with pg_conn(autocommit=True) as conn:
-                    with conn.cursor() as cur:
-                        for (cid, _txt) in sub_batch:
-                            k = id_to_klass.get(str(cid))
-                            if not k:
-                                failed += 1
-                                continue
-                            _exec(
-                                cur,
-                                """
-                                update public.knowledge_chunks
-                                set klass = %s::jsonb
-                                where id = %s and user_id = %s
-                                """,
-                                (json.dumps(k, ensure_ascii=False), cid, user_id),
-                            )
-                            updated += 1
+                # Gemini is already done; Postgres connect can flake — retry DB without
+                # double-counting updates (one transaction per attempt for klass writes).
+                for db_attempt in range(10):
+                    u_delta = 0
+                    f_delta = 0
+                    applied: list[tuple[str, dict]] = []
+                    try:
+                        with pg_conn(autocommit=False) as conn:
+                            with conn.cursor() as cur:
+                                for (cid, _txt) in sub_batch:
+                                    k = id_to_klass.get(str(cid))
+                                    if not k:
+                                        f_delta += 1
+                                        continue
+                                    _exec(
+                                        cur,
+                                        """
+                                        update public.knowledge_chunks
+                                        set klass = %s::jsonb
+                                        where id = %s and user_id = %s
+                                        """,
+                                        (json.dumps(k, ensure_ascii=False), cid, user_id),
+                                    )
+                                    u_delta += 1
+                                    applied.append((str(cid), k))
+                            conn.commit()
+                        updated += u_delta
+                        failed += f_delta
+                        for cid_s, k in applied:
                             try:
                                 ings = k.get("ingredients") if isinstance(k, dict) else None
                                 if isinstance(ings, list) and ings:
                                     _upsert_entity_links(
                                         user_id=user_id,
                                         folder_id=str(folder_id) if folder_id else None,
-                                        chunk_id=str(cid),
+                                        chunk_id=cid_s,
                                         ingredients=[str(x) for x in ings if x],
                                     )
                             except Exception:
                                 pass
+                        break
+                    except Exception as db_e:
+                        if db_attempt < 9 and _is_transient_db_or_network(db_e):
+                            wait = min(6 + db_attempt * 7, 60)
+                            log.warning(
+                                "DB write transient (attempt %s/10); sleep %ss: %s",
+                                db_attempt + 1,
+                                wait,
+                                db_e,
+                            )
+                            time.sleep(wait)
+                            continue
+                        raise
             except Exception as e:
                 msg = str(e)
                 quota = "RESOURCE_EXHAUSTED" in msg or "429" in msg
@@ -502,8 +567,8 @@ def classify_chunks(
                             len(sub_batch) - mid,
                             depth,
                         )
-                        try_batch(sub_batch[:mid], depth + 1)
-                        try_batch(sub_batch[mid:], depth + 1)
+                        try_batch(sub_batch[:mid], depth + 1, 0)
+                        try_batch(sub_batch[mid:], depth + 1, 0)
                         return
                     log.warning(
                         "Classifier JSON invalid; regex fallback for %d chunk(s) at offset %d",
@@ -516,6 +581,20 @@ def classify_chunks(
                         batch=sub_batch,
                     )
                     return
+                if _is_transient_db_or_network(e) and net_retries < 10:
+                    wait = min(10 + net_retries * 8, 60)
+                    log.warning(
+                        "Transient DB/network error; retry %s/%s in %ss (%d..%d): %s",
+                        net_retries + 1,
+                        10,
+                        wait,
+                        i,
+                        i + len(batch) - 1,
+                        e,
+                    )
+                    time.sleep(wait)
+                    try_batch(sub_batch, depth, net_retries + 1)
+                    return
                 log.error(
                     "Classification batch failed (%d..%d): %s",
                     i,
@@ -524,13 +603,14 @@ def classify_chunks(
                 )
                 failed += len(sub_batch)
 
-        try_batch(batch, 0)
+        try_batch(batch, 0, 0)
 
     return {
         "user_id": user_id,
         "folder_slug": folder_slug,
         "document_id": document_id,
         "model": model,
+        "upgrade_regex": bool(upgrade_regex),
         "total_scanned": len(rows),
         "classified_updated": updated,
         "skipped_existing": skipped,
@@ -554,6 +634,11 @@ if __name__ == "__main__":
     ap.add_argument("--batch", type=int, default=4, help="Gemini batch size (smaller = more stable JSON)")
     ap.add_argument("--model", default="gemini-2.0-flash")
     ap.add_argument("--force", action="store_true", help="overwrite existing klass and rebuild entity links")
+    ap.add_argument(
+        "--upgrade-regex",
+        action="store_true",
+        help="re-run Gemini for chunks that only have klass.method=regex (JSON fallback rows)",
+    )
     args = ap.parse_args()
 
     result = classify_chunks(
@@ -564,6 +649,7 @@ if __name__ == "__main__":
         batch_size=args.batch,
         model=args.model,
         force=bool(args.force),
+        upgrade_regex=bool(args.upgrade_regex),
     )
     print(json.dumps(result, indent=2, ensure_ascii=False))
 

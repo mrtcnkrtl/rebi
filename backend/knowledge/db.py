@@ -34,6 +34,15 @@ def postgres_dsn() -> str:
     return dsn
 
 
+def _connect_timeout_sec() -> int:
+    raw = (os.getenv("POSTGRES_CONNECT_TIMEOUT") or "240").strip() or "240"
+    try:
+        v = int(raw)
+    except ValueError:
+        v = 240
+    return max(15, min(v, 900))
+
+
 @contextmanager
 def pg_conn(autocommit: bool = True):
     try:
@@ -47,6 +56,7 @@ def pg_conn(autocommit: bool = True):
         postgres_dsn(),
         autocommit=autocommit,
         prepare_threshold=0,
+        connect_timeout=_connect_timeout_sec(),
     ) as conn:
         try:
             # Pooler can reuse server connections that already have prepared statements.
