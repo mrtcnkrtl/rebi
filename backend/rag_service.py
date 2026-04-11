@@ -535,8 +535,34 @@ def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
         "hair",
         "scalp",
         "oil",
+        "ceviz",
+        "walnut",
     )
     return any(n in t for n in needles)
+
+
+_FREE_CHAT_NO_PASSAGE_DISCLAIMER = (
+    "Bilgi tabanında bu soruya tam oturan pasaj bulamadım; aşağısı yalnızca genel bilgilendirme "
+    "(teşhis veya kesin tedavi değil):"
+)
+
+
+def _strip_free_chat_disclaimer_echo(text: str) -> str:
+    """Geçmişteki veya modelin ürettiği tekrarlayan 'pasaj yok' uyarılarını sök (çift prefix bug'ı)."""
+    b = (text or "").strip()
+    for _ in range(5):
+        if b.startswith(_FREE_CHAT_NO_PASSAGE_DISCLAIMER):
+            b = b[len(_FREE_CHAT_NO_PASSAGE_DISCLAIMER) :].lstrip().lstrip(":").strip()
+            continue
+        # Model bazen sadece ilk cümleyi + newline ile tekrarlar
+        short = "Bilgi tabanında bu soruya tam oturan pasaj bulamadım"
+        if b.startswith(short):
+            cut = b.find(":")
+            if cut != -1:
+                b = b[cut + 1 :].lstrip().strip()
+                continue
+        break
+    return b.strip()
 
 
 async def _free_chat_try_general_guidance_without_rag(
@@ -558,8 +584,11 @@ async def _free_chat_try_general_guidance_without_rag(
     contents: list = []
     for msg in hist[-8:]:
         role = "model" if msg.get("role") == "assistant" else "user"
+        raw = msg.get("content", "") or ""
+        if role == "model":
+            raw = _strip_free_chat_disclaimer_echo(raw)
         contents.append(
-            types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", "") or "")])
+            types.Content(role=role, parts=[types.Part.from_text(text=raw)])
         )
     contents.append(types.Content(role="user", parts=[types.Part.from_text(text=um)]))
 
@@ -586,11 +615,9 @@ async def _free_chat_try_general_guidance_without_rag(
         reply = _gemini_response_text(response)
         if not reply:
             return None
-        prefix = (
-            "Bilgi tabanında bu soruya tam oturan pasaj bulamadım; aşağısı yalnızca genel bilgilendirme "
-            "(teşhis veya kesin tedavi değil):\n\n"
-        )
-        reply = prefix + reply.strip()
+        body = _strip_free_chat_disclaimer_echo(reply)
+        prefix = _FREE_CHAT_NO_PASSAGE_DISCLAIMER + "\n\n"
+        reply = prefix + body
         log.info("Free chat: pasaj yok, genel bilgilendirme yanıtı (%d karakter)", len(reply))
         return {"reply": reply, "is_complete": False, "extracted_data": None}
     except Exception as e:

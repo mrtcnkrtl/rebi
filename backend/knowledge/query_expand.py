@@ -150,6 +150,8 @@ _SKIN_EXPANSIONS: tuple[tuple[tuple[str, ...], str], ...] = (
             "lavender",
             "badem",
             "almond",
+            "ceviz",
+            "walnut",
             "jojoba",
             "argan",
             "hindistan",
@@ -169,7 +171,7 @@ _SKIN_EXPANSIONS: tuple[tuple[tuple[str, ...], str], ...] = (
             "sampuan",
             "şampuan",
         ),
-        "almond oil lavender essential oil carrier oil scalp hair seborrhea dermatitis irritant contact sensitization patch test",
+        "almond walnut oil lavender essential oil carrier oil scalp hair seborrhea dermatitis irritant contact sensitization patch test",
     ),
 )
 
