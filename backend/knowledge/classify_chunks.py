@@ -156,6 +156,115 @@ def _regex_extract_ingredients(text: str) -> list[str]:
     return out[:12]
 
 
+def _apply_regex_klass_batch(
+    *,
+    user_id: str,
+    folder_id: str | None,
+    batch: list[tuple],
+) -> int:
+    """
+    Deterministic klass when Gemini is unavailable or returned invalid JSON.
+    batch: list of (chunk_id, chunk_text).
+    """
+    n = 0
+    with pg_conn(autocommit=True) as conn:
+        with conn.cursor() as cur:
+            for (cid, txt) in batch:
+                ings = _regex_extract_ingredients(txt or "")
+                k = {
+                    "id": str(cid),
+                    "topic": "ingredient" if ings else "general",
+                    "ingredients": ings,
+                    "evidence_type": "unknown",
+                    "claims": [],
+                    "language": "tr" if any(ch in (txt or "") for ch in "çğıöşüÇĞİÖŞÜ") else "en",
+                    "method": "regex",
+                }
+                _exec(
+                    cur,
+                    """
+                    update public.knowledge_chunks
+                    set klass = %s::jsonb
+                    where id = %s and user_id = %s
+                    """,
+                    (json.dumps(k, ensure_ascii=False), cid, user_id),
+                )
+                n += 1
+                if ings:
+                    try:
+                        _upsert_entity_links(
+                            user_id=user_id,
+                            folder_id=str(folder_id) if folder_id else None,
+                            chunk_id=str(cid),
+                            ingredients=ings,
+                        )
+                    except Exception:
+                        pass
+    return n
+
+
+def _parse_classifier_response(raw: str) -> list:
+    """Parse JSON array from model output; strip optional markdown fences."""
+    s = (raw or "").strip()
+    if not s:
+        return []
+    if s.startswith("```"):
+        s = re.sub(r"^```(?:json)?\s*", "", s, flags=re.I)
+        s = re.sub(r"\s*```\s*$", "", s)
+    try:
+        parsed = json.loads(s)
+    except json.JSONDecodeError:
+        raise
+    if not isinstance(parsed, list):
+        raise json.JSONDecodeError("Classifier returned non-array JSON", s, 0)
+    return parsed
+
+
+def _collect_exception_texts(exc: BaseException) -> str:
+    """Flatten exception + causes/contexts into one searchable blob."""
+    parts: list[str] = []
+    cur: BaseException | None = exc
+    seen: set[int] = set()
+    for _ in range(12):
+        if cur is None or id(cur) in seen:
+            break
+        seen.add(id(cur))
+        parts.append(str(cur))
+        parts.append(repr(cur))
+        for a in getattr(cur, "args", ()) or ():
+            parts.append(str(a))
+        nxt = getattr(cur, "__cause__", None) or getattr(cur, "__context__", None)
+        cur = nxt if isinstance(nxt, BaseException) else None
+    return "\n".join(parts)
+
+
+def _looks_like_bad_json(e: BaseException) -> bool:
+    """True if failure is JSON parse / truncated model output (including wrapped API errors)."""
+    if isinstance(e, json.JSONDecodeError):
+        return True
+    blob = _collect_exception_texts(e)
+    if "jsondecodeerror" in blob.lower():
+        return True
+    if any(
+        frag in blob
+        for frag in (
+            "Unterminated string",
+            "Expecting value",
+            "Expecting ',' delimiter",
+            "Invalid control character",
+            "Invalid \\escape",
+            "Expecting property name",
+            "Extra data",
+            "Classifier returned non-array",
+        )
+    ):
+        return True
+    # stdlib JSONDecodeError line/column pattern
+    if "line " in blob and "column" in blob and ("char " in blob or "char)" in blob):
+        return True
+    return False
+
+
 def _ensure_client():
     if not gemini_client:
         raise RuntimeError("Gemini client not ready; set GEMINI_API_KEY")
@@ -178,7 +287,7 @@ def classify_chunks(
     folder_slug: Optional[str] = None,
     document_id: Optional[str] = None,
     limit: int = 400,
-    batch_size: int = 12,
+    batch_size: int = 4,
     model: str = "gemini-2.0-flash",
     force: bool = False,
 ) -> dict:
@@ -264,7 +373,8 @@ def classify_chunks(
         if (not force) and (not _is_empty_klass(klass)):
             skipped += 1
             continue
-        to_process.append((chunk_id, (chunk_text or "")[:4500]))
+        # Shorter text = smaller model JSON (fewer truncation / parse errors).
+        to_process.append((chunk_id, (chunk_text or "")[:1800]))
 
     log.info("Chunks: %d total, %d to classify, %d skipped", len(rows), len(to_process), skipped)
 
@@ -273,133 +383,77 @@ def classify_chunks(
 
         # If Gemini is unavailable or quota-limited, do deterministic regex ingredient extraction only.
         if client is None:
-            with pg_conn(autocommit=True) as conn:
-                with conn.cursor() as cur:
-                    for (cid, txt) in batch:
-                        ings = _regex_extract_ingredients(txt or "")
-                        k = {
-                            "id": str(cid),
-                            "topic": "ingredient" if ings else "general",
-                            "ingredients": ings,
-                            "evidence_type": "unknown",
-                            "claims": [],
-                            "language": "tr" if any(ch in (txt or "") for ch in "çğıöşüÇĞİÖŞÜ") else "en",
-                            "method": "regex",
-                        }
-                        _exec(
-                            cur,
-                            """
-                            update public.knowledge_chunks
-                            set klass = %s::jsonb
-                            where id = %s and user_id = %s
-                            """,
-                            (json.dumps(k, ensure_ascii=False), cid, user_id),
-                        )
-                        updated += 1
-                        if ings:
-                            try:
-                                _upsert_entity_links(
-                                    user_id=user_id,
-                                    folder_id=str(folder_id) if folder_id else None,
-                                    chunk_id=str(cid),
-                                    ingredients=ings,
-                                )
-                            except Exception:
-                                pass
+            updated += _apply_regex_klass_batch(
+                user_id=user_id,
+                folder_id=str(folder_id) if folder_id else None,
+                batch=batch,
+            )
             continue
 
-        payload = [{"id": str(cid), "text": text} for (cid, text) in batch]
-        prompt = (
-            "You are a scientific document chunk classifier for skincare/dermatology.\n"
-            "For each chunk, produce a compact JSON classification.\n\n"
-            "Output schema for each item:\n"
-            "{\n"
-            '  "id": "<uuid>",\n'
-            '  "topic": "acne|pigmentation|barrier|sun|eczema|rosacea|hair|ingredient|general|other",\n'
-            '  "ingredients": ["..."],\n'
-            '  "evidence_type": "rct|meta|review|mechanism|guideline|observational|case|unknown",\n'
-            '  "claims": ["short claim 1", "short claim 2"],\n'
-            '  "language": "tr|en|other"\n'
-            "}\n\n"
-            "Rules:\n"
-            "- Return ONLY JSON array.\n"
-            "- Ingredients should be normalized to lowercase ASCII when possible (e.g., niacinamide, adapalene, azelaic acid).\n"
-            "- Claims: 0-3 items, keep short.\n"
-            "- If unsure, use topic=general and evidence_type=unknown.\n\n"
-            f"Input JSON:\n{json.dumps(payload, ensure_ascii=False)}"
-        )
-
-        try:
-            resp = client.models.generate_content(
-                model=model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction="Return ONLY JSON. No markdown. Be conservative and accurate.",
-                    temperature=0.2,
-                    max_output_tokens=1800,
-                    response_mime_type="application/json",
-                ),
+        def _classifier_prompt(sub_batch: list[tuple]) -> str:
+            payload = [{"id": str(cid), "text": text} for (cid, text) in sub_batch]
+            return (
+                "You are a scientific document chunk classifier for skincare/dermatology.\n"
+                "For each chunk, produce a compact JSON classification.\n\n"
+                "Output schema for each item:\n"
+                "{\n"
+                '  "id": "<uuid>",\n'
+                '  "topic": "acne|pigmentation|barrier|sun|eczema|rosacea|hair|ingredient|general|other",\n'
+                '  "ingredients": ["..."],\n'
+                '  "evidence_type": "rct|meta|review|mechanism|guideline|observational|case|unknown",\n'
+                '  "claims": ["short claim 1", "short claim 2"],\n'
+                '  "language": "tr|en|other"\n'
+                "}\n\n"
+                "Rules:\n"
+                "- Return ONLY JSON array.\n"
+                "- Escape quotes and newlines inside JSON strings (valid JSON only).\n"
+                "- Ingredients should be normalized to lowercase ASCII when possible (e.g., niacinamide, adapalene, azelaic acid).\n"
+                "- Claims: 0-2 items, each under 120 characters.\n"
+                "- If unsure, use topic=general and evidence_type=unknown.\n\n"
+                f"Input JSON:\n{json.dumps(payload, ensure_ascii=False)}"
             )
-            parsed = json.loads(_gemini_response_text(resp) or "[]")
-            if not isinstance(parsed, list):
-                raise RuntimeError("Classifier returned non-array JSON")
 
-            id_to_klass = {}
-            for item in parsed:
-                if not isinstance(item, dict):
-                    continue
-                cid = item.get("id")
-                if cid:
-                    id_to_klass[str(cid)] = item
+        def try_batch(sub_batch: list[tuple], depth: int = 0) -> None:
+            nonlocal updated, failed, client
+            if not sub_batch:
+                return
+            if client is None:
+                updated += _apply_regex_klass_batch(
+                    user_id=user_id,
+                    folder_id=str(folder_id) if folder_id else None,
+                    batch=sub_batch,
+                )
+                return
+            prompt = _classifier_prompt(sub_batch)
+            try:
+                resp = client.models.generate_content(
+                    model=model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction="Return ONLY JSON. No markdown. Be conservative and accurate.",
+                        temperature=0.2,
+                        max_output_tokens=8192,
+                        # Do not force application/json MIME: some stacks surface parse errors
+                        # without chaining JSONDecodeError; we parse text ourselves.
+                    ),
+                )
+                parsed = _parse_classifier_response(_gemini_response_text(resp) or "[]")
 
-            with pg_conn(autocommit=True) as conn:
-                with conn.cursor() as cur:
-                    for (cid, _txt) in batch:
-                        k = id_to_klass.get(str(cid))
-                        if not k:
-                            failed += 1
-                            continue
-                        _exec(
-                            cur,
-                            """
-                            update public.knowledge_chunks
-                            set klass = %s::jsonb
-                            where id = %s and user_id = %s
-                            """,
-                            (json.dumps(k, ensure_ascii=False), cid, user_id),
-                        )
-                        updated += 1
-                        try:
-                            ings = k.get("ingredients") if isinstance(k, dict) else None
-                            if isinstance(ings, list) and ings:
-                                _upsert_entity_links(
-                                    user_id=user_id,
-                                    folder_id=str(folder_id) if folder_id else None,
-                                    chunk_id=str(cid),
-                                    ingredients=[str(x) for x in ings if x],
-                                )
-                        except Exception:
-                            pass
-        except Exception as e:
-            # If quota exceeded, switch to regex mode for this and the rest of this run.
-            msg = str(e)
-            log.error("Classification batch failed (%d..%d): %s", i, i + len(batch) - 1, e)
-            if "RESOURCE_EXHAUSTED" in msg or "429" in msg:
-                client = None
-                # fallback classify current batch deterministically
+                id_to_klass = {}
+                for item in parsed:
+                    if not isinstance(item, dict):
+                        continue
+                    cid = item.get("id")
+                    if cid:
+                        id_to_klass[str(cid)] = item
+
                 with pg_conn(autocommit=True) as conn:
                     with conn.cursor() as cur:
-                        for (cid, txt) in batch:
-                            ings = _regex_extract_ingredients(txt or "")
-                            k = {
-                                "id": str(cid),
-                                "topic": "ingredient" if ings else "general",
-                                "ingredients": ings,
-                                "evidence_type": "unknown",
-                                "claims": [],
-                                "language": "tr" if any(ch in (txt or "") for ch in "çğıöşüÇĞİÖŞÜ") else "en",
-                                "method": "regex",
-                            }
+                        for (cid, _txt) in sub_batch:
+                            k = id_to_klass.get(str(cid))
+                            if not k:
+                                failed += 1
+                                continue
                             _exec(
                                 cur,
                                 """
@@ -410,18 +464,67 @@ def classify_chunks(
                                 (json.dumps(k, ensure_ascii=False), cid, user_id),
                             )
                             updated += 1
-                            if ings:
-                                try:
+                            try:
+                                ings = k.get("ingredients") if isinstance(k, dict) else None
+                                if isinstance(ings, list) and ings:
                                     _upsert_entity_links(
                                         user_id=user_id,
                                         folder_id=str(folder_id) if folder_id else None,
                                         chunk_id=str(cid),
-                                        ingredients=ings,
+                                        ingredients=[str(x) for x in ings if x],
                                     )
-                                except Exception:
-                                    pass
-                continue
-            failed += len(batch)
+                            except Exception:
+                                pass
+            except Exception as e:
+                msg = str(e)
+                quota = "RESOURCE_EXHAUSTED" in msg or "429" in msg
+                if quota:
+                    log.error(
+                        "Classification quota/rate limit (batch %d..%d): %s",
+                        i,
+                        i + len(batch) - 1,
+                        e,
+                    )
+                    client = None
+                    updated += _apply_regex_klass_batch(
+                        user_id=user_id,
+                        folder_id=str(folder_id) if folder_id else None,
+                        batch=sub_batch,
+                    )
+                    return
+                if _looks_like_bad_json(e):
+                    if len(sub_batch) > 1 and depth < 8:
+                        mid = (len(sub_batch) + 1) // 2
+                        log.warning(
+                            "Classifier JSON invalid; splitting batch %d -> %d + %d (depth %d)",
+                            len(sub_batch),
+                            mid,
+                            len(sub_batch) - mid,
+                            depth,
+                        )
+                        try_batch(sub_batch[:mid], depth + 1)
+                        try_batch(sub_batch[mid:], depth + 1)
+                        return
+                    log.warning(
+                        "Classifier JSON invalid; regex fallback for %d chunk(s) at offset %d",
+                        len(sub_batch),
+                        i,
+                    )
+                    updated += _apply_regex_klass_batch(
+                        user_id=user_id,
+                        folder_id=str(folder_id) if folder_id else None,
+                        batch=sub_batch,
+                    )
+                    return
+                log.error(
+                    "Classification batch failed (%d..%d): %s",
+                    i,
+                    i + len(batch) - 1,
+                    e,
+                )
+                failed += len(sub_batch)
+
+        try_batch(batch, 0)
 
     return {
         "user_id": user_id,
@@ -448,7 +551,7 @@ if __name__ == "__main__":
         help="only classify chunks for this knowledge_documents.id (e.g. after single-file ingest)",
     )
     ap.add_argument("--limit", type=int, default=400)
-    ap.add_argument("--batch", type=int, default=12)
+    ap.add_argument("--batch", type=int, default=4, help="Gemini batch size (smaller = more stable JSON)")
     ap.add_argument("--model", default="gemini-2.0-flash")
     ap.add_argument("--force", action="store_true", help="overwrite existing klass and rebuild entity links")
     args = ap.parse_args()

@@ -15,11 +15,12 @@ AI şu işleri YAPMAZ:
 import json
 import re
 import unicodedata
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict, Any
 from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY, KNOWLEDGE_CATALOG_USER_ID, get_logger
 from flow_engine import sanitize_routine_items_details
+from knowledge.query_expand import expand_skin_query_for_vector_search, strip_conversational_turkish
 
 log = get_logger("rag_service")
 
@@ -48,9 +49,10 @@ def knowledge_entity_fallback_text(
     accept_lang: str = "tr",
 ) -> Optional[str]:
     """
-    AI (Gemini) yokken veya kota varken: entity index üzerinden döküman parçaları döndürür.
-    - Madde/özüt benzeri soruda chunk yoksa: veri yok mesajı
-    - Genel sohbette eşleşme yoksa: None (çağıran varsayılan hata/kota mesajını kullanır)
+    Entity indeksinden döküman parçaları döndürür.
+    - Eşleşen chunk varsa: metin
+    - Madde sorusu ama chunk yoksa: None (vektör aramasına bırakılır; eskiden kısa 'veri yok' metni bağlamı bozuyordu)
+    - Genel sohbette eşleşme yoksa: None
     """
     uid = (user_id or "").strip()
     if not uid:
@@ -64,7 +66,10 @@ def knowledge_entity_fallback_text(
     msg = (user_message or "").strip()
     if len(msg) < 2:
         return None
-    msg_l = msg.lower()
+    msg_work = strip_conversational_turkish(msg)
+    if len(msg_work) < 2:
+        msg_work = msg
+    msg_l = msg_work.lower()
 
     raw_tokens: list[str] = []
     for t in (
@@ -147,9 +152,9 @@ def knowledge_entity_fallback_text(
             ]
         )
         if ingredient_intent and any(len(t) >= 4 for t in tokens[:6]):
-            if (accept_lang or "tr").lower().startswith("en"):
-                return "I couldn't find this in the current dataset yet."
-            return "Bunu şu anki veri setimde bulamadım."
+            # Chunk yok: kısa "veri yok" metnini RAG bağlamına ekleme — vektör araması şansı kalsın
+            # ("retinol nedir" gibi; entity eşleşmese bile embedding ile pasaj bulunabilir).
+            return None
     except Exception as e:
         log.warning("knowledge_entity_fallback_text hatası: %s", e)
         return None
@@ -321,6 +326,7 @@ def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> s
     entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
     vector_blocks: list[str] = []
     seen_sig: set[str] = set()
+    um_vec = strip_conversational_turkish(um)
 
     # Entity zaten uzunsa embed atlamak kotayı korur
     run_vector = len(entity_text) < 900
@@ -338,9 +344,18 @@ def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> s
                 hits = search_chunks(
                     user_id=uid,
                     folder_slug="data-pdfs",
-                    query=um,
+                    query=um_vec,
                     k=5,
                 )
+                if not hits:
+                    q_exp = expand_skin_query_for_vector_search(um, cleaned_query=um_vec)
+                    if q_exp and q_exp.strip() != um_vec.strip():
+                        hits = search_chunks(
+                            user_id=uid,
+                            folder_slug="data-pdfs",
+                            query=q_exp,
+                            k=5,
+                        )
                 for h in hits:
                     t = (h.chunk_text or "").strip()
                     if len(t) < 35:
@@ -387,7 +402,7 @@ def _free_chat_has_usable_rag(kb: str) -> bool:
         return True
     if len(s) >= 380:
         return True
-    if "Bunu şu anki veri setimizde bulamadım." in s:
+    if "Bunu şu anki veri setimizde bulamadım." in s or "Bunu şu anki veri setimde bulamadım." in s:
         return False
     if "i couldn't find this in the current dataset yet." in s.lower():
         return False
@@ -430,6 +445,140 @@ async def _free_chat_no_rag_full_reply(user_message: str) -> str:
 
     hints = await fetch_skin_literature_hints(user_message)
     return f"{base}\n\n{hints}" if hints else base
+
+
+def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
+    """Pasaj yokken bile Gemini ile çok muhafazakâr genel bilgi verilebilecek cilt/ürün sorusu mu."""
+    t = _free_chat_normalize_query(msg)
+    if len(t) < 4:
+        return False
+    needles = (
+        "cilt",
+        "yuz",
+        "yuzum",
+        "yuzunu",
+        "nem",
+        "kuru",
+        "hassas",
+        "kizar",
+        "kuruluk",
+        "retinol",
+        "retinoid",
+        "tretinoin",
+        "niacinamide",
+        "vitamin c",
+        "askorbik",
+        "glycolik",
+        "glikolik",
+        "salisilik",
+        "bha",
+        "glycolic",
+        "spf",
+        "gunes",
+        "serum",
+        "krem",
+        "nemlendirici",
+        "toner",
+        "temizlik",
+        "bakim",
+        "sivilce",
+        "akne",
+        "leke",
+        "melaz",
+        "kirisik",
+        "bariyer",
+        "skin",
+        "acne",
+        "moistur",
+        "sunscreen",
+        "lotion",
+        "cream",
+        "face",
+        "dry",
+        "sensitive",
+        "rosacea",
+        "eczema",
+        "atopi",
+        "urun",
+        "urunu",
+        "madde",
+        "icerik",
+        "aktif",
+        "peeling",
+        "exfol",
+        "gozenek",
+        "sebum",
+        "yagli",
+        "kurde",
+        "deri",
+        "dermat",
+        "alerji",
+        "tahris",
+        "irrit",
+        "yanma",
+        "kasinti",
+        "pul pul",
+    )
+    return any(n in t for n in needles)
+
+
+async def _free_chat_try_general_guidance_without_rag(
+    user_message: str,
+    history: list,
+    user_profile: Optional[Dict[str, Any]],
+) -> Optional[dict]:
+    """
+    İndekste oturan pasaj yok; soru cilt/ürün bağlamındaysa kısa genel bilgilendirme (kaynak iddiası yok).
+    Gemini yoksa veya konu uygun değilse None.
+    """
+    um = (user_message or "").strip()
+    if not um or not _free_chat_allows_general_guidance_without_rag(um):
+        return None
+    if not gemini_client:
+        return None
+
+    hist = list(history or [])
+    contents: list = []
+    for msg in hist[-8:]:
+        role = "model" if msg.get("role") == "assistant" else "user"
+        contents.append(
+            types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", "") or "")])
+        )
+    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=um)]))
+
+    name = (user_profile or {}).get("name", "Kullanıcı")
+    system_instruction = (
+        f"Kullanıcı adı: {name}.\n"
+        "Sen Rebi’sin; Türkçe, samimi ama temkinli.\n"
+        "Rebi bilgi tabanında bu soruya doğrudan oturan alıntılı pasaj YOK; 'pasajlarda yazıyor', 'kaynağımızda şöyle' DEME.\n"
+        "En fazla 3 kısa cümle: yalnızca genel cilt bakımı ilkeleri (bariyer, hassasiyet, retinoidlere yavaş giriş, güneş koruma, gerektiğinde dermatolog).\n"
+        "Teşhis koyma; marka/ürün önerme; sabah-akşam kişisel rutin listesi verme.\n"
+        "Soru açıkça cilt bakımı dışındaysa tek cümleyle bu konuda yardımcı olamadığını söyle."
+    )
+
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=contents,
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.2,
+                max_output_tokens=220,
+            ),
+        )
+        reply = _gemini_response_text(response)
+        if not reply:
+            return None
+        prefix = (
+            "Bilgi tabanında bu soruya tam oturan pasaj bulamadım; aşağısı yalnızca genel bilgilendirme "
+            "(teşhis veya kesin tedavi değil):\n\n"
+        )
+        reply = prefix + reply.strip()
+        log.info("Free chat: pasaj yok, genel bilgilendirme yanıtı (%d karakter)", len(reply))
+        return {"reply": reply, "is_complete": False, "extracted_data": None}
+    except Exception as e:
+        log.warning("Free chat genel bilgilendirme atlandı: %s", e)
+        return None
 
 
 def _gemini_response_text(response) -> str:
@@ -908,6 +1057,9 @@ async def _free_chat(
     kb = _build_free_chat_rag_context(user_id, um)
 
     if not _free_chat_has_usable_rag(kb):
+        guided = await _free_chat_try_general_guidance_without_rag(um, hist, user_profile)
+        if guided is not None:
+            return guided
         return {
             "reply": await _free_chat_no_rag_full_reply(um),
             "is_complete": False,

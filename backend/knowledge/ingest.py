@@ -235,7 +235,10 @@ def ingest_paths(
     """
     dsn = resolve_postgres_dsn()
     if not dsn:
-        raise RuntimeError("SUPABASE_DATABASE_URL or DATABASE_URL is required for ingestion")
+        raise RuntimeError(
+            "Postgres DSN missing: set SUPABASE_DATABASE_URL or DATABASE_URL in backend/.env; "
+            "or SUPABASE_URL + SUPABASE_DB_PASSWORD (see knowledge/db.py)."
+        )
     try:
         import psycopg  # type: ignore
     except Exception as e:
