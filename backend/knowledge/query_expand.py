@@ -144,6 +144,33 @@ _SKIN_EXPANSIONS: tuple[tuple[tuple[str, ...], str], ...] = (
         ),
         "skincare routine AM PM layering",
     ),
+    (
+        (
+            "lavanta",
+            "lavender",
+            "badem",
+            "almond",
+            "jojoba",
+            "argan",
+            "hindistan",
+            "coconut",
+            "kokulu",
+            "aromaterapi",
+            "essential oil",
+            "carrier oil",
+            "sac",
+            "saca",
+            "scalp",
+            "hair",
+            "sacimi",
+            "sacim",
+            "dokulme",
+            "dökülme",
+            "sampuan",
+            "şampuan",
+        ),
+        "almond oil lavender essential oil carrier oil scalp hair seborrhea dermatitis irritant contact sensitization patch test",
+    ),
 )
 
 

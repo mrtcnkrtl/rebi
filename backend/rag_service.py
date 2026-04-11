@@ -341,32 +341,39 @@ def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> s
 
         for uid in uids:
             try:
-                hits = search_chunks(
+                hits_primary = search_chunks(
                     user_id=uid,
                     folder_slug="data-pdfs",
                     query=um_vec,
-                    k=5,
+                    k=8,
                 )
-                if not hits:
+
+                def _consume_hits(hit_list) -> None:
+                    for h in hit_list or []:
+                        t = (h.chunk_text or "").strip()
+                        if len(t) < 28:
+                            continue
+                        sig = t[:140]
+                        if sig in seen_sig:
+                            continue
+                        seen_sig.add(sig)
+                        vector_blocks.append(t)
+                        if len(vector_blocks) >= 4:
+                            return
+
+                _consume_hits(hits_primary)
+                # İlk turda isabet yoksa veya metinler çok kısaysa: genişletilmiş sorgu (TR yağ/saç → EN klinik terim)
+                if len(vector_blocks) < 1:
                     q_exp = expand_skin_query_for_vector_search(um, cleaned_query=um_vec)
                     if q_exp and q_exp.strip() != um_vec.strip():
-                        hits = search_chunks(
-                            user_id=uid,
-                            folder_slug="data-pdfs",
-                            query=q_exp,
-                            k=5,
+                        _consume_hits(
+                            search_chunks(
+                                user_id=uid,
+                                folder_slug="data-pdfs",
+                                query=q_exp,
+                                k=8,
+                            )
                         )
-                for h in hits:
-                    t = (h.chunk_text or "").strip()
-                    if len(t) < 35:
-                        continue
-                    sig = t[:140]
-                    if sig in seen_sig:
-                        continue
-                    seen_sig.add(sig)
-                    vector_blocks.append(t)
-                    if len(vector_blocks) >= 4:
-                        break
                 if vector_blocks:
                     break
             except Exception as e:
@@ -518,6 +525,16 @@ def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
         "yanma",
         "kasinti",
         "pul pul",
+        "lavanta",
+        "badem",
+        "yag",
+        "sac",
+        "saca",
+        "kokusu",
+        "esans",
+        "hair",
+        "scalp",
+        "oil",
     )
     return any(n in t for n in needles)
 
