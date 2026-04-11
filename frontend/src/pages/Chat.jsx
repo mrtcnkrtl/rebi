@@ -22,7 +22,11 @@ export default function Chat() {
   const [history, setHistory] = useState(() => {
     try {
       const saved = localStorage.getItem("rebi-chat-history");
-      return saved ? JSON.parse(saved) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+      /* Yalnızca kullanıcı mesajı olan oturumları yükle; eski “karşılama balonu” kayıtlarını at */
+      return parsed.some((m) => m && m.role === "user") ? parsed : [];
     } catch {
       return [];
     }
@@ -41,17 +45,7 @@ export default function Chat() {
   const subscribeHref = user ? "/dashboard/subscribe" : "/auth?next=/dashboard/subscribe";
   const loginForChatHref = "/auth?next=/dashboard/chat";
 
-  useEffect(() => {
-    if (history.length === 0) {
-      setHistory([{
-        role: "assistant",
-        content: t("chat.welcome", { name: userName }),
-      }]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- yalnızca ilk boş oturumda karşılama
-  }, []);
-
-  // Not: t() bağımlılığı eklenmiyor; ilk boş oturumda tek seferlik karşılama metni.
+  const hasConversation = history.some((m) => m.role === "user");
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -63,7 +57,11 @@ export default function Chat() {
 
   useEffect(() => {
     try {
-      if (history.length > 1) localStorage.setItem("rebi-chat-history", JSON.stringify(history.slice(-30)));
+      if (history.some((m) => m.role === "user")) {
+        localStorage.setItem("rebi-chat-history", JSON.stringify(history.slice(-30)));
+      } else {
+        localStorage.removeItem("rebi-chat-history");
+      }
     } catch {
       /* localStorage dolu veya erişilemez */
     }
@@ -137,10 +135,7 @@ export default function Chat() {
   };
 
   const clearChat = () => {
-    setHistory([{
-      role: "assistant",
-      content: "Sohbet temizlendi. Yeniden başlayalım! Cilt bakımı hakkında ne merak ediyorsun?",
-    }]);
+    setHistory([]);
     setPaywallOpen(false);
     try {
       localStorage.removeItem("rebi-chat-history");
@@ -153,55 +148,78 @@ export default function Chat() {
     <div className={`min-h-screen ${theme.bg} relative`}>
       <RebiIntroSplash scope="chat" accentColor={theme.accent} primaryColor={theme.primary} />
       <ThemePatternOverlay pattern={theme.pattern} />
-      <div className="max-w-lg mx-auto flex flex-col h-[calc(100vh-128px)] relative z-[1]">
+      <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-128px)] relative z-[1] w-full">
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100">
+        <div className={`flex items-center gap-3 px-4 py-3 border-b ${theme.cardBorder} bg-white/70 backdrop-blur-md shrink-0`}>
           <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
             style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}>
             <Bot className="w-5 h-5 text-white" />
           </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-gray-900 text-sm">Rebi AI</h3>
-            <p className="text-[11px] text-gray-400">{t("chat.subtitle")}</p>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-bold text-gray-900 text-sm truncate">Rebi AI</h3>
+            <p className="text-[11px] text-gray-500 truncate">{t("chat.subtitle")}</p>
           </div>
-          <button onClick={clearChat} className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors">
+          <button
+            type="button"
+            onClick={clearChat}
+            disabled={!hasConversation}
+            className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+          >
             {t("chat.clear")}
           </button>
         </div>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-          {history.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "text-white rounded-br-md"
-                  : "bg-gray-100 text-gray-800 rounded-bl-md"
-              }`} style={msg.role === "user" ? { backgroundColor: theme.primary } : {}}>
-                {msg.content}
-              </div>
+        {/* Boş: Claude/Gemini tarzı orta alan; mesaj var: klasik sohbet */}
+        {!hasConversation ? (
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 sm:px-8 pb-6">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl mb-6 opacity-95"
+              style={{ background: `linear-gradient(145deg, ${theme.accent}, ${theme.primary})` }}>
+              <Sparkles className="w-7 h-7 text-white" strokeWidth={1.75} />
             </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.primary }} />
-                <span className="text-sm text-gray-400">{t("chat.thinking")}</span>
+            <h1 className="text-center text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight leading-snug max-w-md">
+              {t("chat.emptyTitle")}
+            </h1>
+            <p className="mt-3 text-center text-base text-gray-600 max-w-md leading-relaxed">
+              {t("chat.emptySubtitle")}
+            </p>
+            <p className="mt-6 text-center text-xs sm:text-sm text-gray-500 max-w-sm leading-relaxed">
+              {t("chat.dataHint")}
+            </p>
+          </div>
+        ) : (
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
+            {history.map((msg, i) => (
+              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
+                  msg.role === "user"
+                    ? "text-white rounded-br-md"
+                    : "bg-gray-100 text-gray-800 rounded-bl-md"
+                }`} style={msg.role === "user" ? { backgroundColor: theme.primary } : {}}>
+                  {msg.content}
+                </div>
               </div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
+            ))}
+            {loading && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.primary }} />
+                  <span className="text-sm text-gray-400">{t("chat.thinking")}</span>
+                </div>
+              </div>
+            )}
+            <div ref={chatEndRef} />
+          </div>
+        )}
 
-        {/* Input */}
-        <div className="px-4 py-3 border-t border-gray-100 bg-white/80 backdrop-blur-sm">
+        {/* Input — her iki modda altta sabit */}
+        <div className={`px-4 py-3 border-t ${theme.cardBorder} bg-white/90 backdrop-blur-md shrink-0`}>
           <div className="flex gap-2">
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
               placeholder={t("chat.placeholder")}
               className="flex-1 input-field !py-3 text-sm"
               disabled={loading || paywallOpen}

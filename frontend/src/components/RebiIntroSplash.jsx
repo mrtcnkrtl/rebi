@@ -2,17 +2,18 @@ import { useState, useLayoutEffect, useEffect, useRef, useCallback } from "react
 import { useTranslation } from "react-i18next";
 import { Leaf, Sparkles } from "lucide-react";
 
-/** v2: daha uzun “şov” sürümü — eski oturumlar da yeni deneyimi bir kez görür */
-const DONE_APP = "rebi-splash-app-v2";
+/** v3: uzun süre + bilimsel kaynak vurgulu metinler */
+const DONE_APP = "rebi-splash-app-v3";
 const TS_APP = "rebi-splash-app-ts";
-const DONE_CHAT = "rebi-splash-chat-v2";
+const DONE_CHAT = "rebi-splash-chat-v3";
 
-const DURATION_APP_MS = 9000;
-const DURATION_CHAT_MS = 5600;
-const TIP_INTERVAL_APP_MS = 2600;
-const TIP_INTERVAL_CHAT_MS = 2200;
+/** Uzun “şov” — alt başlık ve ipuçlarının rahat okunması için */
+const DURATION_APP_MS = 36000;
+const DURATION_CHAT_MS = 24000;
+const TIP_INTERVAL_APP_MS = 7000;
+const TIP_INTERVAL_CHAT_MS = 6200;
 /** App şovu bittikten sonra bu süre içinde chat şovu gösterme */
-const CHAT_DEBOUNCE_AFTER_APP_MS = 20000;
+const CHAT_DEBOUNCE_AFTER_APP_MS = 55000;
 
 function readTips(t, key) {
   const raw = t(key, { returnObjects: true });
@@ -220,19 +221,19 @@ export default function RebiIntroSplash({ scope = "app", accentColor = "#0d9488"
           50% { transform: translate(-6%, -4%) scale(1.06); }
         }
         .rebi-intro-card {
-          animation: rebiIntroCard 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+          animation: rebiIntroCard 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
         .rebi-intro-hero {
-          animation: rebiIntroHero 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+          animation: rebiIntroHero 1.15s cubic-bezier(0.22, 1, 0.36, 1) both;
         }
         .rebi-logo-breathe {
-          animation: rebiLogoBreathe 3.2s ease-in-out infinite;
+          animation: rebiLogoBreathe 6.5s ease-in-out infinite;
         }
         .rebi-orb-a {
-          animation: rebiOrbA 14s ease-in-out infinite;
+          animation: rebiOrbA 38s ease-in-out infinite;
         }
         .rebi-orb-b {
-          animation: rebiOrbB 18s ease-in-out infinite;
+          animation: rebiOrbB 44s ease-in-out infinite;
         }
       `}</style>
     </div>

@@ -3,20 +3,20 @@
   "intro": {
     "skip": "Let’s go",
     "appTitle": "Welcome",
-    "appSubtitle": "A quick opening scene: our own scientific notes, calm answers, and a rhythm that pulls you in.",
+    "appSubtitle": "Slow down for a beat: Rebi draws on curated excerpts from peer‑reviewed journals, scientific textbooks, and institutional monographs — calm, short answers and a rhythm that pulls you in.",
     "chatTitle": "Rebi chat",
-    "chatSubtitle": "We listen to our notes first — let’s match your curiosity together.",
+    "chatSubtitle": "We start from that same evidence‑first knowledge base — let’s match your curiosity together.",
     "fallbackTip": "Ask what you’re curious about — we’ll keep it short and clear.",
     "appTips": [
-      "We pull answers from the team’s scientific notes when we can — we match instead of guessing.",
+      "Answers lean on peer‑reviewed papers, books, and trusted monographs in our library — we match sources instead of inventing.",
       "Your morning/evening routine is built in Analysis & daily tracking, not in this chat.",
       "On the free plan there may be a daily message cap; your remaining count shows under the chat box.",
       "For serious symptoms, see a dermatologist — this is info chat, not diagnosis.",
-      "As new PDF notes are added, answers here get richer over time."
+      "As we add more curated journal and book excerpts, answers here keep getting richer."
     ],
     "chatTips": [
       "Type an ingredient or topic — we’ll keep replies short.",
-      "If it’s not in our notes, we may suggest a few PubMed links — reading ideas, not medical orders.",
+      "If nothing maps cleanly in our source library, we may suggest a few PubMed links — reading ideas, not medical orders.",
       "Chat history can stay on your device; tap Clear above to reset.",
       "To change your routine, use Analysis and check-in."
     ]
@@ -210,12 +210,14 @@
     "feedbackSkip": "Skip"
   },
   "chat": {
-    "subtitle": "From our own notes — short, science-first",
+    "subtitle": "Peer‑reviewed sources — short, science‑first",
     "clear": "Clear",
-    "thinking": "One sec, checking our notes…",
-    "welcome": "Hey {{name}} — chatty but careful: I try to answer from our team’s scientific notes, and I’ll say honestly when something isn’t in there yet. For your personal routine and to-dos, hop to Analysis / tracking.",
+    "thinking": "One sec, scanning our source passages…",
+    "emptyTitle": "Curious about your skin or an ingredient?",
+    "emptySubtitle": "Type below — the thread opens here.",
+    "dataHint": "Answers lean on passages selected from Rebi’s knowledge base; I’ll say when nothing fits.",
     "placeholder": "Try retinol, redness, skin barrier…",
-    "footerHint": "We lean on our own notes first; a daily message limit may apply. Your routine plan lives in Analysis."
+    "footerHint": "Knowledge-base passages first; a daily message limit may apply. Your routine plan lives in Analysis."
   },
   "dashboard": {
     "noAnalyzeTitle": "Hi, {{name}}!",

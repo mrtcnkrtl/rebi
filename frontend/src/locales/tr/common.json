@@ -3,20 +3,20 @@
   "intro": {
     "skip": "Hadi başlayalım",
     "appTitle": "Hoş geldin",
-    "appSubtitle": "Şimdi kısa bir tur: kendi bilimsel notlarımız, sakin cevaplar ve seni içeri alan bir ritim.",
+    "appSubtitle": "Yavaşlayıp nefes al: Rebi, hakemli dergi makaleleri, bilimsel kitaplar ve kurumsal monograflardan seçilmiş pasajlarla konuşur; sakin, kısa cevaplar ve seni içeri alan bir ritim.",
     "chatTitle": "Rebi sohbet",
-    "chatSubtitle": "Burada önce notlarımıza kulak veriyoruz; merakını birlikte eşleştirelim.",
+    "chatSubtitle": "Önce bu bilimsel kaynaklardan oluşan Rebi bilgi tabanına bakıyoruz; merakını birlikte eşleştirelim.",
     "fallbackTip": "Cilt hakkında merak ettiklerini yaz; kısa ve net kalırız.",
     "appTips": [
-      "Cevapları mümkün olduğunca ekibin derlediği bilimsel notlardan seçeriz — uydurmak yerine eşleştiririz.",
+      "Yanıtlar mümkün olduğunca hakemli dergiler, kitaplar ve güvenilir monograflardan derlenmiş metinlere dayanır — uydurmak yerine kaynakla eşleştiririz.",
       "Kişisel sabah-akşam rutinini burada değil; Analiz ve günlük takipte kurarız.",
       "Ücretsiz planda günlük mesaj sınırı olabilir; kalan hakkın sohbet altında görünür.",
       "Ciddi şikâyette mutlaka dermatoloğa danış; burası bilgi sohbeti, teşhis değil.",
-      "Yeni PDF notlar eklendikçe bu sohbet daha da zenginleşir."
+      "Yeni makale ve kitap pasajları eklendikçe bu sohbet daha da zenginleşir."
     ],
     "chatTips": [
       "Madde veya kavram yazman yeterli; kısa cevap veririz.",
-      "Notlarda yoksa bazen PubMed’den örnek yazı linki önerebiliriz — okuma fikri, talimat değil.",
+      "Kaynak tabanında tam karşılık yoksa bazen PubMed’den örnek makale linki önerebiliriz — okuma fikri, talimat değil.",
       "Sohbet geçmişin cihazında saklanabilir; temizlemek için üstteki Temizle’ye bas.",
       "Rutinini değiştirmek için Analiz ve check-in ekranlarını kullan."
     ]
@@ -210,12 +210,14 @@
     "feedbackSkip": "Atla"
   },
   "chat": {
-    "subtitle": "Kendi notlarımızdan — kısa ve bilim odaklı",
+    "subtitle": "Hakemli kaynaklardan — kısa ve bilim odaklı",
     "clear": "Temizle",
-    "thinking": "Bir saniye, notlarına bakıyorum…",
-    "welcome": "Selam {{name}}! Burada arkadaşça konuşuruz: cevapları mümkün olduğunca ekibin topladığı bilimsel notlardan çıkarırım; bir şey notlarda yoksa sana dürüstçe söylerim. Kişisel rutin ve yapılacaklar için Analiz / takip ekranına geçmen yeterli.",
+    "thinking": "Bir saniye, bilimsel kaynak pasajlarına bakıyorum…",
+    "emptyTitle": "Cildini veya bir maddeyi mi merak ettin?",
+    "emptySubtitle": "Aşağıya kısaca yaz; sohbet burada açılır.",
+    "dataHint": "Yanıtlar mümkün olduğunca Rebi bilgi tabanından seçilen bilimsel pasajlara dayanır; eşleşme yoksa söylerim.",
     "placeholder": "Mesela retinol, kızarıklık, nem bariyeri…",
-    "footerHint": "Önce bizim notlar; günlük mesaj limiti uygulanır. Rutin planı Analiz’de."
+    "footerHint": "Bilgi tabanı pasajları önce; günlük mesaj limiti olabilir. Rutin planı Analiz’de."
   },
   "dashboard": {
     "noAnalyzeTitle": "Merhaba, {{name}}!",

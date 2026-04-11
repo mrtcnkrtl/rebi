@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import html
 import re
+import unicodedata
 from typing import Any
 from urllib.parse import quote
 
@@ -31,12 +32,18 @@ EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 EUROPE_PMC_SEARCH = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
 
 
+def _norm_query_for_skip(q: str) -> str:
+    t = unicodedata.normalize("NFD", (q or "").strip())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    return t.casefold()
+
+
 def skip_external_literature_for_query(q: str) -> bool:
     """
     Sohbet meta-sorusu veya PubMed aramasına uygun olmayan kısa ifadelerde
     dış arama yapma (alakasız makale başlıkları önlenir).
     """
-    t = (q or "").strip().lower()
+    t = _norm_query_for_skip(q)
     if len(t) < 5:
         return False
     needles = (
@@ -50,11 +57,22 @@ def skip_external_literature_for_query(q: str) -> bool:
         "veritabanı",
         "bilgini nereden",
         "bilgileri nereden",
+        "bilgileri nedern",
         "bilgiyi nereden",
+        "bilgiyi nedern",
         "nasıl öğrendin",
         "sen kimsin",
         "kimlisin",
         "ne işe yarıyorsun",
+        "rebi nedir",
+        "rebi ne demek",
+        "rebi ne iş",
+        "rebi ne yapar",
+        "rebi kim",
+        "rebi nasıl çalışır",
+        "rebi ai nedir",
+        "what is rebi",
+        "what does rebi",
         "kaç soru",
         "kaç mesaj",
         "mesaj hakkı",
@@ -68,7 +86,12 @@ def skip_external_literature_for_query(q: str) -> bool:
         "yapay zek",
         "prompt",
     )
-    return any(n in t for n in needles)
+    if any(n in t for n in needles):
+        return True
+    loc = ("nereden" in t) or ("nedern" in t) or ("nerden" in t)
+    if loc and any(w in t for w in ("bilgi", "veri", "kaynak", "bilgiler", "veriler")):
+        return True
+    return False
 
 
 def _sanitize_pubmed_term(q: str, max_len: int = 220) -> str:
@@ -175,7 +198,7 @@ async def _europepmc_titles(term: str, *, max_results: int = 4) -> list[tuple[st
 def _format_hints_block(lines: list[str]) -> str:
     body = "\n".join(lines)
     return (
-        "Notlarımızda tam oturmazsa, merakını gidermek için şu yazılara göz atabilirsin:\n"
+        "Bilgi tabanında tam karşılık yoksa, hakemli literatürde merakını gidermek için şu makalelere göz atabilirsin:\n"
         f"{body}\n"
         "— Bağlantıdan tam metne ulaş; rahatsızlık veya tedavi kararı için yine doktorun en doğru adres."
     )

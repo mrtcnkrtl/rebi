@@ -14,6 +14,7 @@ AI şu işleri YAPMAZ:
 
 import json
 import re
+import unicodedata
 from typing import Optional, Literal
 from google import genai
 from google.genai import types
@@ -175,6 +176,118 @@ _GREETING_ONLY = re.compile(
 )
 
 
+def _free_chat_normalize_query(s: str) -> str:
+    """Türkçe İ/ı ve birleşik aksanlar için alt string eşleşmesi (nedir vb.)."""
+    t = unicodedata.normalize("NFD", (s or "").strip())
+    t = "".join(c for c in t if unicodedata.category(c) != "Mn")
+    return t.casefold()
+
+
+def _free_chat_is_product_identity_query(msg: str) -> bool:
+    """Uygulamanın kendisi hakkında soru — PDF/RAG araması anlamsız."""
+    t = _free_chat_normalize_query(msg)
+    if len(t) < 3:
+        return False
+    if "rebi" not in t:
+        return False
+    needles = (
+        "rebi nedir",
+        "rebi ne demek",
+        "rebi ne iş",
+        "rebi ne yapar",
+        "rebi ne yapiyor",
+        "rebi kim",
+        "rebi kimin",
+        "rebi nasıl çalışır",
+        "rebi nasıl işler",
+        "rebi ai nedir",
+        "rebi ai ne",
+        "rebi uygulaması nedir",
+        "rebi platformu nedir",
+        "what is rebi",
+        "what does rebi",
+        "who is rebi",
+        "tell me about rebi",
+    )
+    if any(n in t for n in needles):
+        return True
+    if len(t) <= 36 and ("nedir" in t or "ne dir" in t):
+        return True
+    return False
+
+
+def _free_chat_product_identity_reply(msg: str) -> str:
+    raw = (msg or "").strip()
+    en = bool(re.search(r"\b(what is|what does|who is|tell me about)\b", raw, re.I))
+    if en:
+        return (
+            "Rebi is a holistic skincare app: it looks at your skin together with sleep, stress, and environment, "
+            "then suggests a personal AM/PM routine in Analysis. This chat is for short, science‑first answers tied "
+            "to our curated literature index — not a diagnosis or prescription; your full routine lives in Analysis and check‑in."
+        )
+    return (
+        "Rebi, cildini uyku, stres ve çevreyle birlikte değerlendirip sana özel sabah‑akşam rutini öneren bir bütüncül cilt bakım uygulaması. "
+        "Bu sohbette çoğunlukla içerik maddeleri ve cilt bilimi sorularında, indekslenmiş bilimsel kaynak pasajlarına dayanarak kısa yanıt veririm; "
+        "tam kişisel rutinini Analiz ve günlük check‑in tarafında kurarsın. Burası teşhis veya reçete yerine geçmez."
+    )
+
+
+def _free_chat_is_data_provenance_query(msg: str) -> bool:
+    """Veri / bilgi kaynağı meta-sorusu — PubMed tam metin araması anlamsız ve riskli."""
+    t = _free_chat_normalize_query(msg)
+    if len(t) < 6:
+        return False
+    needles = (
+        "bilgileri nereden",
+        "bilgiyi nereden",
+        "bilgi nereden",
+        "verileri nereden",
+        "veriyi nereden",
+        "veri nereden",
+        "bilgileri nedern",
+        "bilgiyi nedern",
+        "hangi kaynak",
+        "kaynaklarin ne",
+        "kaynakların ne",
+        "veri kaynagi",
+        "veri kaynağı",
+        "nereden ogreniyorsun",
+        "nereden öğreniyorsun",
+        "where do you get",
+        "where does your information",
+        "where does the information",
+        "what are your sources",
+    )
+    if any(n in t for n in needles):
+        return True
+    loc = ("nereden" in t) or ("nedern" in t) or ("nerden" in t)
+    if loc and any(w in t for w in ("bilgi", "veri", "kaynak", "bilgiler", "veriler")):
+        return True
+    return False
+
+
+def _free_chat_data_provenance_reply(msg: str) -> str:
+    raw = (msg or "").strip()
+    en = bool(
+        re.search(
+            r"\b(where do you get|where does your|where does the|what are your sources|how do you know)\b",
+            raw,
+            re.I,
+        )
+    )
+    if en:
+        return (
+            "Skin answers here are grounded first in Rebi’s indexed excerpts from peer‑reviewed papers and textbooks "
+            "(plus an ingredient index when it helps). If nothing matches, I say so. Optional PubMed/Europe PMC links "
+            "are only reading pointers and can miss your intent when the whole chat line is used as the search query."
+        )
+    return (
+        "Önce Rebi bilgi tabanındaki indekslenmiş makale ve kitap pasajları ile madde endeksi; eşleşme yoksa söylerim. "
+        "Bazen tamamlayıcı PubMed/Europe PMC linki verilir — tüm cümle aramaya girdiği için her zaman isabetli olmayabilir; maddeyi tek yazmak daha iyi. "
+        "Profil ve rutin verin Analiz ile check-in’de."
+    )
+
+
 def _free_chat_requests_action_plan(msg: str) -> bool:
     """Sadece uygulamanın vermesi gereken: yapılacaklar, kişisel rutin planı, check-in yönlendirmesi."""
     t = (msg or "").strip().lower()
@@ -282,10 +395,10 @@ def _free_chat_has_usable_rag(kb: str) -> bool:
 
 
 def _free_chat_no_dataset_reply() -> str:
-    """RAG yok; samimi, kendi notları + bilim çerçevesi."""
+    """RAG yok; samimi ton + dürüst sınır + isteğe bağlı harici literatür."""
     return (
-        "Bu soruda henüz bizim notlarda tam oturan bir şey bulamadım — üzgünüm, bazen böyle oluyor. "
-        "İstersen aşağıdaki yazılara göz at; onlar bizim notlarımızdan değil, genel bilim aramasından, "
+        "Bu soruda henüz Rebi bilgi tabanındaki hakemli makale ve kitap pasajlarında tam oturan bir şey bulamadım — üzgünüm, bazen böyle oluyor. "
+        "İstersen aşağıdaki bağlantılara göz at; onlar indekslenmiş Rebi metinlerinden değil, genel bilim aramasından, "
         "yine de okurken şüpheci kal ve ciddi bir şikâyet varsa doktoruna danış."
     )
 
@@ -298,8 +411,8 @@ def _free_chat_meta_assistant_reply() -> str:
     except Exception:
         lim = 25
     return (
-        "Ben burada önce ekibin derlediği bilimsel notlara bakıyorum; orada bir şey yoksa sana dürüstçe söylüyorum, "
-        "bazen de merakını gidermek için PubMed tarafında örnek yazılar önerebiliyorum — o kısım tıbbi talimat değil, sadece okuma fikri.\n\n"
+        "Ben burada önce hakemli dergi makaleleri, bilimsel kitaplar ve monograflardan derlenen Rebi bilgi tabanına bakıyorum; orada bir şey yoksa sana dürüstçe söylüyorum, "
+        "bazen de merakını gidermek için PubMed tarafında örnek makaleler önerebiliyorum — o kısım tıbbi talimat değil, sadece okuma fikri.\n\n"
         f"Ücretsiz planda günde yaklaşık {lim} mesaj civarı bir üst sınır var; tam kalan hakkını sohbet ekranından görebilirsin."
     )
 
@@ -570,6 +683,16 @@ async def assessment_chat(
     is_free_chat = user_profile and user_profile.get("mode") == "free_chat"
     if not gemini_client:
         if is_free_chat:
+            if _free_chat_is_product_identity_query(user_message):
+                return {
+                    "reply": _free_chat_product_identity_reply(user_message),
+                    "is_complete": False,
+                }
+            if _free_chat_is_data_provenance_query(user_message):
+                return {
+                    "reply": _free_chat_data_provenance_reply(user_message),
+                    "is_complete": False,
+                }
             fb = _build_free_chat_rag_context(user_id, user_message)
             if _free_chat_has_usable_rag(fb):
                 return {
@@ -745,11 +868,25 @@ async def _free_chat(
     ):
         hist = hist[:-1]
 
+    if _free_chat_is_product_identity_query(um):
+        return {
+            "reply": _free_chat_product_identity_reply(um),
+            "is_complete": False,
+            "extracted_data": None,
+        }
+
+    if _free_chat_is_data_provenance_query(um):
+        return {
+            "reply": _free_chat_data_provenance_reply(um),
+            "is_complete": False,
+            "extracted_data": None,
+        }
+
     redirect_app = {
         "reply": (
             "Bu kısımda sana özel yapılacaklar listesi veya sabah-akşam rutin planı çıkarmıyorum — "
             "onlar Analiz ve günlük takipte şekilleniyor. Burada daha çok cilt bilimi ve içerik maddeleri için "
-            "bizim bilimsel notlara dayalı sohbet var; istersen oradan devam edelim."
+            "hakemli kaynaklardan derlenen Rebi bilgi tabanına dayalı sohbet var; istersen oradan devam edelim."
         ),
         "is_complete": False,
         "extracted_data": None,
@@ -758,8 +895,8 @@ async def _free_chat(
     if _GREETING_ONLY.match(um):
         return {
             "reply": (
-                "Selam! Burada samimi kalıp cevapları mümkün olduğunca kendi bilimsel notlarımızdan vermeye çalışıyorum; "
-                "bir şey notlarda yoksa da söylerim. Kişisel rutin ve yapılacaklar için Analiz / takip tarafına geçebilirsin."
+                "Selam! Burada samimi kalıp cevapları mümkün olduğunca hakemli dergiler, kitaplar ve monograflardan derlenen Rebi bilgi tabanından vermeye çalışıyorum; "
+                "kaynakta yoksa da söylerim. Kişisel rutin ve yapılacaklar için Analiz / takip tarafına geçebilirsin."
             ),
             "is_complete": False,
             "extracted_data": None,
@@ -779,7 +916,7 @@ async def _free_chat(
 
     # Son kullanıcı mesajı: REFERANS ile (Gemini özeti yalnızca buna dayansın)
     final_user = (
-        "REFERANS — Rebi’nin kendi bilimsel notları (önce buna dayan, dışarıdan uydurma):\n\n"
+        "REFERANS — Rebi bilgi tabanı (hakemli makale ve kitap pasajları; önce buna dayan, dışarıdan uydurma):\n\n"
         f"{kb}\n\n---\n\nSoru: {um}\n\n"
         "En fazla 2 kısa cümle, samimi arkadaş tonu; madde/ölçü iddiası yalnızca referansta geçiyorsa. "
         "Rutin adımı / yapılacak listesi / kişisel tedavi planı verme."
@@ -797,7 +934,7 @@ async def _free_chat(
     system_instruction = (
         f"Kullanıcının adı: {name}.\n"
         "Sen Rebi’sin: sıcak, samimi bir arkadaş gibi konuş ama bilimi ciddiye al; Türkçe.\n"
-        "REFERANS = ekibin bilimsel notları; cevabın özünü ORADAN çıkar, orada yoksa uydurma.\n"
+        "REFERANS = indekslenmiş hakemli literatür pasajları; cevabın özünü ORADAN çıkar, orada yoksa uydurma.\n"
         "Cilt bilimi, içerik maddeleri, ürün türleri; kişisel rutin / yapılacak / sabah-akşam planı verme.\n"
         "Teşhis koyma; ciddi belirtide dermatoloğa yönlendir.\n"
         "En fazla 2 kısa cümle."
@@ -806,7 +943,7 @@ async def _free_chat(
     if not gemini_client:
         return {
             "reply": (
-                "Şu an kısa özet üretemedim ama işte bizim notlardan gelen pasajlar; "
+                "Şu an kısa özet üretemedim ama işte bilgi tabanından gelen pasajlar; "
                 "istersen buradan okuyup devam edebilirsin:\n\n" + kb[:2400]
             ),
             "is_complete": False,
