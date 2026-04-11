@@ -198,9 +198,9 @@ async def _europepmc_titles(term: str, *, max_results: int = 4) -> list[tuple[st
 def _format_hints_block(lines: list[str]) -> str:
     body = "\n".join(lines)
     return (
-        "Hakemli dergi örnekleri (PubMed / Europe PMC araması; Rebi indeksinden ayrı):\n"
+        "Aynı konuda literatürde geçen birkaç çalışma başlığı:\n"
         f"{body}\n"
-        "Tam metin bağlantısından oku; rahatsızlık veya tedavi kararı için doktorun en doğru adres."
+        "Bağlantıdan özeti veya tam metne geçebilirsin. Rahatsızlık veya tedavi kararı için doktorun en doğru adres."
     )
 
 

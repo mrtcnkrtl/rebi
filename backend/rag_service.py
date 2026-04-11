@@ -185,7 +185,10 @@ def _free_chat_normalize_query(s: str) -> str:
     """Türkçe İ/ı ve birleşik aksanlar için alt string eşleşmesi (nedir vb.)."""
     t = unicodedata.normalize("NFD", (s or "").strip())
     t = "".join(c for c in t if unicodedata.category(c) != "Mn")
-    return t.casefold()
+    t = t.casefold()
+    # Python casefold dotless ı'yı değiştirmez; i ile eşleşen iğne (sarmisak vb.) için
+    t = t.replace("ı", "i")
+    return t
 
 
 def _free_chat_is_product_identity_query(msg: str) -> bool:
@@ -282,14 +285,14 @@ def _free_chat_data_provenance_reply(msg: str) -> str:
     )
     if en:
         return (
-            "Skin answers here are grounded first in Rebi’s indexed excerpts from peer‑reviewed papers and textbooks "
-            "(plus an ingredient index when it helps). If nothing matches, I say so. Optional PubMed/Europe PMC links "
-            "are only reading pointers and can miss your intent when the whole chat line is used as the search query."
+            "I try to tie answers to indexed peer‑reviewed excerpts and an ingredient index when it helps; "
+            "when nothing fits, I say so. Sometimes I add a few related paper titles with links — they are for reading, "
+            "not prescriptions, and a long sentence as the only query can make the list less precise; one clear keyword works better."
         )
     return (
-        "Önce Rebi bilgi tabanındaki indekslenmiş makale ve kitap pasajları ile madde endeksi; eşleşme yoksa söylerim. "
-        "Bazen tamamlayıcı PubMed/Europe PMC linki verilir — tüm cümle aramaya girdiği için her zaman isabetli olmayabilir; maddeyi tek yazmak daha iyi. "
-        "Profil ve rutin verin Analiz ile check-in’de."
+        "Yanıtları mümkün olduğunca indekslenmiş makale ve kitap parçalarına bağlarım; uygun parça yoksa bunu da söylerim. "
+        "Bazen soruya yakın birkaç makale başlığı ve bağlantı eklenir; bunlar okuma içindir, talimat değildir. "
+        "Çok uzun tek cümleyle arama bazen sapar, tek anahtar kelime daha isabetli olur. Profil ve rutin Analiz / check-in tarafında."
     )
 
 
@@ -417,11 +420,10 @@ def _free_chat_has_usable_rag(kb: str) -> bool:
 
 
 def _free_chat_no_dataset_reply() -> str:
-    """RAG yok; samimi ton + dürüst sınır + isteğe bağlı harici literatür."""
+    """RAG yok; kısa geçiş + (varsa) literatür başlıkları birleşik akışta."""
     return (
-        "Rebi bilgi tabanında bu soruya tam oturan pasaj bulamadım; yine de soruyu tamamen boş bırakmak zorunda değiliz: "
-        "aşağıdaki bağlantılar mümkünse PubMed (NCBI) ve Europe PMC (EBI) aramasından gelen başlıklar — Rebi indeksinden değil, "
-        "kendi okuman için yön. Okurken eleştirel bak; ciddi şikâyet veya tedavi kararı için doktorun en doğru adres."
+        "Bu soruda şimdilik özetlenecek doğrudan bir kaynak parçası çıkmıyor; soruyu birkaç anahtar kelimeye indirip "
+        "yeniden sormak isabeti artırır."
     )
 
 
@@ -433,9 +435,8 @@ def _free_chat_meta_assistant_reply() -> str:
     except Exception:
         lim = 25
     return (
-        "Ben burada önce hakemli dergi makaleleri, bilimsel kitaplar ve monograflardan derlenen Rebi bilgi tabanına bakıyorum; orada bir şey yoksa sana dürüstçe söylüyorum, "
-        "bazen de merakını gidermek için PubMed tarafında örnek makaleler önerebiliyorum — o kısım tıbbi talimat değil, sadece okuma fikri.\n\n"
-        f"Ücretsiz planda günde yaklaşık {lim} mesaj civarı bir üst sınır var; tam kalan hakkını sohbet ekranından görebilirsin."
+        "Sohbette önce elindeki bilimsel metin özetlerine bakarım; yeri gelir soruna yakın birkaç makale başlığı da eklerim — bunlar talimat değil, okuma içindir.\n\n"
+        f"Ücretsiz planda günde yaklaşık {lim} mesaj civarı üst sınır var; kalan hakkı sohbet ekranından görürsün."
     )
 
 
@@ -537,14 +538,22 @@ def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
         "oil",
         "ceviz",
         "walnut",
+        "uzat",
+        "uzama",
+        "uzar",
+        "dokul",
+        "kepek",
+        "sarmisak",
+        "garlic",
+        "folikul",
+        "alopesi",
     )
     return any(n in t for n in needles)
 
 
 async def _free_chat_compact_guidance_without_rag(user_message: str) -> Optional[str]:
     """
-    İndekste oturan pasaj yok; cilt/ürün sorusuysa LLM çağırmadan kısa genel çerçeve + hafif PubMed/EBI ipuçları.
-    Token maliyeti: yalnızca harici başlık araması (isteğe bağlı), Gemini yok.
+    Pasaj yok; cilt/ürün sorusunda LLM yok: kısa doğrudan özet + isteğe bağlı literatür başlıkları.
     """
     um = (user_message or "").strip()
     if not um or not _free_chat_allows_general_guidance_without_rag(um):
@@ -553,11 +562,10 @@ async def _free_chat_compact_guidance_without_rag(user_message: str) -> Optional
     from knowledge.free_literature import fetch_skin_literature_hints, skip_external_literature_for_query
 
     base = (
-        "Rebi indeksinde bu soruya tam oturan pasaj az ya da yok; Rebi metninden alıntı iddiası yapamam. "
-        "Buna rağmen genel cilt/saç çerçevesi ve varsa aşağıdaki PubMed (NCBI) / Europe PMC (EBI) başlıklarıyla yine de yön verebilirsin — "
-        "o kısım bizim PDF indeksimizden bağımsız, harici bilim araması. "
-        "Genel çerçeve: yağ bazlı / emolient ürünler çoğunlukla nemlendirici etki verebilir; tahriş, kaşıntı veya parfüme bağlı hassasiyette "
-        "formülü sadeleştirmek ve kademeli denemek mantıklıdır. Ciddi dökülme veya deri hastalığı şüphesinde dermatolog."
+        "Genel bilgilendirme: saç uzunluğu ve görünür yoğunluk çoğunlukla genetik ve döngüyle sınırlanır. "
+        "Sarımsak, bitkisel yağ veya benzeri tek uygulamaların uzamayı kanıtlı biçimde hızlandırdığına dair güçlü klinik kanıt genelde beklenmez. "
+        "Saç derisinde tahriş, yanma, şiddetli kaşıntı veya alışılmadık dökülmede denemeyi kesip dermatologa danış. "
+        "Bu özet kişisel tanı veya tedavi planı değildir."
     )
 
     if skip_external_literature_for_query(um):
@@ -1021,9 +1029,8 @@ async def _free_chat(
 
     redirect_app = {
         "reply": (
-            "Bu kısımda sana özel yapılacaklar listesi veya sabah-akşam rutin planı çıkarmıyorum — "
-            "onlar Analiz ve günlük takipte şekilleniyor. Burada daha çok cilt bilimi ve içerik maddeleri için "
-            "hakemli kaynaklardan derlenen Rebi bilgi tabanına dayalı sohbet var; istersen oradan devam edelim."
+            "Bu kısımda kişisel yapılacaklar listesi veya sabah-akşam rutin planı çıkarmıyorum; onlar Analiz ve günlük takipte. "
+            "Burada cilt bilimi ve içerik maddeleri gibi sorulara kısa yanıt var; rutin için Analiz tarafına geçebilirsin."
         ),
         "is_complete": False,
         "extracted_data": None,
@@ -1032,8 +1039,8 @@ async def _free_chat(
     if _GREETING_ONLY.match(um):
         return {
             "reply": (
-                "Selam! Burada samimi kalıp cevapları mümkün olduğunca hakemli dergiler, kitaplar ve monograflardan derlenen Rebi bilgi tabanından vermeye çalışıyorum; "
-                "kaynakta yoksa da söylerim. Kişisel rutin ve yapılacaklar için Analiz / takip tarafına geçebilirsin."
+                "Selam! Cilt ve içerik sorularında kısa ve net yanıtlara çalışıyorum; eldeki kaynakta karşılık yoksa da söylerim. "
+                "Kişisel rutin ve yapılacaklar için Analiz / takip tarafı daha uygun."
             ),
             "is_complete": False,
             "extracted_data": None,
