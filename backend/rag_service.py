@@ -456,7 +456,10 @@ async def _free_chat_no_rag_full_reply(user_message: str) -> str:
 
 
 def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
-    """Pasaj yokken sabit genel çerçeve + harici literatür ipuçları verilebilecek cilt/ürün sorusu mu."""
+    """
+    Pasaj yokken kompakt yol (kısa model + isteğe bağlı başlıklar) açılsın mı — kaba süzgeç.
+    Konu ayrıntısı modelde; her yeni madde için iğne eklemek gerekmez, yalnızca kozmetik/cilt-saç-tırnak çevresi kalsın.
+    """
     t = _free_chat_normalize_query(msg)
     if len(t) < 4:
         return False
@@ -547,13 +550,68 @@ def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
         "garlic",
         "folikul",
         "alopesi",
+        "tirnak",
+        "nail",
+        "kutikul",
+        "cuticle",
+        "oje",
+        "manikur",
     )
     return any(n in t for n in needles)
 
 
+def _free_chat_compact_guidance_body_fallback() -> str:
+    """
+    Model kapalı veya hata: tek güvenli şablon (yeni madde/durum için iğne eklemek gerekmez).
+    """
+    return (
+        "Genel bilgilendirme: Kozmetik ve günlük bakımda sonuçlar kişiye göre değişir; tek madde veya ev yöntemine dair "
+        "güçlü ve tek tip klinik kanıt her zaman beklenmez. Tahriş, beklenmedik reaksiyon veya ciddi belirtide uygulamayı kesip "
+        "dermatolog veya ilgili hekime danış. Bu özet kişisel tanı veya tedavi planı değildir."
+    )
+
+
+async def _free_chat_compact_guidance_from_model(user_message: str) -> Optional[str]:
+    """
+    Pasaj yokken soruya özel kısa yanıt. Geçmiş gönderilmez (giriş tokenı düşük).
+    Başarısız veya boşsa None — çağıran yedek şablona düşer.
+    """
+    if not gemini_client:
+        return None
+    um = (user_message or "").strip()
+    if len(um) > 900:
+        um = um[:900].rsplit(" ", 1)[0]
+    system_instruction = (
+        "Sen Rebi’sin; Türkçe, samimi ama temkinli.\n"
+        "Rebi bilgi tabanında bu soruya oturan alıntılı pasaj YOK; 'kaynakta şöyle', 'veri tabanında yazıyor' deme.\n"
+        "Kullanıcının sorusuna doğrudan yanıt ver. Konu cilt, saç, tırnak, kozmetik içerik, doğal yağlar veya günlük bakım olabilir; "
+        "sabitleşmiş tek şablona sıkıştırma, sorunun özüne göre 3–5 kısa cümle yaz.\n"
+        "Zayıf kanıtlı veya folklor iddialarını abartma; 'kesin işe yarar' deme; bireysel farklılık ve olası tahriş riskini kısaca belirt.\n"
+        "Marka veya ürün önerme; sabah-akşam rutin listesi verme; teşhis koyma.\n"
+        "İlk cümleyi 'Genel bilgilendirme:' ile başlat. Son cümle 'Bu özet kişisel tanı veya tedavi planı değildir.' olsun."
+    )
+    try:
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[types.Content(role="user", parts=[types.Part.from_text(text=um)])],
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction,
+                temperature=0.25,
+                max_output_tokens=260,
+            ),
+        )
+        text = _gemini_response_text(response)
+        if not text or len(text.strip()) < 36:
+            return None
+        return text.strip()
+    except Exception as e:
+        log.warning("Free chat kompakt model yanıtı alınamadı: %s", e)
+        return None
+
+
 async def _free_chat_compact_guidance_without_rag(user_message: str) -> Optional[str]:
     """
-    Pasaj yok; cilt/ürün sorusunda LLM yok: kısa doğrudan özet + isteğe bağlı literatür başlıkları.
+    Pasaj yok; cilt/ürün sorusu: önce hafif model özeti (yalnızca son soru), yedekte tek şablon + isteğe bağlı literatür başlıkları.
     """
     um = (user_message or "").strip()
     if not um or not _free_chat_allows_general_guidance_without_rag(um):
@@ -561,12 +619,9 @@ async def _free_chat_compact_guidance_without_rag(user_message: str) -> Optional
 
     from knowledge.free_literature import fetch_skin_literature_hints, skip_external_literature_for_query
 
-    base = (
-        "Genel bilgilendirme: saç uzunluğu ve görünür yoğunluk çoğunlukla genetik ve döngüyle sınırlanır. "
-        "Sarımsak, bitkisel yağ veya benzeri tek uygulamaların uzamayı kanıtlı biçimde hızlandırdığına dair güçlü klinik kanıt genelde beklenmez. "
-        "Saç derisinde tahriş, yanma, şiddetli kaşıntı veya alışılmadık dökülmede denemeyi kesip dermatologa danış. "
-        "Bu özet kişisel tanı veya tedavi planı değildir."
-    )
+    base = await _free_chat_compact_guidance_from_model(um)
+    if base is None:
+        base = _free_chat_compact_guidance_body_fallback()
 
     if skip_external_literature_for_query(um):
         return base
@@ -1054,7 +1109,10 @@ async def _free_chat(
     if not _free_chat_has_usable_rag(kb):
         compact = await _free_chat_compact_guidance_without_rag(um)
         if compact is not None:
-            log.info("Free chat: pasaj yok, sıkıştırılmış yanıt (LLM yok, %d karakter)", len(compact))
+            log.info(
+                "Free chat: pasaj yok, kompakt yanıt (kısa model veya yedek şablon + isteğe bağlı başlıklar, %d karakter)",
+                len(compact),
+            )
             return {"reply": compact, "is_complete": False, "extracted_data": None}
         return {
             "reply": await _free_chat_no_rag_full_reply(um),
