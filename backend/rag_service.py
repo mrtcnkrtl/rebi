@@ -15,7 +15,7 @@ AI şu işleri YAPMAZ:
 import json
 import re
 import unicodedata
-from typing import Optional, Literal, Dict, Any
+from typing import Any, Dict, List, Literal, Optional
 from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY, KNOWLEDGE_CATALOG_USER_ID, get_logger
@@ -317,10 +317,99 @@ def _free_chat_requests_action_plan(msg: str) -> bool:
     return any(n in t for n in needles)
 
 
-def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> str:
+def _free_chat_vector_query_text(um: str, history: Optional[List[Any]]) -> str:
     """
-    1) Entity index (düşük maliyet, madde/yağ/özüt adları)
-    2) Gerekirse vektör arama (tek sorgu embedding + az chunk) — genel cilt sorusu
+    Embedding metni: kısa takiplerde bir önceki kullanıcı cümlesi eklenir (tek embed, daha iyi hatırlatma).
+    """
+    base = (strip_conversational_turkish(um) or um).strip()
+    if len(base) >= 96 or not history:
+        return base[:500]
+    um_s = (um or "").strip()
+    prior = ""
+    for msg in reversed(history[-6:]):
+        if msg.get("role") != "user":
+            continue
+        c = (msg.get("content") or "").strip()
+        if not c or c == um_s:
+            continue
+        prior = (strip_conversational_turkish(c) or c).strip()[:260]
+        break
+    if not prior:
+        return base[:500]
+    return f"{prior} {base}".strip()[:500]
+
+
+def _entity_text_supersedes_vector(entity_text: str) -> bool:
+    """Çok parçalı / uzun entity çıktısında ikinci embedding turunu atla (maliyet + gürültü)."""
+    et = (entity_text or "").strip()
+    if len(et) >= 880:
+        return True
+    if len(et) < 280:
+        return False
+    if "---" in et:
+        return True
+    return len(et) >= 560
+
+
+def _free_chat_infer_klass_topics(user_message: str) -> Optional[List[str]]:
+    """
+    classify_chunks.klass.topic ile uyumlu ipuçları (sıralama önceliği için; ekstra token yok).
+    Boş dönüş: SQL tarafında mevcut davranış (yalnızca embedding sırası).
+    """
+    t = _free_chat_normalize_query(user_message)
+    if len(t) < 3:
+        return None
+    topics: set[str] = set()
+    if any(x in t for x in ("sac", "saca", "scalp", "hair", "boya", "kepek", "dokul", "uzat", "alopesi", "folikul", "kuaf", "fon")):
+        topics.add("hair")
+    if any(x in t for x in ("akne", "sivilce", "comedo")):
+        topics.add("acne")
+    if any(x in t for x in ("gunes", "spf", "sunscreen")):
+        topics.add("sun")
+    if any(x in t for x in ("leke", "melaz", "melan", "hiperpig", "pigment")):
+        topics.add("pigmentation")
+    if any(x in t for x in ("rosacea", "kizar", "flush")):
+        topics.add("rosacea")
+    if any(x in t for x in ("eczema", "atopi", "atopic", "kuruluk", "kurde")):
+        topics.add("eczema")
+    if any(x in t for x in ("bariyer", "barrier", "microbiom")):
+        topics.add("barrier")
+    if any(
+        x in t
+        for x in (
+            "retinol",
+            "retinoid",
+            "tretinoin",
+            "adapalene",
+            "glycolik",
+            "glikolik",
+            "salisilik",
+            "bha",
+            "aha",
+            "peeling",
+            "niacinamide",
+            "askorbik",
+            "vitamin c",
+        )
+    ):
+        topics.add("ingredient")
+    if any(x in t for x in ("tirnak", "nail", "kutikul", "cuticle", "oje")):
+        topics.add("general")
+    if not topics and any(x in t for x in ("cilt", "yuz", "yag", "nem", "krem", "serum", "toner", "temizlik")):
+        topics.update(("general", "ingredient"))
+    if not topics:
+        return None
+    return sorted(topics)
+
+
+def _build_free_chat_rag_context(
+    user_id: Optional[str],
+    user_message: str,
+    history: Optional[List[Any]] = None,
+) -> str:
+    """
+    1) Entity index (düşük maliyet)
+    2) Gerekirse tek vektör araması (embedding); entity zenginse atlanır — ekstra maliyet/gürültü yok.
     """
     um = (user_message or "").strip()
     if len(um) < 2:
@@ -329,10 +418,20 @@ def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> s
     entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
     vector_blocks: list[str] = []
     seen_sig: set[str] = set()
-    um_vec = strip_conversational_turkish(um)
+    um_vec = _free_chat_vector_query_text(um, history)
+    klass_topics: Optional[List[str]] = _free_chat_infer_klass_topics(um)
 
-    # Entity zaten uzunsa embed atlamak kotayı korur
-    run_vector = len(entity_text) < 900
+    run_vector = (len(entity_text) < 900) and (not _entity_text_supersedes_vector(entity_text))
+    if run_vector:
+        log.info(
+            "free_chat RAG yolu: vektör araması açık (entity_len=%d)",
+            len(entity_text),
+        )
+    else:
+        log.info(
+            "free_chat RAG yolu: vektör atlandı — entity yeterli veya uzun (entity_len=%d)",
+            len(entity_text),
+        )
 
     if run_vector:
         from knowledge.search import search_chunks
@@ -348,13 +447,14 @@ def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> s
                     user_id=uid,
                     folder_slug="data-pdfs",
                     query=um_vec,
-                    k=8,
+                    k=10,
+                    klass_topics=klass_topics,
                 )
 
                 def _consume_hits(hit_list) -> None:
                     for h in hit_list or []:
                         t = (h.chunk_text or "").strip()
-                        if len(t) < 28:
+                        if len(t) < 22:
                             continue
                         sig = t[:140]
                         if sig in seen_sig:
@@ -374,7 +474,8 @@ def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> s
                                 user_id=uid,
                                 folder_slug="data-pdfs",
                                 query=q_exp,
-                                k=8,
+                                k=10,
+                                klass_topics=klass_topics,
                             )
                         )
                 if vector_blocks:
@@ -382,7 +483,7 @@ def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> s
             except Exception as e:
                 log.warning("Semantik RAG atlandı (user=%s): %s", uid, e)
 
-    vec_joined = "\n\n---\n\n".join(vector_blocks[:4])[:2800]
+    vec_joined = "\n\n---\n\n".join(vector_blocks[:4])[:3000]
 
     parts: list[str] = []
     if entity_text:
@@ -399,31 +500,31 @@ def _build_free_chat_rag_context(user_id: Optional[str], user_message: str) -> s
 def _free_chat_has_usable_rag(kb: str) -> bool:
     """
     Gerçek pasaj yoksa veya yalnızca entity tarafının 'veride yok' kısa mesajı varsa False.
-    Böyle durumda LLM çağrılmaz (giriş/çıkış token maliyeti yok).
+    Arşiv geniş olduğundan eşikler biraz düşük: ince ama anlamlı vektör kuyrukları da RAG yoluna girer.
     """
     s = (kb or "").strip()
     if not s:
         return False
     if "Anlamsal arama — ilgili pasajlar]" in s:
         tail = s.split("Anlamsal arama — ilgili pasajlar]", 1)[1].strip()
-        if len(tail) >= 35:
+        if len(tail) >= 26:
             return True
     if "---" in s:
         return True
-    if len(s) >= 380:
+    if len(s) >= 300:
         return True
     if "Bunu şu anki veri setimizde bulamadım." in s or "Bunu şu anki veri setimde bulamadım." in s:
         return False
     if "i couldn't find this in the current dataset yet." in s.lower():
         return False
-    return len(s) >= 120
+    return len(s) >= 95
 
 
 def _free_chat_no_dataset_reply() -> str:
     """RAG yok; kısa geçiş + (varsa) literatür başlıkları birleşik akışta."""
     return (
-        "Bu soruda şimdilik özetlenecek doğrudan bir kaynak parçası çıkmıyor; soruyu birkaç anahtar kelimeye indirip "
-        "yeniden sormak isabeti artırır."
+        "Arşivde çok sayıda kitap ve makale metni var; bu soruda şu an otomatik eşleşen kısa pasaj çıkmadı. "
+        "Soruyu birkaç net anahtar kelimeye indirip yeniden sormak isabeti artırır."
     )
 
 
@@ -455,109 +556,152 @@ async def _free_chat_no_rag_full_reply(user_message: str) -> str:
     return f"{base}\n\n{hints}" if hints else base
 
 
-def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
+_FREE_CHAT_GUIDANCE_NEEDLES: tuple[str, ...] = (
+    "cilt",
+    "yuz",
+    "yuzum",
+    "yuzunu",
+    "nem",
+    "kuru",
+    "hassas",
+    "kizar",
+    "kuruluk",
+    "retinol",
+    "retinoid",
+    "tretinoin",
+    "niacinamide",
+    "vitamin c",
+    "askorbik",
+    "glycolik",
+    "glikolik",
+    "salisilik",
+    "bha",
+    "glycolic",
+    "spf",
+    "gunes",
+    "serum",
+    "krem",
+    "nemlendirici",
+    "toner",
+    "temizlik",
+    "bakim",
+    "sivilce",
+    "akne",
+    "leke",
+    "melaz",
+    "kirisik",
+    "bariyer",
+    "skin",
+    "acne",
+    "moistur",
+    "sunscreen",
+    "lotion",
+    "cream",
+    "face",
+    "dry",
+    "sensitive",
+    "rosacea",
+    "eczema",
+    "atopi",
+    "urun",
+    "urunu",
+    "madde",
+    "icerik",
+    "aktif",
+    "peeling",
+    "exfol",
+    "gozenek",
+    "sebum",
+    "yagli",
+    "kurde",
+    "deri",
+    "dermat",
+    "alerji",
+    "tahris",
+    "irrit",
+    "yanma",
+    "kasinti",
+    "pul pul",
+    "lavanta",
+    "badem",
+    "yag",
+    "sac",
+    "saca",
+    "kokusu",
+    "esans",
+    "hair",
+    "scalp",
+    "oil",
+    "ceviz",
+    "walnut",
+    "uzat",
+    "uzama",
+    "uzar",
+    "dokul",
+    "kepek",
+    "sarmisak",
+    "garlic",
+    "folikul",
+    "alopesi",
+    "tirnak",
+    "nail",
+    "kutikul",
+    "cuticle",
+    "oje",
+    "manikur",
+    "argan",
+    "jojoba",
+    "zeytin",
+    "hindistan",
+    "boya",
+    "yandi",
+    "yanik",
+    "maske",
+    "kuaf",
+    "fon",
+)
+
+
+def _free_chat_message_matches_guidance_needles(t: str) -> bool:
+    return any(n in t for n in _FREE_CHAT_GUIDANCE_NEEDLES)
+
+
+def _free_chat_recent_turns_blob(history: Optional[List[Any]], *, max_len: int = 480) -> str:
+    """Kısa takip sorularında süzgeç/model için son birkaç tur (token sınırlı)."""
+    if not history:
+        return ""
+    lines: list[str] = []
+    for msg in history[-4:]:
+        role = msg.get("role")
+        c = (msg.get("content") or "").strip()
+        if not c:
+            continue
+        tag = "Yanıt" if role == "assistant" else "Soru"
+        lines.append(f"[{tag}] {c}")
+    blob = "\n".join(lines)
+    if len(blob) > max_len:
+        blob = blob[:max_len].rsplit("\n", 1)[0] + "\n…"
+    return blob
+
+
+def _free_chat_allows_general_guidance_without_rag(
+    msg: str, history: Optional[List[Any]] = None
+) -> bool:
     """
     Pasaj yokken kompakt yol (kısa model + isteğe bağlı başlıklar) açılsın mı — kaba süzgeç.
-    Konu ayrıntısı modelde; her yeni madde için iğne eklemek gerekmez, yalnızca kozmetik/cilt-saç-tırnak çevresi kalsın.
+    Kısa 'peki…' takiplerinde son tur metniyle birleştirilir (yağ yazımı kaçsa bile önceki bağlam yakalanır).
     """
     t = _free_chat_normalize_query(msg)
     if len(t) < 4:
         return False
-    needles = (
-        "cilt",
-        "yuz",
-        "yuzum",
-        "yuzunu",
-        "nem",
-        "kuru",
-        "hassas",
-        "kizar",
-        "kuruluk",
-        "retinol",
-        "retinoid",
-        "tretinoin",
-        "niacinamide",
-        "vitamin c",
-        "askorbik",
-        "glycolik",
-        "glikolik",
-        "salisilik",
-        "bha",
-        "glycolic",
-        "spf",
-        "gunes",
-        "serum",
-        "krem",
-        "nemlendirici",
-        "toner",
-        "temizlik",
-        "bakim",
-        "sivilce",
-        "akne",
-        "leke",
-        "melaz",
-        "kirisik",
-        "bariyer",
-        "skin",
-        "acne",
-        "moistur",
-        "sunscreen",
-        "lotion",
-        "cream",
-        "face",
-        "dry",
-        "sensitive",
-        "rosacea",
-        "eczema",
-        "atopi",
-        "urun",
-        "urunu",
-        "madde",
-        "icerik",
-        "aktif",
-        "peeling",
-        "exfol",
-        "gozenek",
-        "sebum",
-        "yagli",
-        "kurde",
-        "deri",
-        "dermat",
-        "alerji",
-        "tahris",
-        "irrit",
-        "yanma",
-        "kasinti",
-        "pul pul",
-        "lavanta",
-        "badem",
-        "yag",
-        "sac",
-        "saca",
-        "kokusu",
-        "esans",
-        "hair",
-        "scalp",
-        "oil",
-        "ceviz",
-        "walnut",
-        "uzat",
-        "uzama",
-        "uzar",
-        "dokul",
-        "kepek",
-        "sarmisak",
-        "garlic",
-        "folikul",
-        "alopesi",
-        "tirnak",
-        "nail",
-        "kutikul",
-        "cuticle",
-        "oje",
-        "manikur",
-    )
-    return any(n in t for n in needles)
+    if _free_chat_message_matches_guidance_needles(t):
+        return True
+    blob = _free_chat_recent_turns_blob(history, max_len=360)
+    if blob and len(t) < 120:
+        merged = _free_chat_normalize_query(blob + "\n" + msg)
+        if _free_chat_message_matches_guidance_needles(merged):
+            return True
+    return False
 
 
 def _free_chat_compact_guidance_body_fallback() -> str:
@@ -565,39 +709,75 @@ def _free_chat_compact_guidance_body_fallback() -> str:
     Model kapalı veya hata: tek güvenli şablon (yeni madde/durum için iğne eklemek gerekmez).
     """
     return (
-        "Genel bilgilendirme: Kozmetik ve günlük bakımda sonuçlar kişiye göre değişir; tek madde veya ev yöntemine dair "
-        "güçlü ve tek tip klinik kanıt her zaman beklenmez. Tahriş, beklenmedik reaksiyon veya ciddi belirtide uygulamayı kesip "
-        "dermatolog veya ilgili hekime danış. Bu özet kişisel tanı veya tedavi planı değildir."
+        "Genel bilgilendirme: Uygulama ve zamanlama (sabah-akşam, yüzeyin nemliliği, ürün tipi) ürünün yapısına ve asit/aktif içeriğine göre değişir; "
+        "tek tip 'her yağa aynı şekilde sür' demek doğru olmaz. Tahriş veya ciddi belirtide uygulamayı kesip hekime danış. "
+        "Bu özet kişisel tanı veya tedavi planı değildir."
     )
 
 
-async def _free_chat_compact_guidance_from_model(user_message: str) -> Optional[str]:
+def _free_chat_compact_typo_bridge(text: str) -> str:
     """
-    Pasaj yokken soruya özel kısa yanıt. Geçmiş gönderilmez (giriş tokenı düşük).
-    Başarısız veya boşsa None — çağıran yedek şablona düşer.
+    Sık yazım/shape hatalarında modele tek satır ipucu (LLM değil, deterministik).
+    """
+    t = _free_chat_normalize_query(text)
+    hints: list[str] = []
+    oil_ctx = any(
+        x in t
+        for x in (
+            "argan",
+            "jojoba",
+            "zeytin",
+            "badem",
+            "hint",
+            "hindistan",
+            "lavanta",
+            "gul y",
+            "gulyag",
+        )
+    )
+    if oil_ctx and "yapini" in t and "yag" not in t and "yagi" not in t:
+        hints.append("Mesajda 'yapını' geçiyorsa çoğunlukla 'yağını' kastedilir.")
+    if "sac" in t and "yandi" in t and "boya" in t:
+        hints.append("Boya sonrası yanık bağlamında saç telleri hassastır; güçlü asit/ısıdan bahsederken ekstra temkin.")
+    if hints:
+        return "[Otomatik not — yazım/ bağlam]\n" + " ".join(hints)
+    return ""
+
+
+async def _free_chat_compact_guidance_from_model(
+    user_message: str,
+    history: Optional[List[Any]] = None,
+) -> Optional[str]:
+    """
+    Pasaj yokken soruya özel kısa yanıt. Varsayılan yalnızca son soru; kısa takipte son birkaç tur ince bağlam olarak eklenir.
     """
     if not gemini_client:
         return None
     um = (user_message or "").strip()
     if len(um) > 900:
         um = um[:900].rsplit(" ", 1)[0]
+    blob = _free_chat_recent_turns_blob(history, max_len=320) if history else ""
+    bridge = _free_chat_compact_typo_bridge(um)
+    payload = um
+    if blob and len(_free_chat_normalize_query(um)) < 120:
+        payload = f"Son konuşma özeti:\n{blob}\n\nŞimdiki soru: {um}"
+    if bridge:
+        payload = f"{payload}\n\n{bridge}"
     system_instruction = (
-        "Sen Rebi’sin; Türkçe, samimi ama temkinli.\n"
-        "Rebi bilgi tabanında bu soruya oturan alıntılı pasaj YOK; 'kaynakta şöyle', 'veri tabanında yazıyor' deme.\n"
-        "Kullanıcının sorusuna doğrudan yanıt ver. Konu cilt, saç, tırnak, kozmetik içerik, doğal yağlar veya günlük bakım olabilir; "
-        "sabitleşmiş tek şablona sıkıştırma, sorunun özüne göre 3–5 kısa cümle yaz.\n"
-        "Zayıf kanıtlı veya folklor iddialarını abartma; 'kesin işe yarar' deme; bireysel farklılık ve olası tahriş riskini kısaca belirt.\n"
-        "Marka veya ürün önerme; sabah-akşam rutin listesi verme; teşhis koyma.\n"
-        "İlk cümleyi 'Genel bilgilendirme:' ile başlat. Son cümle 'Bu özet kişisel tanı veya tedavi planı değildir.' olsun."
+        "Rebi; Türkçe; temkinli. Bu turda alıntılı pasaj yok → genel çerçeve; arşiv geniş, 'hiç kaynak yok' deme. Kaynak iddiası yok.\n"
+        "Yazım hatalarını bağlamdan çöz; barizse tek cümleyle netleştir.\n"
+        "Uygulama tek tip olmasın: yağ / krem-serum / asit (AHA,BHA,C asidi) / retinoid ayrımı; pH-konsantrasyon bilinmiyorsa kesin talimat verme.\n"
+        "Ne zaman (AM/PM, yıkama, nem) soruluyorsa kısaca; retinoid-güçlü asitte çoğunlukla akşam+ertesi gün SPF; taşıyıcı yağda genelde uç/önemli nem gibi genel ilkeler.\n"
+        "Folkloru abartma. Marka, uzun rutin listesi, teşhis yok. İlk: 'Genel bilgilendirme:' Son: 'Bu özet kişisel tanı veya tedavi planı değildir.'"
     )
     try:
         response = gemini_client.models.generate_content(
             model="gemini-2.0-flash",
-            contents=[types.Content(role="user", parts=[types.Part.from_text(text=um)])],
+            contents=[types.Content(role="user", parts=[types.Part.from_text(text=payload)])],
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 temperature=0.25,
-                max_output_tokens=260,
+                max_output_tokens=280,
             ),
         )
         text = _gemini_response_text(response)
@@ -609,17 +789,20 @@ async def _free_chat_compact_guidance_from_model(user_message: str) -> Optional[
         return None
 
 
-async def _free_chat_compact_guidance_without_rag(user_message: str) -> Optional[str]:
+async def _free_chat_compact_guidance_without_rag(
+    user_message: str,
+    history: Optional[List[Any]] = None,
+) -> Optional[str]:
     """
-    Pasaj yok; cilt/ürün sorusu: önce hafif model özeti (yalnızca son soru), yedekte tek şablon + isteğe bağlı literatür başlıkları.
+    Pasaj yok; cilt/ürün sorusu: önce hafif model özeti, kısa takipte ince bağlam; yedekte tek şablon + isteğe bağlı literatür başlıkları.
     """
     um = (user_message or "").strip()
-    if not um or not _free_chat_allows_general_guidance_without_rag(um):
+    if not um or not _free_chat_allows_general_guidance_without_rag(um, history):
         return None
 
     from knowledge.free_literature import fetch_skin_literature_hints, skip_external_literature_for_query
 
-    base = await _free_chat_compact_guidance_from_model(um)
+    base = await _free_chat_compact_guidance_from_model(um, history)
     if base is None:
         base = _free_chat_compact_guidance_body_fallback()
 
@@ -893,7 +1076,7 @@ async def assessment_chat(
                     "reply": _free_chat_data_provenance_reply(user_message),
                     "is_complete": False,
                 }
-            fb = _build_free_chat_rag_context(user_id, user_message)
+            fb = _build_free_chat_rag_context(user_id, user_message, history)
             if _free_chat_has_usable_rag(fb):
                 return {
                     "reply": (
@@ -1094,7 +1277,8 @@ async def _free_chat(
     if _GREETING_ONLY.match(um):
         return {
             "reply": (
-                "Selam! Cilt ve içerik sorularında kısa ve net yanıtlara çalışıyorum; eldeki kaynakta karşılık yoksa da söylerim. "
+                "Selam! Hakemli makale ve kitaplardan derlenen geniş bir bilgi tabanına dayanarak cilt bilimi ve içerik sorularında "
+                "mümkün olduğunca derin ama öz yanıtlar veriyorum; bu turda eşleşme çıkmazsa da dürüst söylerim. "
                 "Kişisel rutin ve yapılacaklar için Analiz / takip tarafı daha uygun."
             ),
             "is_complete": False,
@@ -1104,10 +1288,10 @@ async def _free_chat(
     if _free_chat_requests_action_plan(um):
         return redirect_app
 
-    kb = _build_free_chat_rag_context(user_id, um)
+    kb = _build_free_chat_rag_context(user_id, um, hist)
 
     if not _free_chat_has_usable_rag(kb):
-        compact = await _free_chat_compact_guidance_without_rag(um)
+        compact = await _free_chat_compact_guidance_without_rag(um, hist)
         if compact is not None:
             log.info(
                 "Free chat: pasaj yok, kompakt yanıt (kısa model veya yedek şablon + isteğe bağlı başlıklar, %d karakter)",
@@ -1122,10 +1306,9 @@ async def _free_chat(
 
     # Son kullanıcı mesajı: REFERANS ile (Gemini özeti yalnızca buna dayansın)
     final_user = (
-        "REFERANS — Rebi bilgi tabanı (hakemli makale ve kitap pasajları; önce buna dayan, dışarıdan uydurma):\n\n"
-        f"{kb}\n\n---\n\nSoru: {um}\n\n"
-        "En fazla 2 kısa cümle, samimi arkadaş tonu; madde/ölçü iddiası yalnızca referansta geçiyorsa. "
-        "Rutin adımı / yapılacak listesi / kişisel tedavi planı verme."
+        "REFERANS (indekslenmiş makale/kitap pasajları):\n\n"
+        f"{kb}\n\n---\nSoru: {um}\n"
+        "En fazla 3 kısa cümle; referandan özet; yoksa iddia yok. pH/ölçü yalnız pasajda varsa. Rutin/tedavi planı yok."
     )
 
     contents: list = []
@@ -1138,12 +1321,9 @@ async def _free_chat(
 
     name = (user_profile or {}).get("name", "Kullanıcı")
     system_instruction = (
-        f"Kullanıcının adı: {name}.\n"
-        "Sen Rebi’sin: sıcak, samimi bir arkadaş gibi konuş ama bilimi ciddiye al; Türkçe.\n"
-        "REFERANS = indekslenmiş hakemli literatür pasajları; cevabın özünü ORADAN çıkar, orada yoksa uydurma.\n"
-        "Cilt bilimi, içerik maddeleri, ürün türleri; kişisel rutin / yapılacak / sabah-akşam planı verme.\n"
-        "Teşhis koyma; ciddi belirtide dermatoloğa yönlendir.\n"
-        "En fazla 2 kısa cümle."
+        f"Ad: {name}. Rebi; Türkçe; samimi; bilimsel.\n"
+        "REFERANS=indeks pasajları; özet buradan, yoksa uydurma. Yeterliyse bariyer, mekanizma, fotosensitivite, formülasyon düzeyinde öz.\n"
+        "Rutin listesi/teşhis yok; ciddide dermatolog. En fazla 3 kısa cümle."
     )
 
     if not gemini_client:
@@ -1163,7 +1343,7 @@ async def _free_chat(
             config=types.GenerateContentConfig(
                 system_instruction=system_instruction,
                 temperature=0.25,
-                max_output_tokens=160,
+                max_output_tokens=220,
             ),
         )
         reply = _gemini_response_text(response)

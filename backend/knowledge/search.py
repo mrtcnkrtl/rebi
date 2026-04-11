@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Sequence
 
 from config import get_logger
 from knowledge.db import pg_conn
@@ -37,6 +37,7 @@ def search_chunks(
     query: str,
     k: int = 6,
     embed_model: str = "gemini-embedding-001",
+    klass_topics: Optional[Sequence[str]] = None,
 ) -> list[ChunkMatch]:
     q = (query or "").strip()
     if not q:
@@ -50,15 +51,20 @@ def search_chunks(
 
     vec = embed_texts_google([q], model=embed_model, output_dimensionality=768)[0]
     vec_lit = _pg_vector_literal(vec)
+    topics = None
+    if klass_topics:
+        topics = [str(x).strip().lower() for x in klass_topics if str(x).strip()]
+        if not topics:
+            topics = None
 
     with pg_conn(autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 select chunk_id, document_id, chunk_text, similarity
-                from public.match_knowledge_chunks(%s::uuid, %s::vector, %s, %s::uuid)
+                from public.match_knowledge_chunks(%s::uuid, %s::vector, %s, %s::uuid, %s::text[])
                 """,
-                (user_id, vec_lit, max(int(k), 1), folder_id),
+                (user_id, vec_lit, max(int(k), 1), folder_id, topics),
                 prepare=False,
             )
             rows = cur.fetchall() or []
