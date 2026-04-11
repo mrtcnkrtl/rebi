@@ -419,9 +419,9 @@ def _free_chat_has_usable_rag(kb: str) -> bool:
 def _free_chat_no_dataset_reply() -> str:
     """RAG yok; samimi ton + dürüst sınır + isteğe bağlı harici literatür."""
     return (
-        "Bu soruda henüz Rebi bilgi tabanındaki hakemli makale ve kitap pasajlarında tam oturan bir şey bulamadım — üzgünüm, bazen böyle oluyor. "
-        "İstersen aşağıdaki bağlantılara göz at; onlar indekslenmiş Rebi metinlerinden değil, genel bilim aramasından, "
-        "yine de okurken şüpheci kal ve ciddi bir şikâyet varsa doktoruna danış."
+        "Rebi bilgi tabanında bu soruya tam oturan pasaj bulamadım; yine de soruyu tamamen boş bırakmak zorunda değiliz: "
+        "aşağıdaki bağlantılar mümkünse PubMed (NCBI) ve Europe PMC (EBI) aramasından gelen başlıklar — Rebi indeksinden değil, "
+        "kendi okuman için yön. Okurken eleştirel bak; ciddi şikâyet veya tedavi kararı için doktorun en doğru adres."
     )
 
 
@@ -455,7 +455,7 @@ async def _free_chat_no_rag_full_reply(user_message: str) -> str:
 
 
 def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
-    """Pasaj yokken bile Gemini ile çok muhafazakâr genel bilgi verilebilecek cilt/ürün sorusu mu."""
+    """Pasaj yokken sabit genel çerçeve + harici literatür ipuçları verilebilecek cilt/ürün sorusu mu."""
     t = _free_chat_normalize_query(msg)
     if len(t) < 4:
         return False
@@ -541,88 +541,32 @@ def _free_chat_allows_general_guidance_without_rag(msg: str) -> bool:
     return any(n in t for n in needles)
 
 
-_FREE_CHAT_NO_PASSAGE_DISCLAIMER = (
-    "Bilgi tabanında bu soruya tam oturan pasaj bulamadım; aşağısı yalnızca genel bilgilendirme "
-    "(teşhis veya kesin tedavi değil):"
-)
-
-
-def _strip_free_chat_disclaimer_echo(text: str) -> str:
-    """Geçmişteki veya modelin ürettiği tekrarlayan 'pasaj yok' uyarılarını sök (çift prefix bug'ı)."""
-    b = (text or "").strip()
-    for _ in range(5):
-        if b.startswith(_FREE_CHAT_NO_PASSAGE_DISCLAIMER):
-            b = b[len(_FREE_CHAT_NO_PASSAGE_DISCLAIMER) :].lstrip().lstrip(":").strip()
-            continue
-        # Model bazen sadece ilk cümleyi + newline ile tekrarlar
-        short = "Bilgi tabanında bu soruya tam oturan pasaj bulamadım"
-        if b.startswith(short):
-            cut = b.find(":")
-            if cut != -1:
-                b = b[cut + 1 :].lstrip().strip()
-                continue
-        break
-    return b.strip()
-
-
-async def _free_chat_try_general_guidance_without_rag(
-    user_message: str,
-    history: list,
-    user_profile: Optional[Dict[str, Any]],
-) -> Optional[dict]:
+async def _free_chat_compact_guidance_without_rag(user_message: str) -> Optional[str]:
     """
-    İndekste oturan pasaj yok; soru cilt/ürün bağlamındaysa kısa genel bilgilendirme (kaynak iddiası yok).
-    Gemini yoksa veya konu uygun değilse None.
+    İndekste oturan pasaj yok; cilt/ürün sorusuysa LLM çağırmadan kısa genel çerçeve + hafif PubMed/EBI ipuçları.
+    Token maliyeti: yalnızca harici başlık araması (isteğe bağlı), Gemini yok.
     """
     um = (user_message or "").strip()
     if not um or not _free_chat_allows_general_guidance_without_rag(um):
         return None
-    if not gemini_client:
-        return None
 
-    hist = list(history or [])
-    contents: list = []
-    for msg in hist[-8:]:
-        role = "model" if msg.get("role") == "assistant" else "user"
-        raw = msg.get("content", "") or ""
-        if role == "model":
-            raw = _strip_free_chat_disclaimer_echo(raw)
-        contents.append(
-            types.Content(role=role, parts=[types.Part.from_text(text=raw)])
-        )
-    contents.append(types.Content(role="user", parts=[types.Part.from_text(text=um)]))
+    from knowledge.free_literature import fetch_skin_literature_hints, skip_external_literature_for_query
 
-    name = (user_profile or {}).get("name", "Kullanıcı")
-    system_instruction = (
-        f"Kullanıcı adı: {name}.\n"
-        "Sen Rebi’sin; Türkçe, samimi ama temkinli.\n"
-        "Rebi bilgi tabanında bu soruya doğrudan oturan alıntılı pasaj YOK; 'pasajlarda yazıyor', 'kaynağımızda şöyle' DEME.\n"
-        "En fazla 3 kısa cümle: yalnızca genel cilt bakımı ilkeleri (bariyer, hassasiyet, retinoidlere yavaş giriş, güneş koruma, gerektiğinde dermatolog).\n"
-        "Teşhis koyma; marka/ürün önerme; sabah-akşam kişisel rutin listesi verme.\n"
-        "Soru açıkça cilt bakımı dışındaysa tek cümleyle bu konuda yardımcı olamadığını söyle."
+    base = (
+        "Rebi indeksinde bu soruya tam oturan pasaj az ya da yok; Rebi metninden alıntı iddiası yapamam. "
+        "Buna rağmen genel cilt/saç çerçevesi ve varsa aşağıdaki PubMed (NCBI) / Europe PMC (EBI) başlıklarıyla yine de yön verebilirsin — "
+        "o kısım bizim PDF indeksimizden bağımsız, harici bilim araması. "
+        "Genel çerçeve: yağ bazlı / emolient ürünler çoğunlukla nemlendirici etki verebilir; tahriş, kaşıntı veya parfüme bağlı hassasiyette "
+        "formülü sadeleştirmek ve kademeli denemek mantıklıdır. Ciddi dökülme veya deri hastalığı şüphesinde dermatolog."
     )
 
-    try:
-        response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=0.2,
-                max_output_tokens=220,
-            ),
-        )
-        reply = _gemini_response_text(response)
-        if not reply:
-            return None
-        body = _strip_free_chat_disclaimer_echo(reply)
-        prefix = _FREE_CHAT_NO_PASSAGE_DISCLAIMER + "\n\n"
-        reply = prefix + body
-        log.info("Free chat: pasaj yok, genel bilgilendirme yanıtı (%d karakter)", len(reply))
-        return {"reply": reply, "is_complete": False, "extracted_data": None}
-    except Exception as e:
-        log.warning("Free chat genel bilgilendirme atlandı: %s", e)
-        return None
+    if skip_external_literature_for_query(um):
+        return base
+
+    hints = await fetch_skin_literature_hints(um, max_results=3)
+    if hints:
+        return f"{base}\n\n{hints}"
+    return base
 
 
 def _gemini_response_text(response) -> str:
@@ -1101,9 +1045,10 @@ async def _free_chat(
     kb = _build_free_chat_rag_context(user_id, um)
 
     if not _free_chat_has_usable_rag(kb):
-        guided = await _free_chat_try_general_guidance_without_rag(um, hist, user_profile)
-        if guided is not None:
-            return guided
+        compact = await _free_chat_compact_guidance_without_rag(um)
+        if compact is not None:
+            log.info("Free chat: pasaj yok, sıkıştırılmış yanıt (LLM yok, %d karakter)", len(compact))
+            return {"reply": compact, "is_complete": False, "extracted_data": None}
         return {
             "reply": await _free_chat_no_rag_full_reply(um),
             "is_complete": False,
