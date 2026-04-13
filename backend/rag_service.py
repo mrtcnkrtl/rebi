@@ -768,6 +768,8 @@ async def _free_chat_compact_guidance_from_model(
         "Yazım hatalarını bağlamdan çöz; barizse tek cümleyle netleştir.\n"
         "Uygulama tek tip olmasın: yağ / krem-serum / asit (AHA,BHA,C asidi) / retinoid ayrımı; pH-konsantrasyon bilinmiyorsa kesin talimat verme.\n"
         "Ne zaman (AM/PM, yıkama, nem) soruluyorsa kısaca; retinoid-güçlü asitte çoğunlukla akşam+ertesi gün SPF; taşıyıcı yağda genelde uç/önemli nem gibi genel ilkeler.\n"
+        "Aktif madde formu kritikse (örn. hyaluronik asit: sodium hyaluronate / hydrolyzed / crosspolymer gibi), form bilinmiyorsa bunu açıkça söyle ve 1 cümlede yaygın formları örnekle; kesin hüküm verme.\n"
+        "Fotosensitivite/ışık hassasiyeti: yalnızca güçlü asit/retinoid gibi gruplarda genel riskten bahset; bitkisel içerikler için 'kesin sorun' iddiası kurma. Emin değilsen 'üründe başka aktif/parfüm varsa risk değişebilir' de.\n"
         "Folkloru abartma. Marka, uzun rutin listesi, teşhis yok. İlk: 'Genel bilgilendirme:' Son: 'Bu özet kişisel tanı veya tedavi planı değildir.'"
     )
     try:
@@ -1323,6 +1325,7 @@ async def _free_chat(
     system_instruction = (
         f"Ad: {name}. Rebi; Türkçe; samimi; bilimsel.\n"
         "REFERANS=indeks pasajları; özet buradan, yoksa uydurma. Yeterliyse bariyer, mekanizma, fotosensitivite, formülasyon düzeyinde öz.\n"
+        "Önemli: Referansta geçmiyorsa pH, yüzde, kesin fotosensitivite gibi iddialar kurma. Aktif formu belirsizse (örn hyaluronik asit formları) bunu belirt ve 1 kısa örnek ver.\n"
         "Rutin listesi/teşhis yok; ciddide dermatolog. En fazla 3 kısa cümle."
     )
 

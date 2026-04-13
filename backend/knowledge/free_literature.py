@@ -31,11 +31,64 @@ log = get_logger("knowledge.free_literature")
 EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 EUROPE_PMC_SEARCH = "https://www.ebi.ac.uk/europepmc/webservices/rest/search"
 
+_STOPWORDS = {
+    "ve",
+    "veya",
+    "ile",
+    "mi",
+    "mı",
+    "mu",
+    "mü",
+    "nedir",
+    "ne",
+    "nasil",
+    "nasıl",
+    "kac",
+    "kaç",
+    "icin",
+    "için",
+    "gibi",
+    "daha",
+    "cok",
+    "çok",
+    "az",
+    "mu",
+    "mü",
+    "ya",
+    "ben",
+    "sen",
+    "o",
+    "bu",
+    "su",
+    "şu",
+    "bana",
+    "bende",
+    "bende",
+    "benim",
+    "sende",
+    "sende",
+    "senin",
+    "ama",
+    "fakat",
+    "cunku",
+    "çünkü",
+    "yuz",
+    "yüz",
+    "cilt",
+    "sac",
+    "saç",
+    "tirnak",
+    "tırnak",
+}
+
 
 def _norm_query_for_skip(q: str) -> str:
     t = unicodedata.normalize("NFD", (q or "").strip())
     t = "".join(c for c in t if unicodedata.category(c) != "Mn")
-    return t.casefold()
+    t = t.casefold()
+    # dotless ı -> i for fuzzy matching
+    t = t.replace("ı", "i")
+    return t
 
 
 def skip_external_literature_for_query(q: str) -> bool:
@@ -101,6 +154,94 @@ def _sanitize_pubmed_term(q: str, max_len: int = 220) -> str:
     if len(t) > max_len:
         t = t[:max_len].rsplit(" ", 1)[0]
     return t
+
+
+def _tokenize_for_relevance(s: str) -> list[str]:
+    t = _norm_query_for_skip(s)
+    # keep letters/digits only as tokens
+    toks = re.findall(r"[a-z0-9]+", t)
+    out: list[str] = []
+    for x in toks:
+        if len(x) < 3:
+            continue
+        if x in _STOPWORDS:
+            continue
+        out.append(x)
+    # de-dupe preserving order
+    seen: set[str] = set()
+    uniq: list[str] = []
+    for x in out:
+        if x in seen:
+            continue
+        seen.add(x)
+        uniq.append(x)
+    return uniq[:16]
+
+
+def _compact_literature_query(user_message: str) -> str:
+    """
+    Use a compact keyword query for PubMed/EuropePMC to reduce irrelevant hits.
+    """
+    toks = _tokenize_for_relevance(user_message)
+    if not toks:
+        return _sanitize_pubmed_term(user_message)
+    # Prefer 5-8 strongest tokens (longer first, stable)
+    toks = sorted(toks, key=lambda x: (-len(x), x))[:8]
+    return _sanitize_pubmed_term(" ".join(toks))
+
+
+def _needs_derm_context(user_message: str) -> bool:
+    t = _norm_query_for_skip(user_message)
+    needles = (
+        "cilt",
+        "skin",
+        "derm",
+        "dermat",
+        "acne",
+        "akne",
+        "hair",
+        "sac",
+        "scalp",
+        "tirnak",
+        "nail",
+        "eczema",
+        "rosacea",
+        "melasma",
+        "pigment",
+        "spf",
+        "sunscreen",
+    )
+    return not any(n in t for n in needles)
+
+
+def _with_derm_context(term: str, user_message: str) -> str:
+    """
+    If the query is short/ambiguous, add a dermatology anchor to reduce off-topic titles.
+    """
+    term = _sanitize_pubmed_term(term)
+    if not term:
+        return term
+    if _needs_derm_context(user_message):
+        # Broad anchor without overfitting a single disease
+        return f"({term}) AND (skin OR dermatology OR hair OR scalp OR nail)"
+    return term
+
+
+def _title_relevant_to_query(user_message: str, title: str) -> bool:
+    """
+    Lightweight relevance filter: require at least 1-2 keyword overlaps.
+    Prevents obviously off-topic papers (e.g., psychiatric) for skincare questions.
+    """
+    q_toks = _tokenize_for_relevance(user_message)
+    if not q_toks:
+        return True
+    t_toks = set(_tokenize_for_relevance(title))
+    if not t_toks:
+        return False
+    overlap = sum(1 for x in q_toks[:10] if x in t_toks)
+    # Stricter when query is longer (more intent words)
+    need = 2 if len(q_toks) >= 6 else 1
+    return overlap >= need
 
 
 def _title_from_esummary(doc: dict[str, Any]) -> str:
@@ -212,9 +353,13 @@ async def fetch_skin_literature_hints(user_message: str, *, max_results: int = 4
     if not PUBMED_FREE_HINTS:
         return ""
 
-    q = (user_message or "").strip()
-    if len(q) < 3 or skip_external_literature_for_query(q):
+    q_raw = (user_message or "").strip()
+    if len(q_raw) < 3 or skip_external_literature_for_query(q_raw):
         return ""
+
+    # compact + context-anchored query reduces irrelevant titles
+    q_compact = _compact_literature_query(q_raw)
+    q = _with_derm_context(q_compact, q_raw)
 
     try:
         pairs = await _pubmed_titles(q, max_results=max_results)
@@ -227,13 +372,19 @@ async def fetch_skin_literature_hints(user_message: str, *, max_results: int = 4
 
         lines: list[str] = []
         for i, (pid, title) in enumerate(pairs, start=1):
+            if not _title_relevant_to_query(q_raw, title):
+                continue
             if label.startswith("PubMed"):
                 url = f"https://pubmed.ncbi.nlm.nih.gov/{pid}/"
             elif str(pid).isdigit():
                 url = f"https://europepmc.org/article/MED/{pid}"
             else:
-                url = f"https://europepmc.org/search?query={quote(q[:120])}"
+                url = f"https://europepmc.org/search?query={quote(q_compact[:120])}"
             lines.append(f"{i}. {title}\n   {url}")
+            if len(lines) >= max(1, int(max_results)):
+                break
+        if not lines:
+            return ""
         return _format_hints_block(lines)
     except Exception as e:
         log.warning("free_literature hints failed: %s", e)
