@@ -256,6 +256,9 @@ export default function Chat() {
               <Sparkles className="w-3 h-3 inline" /> {t("chat.footerHint")}
             </p>
           )}
+          <p className="text-[10px] text-gray-400 text-center mt-1 leading-snug">
+            {t("chat.disclaimerShort")}
+          </p>
         </div>
       </div>
 

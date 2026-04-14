@@ -217,7 +217,8 @@
     "emptySubtitle": "Aşağıya kısaca yaz; sohbet burada açılır.",
     "dataHint": "Yanıtlar mümkün olduğunca Rebi bilgi tabanından seçilen bilimsel pasajlara dayanır; eşleşme yoksa söylerim.",
     "placeholder": "Mesela retinol, kızarıklık, nem bariyeri…",
-    "footerHint": "Bilgi tabanı pasajları önce; günlük mesaj limiti olabilir. Rutin planı Analiz’de."
+    "footerHint": "Bilgi tabanı pasajları önce; günlük mesaj limiti olabilir. Rutin planı Analiz’de.",
+    "disclaimerShort": "Bu sohbet tıbbi tanı veya tedavi değildir."
   },
   "dashboard": {
     "noAnalyzeTitle": "Merhaba, {{name}}!",

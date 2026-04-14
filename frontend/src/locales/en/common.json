@@ -217,7 +217,8 @@
     "emptySubtitle": "Type below — the thread opens here.",
     "dataHint": "Answers lean on passages selected from Rebi’s knowledge base; I’ll say when nothing fits.",
     "placeholder": "Try retinol, redness, skin barrier…",
-    "footerHint": "Knowledge-base passages first; a daily message limit may apply. Your routine plan lives in Analysis."
+    "footerHint": "Knowledge-base passages first; a daily message limit may apply. Your routine plan lives in Analysis.",
+    "disclaimerShort": "This chat is not medical diagnosis or treatment."
   },
   "dashboard": {
     "noAnalyzeTitle": "Hi, {{name}}!",

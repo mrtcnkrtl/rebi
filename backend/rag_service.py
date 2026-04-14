@@ -659,6 +659,11 @@ _FREE_CHAT_GUIDANCE_NEEDLES: tuple[str, ...] = (
     "maske",
     "kuaf",
     "fon",
+    "cica",
+    "centella",
+    "hyaluron",
+    "hyaluronic",
+    "hyaluronat",
 )
 
 
@@ -747,6 +752,7 @@ def _free_chat_compact_typo_bridge(text: str) -> str:
 async def _free_chat_compact_guidance_from_model(
     user_message: str,
     history: Optional[List[Any]] = None,
+    reading_pairs: Optional[List[tuple[str, str]]] = None,
 ) -> Optional[str]:
     """
     Pasaj yokken soruya özel kısa yanıt. Varsayılan yalnızca son soru; kısa takipte son birkaç tur ince bağlam olarak eklenir.
@@ -763,14 +769,85 @@ async def _free_chat_compact_guidance_from_model(
         payload = f"Son konuşma özeti:\n{blob}\n\nŞimdiki soru: {um}"
     if bridge:
         payload = f"{payload}\n\n{bridge}"
+    if reading_pairs:
+        # Keep it short to avoid token bloat; model should treat as "ek okuma", not proof.
+        lines = []
+        for (title, url) in reading_pairs[:3]:
+            if title and url:
+                lines.append(f"- {title} ({url})")
+        if lines:
+            payload = payload + "\n\nEk okuma başlıkları (kanıt iddiası değil, okuma için):\n" + "\n".join(lines)
+    def _strip_markdown_bullets(text: str) -> str:
+        s = (text or "").strip()
+        if not s:
+            return ""
+        s = s.replace("**", "")
+        # Replace markdown bullets with plain-text bullets (not markdown)
+        s = re.sub(r"(?m)^\s*[\*\-]\s+", "• ", s)
+        # Replace numbered list markers with plain-text bullets
+        s = re.sub(r"(?m)^\s*\d+[\)\.]\s+", "• ", s)
+        s = s.replace("*", "")
+        s = re.sub(r"\n{3,}", "\n\n", s).strip()
+        return s
+
+    def _compact_answer_shape(text: str, *, max_sentences: int = 3, max_bullets: int = 2) -> str:
+        s = (text or "").strip()
+        if not s:
+            return ""
+        lines = [ln.strip() for ln in s.splitlines() if ln.strip()]
+        bullets: list[str] = []
+        prose_lines: list[str] = []
+        tail_lines: list[str] = []
+        in_reading = False
+        for ln in lines:
+            lo = ln.lower()
+            if lo.startswith("ek okuma"):
+                in_reading = True
+            if in_reading:
+                tail_lines.append(ln)
+                continue
+            if ln.startswith("•"):
+                bullets.append(ln)
+            else:
+                prose_lines.append(ln)
+        prose = " ".join(prose_lines).strip()
+        # Drop generic headings that add fluff / repetition
+        prose = re.sub(
+            r"\b(Dikkat edilmesi gerekenler|Notlar|Öneriler|Nasıl uygulanır|Nasıl kullanılır|Faydaları)\s*:\s*",
+            "",
+            prose,
+            flags=re.I,
+        )
+        sent = [x.strip() for x in re.split(r"(?<=[\.\?\!])\s+", prose) if x.strip()]
+        prose = " ".join(sent[:max_sentences]).strip()
+        # If disclaimer got pulled into the middle, keep it at the end only
+        disc = "Bu özet kişisel tanı veya tedavi planı değildir."
+        if disc in prose:
+            prose = prose.replace(disc, "").strip()
+            prose = prose.rstrip(".")
+            prose = (prose + ". " + disc).strip()
+        out: list[str] = []
+        if prose:
+            out.append(prose)
+        out.extend(bullets[:max_bullets])
+        if tail_lines:
+            out.append("")
+            out.extend(tail_lines[:6])
+        return "\n".join(out).strip()
     system_instruction = (
-        "Rebi; Türkçe; temkinli. Bu turda alıntılı pasaj yok → genel çerçeve; arşiv geniş, 'hiç kaynak yok' deme. Kaynak iddiası yok.\n"
-        "Yazım hatalarını bağlamdan çöz; barizse tek cümleyle netleştir.\n"
-        "Uygulama tek tip olmasın: yağ / krem-serum / asit (AHA,BHA,C asidi) / retinoid ayrımı; pH-konsantrasyon bilinmiyorsa kesin talimat verme.\n"
-        "Ne zaman (AM/PM, yıkama, nem) soruluyorsa kısaca; retinoid-güçlü asitte çoğunlukla akşam+ertesi gün SPF; taşıyıcı yağda genelde uç/önemli nem gibi genel ilkeler.\n"
-        "Aktif madde formu kritikse (örn. hyaluronik asit: sodium hyaluronate / hydrolyzed / crosspolymer gibi), form bilinmiyorsa bunu açıkça söyle ve 1 cümlede yaygın formları örnekle; kesin hüküm verme.\n"
-        "Fotosensitivite/ışık hassasiyeti: yalnızca güçlü asit/retinoid gibi gruplarda genel riskten bahset; bitkisel içerikler için 'kesin sorun' iddiası kurma. Emin değilsen 'üründe başka aktif/parfüm varsa risk değişebilir' de.\n"
-        "Folkloru abartma. Marka, uzun rutin listesi, teşhis yok. İlk: 'Genel bilgilendirme:' Son: 'Bu özet kişisel tanı veya tedavi planı değildir.'"
+        "Sen Rebi’sin: Türkçe, sıcak ama bilimsel; cilt ve cilt bakımı konusunda ileri düzey bir danışmansın.\n"
+        "Bu turda alıntılı pasaj yok → genel çerçeveyle yanıtla; arşiv geniş ama şu an elinde alıntı yok. 'Kaynakta şöyle' gibi cümleler kurma.\n"
+        "Kapsam: cilt/saç/tırnak bakımı, içerik maddeleri, formülasyon, doğal ürünler (bitkisel yağlar, hidrosoller, kil vb.).\n"
+        "Kural: Her madde için aynı şeyi söyleme; formül tipine göre ayır (saf yağ / su bazlı serum-krem / asitler / retinoidler / güneş koruyucu). "
+        "Formu kritik ama belirsizse açıkça belirt ve 1 cümlede yaygın formları örnekle (örn hyaluronik asit formları).\n"
+        "Doğal ürünlerde: 'doğal=zararsız' deme; parfüm/uçucu bileşenler ve alerji/iritasyon riskini kısaca hatırlat; kesin hüküm verme.\n"
+        "Zamanlama: 'ne zaman sürülür' sorusunda AM/PM, yıkama, nemli yüzey gibi ana farkları 1-2 cümlede söyle.\n"
+        "Takip sorusu 'ne önerirsin' ise tekrar etme; 2-4 net öneri ver.\n"
+        "Varsayılan kısa olsun: 2-3 cümle + en fazla 2 kısa madde.\n"
+        "Madde kullanacaksan yalnızca kısa madde kullan; 'nasıl uygulanır:' deyip uzun adım adım anlatma.\n"
+        "Başlıklama ('Dikkat edilmesi gerekenler:' gibi) kullanma.\n"
+        "Markdown yok; düz metin. Ek okuma başlıkları geldiyse en sonda 'Ek okuma:' altında 1-3 satır ver (kanıt iddiası değil).\n"
+        "Teşhis koyma, marka önerme, uzun rutin listesi verme. İlk cümle 'Genel bilgilendirme:' ile başlasın; son cümle 'Bu özet kişisel tanı veya tedavi planı değildir.' olsun."
     )
     try:
         response = gemini_client.models.generate_content(
@@ -785,7 +862,8 @@ async def _free_chat_compact_guidance_from_model(
         text = _gemini_response_text(response)
         if not text or len(text.strip()) < 36:
             return None
-        return text.strip()
+        cleaned = _strip_markdown_bullets(text.strip())
+        return _compact_answer_shape(cleaned, max_sentences=3, max_bullets=2)
     except Exception as e:
         log.warning("Free chat kompakt model yanıtı alınamadı: %s", e)
         return None
@@ -802,13 +880,25 @@ async def _free_chat_compact_guidance_without_rag(
     if not um or not _free_chat_allows_general_guidance_without_rag(um, history):
         return None
 
-    from knowledge.free_literature import fetch_skin_literature_hints, skip_external_literature_for_query
+    from knowledge.free_literature import (
+        fetch_skin_literature_hints,
+        fetch_skin_literature_pairs,
+        skip_external_literature_for_query,
+    )
 
-    base = await _free_chat_compact_guidance_from_model(um, history)
+    reading_pairs: Optional[List[tuple[str, str]]] = None
+    if not skip_external_literature_for_query(um):
+        reading_pairs = await fetch_skin_literature_pairs(um, max_results=3)
+
+    base = await _free_chat_compact_guidance_from_model(um, history, reading_pairs=reading_pairs)
     if base is None:
         base = _free_chat_compact_guidance_body_fallback()
 
     if skip_external_literature_for_query(um):
+        return base
+
+    # If model already embedded reading links, don't append again.
+    if reading_pairs:
         return base
 
     hints = await fetch_skin_literature_hints(um, max_results=3)
@@ -1323,9 +1413,10 @@ async def _free_chat(
 
     name = (user_profile or {}).get("name", "Kullanıcı")
     system_instruction = (
-        f"Ad: {name}. Rebi; Türkçe; samimi; bilimsel.\n"
-        "REFERANS=indeks pasajları; özet buradan, yoksa uydurma. Yeterliyse bariyer, mekanizma, fotosensitivite, formülasyon düzeyinde öz.\n"
-        "Önemli: Referansta geçmiyorsa pH, yüzde, kesin fotosensitivite gibi iddialar kurma. Aktif formu belirsizse (örn hyaluronik asit formları) bunu belirt ve 1 kısa örnek ver.\n"
+        f"Ad: {name}. Sen Rebi’sin: Türkçe, sıcak ama bilimsel; cilt ve cilt bakımı konusunda ileri düzey danışman.\n"
+        "REFERANS=indekslenmiş makale/kitap pasajları; yalnızca buradan özetle, yoksa uydurma.\n"
+        "İçerik maddeleri, bariyer, fotosensitivite, formülasyon ve mekanizma düzeyinde kısa ama yoğun yaz; doğal ürün/yağ sorularında alerji-iritasyon riskini abartmadan belirt.\n"
+        "Referansta geçmiyorsa pH, yüzde, kesin fotosensitivite gibi iddialar kurma. Aktif formu belirsizse bunu açıkça belirt ve 1 kısa örnek ver.\n"
         "Rutin listesi/teşhis yok; ciddide dermatolog. En fazla 3 kısa cümle."
     )
 

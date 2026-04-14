@@ -350,12 +350,28 @@ async def fetch_skin_literature_hints(user_message: str, *, max_results: int = 4
     Kullanıcı sorusuna göre kısa literatür satırları (başlık + URL).
     Boş string: sonuç yok veya kapalı / hata.
     """
-    if not PUBMED_FREE_HINTS:
+    pairs = await fetch_skin_literature_pairs(user_message, max_results=max_results)
+    if not pairs:
         return ""
+    lines: list[str] = []
+    for i, (title, url) in enumerate(pairs, start=1):
+        lines.append(f"{i}. {title}\n   {url}")
+    return _format_hints_block(lines)
+
+
+async def fetch_skin_literature_pairs(
+    user_message: str, *, max_results: int = 4
+) -> list[tuple[str, str]]:
+    """
+    (title, url) listesi. Başlıklar alaka filtresinden geçer.
+    Boş liste: sonuç yok veya kapalı / hata.
+    """
+    if not PUBMED_FREE_HINTS:
+        return []
 
     q_raw = (user_message or "").strip()
     if len(q_raw) < 3 or skip_external_literature_for_query(q_raw):
-        return ""
+        return []
 
     # compact + context-anchored query reduces irrelevant titles
     q_compact = _compact_literature_query(q_raw)
@@ -368,10 +384,10 @@ async def fetch_skin_literature_hints(user_message: str, *, max_results: int = 4
             pairs = await _europepmc_titles(q, max_results=max_results)
             label = "Europe PMC"
         if not pairs:
-            return ""
+            return []
 
-        lines: list[str] = []
-        for i, (pid, title) in enumerate(pairs, start=1):
+        out: list[tuple[str, str]] = []
+        for (pid, title) in pairs:
             if not _title_relevant_to_query(q_raw, title):
                 continue
             if label.startswith("PubMed"):
@@ -380,12 +396,10 @@ async def fetch_skin_literature_hints(user_message: str, *, max_results: int = 4
                 url = f"https://europepmc.org/article/MED/{pid}"
             else:
                 url = f"https://europepmc.org/search?query={quote(q_compact[:120])}"
-            lines.append(f"{i}. {title}\n   {url}")
-            if len(lines) >= max(1, int(max_results)):
+            out.append((title, url))
+            if len(out) >= max(1, int(max_results)):
                 break
-        if not lines:
-            return ""
-        return _format_hints_block(lines)
+        return out
     except Exception as e:
         log.warning("free_literature hints failed: %s", e)
-        return ""
+        return []
