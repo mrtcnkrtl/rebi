@@ -11,19 +11,23 @@ function prefersReducedMotion() {
 /**
  * Full-bleed background: looping video when assets exist, else animated mesh.
  * Place inside a `relative` container with defined min-height.
+ *
+ * @param {boolean} [videoEnabled=true] Set false to skip hero video (bandwidth / WIP edits).
  */
 export default function HeroBackgroundVideo({
   webmSrc = "/landing/hero-bg.webm",
   mp4Src = "/landing/hero-bg.mp4",
   videoOpacity = 0.42,
   className = "",
+  videoEnabled = true,
 }) {
   const reduce = useMemo(() => prefersReducedMotion(), []);
-  const [videoOk, setVideoOk] = useState(!reduce);
+  const [videoOk, setVideoOk] = useState(Boolean(videoEnabled) && !reduce);
 
   useEffect(() => {
-    if (reduce) setVideoOk(false);
-  }, [reduce]);
+    if (reduce || !videoEnabled) setVideoOk(false);
+    else setVideoOk(true);
+  }, [reduce, videoEnabled]);
 
   return (
     <div

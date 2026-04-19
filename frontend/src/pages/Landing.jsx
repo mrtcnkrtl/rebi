@@ -133,7 +133,7 @@ export default function Landing() {
     <div className="min-h-screen bg-gradient-to-b from-warm-50 via-white to-teal-50/30">
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <HeroBackgroundVideo />
+        <HeroBackgroundVideo videoEnabled={false} />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-100/35 via-transparent to-transparent" />
         <div className="absolute top-10 right-[-5%] w-[min(90vw,520px)] h-[min(90vw,520px)] bg-teal-200/25 rounded-full blur-3xl" />
         <div className="absolute bottom-[-10%] left-[-8%] w-[min(95vw,640px)] h-[min(95vw,640px)] bg-purple-200/15 rounded-full blur-3xl" />
