@@ -760,6 +760,22 @@ def _free_chat_soft_context_notes(
     return "\n" + " ".join(bits)
 
 
+def _strip_repetitive_greeting(text: str, history: Optional[List[Any]] = None) -> str:
+    """
+    Model bazen her yanıta 'Merhaba!' ile başlıyor; thread devam ediyorsa bunu kırp.
+    İlk turda (history boşsa) selamı korur.
+    """
+    s = (text or "").strip()
+    if not s:
+        return ""
+    hist = list(history or [])
+    has_prior_turn = any((str(m.get("content") or "").strip()) for m in hist)
+    if not has_prior_turn:
+        return s
+    s = re.sub(r"(?i)^\s*(merhaba|selam|hey)\s*[!,.]\s*", "", s).strip()
+    return s
+
+
 def _free_chat_compact_typo_bridge(text: str) -> str:
     """
     Sık yazım/shape hatalarında modele tek satır ipucu (LLM değil, deterministik).
@@ -924,7 +940,8 @@ async def _free_chat_compact_guidance_from_model(
         if not text or len(text.strip()) < 36:
             return None
         cleaned = _strip_markdown_bullets(text.strip())
-        return _compact_answer_shape(cleaned, max_sentences=3, max_bullets=2)
+        shaped = _compact_answer_shape(cleaned, max_sentences=3, max_bullets=2)
+        return _strip_repetitive_greeting(shaped, history)
     except Exception as e:
         log.warning("Free chat kompakt model yanıtı alınamadı: %s", e)
         return None
@@ -1517,6 +1534,7 @@ async def _free_chat(
                 "is_complete": False,
                 "extracted_data": None,
             }
+        reply = _strip_repetitive_greeting(reply, hist)
         log.info("Free chat yanıtı (%d karakter)", len(reply))
         return {"reply": reply, "is_complete": False, "extracted_data": None}
     except Exception as e:
