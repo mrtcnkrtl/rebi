@@ -6,7 +6,7 @@ Yeni: /daily_checkin endpoint, adaptif rutin sistemi, risk skoru
 """
 
 import httpx
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal
@@ -41,12 +41,23 @@ from symptom_risk import (
     apply_tracking_risk_bonus,
     normalize_symptom_tags,
 )
-from auth_deps import enforce_supabase_user, jwt_auth_enabled, user_is_rebi_plus
+from auth_deps import (
+    enforce_supabase_user,
+    jwt_auth_enabled,
+    user_is_rebi_plus,
+    user_plus_chat_is_monthly_capped,
+)
 from free_chat_quota import (
     free_chat_limit,
     free_chat_remaining,
     free_chat_quota_exceeded,
     free_chat_record_successful_turn,
+)
+from plus_chat_quota import (
+    plus_chat_monthly_cap,
+    plus_chat_quota_exceeded,
+    plus_chat_record_successful_turn,
+    plus_chat_remaining,
 )
 from demo_users import (
     demo_checkin_already_today,
@@ -469,6 +480,34 @@ class AssessmentChatResponse(BaseModel):
     free_chat_remaining: Optional[int] = None
     free_chat_limit: Optional[int] = None
     chat_quota_exceeded: bool = False
+    # Birleşik kullanım (UI): free_daily | plus_monthly | plus_unlimited
+    usage_kind: Optional[str] = None
+    usage_remaining: Optional[int] = None
+    usage_limit: Optional[int] = None
+
+
+class ChatUsageResponse(BaseModel):
+    """Rebi AI sohbet kotası özeti (üst sayaç)."""
+
+    kind: str
+    remaining: Optional[int] = None
+    limit: Optional[int] = None
+    period: Optional[str] = None  # "day" | "month"
+
+
+def _chat_usage_row(request: Request, user_id: str) -> tuple[Optional[str], Optional[int], Optional[int], Optional[str]]:
+    """(kind, remaining, limit, period)."""
+    if not jwt_auth_enabled():
+        return "plus_unlimited", None, None, None
+    uid = (user_id or "").strip()
+    if not uid:
+        return None, None, None, None
+    plus = user_is_rebi_plus(request, user_id)
+    if not plus:
+        return "free_daily", free_chat_remaining(uid), free_chat_limit(), "day"
+    if user_plus_chat_is_monthly_capped(request, user_id):
+        return "plus_monthly", plus_chat_remaining(uid), plus_chat_monthly_cap(), "month"
+    return "plus_unlimited", None, None, None
 
 
 class TranslateRoutineItemsRequest(BaseModel):
@@ -1048,21 +1087,44 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
     is_free = profile.get("mode") == "free_chat"
     lim = free_chat_limit()
     plus = user_is_rebi_plus(request, req.user_id)
+    plus_chat_capped = plus and user_plus_chat_is_monthly_capped(request, req.user_id)
+    plim = plus_chat_monthly_cap()
 
-    if is_free and not plus and jwt_auth_enabled():
-        if free_chat_quota_exceeded(req.user_id):
-            return AssessmentChatResponse(
-                reply=(
-                    "Bugünkü ücretsiz Rebi AI mesaj hakkın doldu. "
-                    "Sınırsız sohbet için Rebi Plus’a geçebilirsin; uygulamadaki "
-                    "«Abonelik / Rebi Plus» bölümünden devam et."
-                ),
-                is_complete=False,
-                extracted_data=None,
-                free_chat_remaining=0,
-                free_chat_limit=lim,
-                chat_quota_exceeded=True,
-            )
+    if is_free and jwt_auth_enabled():
+        if not plus:
+            if free_chat_quota_exceeded(req.user_id):
+                uk, ur, ul, _ = _chat_usage_row(request, req.user_id)
+                return AssessmentChatResponse(
+                    reply=(
+                        "Bugünkü ücretsiz Rebi AI mesaj hakkın doldu. "
+                        "Sınırsız sohbet için Rebi Plus’a geçebilirsin; uygulamadaki "
+                        "«Abonelik / Rebi Plus» bölümünden devam et."
+                    ),
+                    is_complete=False,
+                    extracted_data=None,
+                    free_chat_remaining=0,
+                    free_chat_limit=lim,
+                    chat_quota_exceeded=True,
+                    usage_kind=uk,
+                    usage_remaining=ur,
+                    usage_limit=ul,
+                )
+        if plus_chat_capped:
+            if plus_chat_quota_exceeded(req.user_id):
+                return AssessmentChatResponse(
+                    reply=(
+                        "Bu ayki Plus sohbet kotan doldu (paket sınırı). "
+                        "Sınırsız sohbet içeren üst pakete geçebilirsin; uygulamada «Abonelik / Rebi Plus» bölümüne bak."
+                    ),
+                    is_complete=False,
+                    extracted_data=None,
+                    free_chat_remaining=0,
+                    free_chat_limit=None,
+                    chat_quota_exceeded=True,
+                    usage_kind="plus_monthly",
+                    usage_remaining=0,
+                    usage_limit=plim,
+                )
 
     from rag_service import assessment_chat
     result = await assessment_chat(
@@ -1073,22 +1135,29 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
     )
 
     remaining: Optional[int] = None
+    usage_kind: Optional[str] = None
+    usage_remaining: Optional[int] = None
+    usage_limit: Optional[int] = None
     if is_free and jwt_auth_enabled():
+        reply = (result.get("reply") or "").strip()
+        err_like = (
+            not reply
+            or reply.startswith("Bir hata oluştu")
+            or reply.startswith("Bağlantı kurulamadı")
+            or reply.startswith("Şu an güvenli bir yanıt üretilemedi")
+            or reply.startswith("Şu an kısa bir yanıt üretilemedi")
+            or reply.startswith("Üzgünüm, şu anda cevap veremiyorum")
+            or reply.startswith("Şu an çok yoğunuz")
+            or reply.startswith("İşlem tamamlanamadı")
+        )
         if not plus:
-            reply = (result.get("reply") or "").strip()
-            err_like = (
-                not reply
-                or reply.startswith("Bir hata oluştu")
-                or reply.startswith("Bağlantı kurulamadı")
-                or reply.startswith("Şu an güvenli bir yanıt üretilemedi")
-                or reply.startswith("Şu an kısa bir yanıt üretilemedi")
-                or reply.startswith("Üzgünüm, şu anda cevap veremiyorum")
-                or reply.startswith("Şu an çok yoğunuz")
-                or reply.startswith("İşlem tamamlanamadı")
-            )
             if not err_like:
                 free_chat_record_successful_turn(req.user_id)
             remaining = free_chat_remaining(req.user_id)
+        elif plus_chat_capped:
+            if not err_like:
+                plus_chat_record_successful_turn(req.user_id)
+        usage_kind, usage_remaining, usage_limit, _ = _chat_usage_row(request, req.user_id)
 
     return AssessmentChatResponse(
         reply=result.get("reply", ""),
@@ -1097,7 +1166,25 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
         free_chat_remaining=remaining,
         free_chat_limit=lim if is_free and jwt_auth_enabled() and not plus else None,
         chat_quota_exceeded=False,
+        usage_kind=usage_kind,
+        usage_remaining=usage_remaining,
+        usage_limit=usage_limit,
     )
+
+
+@app.get(
+    "/chat_usage",
+    response_model=ChatUsageResponse,
+    tags=["chat"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
+)
+async def chat_usage(request: Request, user_id: str = Query(..., min_length=1)):
+    """Rebi AI sohbet kotası — açılışta üst sayaç için."""
+    enforce_supabase_user(request, user_id)
+    kind, rem, lim, period = _chat_usage_row(request, user_id)
+    if not kind:
+        return ChatUsageResponse(kind="none", remaining=None, limit=None, period=None)
+    return ChatUsageResponse(kind=kind, remaining=rem, limit=lim, period=period)
 
 
 @app.post(

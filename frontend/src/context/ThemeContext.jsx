@@ -160,7 +160,15 @@ function userHasRebiPlusFromUser(user) {
   if (!user?.user_metadata) return false;
   const m = user.user_metadata;
   if (m.rebi_plus === true) return true;
-  return ["plus", "pro", "premium"].includes(String(m.subscription_tier || "").toLowerCase());
+  return [
+    "plus",
+    "pro",
+    "premium",
+    "plus_1000",
+    "plus_lite",
+    "plus_basic",
+    "plus_starter",
+  ].includes(String(m.subscription_tier || "").toLowerCase());
 }
 
 /** Plus olmayan kullanıcıda kayıtlı premium temayı teal’e çeker. */

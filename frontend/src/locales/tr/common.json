@@ -36,7 +36,7 @@
     "theme": "Tema"
   },
   "landing": {
-    "heroBadge": "Yapay Zeka Destekli Cilt Bakımı",
+    "heroBadge": "Yapay zeka destekli dermokozmetik bakım asistanı",
     "heroTitle1": "Cildinin ve Ruhunun",
     "heroTitleAccent": "İhtiyacı Olan",
     "heroTitle2": "Bilimsel Rutin.",
@@ -218,6 +218,21 @@
     "dataHint": "Yanıtlar mümkün olduğunca Rebi bilgi tabanından seçilen bilimsel pasajlara dayanır; eşleşme yoksa söylerim.",
     "placeholder": "Mesela retinol, kızarıklık, nem bariyeri…",
     "footerHint": "Bilgi tabanı pasajları önce; günlük mesaj limiti olabilir. Rutin planı Analiz’de.",
+    "footerHintShort": "Sayaç üstte; rutin planı Analiz’de.",
+    "plusUpgradeLink": "Rebi Plus",
+    "plusPack1000Footer": "Plus (1000 mesaj) paketindesin; üst pakette sınırsız sohbet var.",
+    "plusUnlimitedFooter": "Plus — bu sohbet için sınırsız kullanım.",
+    "usageBadgeDay": "Bugün {{rem}} / {{lim}}",
+    "usageBadgeMonth": "Bu ay {{rem}} / {{lim}}",
+    "usageBadgeUnlimited": "Plus · sınırsız",
+    "usageHintDay": "Günlük ücretsiz Rebi AI mesaj kotası",
+    "usageHintMonth": "Aylık Plus sohbet kotası (1000’lük paket)",
+    "usageHintUnlimited": "Sınırsız Plus sohbet",
+    "paywallTitleDay": "Günlük ücretsiz limit doldu",
+    "paywallTitleMonth": "Aylık Plus sohbet kotası doldu",
+    "paywallBodyDay": "Rebi, hızlı “tek öneri” değil; verini toplar, takip eder ve her gün yeniden ayarlar. Sınırsız sohbet için Plus’a geç.",
+    "paywallBodyMonth": "Bu pakette her ay sınırlı sohbet hakkı var; hakların sıfırlanması için ay başını bekleyebilir veya sınırsız sohbet içeren üst pakete geçebilirsin.",
+    "paywallBulletUnlimited": "Üst pakette günlük / aylık sohbet kotası yok",
     "disclaimerShort": "Bu sohbet tıbbi tanı veya tedavi değildir."
   },
   "dashboard": {

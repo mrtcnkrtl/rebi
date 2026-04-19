@@ -13,9 +13,15 @@ export default function Subscribe() {
   const { t } = useTranslation();
   const plus =
     user?.user_metadata?.rebi_plus === true ||
-    ["plus", "pro", "premium"].includes(
-      String(user?.user_metadata?.subscription_tier || "").toLowerCase()
-    );
+    [
+      "plus",
+      "pro",
+      "premium",
+      "plus_1000",
+      "plus_lite",
+      "plus_basic",
+      "plus_starter",
+    ].includes(String(user?.user_metadata?.subscription_tier || "").toLowerCase());
 
   return (
     <div className={`min-h-screen ${theme.bg} pb-28 relative overflow-hidden`}>

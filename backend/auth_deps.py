@@ -136,6 +136,49 @@ def user_is_rebi_plus(request: Request, user_id: str) -> bool:
     for meta in (payload.get("user_metadata") or {}, payload.get("app_metadata") or {}):
         if meta.get("rebi_plus") is True:
             return True
-        if str(meta.get("subscription_tier", "")).lower() in ("plus", "pro", "premium"):
+        if str(meta.get("subscription_tier", "")).lower() in (
+            "plus",
+            "pro",
+            "premium",
+            "plus_1000",
+            "plus_lite",
+            "plus_basic",
+            "plus_starter",
+        ):
             return True
+    return False
+
+
+def merged_jwt_user_meta(request: Request) -> dict:
+    """user_metadata + app_metadata (app alanları aynı anahtarda user'ı geçersiz kılar)."""
+    payload = decode_supabase_jwt_payload(request)
+    if not payload:
+        return {}
+    um = dict(payload.get("user_metadata") or {})
+    am = dict(payload.get("app_metadata") or {})
+    out = {**um}
+    for k, v in am.items():
+        out[k] = v
+    return out
+
+
+def user_plus_chat_is_monthly_capped(request: Request, user_id: str) -> bool:
+    """
+    Plus içinde aylık mesaj kotası olan paket (ör. 1000). Sınırsız Plus için False.
+    Supabase user_metadata / app_metadata:
+      - rebi_plus_chat_plan: "1000" | "capped" | "limited" | "1k"
+      - subscription_tier: plus_1000, plus_lite, plus_basic, plus_starter
+    Tanımsız plan: mevcut Plus kullanıcıları için sınırsız (False).
+    """
+    if not jwt_auth_enabled():
+        return False
+    if not user_is_rebi_plus(request, user_id):
+        return False
+    meta = merged_jwt_user_meta(request)
+    plan = str(meta.get("rebi_plus_chat_plan") or "").strip().lower()
+    if plan in ("1000", "1k", "capped", "limited"):
+        return True
+    tier = str(meta.get("subscription_tier") or "").strip().lower()
+    if tier in ("plus_1000", "plus_lite", "plus_basic", "plus_starter"):
+        return True
     return False

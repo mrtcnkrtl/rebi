@@ -714,10 +714,50 @@ def _free_chat_compact_guidance_body_fallback() -> str:
     Model kapalı veya hata: tek güvenli şablon (yeni madde/durum için iğne eklemek gerekmez).
     """
     return (
-        "Genel bilgilendirme: Uygulama ve zamanlama (sabah-akşam, yüzeyin nemliliği, ürün tipi) ürünün yapısına ve asit/aktif içeriğine göre değişir; "
-        "tek tip 'her yağa aynı şekilde sür' demek doğru olmaz. Tahriş veya ciddi belirtide uygulamayı kesip hekime danış. "
-        "Bu özet kişisel tanı veya tedavi planı değildir."
+        "Uygulama ve zamanlama (sabah-akşam, yüzeyin nemliliği, ürün tipi) ürünün yapısına ve asit/aktif içeriğine göre değişir; "
+        "tek tip 'her yağa aynı şekilde sür' demek doğru olmaz. Tahriş veya ciddi belirtide oyunu kesip bir uzmana danışmak en doğrusu. "
+        "İstersen birkaç temel üzerinden burada yön verebilirim; adım adım sıra ve cildine oturan onarıcı programa "
+        "Analiz ile rutin oluşturunca birlikte netleştiririz."
     )
+
+
+def _free_chat_soft_context_notes(
+    user_id: Optional[str],
+    history: Optional[List[Any]],
+) -> str:
+    """
+    Ücretsiz sohbette üslup + rutin yönlendirmesi + (isteğe bağlı) azalan günlük kota.
+    System instruction'a eklenir; kullanıcıya 'iç not' diye etiket verme.
+    """
+    uid = (user_id or "").strip()
+    hist = list(history or [])
+    n_msgs = sum(1 for x in hist if (str(x.get("content") or "").strip()))
+    rem: Optional[int] = None
+    lim = 25
+    try:
+        from free_chat_quota import free_chat_limit, free_chat_remaining
+
+        lim = free_chat_limit()
+        if uid:
+            rem = free_chat_remaining(uid)
+    except Exception:
+        rem = None
+    threshold = min(8, max(3, lim // 3))
+    low_quota = rem is not None and rem <= threshold
+    deep_thread = n_msgs >= 6
+    if not low_quota and not deep_thread:
+        return ""
+    bits: list[str] = []
+    if low_quota and rem is not None:
+        bits.append(
+            f"Bugünkü ücretsiz sohbet mesajından yaklaşık {rem} kadarı kaldı (günlük üst sınır {lim}); yanıtı gereksiz uzatma."
+        )
+    if low_quota or deep_thread:
+        bits.append(
+            "Detaylı kişisel kullanım sırası, sıklık ve cildini destekleyecek programa "
+            "uygulamadaki Analiz ile rutin oluşturmayı uygunsa tek samimi cümleyle hatırlatabilirsin; zorlayıcı olma."
+        )
+    return "\n" + " ".join(bits)
 
 
 def _free_chat_compact_typo_bridge(text: str) -> str:
@@ -753,6 +793,7 @@ async def _free_chat_compact_guidance_from_model(
     user_message: str,
     history: Optional[List[Any]] = None,
     reading_pairs: Optional[List[tuple[str, str]]] = None,
+    user_id: Optional[str] = None,
 ) -> Optional[str]:
     """
     Pasaj yokken soruya özel kısa yanıt. Varsayılan yalnızca son soru; kısa takipte son birkaç tur ince bağlam olarak eklenir.
@@ -820,12 +861,27 @@ async def _free_chat_compact_guidance_from_model(
         )
         sent = [x.strip() for x in re.split(r"(?<=[\.\?\!])\s+", prose) if x.strip()]
         prose = " ".join(sent[:max_sentences]).strip()
-        # If disclaimer got pulled into the middle, keep it at the end only
-        disc = "Bu özet kişisel tanı veya tedavi planı değildir."
-        if disc in prose:
-            prose = prose.replace(disc, "").strip()
-            prose = prose.rstrip(".")
-            prose = (prose + ". " + disc).strip()
+        # UI'da zaten kısa tıbbi uyarı var; model formal yasal kapanış üretmişse temizle
+        prose = re.sub(
+            r"(?i)\bgenel\s+bilgilendirme\s*:\s*",
+            "",
+            prose,
+        ).strip()
+        prose = re.sub(
+            r"(?i)\s*bu\s+özet\s+kişisel\s+tanı\s+veya\s+tedavi\s+planı\s+değildir\.?\s*",
+            " ",
+            prose,
+        ).strip()
+        prose = re.sub(r"\s{2,}", " ", prose).strip()
+        bullets = [
+            re.sub(
+                r"(?i)\s*bu\s+özet\s+kişisel\s+tanı\s+veya\s+tedavi\s+planı\s+değildir\.?\s*",
+                " ",
+                re.sub(r"(?i)\bgenel\s+bilgilendirme\s*:\s*", "", b),
+            ).strip()
+            for b in bullets[:max_bullets]
+        ]
+        bullets = [b for b in bullets if b]
         out: list[str] = []
         if prose:
             out.append(prose)
@@ -835,7 +891,7 @@ async def _free_chat_compact_guidance_from_model(
             out.extend(tail_lines[:6])
         return "\n".join(out).strip()
     system_instruction = (
-        "Sen Rebi’sin: Türkçe, sıcak ama bilimsel; cilt ve cilt bakımı konusunda ileri düzey bir danışmansın.\n"
+        "Sen Rebi’sin: Türkçe, sıcak ve samimi; cilt bakımında yanında duran bir dert ortağı gibi konuş, bilimsel doğruluktan ödün verme.\n"
         "Bu turda alıntılı pasaj yok → genel çerçeveyle yanıtla; arşiv geniş ama şu an elinde alıntı yok. 'Kaynakta şöyle' gibi cümleler kurma.\n"
         "Kapsam: cilt/saç/tırnak bakımı, içerik maddeleri, formülasyon, doğal ürünler (bitkisel yağlar, hidrosoller, kil vb.).\n"
         "Kural: Her madde için aynı şeyi söyleme; formül tipine göre ayır (saf yağ / su bazlı serum-krem / asitler / retinoidler / güneş koruyucu). "
@@ -847,7 +903,12 @@ async def _free_chat_compact_guidance_from_model(
         "Madde kullanacaksan yalnızca kısa madde kullan; 'nasıl uygulanır:' deyip uzun adım adım anlatma.\n"
         "Başlıklama ('Dikkat edilmesi gerekenler:' gibi) kullanma.\n"
         "Markdown yok; düz metin. Ek okuma başlıkları geldiyse en sonda 'Ek okuma:' altında 1-3 satır ver (kanıt iddiası değil).\n"
-        "Teşhis koyma, marka önerme, uzun rutin listesi verme. İlk cümle 'Genel bilgilendirme:' ile başlasın; son cümle 'Bu özet kişisel tanı veya tedavi planı değildir.' olsun."
+        "Teşhis koyma, marka önerme, uzun rutin listesi verme. "
+        "Arayüzde kısa tıbbi uyarı zaten var; yanıtta 'Genel bilgilendirme', 'kişisel tanı/tedavi planı değildir' gibi formal hukuki cümleler kurma.\n"
+        "Üslup: 'Şunu yapmalısın' deme; 'istersen şunu deneyebilirsin', 'birkaç temelde şöyle düşünebilirsin', 'sana uyuyorsa' gibi yumuşak öneriler kullan. "
+        "Bu kanal genel çerçeve ve kısa ipuçları içindir. Kişisel plan istenirse birinci tekil ve ölçülü kal: örn. "
+        "'İstersen Analiz ile rutin oluşturunca cildine göre adım adım bir program hazırlayabilirim' — her mesajda tekrarlama, vaat balonu yok.\n"
+        f"{_free_chat_soft_context_notes(user_id, history)}"
     )
     try:
         response = gemini_client.models.generate_content(
@@ -872,6 +933,7 @@ async def _free_chat_compact_guidance_from_model(
 async def _free_chat_compact_guidance_without_rag(
     user_message: str,
     history: Optional[List[Any]] = None,
+    user_id: Optional[str] = None,
 ) -> Optional[str]:
     """
     Pasaj yok; cilt/ürün sorusu: önce hafif model özeti, kısa takipte ince bağlam; yedekte tek şablon + isteğe bağlı literatür başlıkları.
@@ -890,7 +952,9 @@ async def _free_chat_compact_guidance_without_rag(
     if not skip_external_literature_for_query(um):
         reading_pairs = await fetch_skin_literature_pairs(um, max_results=3)
 
-    base = await _free_chat_compact_guidance_from_model(um, history, reading_pairs=reading_pairs)
+    base = await _free_chat_compact_guidance_from_model(
+        um, history, reading_pairs=reading_pairs, user_id=user_id
+    )
     if base is None:
         base = _free_chat_compact_guidance_body_fallback()
 
@@ -1359,8 +1423,9 @@ async def _free_chat(
 
     redirect_app = {
         "reply": (
-            "Bu kısımda kişisel yapılacaklar listesi veya sabah-akşam rutin planı çıkarmıyorum; onlar Analiz ve günlük takipte. "
-            "Burada cilt bilimi ve içerik maddeleri gibi sorulara kısa yanıt var; rutin için Analiz tarafına geçebilirsin."
+            "Burada sabah-akşam adım adım rutin listesi çıkarmıyorum; o iş Analiz ve takip tarafında çok daha iyi oturuyor. "
+            "Yine de birkaç temel üzerinden yön verebilirim. Senin sıran, sıklığın ve cildine tam oturan onarıcı programa "
+            "Analiz ile rutin oluşturunca birlikte netleştiririz."
         ),
         "is_complete": False,
         "extracted_data": None,
@@ -1371,7 +1436,7 @@ async def _free_chat(
             "reply": (
                 "Selam! Hakemli makale ve kitaplardan derlenen geniş bir bilgi tabanına dayanarak cilt bilimi ve içerik sorularında "
                 "mümkün olduğunca derin ama öz yanıtlar veriyorum; bu turda eşleşme çıkmazsa da dürüst söylerim. "
-                "Kişisel rutin ve yapılacaklar için Analiz / takip tarafı daha uygun."
+                "Kişisel sıra ve cildine oturan programa hazırlanmak istersen Analiz ile rutin oluşturma tarafına geçmek en doğrusu."
             ),
             "is_complete": False,
             "extracted_data": None,
@@ -1383,7 +1448,7 @@ async def _free_chat(
     kb = _build_free_chat_rag_context(user_id, um, hist)
 
     if not _free_chat_has_usable_rag(kb):
-        compact = await _free_chat_compact_guidance_without_rag(um, hist)
+        compact = await _free_chat_compact_guidance_without_rag(um, hist, user_id=user_id)
         if compact is not None:
             log.info(
                 "Free chat: pasaj yok, kompakt yanıt (kısa model veya yedek şablon + isteğe bağlı başlıklar, %d karakter)",
@@ -1400,7 +1465,9 @@ async def _free_chat(
     final_user = (
         "REFERANS (indekslenmiş makale/kitap pasajları):\n\n"
         f"{kb}\n\n---\nSoru: {um}\n"
-        "En fazla 3 kısa cümle; referandan özet; yoksa iddia yok. pH/ölçü yalnız pasajda varsa. Rutin/tedavi planı yok."
+        "En fazla 3 kısa cümle; referandan özet; yoksa iddia yok. pH/ölçü yalnız pasajda varsa. "
+        "Burada sabah-akşam rutin listesi verme; emir dili yerine 'deneyebilirsin / birkaç temelde şöyle düşünebilirsin' kullan. "
+        "Detaylı kişisel kullanım ve onarıcı programa Analiz ile rutin oluşturmayı uygunsa tek cümleyle hatırlatabilirsin."
     )
 
     contents: list = []
@@ -1413,11 +1480,13 @@ async def _free_chat(
 
     name = (user_profile or {}).get("name", "Kullanıcı")
     system_instruction = (
-        f"Ad: {name}. Sen Rebi’sin: Türkçe, sıcak ama bilimsel; cilt ve cilt bakımı konusunda ileri düzey danışman.\n"
+        f"Ad: {name}. Sen Rebi’sin: Türkçe, sıcak ve samimi; cilt bakımında yanında duran bir dert ortağı gibi konuş, bilimsel doğruluktan ödün verme.\n"
         "REFERANS=indekslenmiş makale/kitap pasajları; yalnızca buradan özetle, yoksa uydurma.\n"
         "İçerik maddeleri, bariyer, fotosensitivite, formülasyon ve mekanizma düzeyinde kısa ama yoğun yaz; doğal ürün/yağ sorularında alerji-iritasyon riskini abartmadan belirt.\n"
         "Referansta geçmiyorsa pH, yüzde, kesin fotosensitivite gibi iddialar kurma. Aktif formu belirsizse bunu açıkça belirt ve 1 kısa örnek ver.\n"
-        "Rutin listesi/teşhis yok; ciddide dermatolog. En fazla 3 kısa cümle."
+        "'Şunu yapmalısın' deme; yumuşak öneri dili kullan. Sabah-akşam adım listesi burada yok; ciddide dermatolog.\n"
+        "Kişisel sıra ve onarıcı programa ihtiyaç hissedilirse ölçülü birinci tekil cümle kullan (örn. rutin oluşturunca sana özel program hazırlayabileceğimi söyle); zorlama yok.\n"
+        f"En fazla 3 kısa cümle.{_free_chat_soft_context_notes(user_id, hist)}"
     )
 
     if not gemini_client:

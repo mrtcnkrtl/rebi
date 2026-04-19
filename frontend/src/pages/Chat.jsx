@@ -33,15 +33,12 @@ export default function Chat() {
   });
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [quota, setQuota] = useState(null);
+  /** Sohbet kotası: free_daily | plus_monthly | plus_unlimited | none */
+  const [usage, setUsage] = useState(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [paywallKind, setPaywallKind] = useState("free_daily");
 
   const userName = user?.user_metadata?.full_name || "Kullanıcı";
-  const isPlus =
-    user?.user_metadata?.rebi_plus === true ||
-    ["plus", "pro", "premium"].includes(
-      String(user?.user_metadata?.subscription_tier || "").toLowerCase()
-    );
   const subscribeHref = user ? "/dashboard/subscribe" : "/auth?next=/dashboard/subscribe";
   const loginForChatHref = "/auth?next=/dashboard/chat";
 
@@ -68,9 +65,60 @@ export default function Chat() {
   }, [history]);
 
   useEffect(() => {
-    setQuota(null);
+    setUsage(null);
     setPaywallOpen(false);
+    setPaywallKind("free_daily");
   }, [user?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const uid = user?.id;
+      if (!uid) return;
+      try {
+        const auth = await apiAuthHeaders();
+        const r = await fetch(`${API_URL}/chat_usage?user_id=${encodeURIComponent(uid)}`, {
+          headers: { ...auth },
+        });
+        if (!r.ok || cancelled) return;
+        const d = await r.json().catch(() => ({}));
+        if (cancelled || !d?.kind || d.kind === "none") return;
+        setUsage({
+          kind: d.kind,
+          remaining: d.remaining ?? null,
+          limit: d.limit ?? null,
+          period: d.period || null,
+        });
+      } catch {
+        /* ağ / oturum */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
+
+  const applyUsageFromChatResponse = (data) => {
+    if (data.usage_kind) {
+      setUsage({
+        kind: data.usage_kind,
+        remaining: data.usage_remaining ?? null,
+        limit: data.usage_limit ?? null,
+        period: data.usage_kind === "plus_monthly" ? "month" : data.usage_kind === "free_daily" ? "day" : null,
+      });
+      return;
+    }
+    if (data.free_chat_remaining != null && data.free_chat_limit != null) {
+      setUsage({
+        kind: "free_daily",
+        remaining: data.free_chat_remaining,
+        limit: data.free_chat_limit,
+        period: "day",
+      });
+      return;
+    }
+    setUsage(null);
+  };
 
   const sendMessage = async () => {
     if (!input.trim() || loading || paywallOpen) return;
@@ -108,13 +156,11 @@ export default function Chat() {
         return;
       }
       if (data.chat_quota_exceeded) {
-        setQuota({
-          remaining: data.free_chat_remaining ?? 0,
-          limit: data.free_chat_limit ?? 0,
-        });
+        applyUsageFromChatResponse(data);
+        setPaywallKind(data.usage_kind === "plus_monthly" ? "plus_monthly" : "free_daily");
         setPaywallOpen(true);
-      } else if (data.free_chat_remaining != null && data.free_chat_limit != null) {
-        setQuota({ remaining: data.free_chat_remaining, limit: data.free_chat_limit });
+      } else {
+        applyUsageFromChatResponse(data);
       }
       const reply = typeof data.reply === "string" ? data.reply : formatApiErrorDetail(data);
       setHistory([...newHist, { role: "assistant", content: reply }]);
@@ -156,14 +202,40 @@ export default function Chat() {
             <Bot className="w-5 h-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-gray-900 text-sm truncate">Rebi AI</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="font-bold text-gray-900 text-sm truncate">Rebi AI</h3>
+              {usage && usage.kind === "free_daily" && usage.limit != null && usage.remaining != null && (
+                <span
+                  className="text-[10px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200/80 shrink-0"
+                  title={t("chat.usageHintDay")}
+                >
+                  {t("chat.usageBadgeDay", { rem: usage.remaining, lim: usage.limit })}
+                </span>
+              )}
+              {usage && usage.kind === "plus_monthly" && usage.limit != null && usage.remaining != null && (
+                <span
+                  className="text-[10px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-violet-50 text-violet-900 border border-violet-200/80 shrink-0"
+                  title={t("chat.usageHintMonth")}
+                >
+                  {t("chat.usageBadgeMonth", { rem: usage.remaining, lim: usage.limit })}
+                </span>
+              )}
+              {usage && usage.kind === "plus_unlimited" && (
+                <span
+                  className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-900 border border-emerald-200/80 shrink-0"
+                  title={t("chat.usageHintUnlimited")}
+                >
+                  {t("chat.usageBadgeUnlimited")}
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-gray-500 truncate">{t("chat.subtitle")}</p>
           </div>
           <button
             type="button"
             onClick={clearChat}
             disabled={!hasConversation}
-            className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+            className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:pointer-events-none shrink-0"
           >
             {t("chat.clear")}
           </button>
@@ -233,24 +305,24 @@ export default function Chat() {
               <Send className="w-5 h-5" />
             </button>
           </div>
-          {isPlus ? (
-            <p className="text-[10px] text-emerald-700/90 text-center mt-1.5 font-medium">
-              Rebi Plus — günlük mesaj kotası uygulanmıyor
-            </p>
-          ) : quota != null ? (
+          {usage?.kind === "free_daily" ? (
             <p className="text-[10px] text-gray-500 text-center mt-1.5">
-              Bugün kalan ücretsiz mesaj:{" "}
-              <strong style={{ color: theme.primary }}>{quota.remaining}</strong>
-              {quota.limit ? ` / ${quota.limit}` : ""}
-              {" · "}
               <Link
                 to={subscribeHref}
                 className="font-semibold underline-offset-2 hover:underline"
                 style={{ color: theme.primary }}
               >
-                Rebi Plus
+                {t("chat.plusUpgradeLink")}
               </Link>
+              {" · "}
+              <span className="text-gray-400">{t("chat.footerHintShort")}</span>
             </p>
+          ) : usage?.kind === "plus_monthly" ? (
+            <p className="text-[10px] text-violet-800/90 text-center mt-1.5">
+              {t("chat.plusPack1000Footer")}
+            </p>
+          ) : usage?.kind === "plus_unlimited" ? (
+            <p className="text-[10px] text-emerald-800/85 text-center mt-1.5 font-medium">{t("chat.plusUnlimitedFooter")}</p>
           ) : (
             <p className="text-[10px] text-gray-400 text-center mt-1.5">
               <Sparkles className="w-3 h-3 inline" /> {t("chat.footerHint")}
@@ -299,11 +371,14 @@ export default function Chat() {
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-amber-200/90">REBI PLUS</div>
                   <h3 className="text-2xl font-black text-white leading-tight mt-1">
-                    Günlük ücretsiz limit doldu
+                    {paywallKind === "plus_monthly"
+                      ? t("chat.paywallTitleMonth")
+                      : t("chat.paywallTitleDay")}
                   </h3>
                   <p className="text-sm text-violet-100/85 mt-2 leading-relaxed">
-                    Rebi, hızlı “tek öneri” değil; verini toplar, takip eder ve her gün yeniden ayarlar.
-                    Sınırsız sohbet için Plus’a geç.
+                    {paywallKind === "plus_monthly"
+                      ? t("chat.paywallBodyMonth")
+                      : t("chat.paywallBodyDay")}
                   </p>
                 </div>
               </div>
@@ -360,7 +435,7 @@ export default function Chat() {
                 <ul className="mt-2 space-y-1.5 text-xs text-white/70">
                   <li className="flex items-start gap-2">
                     <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-300/90 shrink-0" />
-                    Günlük mesaj kotası yok
+                    {t("chat.paywallBulletUnlimited")}
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="mt-1 w-1.5 h-1.5 rounded-full bg-amber-300/90 shrink-0" />

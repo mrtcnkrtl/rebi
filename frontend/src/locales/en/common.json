@@ -36,7 +36,7 @@
     "theme": "Themes"
   },
   "landing": {
-    "heroBadge": "AI-powered skincare",
+    "heroBadge": "AI-powered dermocosmetic care assistant",
     "heroTitle1": "The",
     "heroTitleAccent": "Science-backed",
     "heroTitle2": "routine your skin (and mind) needs.",
@@ -218,6 +218,21 @@
     "dataHint": "Answers lean on passages selected from Rebi’s knowledge base; I’ll say when nothing fits.",
     "placeholder": "Try retinol, redness, skin barrier…",
     "footerHint": "Knowledge-base passages first; a daily message limit may apply. Your routine plan lives in Analysis.",
+    "footerHintShort": "Counter is at the top; your routine plan lives in Analysis.",
+    "plusUpgradeLink": "Rebi Plus",
+    "plusPack1000Footer": "You’re on the Plus (1000 messages) pack; the upper tier includes unlimited chat.",
+    "plusUnlimitedFooter": "Plus — unlimited chat usage on this plan.",
+    "usageBadgeDay": "Today {{rem}} / {{lim}}",
+    "usageBadgeMonth": "This month {{rem}} / {{lim}}",
+    "usageBadgeUnlimited": "Plus · unlimited",
+    "usageHintDay": "Daily free Rebi AI message quota",
+    "usageHintMonth": "Monthly Plus chat quota (1000 pack)",
+    "usageHintUnlimited": "Unlimited Plus chat",
+    "paywallTitleDay": "Daily free limit reached",
+    "paywallTitleMonth": "Monthly Plus chat quota reached",
+    "paywallBodyDay": "Rebi isn’t a quick one-off tip; it gathers your data, tracks you, and readjusts daily. Upgrade to Plus for unlimited chat.",
+    "paywallBodyMonth": "This plan includes a limited number of chat messages per month; wait for the month to reset or move to the unlimited tier.",
+    "paywallBulletUnlimited": "Upper tier: no daily/monthly chat cap",
     "disclaimerShort": "This chat is not medical diagnosis or treatment."
   },
   "dashboard": {

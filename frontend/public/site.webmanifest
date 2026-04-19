@@ -1,0 +1,23 @@
+{
+  "name": "Rebi",
+  "short_name": "Rebi",
+  "description": "Yapay zeka destekli dermokozmetik bakım asistanı — sana özel rutin ve bilim odaklı sohbet.",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "theme_color": "#0d9488",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "start_url": "/"
+}
