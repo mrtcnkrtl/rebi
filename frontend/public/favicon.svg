@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Rebi">
+  <defs>
+    <linearGradient id="rebiGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2dd4bf"/>
+      <stop offset="100%" stop-color="#0d9488"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#rebiGrad)"/>
+  <path
+    fill="#ffffff"
+    d="M18 46V18h14.2c7.2 0 12.2 3.9 12.2 11.1 0 5.4-2.8 9-7.8 10.2L46 46h-8.2l-8.4-14.4h-5.4V46H18zm8.4-20.4h5.2c3.1 0 4.8-1.4 4.8-4.4 0-3-1.7-4.4-4.8-4.4h-5.2v8.8z"
+  />
+</svg>
