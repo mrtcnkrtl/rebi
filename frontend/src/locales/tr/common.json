@@ -210,7 +210,7 @@
     "feedbackSkip": "Atla"
   },
   "chat": {
-    "subtitle": "Hakemli kaynaklardan — kısa ve bilim odaklı",
+    "subtitle": "Cilt hakkında her şey",
     "clear": "Temizle",
     "thinking": "Bir saniye, bilimsel kaynak pasajlarına bakıyorum…",
     "emptyTitle": "Cildini veya bir maddeyi mi merak ettin?",
@@ -233,6 +233,20 @@
     "paywallBodyDay": "Rebi, hızlı “tek öneri” değil; verini toplar, takip eder ve her gün yeniden ayarlar. Sınırsız sohbet için Plus’a geç.",
     "paywallBodyMonth": "Bu pakette her ay sınırlı sohbet hakkı var; hakların sıfırlanması için ay başını bekleyebilir veya sınırsız sohbet içeren üst pakete geçebilirsin.",
     "paywallBulletUnlimited": "Üst pakette günlük / aylık sohbet kotası yok",
+    "cornerRoutineReadyTitle": "Rutinin hazır",
+    "cornerRoutineAcceptedBody": "Bugünkü adımların Dashboard’da. İstersen check-in ile rutini güncelleyebiliriz.",
+    "cornerRoutineDraftBody": "Rutinin oluşmuş görünüyor. İstersen Dashboard’dan kabul edip takibi açalım.",
+    "cornerRoutineCta": "Rutin durumuna git",
+    "cornerRoutineMissingTitle": "Rutin yok",
+    "cornerRoutineMissingBody": "Analiz ile kişisel rutinini çıkaralım; sonra sohbeti onun üstüne oturturuz.",
+    "cornerRoutineMissingCta": "Analiz başlat",
+    "edgeTitle": "Rebi",
+    "edgeSubtitle": "Kısayollar ve rutin durumu",
+    "edgeOpen": "Sol paneli aç",
+    "edgeClose": "Kapat",
+    "edgeQuickTitle": "Kısayollar",
+    "edgeQuickDashboard": "Dashboard’a git",
+    "edgeQuickAnalyze": "Yeni analiz başlat",
     "disclaimerShort": "Bu sohbet tıbbi tanı veya tedavi değildir."
   },
   "dashboard": {

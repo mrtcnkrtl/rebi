@@ -210,7 +210,7 @@
     "feedbackSkip": "Skip"
   },
   "chat": {
-    "subtitle": "Peer‑reviewed sources — short, science‑first",
+    "subtitle": "Everything about skin",
     "clear": "Clear",
     "thinking": "One sec, scanning our source passages…",
     "emptyTitle": "Curious about your skin or an ingredient?",
@@ -233,6 +233,20 @@
     "paywallBodyDay": "Rebi isn’t a quick one-off tip; it gathers your data, tracks you, and readjusts daily. Upgrade to Plus for unlimited chat.",
     "paywallBodyMonth": "This plan includes a limited number of chat messages per month; wait for the month to reset or move to the unlimited tier.",
     "paywallBulletUnlimited": "Upper tier: no daily/monthly chat cap",
+    "cornerRoutineReadyTitle": "Your routine is ready",
+    "cornerRoutineAcceptedBody": "Today’s steps are on the Dashboard. You can run a check‑in to adjust it.",
+    "cornerRoutineDraftBody": "A routine draft exists. Open Dashboard to accept and start tracking.",
+    "cornerRoutineCta": "Open routine status",
+    "cornerRoutineMissingTitle": "No routine yet",
+    "cornerRoutineMissingBody": "Run Analysis to generate your personal routine, then we’ll build chat on top of it.",
+    "cornerRoutineMissingCta": "Start analysis",
+    "edgeTitle": "Rebi",
+    "edgeSubtitle": "Shortcuts and routine status",
+    "edgeOpen": "Open left panel",
+    "edgeClose": "Close",
+    "edgeQuickTitle": "Shortcuts",
+    "edgeQuickDashboard": "Go to Dashboard",
+    "edgeQuickAnalyze": "Start new analysis",
     "disclaimerShort": "This chat is not medical diagnosis or treatment."
   },
   "dashboard": {

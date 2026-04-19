@@ -10,6 +10,7 @@ import { Bot, Send, Loader2, Sparkles, Crown, Lock, ArrowRight, X } from "lucide
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import RebiIntroSplash from "../components/RebiIntroSplash";
 import { useTranslation } from "react-i18next";
+import { getRoutineSnapshot, isRoutineTrackingAccepted } from "../lib/routineTracking";
 
 export default function Chat() {
   const { user } = useAuth();
@@ -37,6 +38,9 @@ export default function Chat() {
   const [usage, setUsage] = useState(null);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [paywallKind, setPaywallKind] = useState("free_daily");
+  const [routineSnap, setRoutineSnap] = useState(null);
+  const [routineAccepted, setRoutineAccepted] = useState(false);
+  const [edgeOpen, setEdgeOpen] = useState(false);
 
   const userName = user?.user_metadata?.full_name || "Kullanıcı";
   const subscribeHref = user ? "/dashboard/subscribe" : "/auth?next=/dashboard/subscribe";
@@ -68,6 +72,9 @@ export default function Chat() {
     setUsage(null);
     setPaywallOpen(false);
     setPaywallKind("free_daily");
+    setRoutineSnap(null);
+    setRoutineAccepted(false);
+    setEdgeOpen(false);
   }, [user?.id]);
 
   useEffect(() => {
@@ -75,6 +82,12 @@ export default function Chat() {
     (async () => {
       const uid = user?.id;
       if (!uid) return;
+      try {
+        setRoutineAccepted(isRoutineTrackingAccepted(uid));
+        setRoutineSnap(getRoutineSnapshot(uid));
+      } catch {
+        /* ignore */
+      }
       try {
         const auth = await apiAuthHeaders();
         const r = await fetch(`${API_URL}/chat_usage?user_id=${encodeURIComponent(uid)}`, {
@@ -190,10 +203,144 @@ export default function Chat() {
     }
   };
 
+  const routineHasItems = Array.isArray(routineSnap?.routine) && routineSnap.routine.length > 0;
+  const routineCorner =
+    user?.id && routineHasItems
+      ? {
+          title: t("chat.cornerRoutineReadyTitle"),
+          body: routineAccepted ? t("chat.cornerRoutineAcceptedBody") : t("chat.cornerRoutineDraftBody"),
+          href: "/dashboard",
+          cta: t("chat.cornerRoutineCta"),
+        }
+      : user?.id
+        ? {
+            title: t("chat.cornerRoutineMissingTitle"),
+            body: t("chat.cornerRoutineMissingBody"),
+            href: "/dashboard/analyze",
+            cta: t("chat.cornerRoutineMissingCta"),
+          }
+        : null;
+
+  const cornerUsageText =
+    usage?.kind === "free_daily" && usage.remaining != null && usage.limit != null
+      ? t("chat.usageBadgeDay", { rem: usage.remaining, lim: usage.limit })
+      : usage?.kind === "plus_monthly" && usage.remaining != null && usage.limit != null
+        ? t("chat.usageBadgeMonth", { rem: usage.remaining, lim: usage.limit })
+        : usage?.kind === "plus_unlimited"
+          ? t("chat.usageBadgeUnlimited")
+          : null;
+
   return (
     <div className={`min-h-screen ${theme.bg} relative`}>
       <RebiIntroSplash scope="chat" accentColor={theme.accent} primaryColor={theme.primary} />
       <ThemePatternOverlay pattern={theme.pattern} />
+
+      {/* Köşe sayaç (özellikle web) */}
+      {cornerUsageText && (
+        <div className="fixed top-4 right-4 z-[30]">
+          <div className="bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-full px-3 py-1 text-[11px] font-semibold tabular-nums text-gray-800">
+            {cornerUsageText}
+          </div>
+        </div>
+      )}
+
+      {/* Sol açılır edge (web) */}
+      {routineCorner && (
+        <>
+          {/* Tutacak */}
+          <button
+            type="button"
+            onClick={() => setEdgeOpen(true)}
+            className="hidden lg:flex fixed top-24 left-0 z-[28] items-center gap-2 pl-2 pr-3 py-2 rounded-r-2xl bg-white/85 backdrop-blur-md border border-gray-200/80 shadow-sm hover:bg-white/95 transition-colors"
+            aria-label={t("chat.edgeOpen")}
+          >
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center text-white shadow"
+              style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}
+            >
+              <Bot className="w-4 h-4" />
+            </div>
+            <div className="text-left">
+              <div className="text-[11px] font-extrabold text-gray-900 leading-tight">{t("chat.edgeTitle")}</div>
+              <div className="text-[10px] text-gray-500 leading-tight">{routineCorner.title}</div>
+            </div>
+          </button>
+
+          {/* Overlay */}
+          {edgeOpen && (
+            <div className="hidden lg:block fixed inset-0 z-[35]">
+              <div
+                className="absolute inset-0 bg-slate-950/25 backdrop-blur-[2px]"
+                onClick={() => setEdgeOpen(false)}
+                aria-hidden="true"
+              />
+              <div
+                className="absolute top-0 left-0 h-full w-[340px] bg-white/95 backdrop-blur-md border-r border-gray-200 shadow-2xl"
+                role="dialog"
+                aria-label={t("chat.edgeTitle")}
+              >
+                <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between">
+                  <div className="min-w-0">
+                    <div className="text-xs font-black text-gray-900">{t("chat.edgeTitle")}</div>
+                    <div className="text-[11px] text-gray-500 truncate">{t("chat.edgeSubtitle")}</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setEdgeOpen(false)}
+                    className="w-9 h-9 rounded-2xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center"
+                    aria-label={t("chat.edgeClose")}
+                  >
+                    <X className="w-4 h-4 text-gray-700" />
+                  </button>
+                </div>
+
+                <div className="p-4 space-y-4">
+                  <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                    <div className="text-[11px] font-extrabold text-gray-900">{routineCorner.title}</div>
+                    <div className="text-[11px] text-gray-600 mt-1 leading-snug">{routineCorner.body}</div>
+                    <Link
+                      to={routineCorner.href}
+                      onClick={() => setEdgeOpen(false)}
+                      className="inline-flex items-center gap-1.5 mt-2 text-[11px] font-bold underline-offset-2 hover:underline"
+                      style={{ color: theme.primary }}
+                    >
+                      {routineCorner.cta}
+                      <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+
+                  <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                    <div className="text-[11px] font-extrabold text-gray-900">{t("chat.edgeQuickTitle")}</div>
+                    <div className="mt-2 grid gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEdgeOpen(false);
+                          navigate("/dashboard");
+                        }}
+                        className="w-full text-left rounded-xl border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 px-3 py-2 text-[11px] font-bold text-gray-800 transition-colors"
+                      >
+                        {t("chat.edgeQuickDashboard")}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEdgeOpen(false);
+                          navigate("/dashboard/analyze");
+                        }}
+                        className="w-full text-left rounded-xl border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 px-3 py-2 text-[11px] font-bold text-gray-800 transition-colors"
+                      >
+                        {t("chat.edgeQuickAnalyze")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
       <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-128px)] relative z-[1] w-full">
         {/* Header */}
         <div className={`flex items-center gap-3 px-4 py-3 border-b ${theme.cardBorder} bg-white/70 backdrop-blur-md shrink-0`}>
@@ -203,7 +350,7 @@ export default function Chat() {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-gray-900 text-sm truncate">Rebi AI</h3>
+              <h3 className="font-bold text-gray-900 text-sm truncate">Rebi</h3>
               {usage && usage.kind === "free_daily" && usage.limit != null && usage.remaining != null && (
                 <span
                   className="text-[10px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200/80 shrink-0"
