@@ -105,7 +105,7 @@ export default function Chat() {
         /* ignore */
       }
       try {
-        const auth = await apiAuthHeaders();
+        const auth = user?.id ? await apiAuthHeaders() : {};
         const r = await fetch(`${API_URL}/chat_usage?user_id=${encodeURIComponent(uid)}`, {
           headers: { ...auth },
         });
