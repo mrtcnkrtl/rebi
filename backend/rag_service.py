@@ -91,6 +91,121 @@ def _free_chat_fuzzy_correct_terms(text: str) -> str:
             out.append(tok)
     return " ".join(out).strip()
 
+
+def _free_chat_detect_ingredient_topic(text: str) -> Optional[str]:
+    """
+    Mesajda (veya kısa takipte) geçen ana aktif/ingredient konusunu bul.
+    INGREDIENT_DB anahtarları + temel eş anlamlılar.
+    """
+    t = _free_chat_fuzzy_correct_terms(text)
+    if not t:
+        return None
+    try:
+        from ingredient_db import INGREDIENT_DB
+
+        keys = [str(k).strip().lower() for k in (INGREDIENT_DB or {}).keys() if k]
+    except Exception:
+        keys = []
+    if not keys:
+        return None
+
+    # Yazım / kullanıcı dili varyantları
+    alias = {
+        "vitamin c": "vitamin_c",
+        "c vitamini": "vitamin_c",
+        "niacinamide": "niacinamid",
+        "niasinamid": "niacinamid",
+        "azelaik": "azelaik_asit",
+        "azelaic": "azelaik_asit",
+    }
+    for a, k in alias.items():
+        if a in t and k in keys:
+            return k
+
+    # doğrudan alt-string eşleşmesi (retinol, niacinamid gibi)
+    for k in keys:
+        kk = k.replace("_", " ")
+        if k in t or kk in t:
+            return k
+
+    # fuzzy: tek token üzerinden en yakın anahtar (yüksek eşik)
+    toks = [x for x in t.split() if len(x) >= 5][:10]
+    if not toks:
+        return None
+    candidates = keys
+    for tok in toks:
+        hit = difflib.get_close_matches(tok, candidates, n=1, cutoff=0.9)
+        if hit:
+            return hit[0]
+    return None
+
+
+def _free_chat_compact_from_ingredient_db(topic_key: str, user_message: str) -> Optional[str]:
+    """
+    Model/RAG yokken bile doğru ve konuşma dilinde kısa yanıt.
+    """
+    if not topic_key:
+        return None
+    try:
+        from ingredient_db import INGREDIENT_DB
+
+        item = (INGREDIENT_DB or {}).get(topic_key)
+    except Exception:
+        item = None
+    if not isinstance(item, dict) or not item:
+        return None
+
+    t = _free_chat_normalize_query(user_message)
+    name = str(item.get("name") or topic_key).strip()
+    mech = str(item.get("mechanism") or "").strip()
+    eff = str(item.get("clinical_efficacy") or "").strip()
+    tte = str(item.get("time_to_effect") or "").strip()
+    when = str(item.get("application_time") or "").strip()
+    photos = item.get("photosensitive")
+    preg = item.get("pregnancy_safe")
+
+    # Soru tipi (çok kaba)
+    asks_when = any(x in t for x in ("ne zaman", "sabah mi", "aksam mi", "gece mi", "gunduz"))
+    asks_what = any(x in t for x in ("ne ise yarar", "ne işe yarar", "ne yarar", "ne yapar", "fayd"))
+
+    lines: list[str] = []
+    if asks_when and when:
+        lines.append(f"{name} için tipik zamanlama: {when.lower()}.")
+    else:
+        if asks_what:
+            head = f"{name} genelde"
+            if eff:
+                lines.append(f"{head} {eff.lower()} gibi hedeflerde kullanılır.")
+            else:
+                lines.append(f"{head} cilt bakımında belirli hedefler için kullanılır.")
+        else:
+            # genel kısa tanım
+            lines.append(f"{name} hakkında hızlı bir çerçeve bırakayım.")
+
+    if mech and len(lines) < 3:
+        lines.append(f"Kısaca nasıl çalışır: {mech}.")
+    if tte and len(lines) < 3:
+        lines.append(f"Ne zaman fark edilir: {tte}.")
+
+    safety_bits: list[str] = []
+    if photos is True:
+        safety_bits.append("gündüz SPF")
+    if preg is False:
+        safety_bits.append("hamilelikte kaçınma")
+    if safety_bits:
+        lines.append("Not: " + ", ".join(safety_bits) + ".")
+
+    # Tek soru ile bağla (sohbet hissi)
+    if "kuru" in t or "hassas" in t or "yagli" in t:
+        lines.append("Cildin daha çok kuru mu, yağlı mı, hassas mı? Ona göre daha net söyleyebilirim.")
+    else:
+        lines.append("Cildin daha çok kuru mu, yağlı mı, hassas mı?")
+
+    # 3-4 kısa cümlede tut
+    out = " ".join([ln.strip() for ln in lines if ln.strip()])
+    sent = [x.strip() for x in re.split(r"(?<=[\.\?\!])\s+", out) if x.strip()]
+    return " ".join(sent[:4]).strip()
+
 def _polish_user_message(err: Exception) -> str:
     """
     Convert common upstream errors (quota, timeouts) into a user-safe message.
@@ -810,6 +925,13 @@ def _free_chat_compact_guidance_body_fallback(
     blob = _free_chat_recent_turns_blob(history, max_len=360) if history else ""
     merged = (blob + "\n" + (user_message or "")).strip() if blob else (user_message or "")
     t = _free_chat_normalize_query(merged)
+
+    # 1) Eğer konuşma “madde/aktif” gibi görünüyorsa INGREDIENT_DB'den doğru mini yanıt üret.
+    topic = _free_chat_detect_ingredient_topic(merged)
+    if topic:
+        db = _free_chat_compact_from_ingredient_db(topic, user_message)
+        if db:
+            return db
 
     def _retinol() -> str:
         return (
