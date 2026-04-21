@@ -15,6 +15,7 @@ AI şu işleri YAPMAZ:
 import json
 import re
 import unicodedata
+import difflib
 from typing import Any, Dict, List, Literal, Optional
 from google import genai
 from google.genai import types
@@ -23,6 +24,72 @@ from flow_engine import sanitize_routine_items_details
 from knowledge.query_expand import expand_skin_query_for_vector_search, strip_conversational_turkish
 
 log = get_logger("rag_service")
+
+
+def _free_chat_fuzzy_correct_terms(text: str) -> str:
+    """
+    Ölçekli yazım toleransı: tek tek fixup eklemek yerine, bilinen aktif/ana terim sözlüğüne
+    yakın eşleşmeleri otomatik düzelt.
+    - Hafif ve güvenli kalsın diye yalnızca birkaç token düzeltir, eşiği yüksek tutar.
+    """
+    t = _free_chat_normalize_query(text)
+    if not t:
+        return ""
+    try:
+        from ingredient_db import INGREDIENT_DB
+
+        vocab = set(str(k).strip().lower() for k in (INGREDIENT_DB or {}).keys() if k)
+    except Exception:
+        vocab = set()
+
+    # Ek “ana terimler” (tamamı değil; ürün/aktif sınıfları)
+    vocab.update(
+        {
+            "hyaluronik",
+            "hyaluron",
+            "hyaluronat",
+            "niacinamide",
+            "niasinamid",
+            "vitamin",
+            "vitamin c",
+            "askorbik",
+            "retinol",
+            "retinoid",
+            "tretinoin",
+            "adapalen",
+            "glikolik",
+            "glycolic",
+            "salisilik",
+            "salicylic",
+            "azelaik",
+            "azelaic",
+            "spf",
+        }
+    )
+
+    tokens = t.split()
+    if not tokens or not vocab:
+        return t
+
+    out: list[str] = []
+    # yalnızca 4+ harf tokenlarda düzeltme dene; en fazla 3 düzeltme yap
+    changed = 0
+    for tok in tokens:
+        if changed >= 3 or len(tok) < 4:
+            out.append(tok)
+            continue
+        # zaten bilinen bir kelimeyse dokunma
+        if tok in vocab:
+            out.append(tok)
+            continue
+        # yakın eşleşme bul (difflib)
+        cand = difflib.get_close_matches(tok, vocab, n=1, cutoff=0.88)
+        if cand:
+            out.append(cand[0])
+            changed += 1
+        else:
+            out.append(tok)
+    return " ".join(out).strip()
 
 def _polish_user_message(err: Exception) -> str:
     """
@@ -718,14 +785,15 @@ def _free_chat_allows_general_guidance_without_rag(
     Pasaj yokken kompakt yol (kısa model + isteğe bağlı başlıklar) açılsın mı — kaba süzgeç.
     Kısa 'peki…' takiplerinde son tur metniyle birleştirilir (yağ yazımı kaçsa bile önceki bağlam yakalanır).
     """
-    t = _free_chat_normalize_query(msg)
+    # Yazım toleransı: needle eşleşmesi öncesi fuzzy düzelt
+    t = _free_chat_fuzzy_correct_terms(msg)
     if len(t) < 4:
         return False
     if _free_chat_message_matches_guidance_needles(t):
         return True
     blob = _free_chat_recent_turns_blob(history, max_len=360)
     if blob and len(t) < 120:
-        merged = _free_chat_normalize_query(blob + "\n" + msg)
+        merged = _free_chat_fuzzy_correct_terms(blob + "\n" + msg)
         if _free_chat_message_matches_guidance_needles(merged):
             return True
     return False
@@ -869,7 +937,9 @@ async def _free_chat_compact_guidance_from_model(
     """
     if not gemini_client:
         return None
-    um = (user_message or "").strip()
+    # Yazım/typo toleransı: modele giden payload'da kritik terimleri düzelt
+    um_raw = (user_message or "").strip()
+    um = _free_chat_fuzzy_correct_terms(um_raw) or um_raw
     if len(um) > 900:
         um = um[:900].rsplit(" ", 1)[0]
     blob = _free_chat_recent_turns_blob(history, max_len=320) if history else ""
