@@ -799,17 +799,24 @@ def _free_chat_allows_general_guidance_without_rag(
     return False
 
 
-def _free_chat_compact_guidance_body_fallback(user_message: str) -> str:
+def _free_chat_compact_guidance_body_fallback(
+    user_message: str, history: Optional[List[Any]] = None
+) -> str:
     """
     Model kapalı veya hata: tek güvenli şablon (yeni madde/durum için iğne eklemek gerekmez).
     """
-    t = _free_chat_normalize_query(user_message)
+    # Konu takibi: kısa takipte kullanıcı tekrar "retinol" demeyebilir.
+    # Bu yüzden son birkaç tur + mevcut mesajı birleştirip ana konuyu çıkar.
+    blob = _free_chat_recent_turns_blob(history, max_len=360) if history else ""
+    merged = (blob + "\n" + (user_message or "")).strip() if blob else (user_message or "")
+    t = _free_chat_normalize_query(merged)
 
     def _retinol() -> str:
         return (
-            "Retinol bir A vitamini türevi aktiftir; akne eğilimi, leke görünümü ve ince çizgilerde sık kullanılır ama özellikle ilk haftalarda kuruluk/iritasyon yapabilir. "
-            "Ürün formu (serum/krem, yüzde) belirleyici—genelde gece düşük sıklıkla başlanır; gündüz düzenli SPF şart. "
-            "İstersen kullandığın retinolün formunu (%/ürün tipi) ve cildinin hassasiyetini yaz; ona göre daha net bir çerçeve çizeyim."
+            "Kuru ve hassas ciltte retinolün “en güvenli” kullanımı: az miktar (bezelye tanesi), gece ve düşük sıklıkla başlamak. "
+            "Yüzde bilmiyorsan da ilerleyebilirsin: 1) 2 hafta haftada 2 gece, 2) iyi gidiyorsa haftada 3 geceye çıkar. "
+            "Serum formunda batma/kurutma daha sık olabildiği için ‘sandviç’ iyi çalışır: nemlendirici → retinol → nemlendirici. "
+            "Ertesi gün belirgin yanma/kızarıklık/pul pul olursa 3-5 gün ara verip sadece bariyer (nemlendirici + SPF) ile toparla."
         )
 
     def _vitc() -> str:
@@ -827,6 +834,12 @@ def _free_chat_compact_guidance_body_fallback(user_message: str) -> str:
         )
 
     def _generic() -> str:
+        # Kullanıcı "bilmiyorum" diyorsa tekrar tekrar aynı soruyu sormayalım.
+        if re.search(r"(?i)\b(bilmiyorum|emin degilim|hatirlamiyorum)\b", user_message or ""):
+            return (
+                "Tamam—bilmediğin yerleri sorun etmeyelim. En güvenli yol: düşük sıklıkla başla, bir ürünü tek değişken yap, tahriş olursa geri adım at. "
+                "Ne kullandığını (serum/krem), cildinin kuru-hassas olduğunu söyledin; buna göre nazik bir başlangıç planı çıkarabiliriz."
+            )
         return (
             "Bunu sağlıklı konuşmak için ürün formu ve cilt bağlamı lazım (serum mu krem mi, yüzdesi var mı, cildin hassas mı/yağlı mı). "
             "İstersen 1–2 net detay yaz; burada kısa çerçeveyle yön vereyim. "
@@ -1096,7 +1109,7 @@ async def _free_chat_compact_guidance_without_rag(
         um, history, reading_pairs=reading_pairs, user_id=user_id
     )
     if base is None:
-        base = _free_chat_compact_guidance_body_fallback(um)
+        base = _free_chat_compact_guidance_body_fallback(um, history)
 
     if skip_external_literature_for_query(um):
         return base
