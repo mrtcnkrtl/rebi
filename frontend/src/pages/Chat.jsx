@@ -43,6 +43,7 @@ export default function Chat() {
   const [edgeOpen, setEdgeOpen] = useState(false);
 
   const userName = user?.user_metadata?.full_name || "Kullanıcı";
+  const effectiveUserId = user?.id || DEMO_USER_ID;
   const subscribeHref = user ? "/dashboard/subscribe" : "/auth?next=/dashboard/subscribe";
   const loginForChatHref = "/auth?next=/dashboard/chat";
 
@@ -75,12 +76,12 @@ export default function Chat() {
     setRoutineSnap(null);
     setRoutineAccepted(false);
     setEdgeOpen(false);
-  }, [user?.id]);
+  }, [effectiveUserId]);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const uid = user?.id;
+      const uid = effectiveUserId;
       if (!uid) return;
       // Last-known usage: köşe sayaç hemen görünsün
       try {
@@ -95,8 +96,11 @@ export default function Chat() {
         /* ignore */
       }
       try {
-        setRoutineAccepted(isRoutineTrackingAccepted(uid));
-        setRoutineSnap(getRoutineSnapshot(uid));
+        // Demo kullanıcıda rutin snapshot yok sayılabilir; kullanıcı girişinde çalışır.
+        if (user?.id) {
+          setRoutineAccepted(isRoutineTrackingAccepted(uid));
+          setRoutineSnap(getRoutineSnapshot(uid));
+        }
       } catch {
         /* ignore */
       }
@@ -127,7 +131,7 @@ export default function Chat() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [effectiveUserId, user?.id]);
 
   const applyUsageFromChatResponse = (data) => {
     const uid = user?.id;
@@ -286,7 +290,7 @@ export default function Chat() {
           <button
             type="button"
             onClick={() => setEdgeOpen(true)}
-            className="hidden md:flex fixed top-24 left-0 z-[28] items-center gap-2 pl-2 pr-3 py-2 rounded-r-2xl bg-white/85 backdrop-blur-md border border-gray-200/80 shadow-sm hover:bg-white/95 transition-colors"
+            className="hidden sm:flex fixed top-24 left-0 z-[28] items-center gap-2 pl-2 pr-3 py-2 rounded-r-2xl bg-white/85 backdrop-blur-md border border-gray-200/80 shadow-sm hover:bg-white/95 transition-colors"
             aria-label={t("chat.edgeOpen")}
           >
             <div
@@ -303,7 +307,7 @@ export default function Chat() {
 
           {/* Overlay */}
           {edgeOpen && (
-            <div className="hidden md:block fixed inset-0 z-[35]">
+            <div className="hidden sm:block fixed inset-0 z-[35]">
               <div
                 className="absolute inset-0 bg-slate-950/25 backdrop-blur-[2px]"
                 onClick={() => setEdgeOpen(false)}
