@@ -265,6 +265,91 @@ def _free_chat_compact_from_ingredient_db(
     sent = [x.strip() for x in re.split(r"(?<=[\.\?\!])\s+", out) if x.strip()]
     return " ".join(sent[:4]).strip()
 
+
+def _free_chat_extract_multiple_topics(text: str) -> list[str]:
+    """
+    INCI listesi / çoklu aktif konuşmalarında birden fazla maddeyi yakala.
+    """
+    t = _free_chat_fuzzy_correct_terms(text)
+    if not t:
+        return []
+    try:
+        from ingredient_db import INGREDIENT_DB
+
+        keys = [str(k).strip().lower() for k in (INGREDIENT_DB or {}).keys() if k]
+    except Exception:
+        keys = []
+    if not keys:
+        return []
+    found: list[str] = []
+    for k in keys:
+        if k in t or k.replace("_", " ") in t:
+            found.append(k)
+    # En fazla 6; tekrar yok
+    out: list[str] = []
+    seen = set()
+    for k in found:
+        if k in seen:
+            continue
+        out.append(k)
+        seen.add(k)
+        if len(out) >= 6:
+            break
+    return out
+
+
+def _free_chat_is_inci_like(text: str) -> bool:
+    s = (text or "")
+    if len(s) < 18:
+        return False
+    if re.search(r"(?i)\b(inci|ingredients|içindekiler)\b", s):
+        return True
+    # Çok virgül / noktalı virgül = liste ihtimali
+    return (s.count(",") + s.count(";")) >= 6
+
+
+def _free_chat_inci_report(text: str, *, ctx: Optional[dict] = None) -> Optional[str]:
+    """
+    Kullanıcı ürünün içindekiler listesini atınca: madde odaklı, çakışma/sinerji filtresi gibi kısa rapor.
+    Marka/ürün önerisi yapmaz.
+    """
+    if not _free_chat_is_inci_like(text):
+        return None
+    topics = _free_chat_extract_multiple_topics(text)
+    if not topics:
+        return (
+            "Listeyi gördüm. İçerik isimleri çok çeşitli olabiliyor; şu an net yakaladığım “aktif” isimleri az. "
+            "İstersen listede özellikle merak ettiğin 2-3 aktif maddeyi (örn. retinol, niasinamid, AHA/BHA, C vitamini) yaz; "
+            "ben de çakışma/sinerji filtresi gibi bakayım."
+        )
+    try:
+        from ingredient_db import INGREDIENT_DB
+
+        db = INGREDIENT_DB or {}
+    except Exception:
+        db = {}
+    names = []
+    conflict_notes: list[str] = []
+    for k in topics:
+        item = db.get(k) if isinstance(db, dict) else None
+        if isinstance(item, dict):
+            names.append(str(item.get("name") or k).strip())
+            combos = item.get("combinations") or {}
+            conf = combos.get("conflict") or []
+            if conf:
+                conflict_notes.append(f"- {str(item.get('name') or k).strip()}: {', '.join(str(x) for x in conf[:3])}")
+        else:
+            names.append(k)
+
+    out = []
+    out.append("Listede yakaladığım başlıca aktifler: " + ", ".join(names[:6]) + ".")
+    if conflict_notes:
+        out.append("Çakışma filtresi (aynı gece/aynı anda dikkat):\n" + "\n".join(conflict_notes[:4]))
+    if ctx and (ctx.get("sensitive") or ctx.get("dry")):
+        out.append("Kuru/hassas ciltte aynı anda çok güçlü aktif üst üste binmesin; önce bariyer konforunu sabitlemek daha güvenli olur.")
+    out.append("İstersen rutinde şu an hangi güçlü aktif var (varsa) ve cildin hassas mı yaz; çakışmayı ona göre daha net söylerim.")
+    return "\n\n".join(out).strip()
+
 def _polish_user_message(err: Exception) -> str:
     """
     Convert common upstream errors (quota, timeouts) into a user-safe message.
@@ -988,11 +1073,18 @@ def _free_chat_compact_guidance_body_fallback(
     if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
         return _free_chat_medical_boundary_reply()
 
+    inci = _free_chat_inci_report(merged, ctx=ctx)
+    if inci:
+        return inci
+
     # 1) Eğer konuşma “madde/aktif” gibi görünüyorsa INGREDIENT_DB'den doğru mini yanıt üret.
     topic = _free_chat_detect_ingredient_topic(merged)
     if topic:
         db = _free_chat_compact_from_ingredient_db(topic, user_message, ctx=ctx)
         if db:
+            # Rutin isteği varsa tek cümleyle Analiz yönlendirmesi (spam değil)
+            if ctx.get("wants_routine"):
+                return db + " İstersen bunu günlük sıraya oturtmak için Analiz ile rutini çıkaralım; orada sabah/akşam planı netleşir."
             return db
 
     def _retinol() -> str:
