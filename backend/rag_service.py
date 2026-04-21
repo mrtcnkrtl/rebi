@@ -188,6 +188,20 @@ def _free_chat_normalize_query(s: str) -> str:
     t = t.casefold()
     # Python casefold dotless ı'yı değiştirmez; i ile eşleşen iğne (sarmisak vb.) için
     t = t.replace("ı", "i")
+    # Noktalama / emoji / symbol: alt string eşleşmelerinde sürpriz yaratmasın
+    t = re.sub(r"[^a-z0-9]+", " ", t)
+    t = re.sub(r"\s{2,}", " ", t).strip()
+    # Yaygın yazım/split hataları (ret,nol vb.)
+    fixups = {
+        "ret nol": "retinol",
+        "ret inol": "retinol",
+        "reti nol": "retinol",
+        "retino l": "retinol",
+        "vit c": "vitamin c",
+        "vitamin c": "vitamin c",
+    }
+    for k, v in fixups.items():
+        t = t.replace(k, v)
     return t
 
 
@@ -709,16 +723,38 @@ def _free_chat_allows_general_guidance_without_rag(
     return False
 
 
-def _free_chat_compact_guidance_body_fallback() -> str:
+def _free_chat_compact_guidance_body_fallback(user_message: str) -> str:
     """
     Model kapalı veya hata: tek güvenli şablon (yeni madde/durum için iğne eklemek gerekmez).
     """
-    return (
-        "Uygulama ve zamanlama (sabah-akşam, yüzeyin nemliliği, ürün tipi) ürünün yapısına ve asit/aktif içeriğine göre değişir; "
-        "tek tip 'her yağa aynı şekilde sür' demek doğru olmaz. Tahriş veya ciddi belirtide oyunu kesip bir uzmana danışmak en doğrusu. "
-        "İstersen birkaç temel üzerinden burada yön verebilirim; adım adım sıra ve cildine oturan onarıcı programa "
-        "Analiz ile rutin oluşturunca birlikte netleştiririz."
-    )
+    t = _free_chat_normalize_query(user_message)
+
+    def _retinol() -> str:
+        return (
+            "Retinol bir A vitamini türevi aktiftir; akne eğilimi, leke görünümü ve ince çizgilerde sık kullanılır ama özellikle ilk haftalarda kuruluk/iritasyon yapabilir. "
+            "Ürün formu (serum/krem, yüzde) belirleyici—genelde gece düşük sıklıkla başlanır; gündüz düzenli SPF şart. "
+            "İstersen kullandığın retinolün formunu (%/ürün tipi) ve cildinin hassasiyetini yaz; ona göre daha net bir çerçeve çizeyim."
+        )
+
+    def _vitc() -> str:
+        return (
+            "C vitamini (özellikle L-askorbik asit) daha çok antioksidan koruma ve leke görünümünde kullanılır; bazı formlar hassas ciltte batma yapabilir. "
+            "Form (L-AA / türev, yüzde) ve bariyer durumu önemli—tahriş varsa daha nazik türevlerle başlamak daha mantıklı olur. "
+            "Ürünün türünü/yüzdesini ve cildin hassas mı yaz; ona göre daha net söyleyeyim."
+        )
+
+    def _generic() -> str:
+        return (
+            "Bunu sağlıklı konuşmak için ürün formu ve cilt bağlamı lazım (serum mu krem mi, yüzdesi var mı, cildin hassas mı/yağlı mı). "
+            "İstersen 1–2 net detay yaz; burada kısa çerçeveyle yön vereyim. "
+            "Adım adım kişisel sıra ve programa da Analiz ile rutin oluşturunca birlikte netleştiririz."
+        )
+
+    if "retinol" in t or "retinoid" in t or "tretinoin" in t or "adapalen" in t:
+        return _retinol()
+    if "vitamin c" in t or "askorb" in t:
+        return _vitc()
+    return _generic()
 
 
 def _free_chat_soft_context_notes(
@@ -973,7 +1009,7 @@ async def _free_chat_compact_guidance_without_rag(
         um, history, reading_pairs=reading_pairs, user_id=user_id
     )
     if base is None:
-        base = _free_chat_compact_guidance_body_fallback()
+        base = _free_chat_compact_guidance_body_fallback(um)
 
     if skip_external_literature_for_query(um):
         return base
