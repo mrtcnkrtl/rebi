@@ -242,6 +242,11 @@ export default function Chat() {
     }
   };
 
+  const recentUserTurns = history
+    .filter((m) => m && m.role === "user" && String(m.content || "").trim())
+    .slice(-3)
+    .reverse();
+
   const routineHasItems = Array.isArray(routineSnap?.routine) && routineSnap.routine.length > 0;
   const routineCorner =
     user?.id && routineHasItems
@@ -347,6 +352,33 @@ export default function Chat() {
                       <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
+
+                  {recentUserTurns.length > 0 && (
+                    <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
+                      <div className="text-[11px] font-extrabold text-gray-900">{t("chat.edgeRecentTitle")}</div>
+                      <div className="mt-2 grid gap-2">
+                        {recentUserTurns.map((m, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => {
+                              setEdgeOpen(false);
+                              setInput(String(m.content || ""));
+                              window.setTimeout(() => inputRef.current?.focus(), 50);
+                            }}
+                            className="w-full text-left rounded-xl border border-gray-200 hover:border-gray-300 bg-gray-50 hover:bg-gray-100 px-3 py-2 text-[11px] text-gray-800 transition-colors"
+                            title={String(m.content || "")}
+                          >
+                            <span className="font-bold">{t("chat.edgeRecentPick")}</span>{" "}
+                            <span className="text-gray-600">
+                              {String(m.content || "").trim().slice(0, 64)}
+                              {String(m.content || "").trim().length > 64 ? "…" : ""}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="rounded-2xl border border-gray-200 bg-white px-4 py-3">
                     <div className="text-[11px] font-extrabold text-gray-900">{t("chat.edgeQuickTitle")}</div>

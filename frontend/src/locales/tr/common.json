@@ -247,6 +247,8 @@
     "edgeQuickTitle": "Kısayollar",
     "edgeQuickDashboard": "Dashboard’a git",
     "edgeQuickAnalyze": "Yeni analiz başlat",
+    "edgeRecentTitle": "Son konuşmalar",
+    "edgeRecentPick": "Yeniden:",
     "disclaimerShort": "Bu sohbet tıbbi tanı veya tedavi değildir."
   },
   "dashboard": {

@@ -247,6 +247,8 @@
     "edgeQuickTitle": "Shortcuts",
     "edgeQuickDashboard": "Go to Dashboard",
     "edgeQuickAnalyze": "Start new analysis",
+    "edgeRecentTitle": "Recent messages",
+    "edgeRecentPick": "Reuse:",
     "disclaimerShort": "This chat is not medical diagnosis or treatment."
   },
   "dashboard": {
