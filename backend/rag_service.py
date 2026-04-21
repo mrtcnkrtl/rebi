@@ -197,6 +197,12 @@ def _free_chat_normalize_query(s: str) -> str:
         "ret inol": "retinol",
         "reti nol": "retinol",
         "retino l": "retinol",
+        # Hyaluronic acid common misspellings (TR)
+        "hyuloronik": "hyaluronik",
+        "hyoluronik": "hyaluronik",
+        "hyalüronik": "hyaluronik",
+        "hiyaluronik": "hyaluronik",
+        "hyaluronik": "hyaluronik",
         "vit c": "vitamin c",
         "vitamin c": "vitamin c",
     }
@@ -560,11 +566,13 @@ async def _free_chat_no_rag_full_reply(user_message: str) -> str:
     from knowledge.free_literature import skip_external_literature_for_query
 
     um = (user_message or "").strip()
-    if skip_external_literature_for_query(um):
-        return _free_chat_meta_assistant_reply()
-
-    base = _free_chat_no_dataset_reply()
+    # RAG yoksa "arşivde çok şey var..." gibi tekrar eden metin yerine,
+    # konuya göre kısa ve konuşma dilinde bir çerçeve ver.
+    base = _free_chat_compact_guidance_body_fallback(um)
     from knowledge.free_literature import fetch_skin_literature_hints
+
+    if skip_external_literature_for_query(um):
+        return base
 
     hints = await fetch_skin_literature_hints(user_message)
     return f"{base}\n\n{hints}" if hints else base
@@ -743,6 +751,13 @@ def _free_chat_compact_guidance_body_fallback(user_message: str) -> str:
             "Ürünün türünü/yüzdesini ve cildin hassas mı yaz; ona göre daha net söyleyeyim."
         )
 
+    def _ha() -> str:
+        return (
+            "Hyaluronik asit seçerken en kritik şey isim değil form: düşük molekül ağırlık daha “iç dolgunluk” hissi verir ama hassas ciltte batma yapabilir; yüksek molekül ağırlık daha çok yüzeyde kayganlık/konfor sağlar. "
+            "Eğer kolay kızarıp yanan bir cildin varsa önce daha nazik (çoğunlukla yüksek/karışık ağırlık + panthenol/ceramide eşlikli) bir serumla başlamak daha güvenli olur. "
+            "İstersen cilt tipini (kuru/yağlı/hassas) ve ne istediğini (dolgunluk mu, bariyer konforu mu) söyle; ona göre 2-3 net kriter vereyim."
+        )
+
     def _generic() -> str:
         return (
             "Bunu sağlıklı konuşmak için ürün formu ve cilt bağlamı lazım (serum mu krem mi, yüzdesi var mı, cildin hassas mı/yağlı mı). "
@@ -754,6 +769,8 @@ def _free_chat_compact_guidance_body_fallback(user_message: str) -> str:
         return _retinol()
     if "vitamin c" in t or "askorb" in t:
         return _vitc()
+    if "hyaluron" in t or "hyaluronik" in t or "hyaluronic" in t or "hyaluronat" in t:
+        return _ha()
     return _generic()
 
 
