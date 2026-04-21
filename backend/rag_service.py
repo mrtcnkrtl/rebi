@@ -25,6 +25,51 @@ from knowledge.query_expand import expand_skin_query_for_vector_search, strip_co
 
 log = get_logger("rag_service")
 
+_MEDICAL_RED_FLAGS = re.compile(
+    r"(?i)\b("
+    r"iltihapli|irin|kanayan|kanama|"
+    r"cok\s*agrili|şiddetli\s*agri|agri(?!siz)|"
+    r"ates|ateş|"
+    r"yayiliyor|hizla\s*yayiliyor|"
+    r"goz\s*cevresi|göz\s*cevresi|goze\s*yakın|"
+    r"nefes\s*darligi|dudak\s*sisme|yuz\s*sisme|"
+    r"anafilaksi|"
+    r"yanik|yanık|kimyasal\s*yanik|"
+    r"acil|acil\s*yardim"
+    r")\b"
+)
+
+
+def _free_chat_infer_user_context(text: str, history: Optional[List[Any]] = None) -> dict:
+    """
+    Hafif "hafıza" katmanı: konuşmadan güvenlik/bağlam sinyallerini çıkar.
+    Bu, teşhis değildir; sadece güvenli yönlendirme için kullanılır.
+    """
+    blob = _free_chat_recent_turns_blob(history, max_len=520) if history else ""
+    merged = (blob + "\n" + (text or "")).strip() if blob else (text or "")
+    t = _free_chat_normalize_query(merged)
+    ctx = {
+        "pregnant": bool(re.search(r"(?i)\bhamile|gebeyim|gebelik\b", merged)),
+        "breastfeeding": bool(re.search(r"(?i)\bemzir|emziriyorum\b", merged)),
+        "sensitive": "hassas" in t or "irit" in t or "tahris" in t,
+        "dry": "kuru" in t,
+        "oily": "yagli" in t or "sebum" in t,
+        "dehydrated_hint": bool(re.search(r"(?i)\b(nemsiz|susuz)\b", merged)),
+        "wants_routine": bool(re.search(r"(?i)\b(rutin|program|plan|sabah|aksam|adim adim)\b", merged)),
+        "medical_red_flag": bool(_MEDICAL_RED_FLAGS.search(merged)),
+        "diagnosis_request": bool(re.search(r"(?i)\b(rozasea|rosacea|kistik\s*akne|egzama|dermatit|teshis|tan[iı])\b", merged)),
+    }
+    return ctx
+
+
+def _free_chat_medical_boundary_reply() -> str:
+    return (
+        "Bunu duyunca içim sıkıldı—anlattığın tablo kozmetik sohbetin sınırını aşabilir. "
+        "Ben burada teşhis koyamam veya tedavi önermem; özellikle ağrı/iltihap/kanama, hızla yayılma ya da göz çevresi gibi durumlarda "
+        "en güvenlisi bir dermatoloğa (gerekirse acile) başvurmak. "
+        "O zamana kadar yeni aktifleri bırak, nazik temizleyici + sade nemlendirici + gündüz SPF ile bariyeri sakin tut."
+    )
+
 
 def _free_chat_fuzzy_correct_terms(text: str) -> str:
     """
@@ -140,7 +185,9 @@ def _free_chat_detect_ingredient_topic(text: str) -> Optional[str]:
     return None
 
 
-def _free_chat_compact_from_ingredient_db(topic_key: str, user_message: str) -> Optional[str]:
+def _free_chat_compact_from_ingredient_db(
+    topic_key: str, user_message: str, *, ctx: Optional[dict] = None
+) -> Optional[str]:
     """
     Model/RAG yokken bile doğru ve konuşma dilinde kısa yanıt.
     """
@@ -156,6 +203,7 @@ def _free_chat_compact_from_ingredient_db(topic_key: str, user_message: str) -> 
         return None
 
     t = _free_chat_normalize_query(user_message)
+    ctx = ctx or {}
     name = str(item.get("name") or topic_key).strip()
     mech = str(item.get("mechanism") or "").strip()
     eff = str(item.get("clinical_efficacy") or "").strip()
@@ -163,6 +211,8 @@ def _free_chat_compact_from_ingredient_db(topic_key: str, user_message: str) -> 
     when = str(item.get("application_time") or "").strip()
     photos = item.get("photosensitive")
     preg = item.get("pregnancy_safe")
+    combos = item.get("combinations") or {}
+    conflicts = combos.get("conflict") or []
 
     # Soru tipi (çok kaba)
     asks_when = any(x in t for x in ("ne zaman", "sabah mi", "aksam mi", "gece mi", "gunduz"))
@@ -191,9 +241,18 @@ def _free_chat_compact_from_ingredient_db(topic_key: str, user_message: str) -> 
     if photos is True:
         safety_bits.append("gündüz SPF")
     if preg is False:
-        safety_bits.append("hamilelikte kaçınma")
+        safety_bits.append("hamilelikte/emzirmede kaçınma")
+    if ctx.get("pregnant") or ctx.get("breastfeeding"):
+        if preg is False:
+            safety_bits.append("bu durumda kullanmadan önce dermatoloğa danışma")
     if safety_bits:
         lines.append("Not: " + ", ".join(safety_bits) + ".")
+
+    if conflicts and len(lines) < 5:
+        # "Aynı rutin içinde çakışma" riskini sohbet düzeyinde hatırlat (marka/tedavi yok).
+        short = ", ".join(str(x) for x in conflicts[:2] if x)[:120]
+        if short:
+            lines.append(f"Aynı gece/aynı anda şunlarla çakıştırmamak daha güvenli olur: {short}.")
 
     # Tek soru ile bağla (sohbet hissi)
     if "kuru" in t or "hassas" in t or "yagli" in t:
@@ -925,11 +984,14 @@ def _free_chat_compact_guidance_body_fallback(
     blob = _free_chat_recent_turns_blob(history, max_len=360) if history else ""
     merged = (blob + "\n" + (user_message or "")).strip() if blob else (user_message or "")
     t = _free_chat_normalize_query(merged)
+    ctx = _free_chat_infer_user_context(user_message, history)
+    if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
+        return _free_chat_medical_boundary_reply()
 
     # 1) Eğer konuşma “madde/aktif” gibi görünüyorsa INGREDIENT_DB'den doğru mini yanıt üret.
     topic = _free_chat_detect_ingredient_topic(merged)
     if topic:
-        db = _free_chat_compact_from_ingredient_db(topic, user_message)
+        db = _free_chat_compact_from_ingredient_db(topic, user_message, ctx=ctx)
         if db:
             return db
 
@@ -961,6 +1023,11 @@ def _free_chat_compact_guidance_body_fallback(
             return (
                 "Tamam—bilmediğin yerleri sorun etmeyelim. En güvenli yol: düşük sıklıkla başla, bir ürünü tek değişken yap, tahriş olursa geri adım at. "
                 "Ne kullandığını (serum/krem), cildinin kuru-hassas olduğunu söyledin; buna göre nazik bir başlangıç planı çıkarabiliriz."
+            )
+        if ("kuru" in t or "dry" in t) and ("yagli" in t or "oily" in t or "parlama" in (user_message or "").lower()):
+            return (
+                "Bu çok sık oluyor: ‘kuru’ dediğin şey bazen yağlı ama susuz (dehidrate) cilt olabiliyor. "
+                "Sana tek soru: gün içinde parlama var mı, yoksa hep mat/gergin mi? Buna göre “yağ mı, su mu” tarafını ayırıp ilerleyelim."
             )
         return (
             "Bunu sağlıklı konuşmak için ürün formu ve cilt bağlamı lazım (serum mu krem mi, yüzdesi var mı, cildin hassas mı/yağlı mı). "
@@ -1182,6 +1249,8 @@ async def _free_chat_compact_guidance_from_model(
         "Üslup: 'Şunu yapmalısın' deme; 'istersen şunu deneyebilirsin', 'birkaç temelde şöyle düşünebilirsin', 'sana uyuyorsa' gibi yumuşak öneriler kullan. "
         "Bu kanal genel çerçeve ve kısa ipuçları içindir. Kişisel plan istenirse birinci tekil ve ölçülü kal: örn. "
         "'İstersen Analiz ile rutin oluşturunca cildine göre adım adım bir program hazırlayabilirim' — her mesajda tekrarlama, vaat balonu yok.\n"
+        "Tıbbi sınır: Ağrı/iltihap/kanama, hızlı yayılım, göz çevresi, nefes darlığı/şişme gibi kırmızı bayraklarda teşhis koyma; nazikçe dermatoloğa/acile yönlendir ve kozmetik aktifleri kesmeyi söyle.\n"
+        "Güvenlik: Aynı yanıtta birbirini güçlendirip bariyeri bozabilecek kombinasyonları (retinoid + AHA/BHA aynı gece gibi) “rutin önerisi” şeklinde kurma.\n"
         f"{_free_chat_soft_context_notes(user_id, history)}"
     )
     try:
