@@ -82,6 +82,18 @@ export default function Chat() {
     (async () => {
       const uid = user?.id;
       if (!uid) return;
+      // Last-known usage: köşe sayaç hemen görünsün
+      try {
+        const raw = localStorage.getItem(`rebi-chat-usage_${uid}`);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === "object" && parsed.kind) {
+            setUsage(parsed);
+          }
+        }
+      } catch {
+        /* ignore */
+      }
       try {
         setRoutineAccepted(isRoutineTrackingAccepted(uid));
         setRoutineSnap(getRoutineSnapshot(uid));
@@ -96,12 +108,18 @@ export default function Chat() {
         if (!r.ok || cancelled) return;
         const d = await r.json().catch(() => ({}));
         if (cancelled || !d?.kind || d.kind === "none") return;
-        setUsage({
+        const next = {
           kind: d.kind,
           remaining: d.remaining ?? null,
           limit: d.limit ?? null,
           period: d.period || null,
-        });
+        };
+        setUsage(next);
+        try {
+          localStorage.setItem(`rebi-chat-usage_${uid}`, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
       } catch {
         /* ağ / oturum */
       }
@@ -112,22 +130,39 @@ export default function Chat() {
   }, [user?.id]);
 
   const applyUsageFromChatResponse = (data) => {
+    const uid = user?.id;
     if (data.usage_kind) {
-      setUsage({
+      const next = {
         kind: data.usage_kind,
         remaining: data.usage_remaining ?? null,
         limit: data.usage_limit ?? null,
         period: data.usage_kind === "plus_monthly" ? "month" : data.usage_kind === "free_daily" ? "day" : null,
-      });
+      };
+      setUsage(next);
+      if (uid) {
+        try {
+          localStorage.setItem(`rebi-chat-usage_${uid}`, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+      }
       return;
     }
     if (data.free_chat_remaining != null && data.free_chat_limit != null) {
-      setUsage({
+      const next = {
         kind: "free_daily",
         remaining: data.free_chat_remaining,
         limit: data.free_chat_limit,
         period: "day",
-      });
+      };
+      setUsage(next);
+      if (uid) {
+        try {
+          localStorage.setItem(`rebi-chat-usage_${uid}`, JSON.stringify(next));
+        } catch {
+          /* ignore */
+        }
+      }
       return;
     }
     setUsage(null);
@@ -251,7 +286,7 @@ export default function Chat() {
           <button
             type="button"
             onClick={() => setEdgeOpen(true)}
-            className="hidden lg:flex fixed top-24 left-0 z-[28] items-center gap-2 pl-2 pr-3 py-2 rounded-r-2xl bg-white/85 backdrop-blur-md border border-gray-200/80 shadow-sm hover:bg-white/95 transition-colors"
+            className="hidden md:flex fixed top-24 left-0 z-[28] items-center gap-2 pl-2 pr-3 py-2 rounded-r-2xl bg-white/85 backdrop-blur-md border border-gray-200/80 shadow-sm hover:bg-white/95 transition-colors"
             aria-label={t("chat.edgeOpen")}
           >
             <div
@@ -268,7 +303,7 @@ export default function Chat() {
 
           {/* Overlay */}
           {edgeOpen && (
-            <div className="hidden lg:block fixed inset-0 z-[35]">
+            <div className="hidden md:block fixed inset-0 z-[35]">
               <div
                 className="absolute inset-0 bg-slate-950/25 backdrop-blur-[2px]"
                 onClick={() => setEdgeOpen(false)}
