@@ -1224,6 +1224,12 @@ def _free_chat_compact_guidance_body_fallback(
                 "Tamam—bilmediğin yerleri sorun etmeyelim. En güvenli yol: düşük sıklıkla başla, bir ürünü tek değişken yap, tahriş olursa geri adım at. "
                 "Ne kullandığını (serum/krem), cildinin kuru-hassas olduğunu söyledin; buna göre nazik bir başlangıç planı çıkarabiliriz."
             )
+        if re.search(r"(?i)\b(cok\s*kuru|çok\s*kuru|kuruyor|gergin|pul\s*pul|soyul)\b", user_message or ""):
+            return (
+                "Bu can sıkıcı—ama genelde bariyerin yorulduğunu söyler. 48–72 saat “reset” iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz yoğun nemlendirici; gündüz mutlaka SPF. "
+                "Şu ara retinol/AHA/BHA gibi güçlü aktifler kullanıyorsan 2-3 gün ara verip önce konforu toparla. "
+                "Tek soru: yanma/batma da var mı, yoksa sadece kuruluk/gerginlik mi?"
+            )
         if ("kuru" in t or "dry" in t) and ("yagli" in t or "oily" in t or "parlama" in (user_message or "").lower()):
             return (
                 "Bu çok sık oluyor: ‘kuru’ dediğin şey bazen yağlı ama susuz (dehidrate) cilt olabiliyor. "
