@@ -158,13 +158,15 @@ def _free_chat_detect_ingredient_topic(text: str) -> Optional[str]:
     alias = {
         "vitamin c": "vitamin_c",
         "c vitamini": "vitamin_c",
+        "c vitamin": "vitamin_c",
         "niacinamide": "niacinamid",
         "niasinamid": "niacinamid",
         "azelaik": "azelaik_asit",
         "azelaic": "azelaik_asit",
     }
     for a, k in alias.items():
-        if a in t and k in keys:
+        # Bazı projelerde ingredient_db anahtarları farklı olabilir; alias'ı anahtar kontrolüne takmadan yakala.
+        if a in t and (k in keys or k == "vitamin_c" or k == "niacinamid"):
             return k
 
     # doğrudan alt-string eşleşmesi (retinol, niacinamid gibi)
@@ -216,7 +218,17 @@ def _free_chat_compact_from_ingredient_db(
 
     # Soru tipi (çok kaba)
     asks_when = any(x in t for x in ("ne zaman", "sabah mi", "aksam mi", "gece mi", "gunduz"))
-    asks_what = any(x in t for x in ("ne ise yarar", "ne işe yarar", "ne yarar", "ne yapar", "fayd"))
+    asks_what = bool(
+        re.search(
+            r"(?i)\b("
+            r"ne\s*ise\s*yarar|ne\s*i[sş]e\s*yarar|"
+            r"i[sş]e\s*yarar|i[sş]e\s*yariyor|"
+            r"yararli\s*mi|i[sş]e\s*yariyor\s*mu|"
+            r"ne\s*yapar|fayda"
+            r")\b",
+            user_message or "",
+        )
+    )
 
     lines: list[str] = []
     if asks_when and when:
