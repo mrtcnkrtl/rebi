@@ -1955,6 +1955,7 @@ async def chat_general(
     user_message: str,
     history: Optional[list] = None,
     user_id: Optional[str] = None,
+    profile_hint: Optional[dict] = None,
     accept_lang: str = "tr",
 ) -> str:
     """
@@ -1969,6 +1970,14 @@ async def chat_general(
 
     # Kırmızı bayrak / teşhis isteği: deterministik sınır
     ctx = _free_chat_infer_user_context(um, hist)
+    ph = profile_hint or {}
+    # Hafif profil hafızası: chat'te doğru güvenlik/ton için
+    if ph.get("skin_type") == "sensitive":
+        ctx["sensitive"] = True
+    if ph.get("skin_type") == "dry":
+        ctx["dry"] = True
+    if ph.get("skin_type") == "oily":
+        ctx["oily"] = True
     if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
         return _free_chat_medical_boundary_reply()
 
@@ -1995,11 +2004,23 @@ async def chat_general(
             contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", "") or "")]))
         contents.append(types.Content(role="user", parts=[types.Part.from_text(text=final_user)]))
 
+        pbits = []
+        if ph.get("skin_type"):
+            pbits.append(f"cilt_tipi={ph.get('skin_type')}")
+        if ph.get("age"):
+            pbits.append(f"yas={ph.get('age')}")
+        if ph.get("city"):
+            pbits.append(f"sehir={ph.get('city')}")
+        if ph.get("concern"):
+            pbits.append(f"son_endise={ph.get('concern')}")
+        profile_line = ("Profil ipuçları: " + ", ".join(pbits) + ".\n") if pbits else ""
+
         system_instruction = (
             "Sen Rebi Chat'sin: Türkçe, premium ve sade; kullanıcıyla doğal konuş. "
             "Ürün/marka önerme; yalnız etken madde/formül kriteri. "
             "Tıbbi teşhis koyma; kırmızı bayrakta uzmana yönlendir. "
             "Yanıt: 2-5 cümle + gerekirse 1 kısa soru. Başlıklama yok."
+            "\n" + profile_line
         )
         try:
             response = gemini_client.models.generate_content(

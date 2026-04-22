@@ -1231,10 +1231,40 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
 
     from rag_service import chat_general as rebi_chat_general
 
+    # Hafif profil hafızası: profiles + en son assessment concern (varsa)
+    profile_hint = {}
+    try:
+        supabase = get_supabase()
+        if supabase and not is_demo_user_id(req.user_id):
+            p = supabase.table("profiles").select("skin_type,age,city").eq("id", req.user_id).limit(1).execute()
+            if p.data:
+                row = p.data[0] or {}
+                if row.get("skin_type"):
+                    profile_hint["skin_type"] = row.get("skin_type")
+                if row.get("age"):
+                    profile_hint["age"] = row.get("age")
+                if row.get("city"):
+                    profile_hint["city"] = row.get("city")
+            a = (
+                supabase.table("assessments")
+                .select("concern,created_at")
+                .eq("user_id", req.user_id)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            if a.data:
+                ar0 = a.data[0] or {}
+                if ar0.get("concern"):
+                    profile_hint["concern"] = ar0.get("concern")
+    except Exception:
+        profile_hint = {}
+
     reply = await rebi_chat_general(
         user_message=req.message,
         history=req.history,
         user_id=req.user_id,
+        profile_hint=profile_hint,
         accept_lang=_primary_lang_from_header(request.headers.get("accept-language") or "tr"),
     )
 
