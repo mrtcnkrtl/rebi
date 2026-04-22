@@ -486,6 +486,20 @@ class AssessmentChatResponse(BaseModel):
     usage_limit: Optional[int] = None
 
 
+class ChatGeneralRequest(BaseModel):
+    user_id: str
+    message: str
+    history: Optional[list] = None
+
+
+class ChatGeneralResponse(BaseModel):
+    reply: str
+    usage_kind: Optional[str] = None
+    usage_remaining: Optional[int] = None
+    usage_limit: Optional[int] = None
+    chat_quota_exceeded: bool = False
+
+
 class ChatUsageResponse(BaseModel):
     """Rebi AI sohbet kotası özeti (üst sayaç)."""
 
@@ -1169,6 +1183,85 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
         usage_kind=usage_kind,
         usage_remaining=usage_remaining,
         usage_limit=usage_limit,
+    )
+
+
+@app.post(
+    "/chat_general",
+    response_model=ChatGeneralResponse,
+    tags=["chat"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
+)
+async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
+    """
+    Rebi Chat (genel): rutin motorundan ayrı, serbest soru-cevap.
+    Kota/Plus mantığı chat_assessment ile aynıdır.
+    """
+    enforce_supabase_user(request, req.user_id)
+    lim = free_chat_limit()
+    plus = user_is_rebi_plus(request, req.user_id)
+    plus_chat_capped = plus and user_plus_chat_is_monthly_capped(request, req.user_id)
+    plim = plus_chat_monthly_cap()
+
+    if jwt_auth_enabled():
+        if not plus:
+            if free_chat_quota_exceeded(req.user_id):
+                uk, ur, ul, _ = _chat_usage_row(request, req.user_id)
+                return ChatGeneralResponse(
+                    reply=(
+                        "Bugünkü ücretsiz Rebi AI mesaj hakkın doldu. "
+                        "Sınırsız sohbet için Rebi Plus’a geçebilirsin."
+                    ),
+                    chat_quota_exceeded=True,
+                    usage_kind=uk,
+                    usage_remaining=ur,
+                    usage_limit=ul,
+                )
+        if plus_chat_capped and plus_chat_quota_exceeded(req.user_id):
+            return ChatGeneralResponse(
+                reply=(
+                    "Bu ayki Plus sohbet kotan doldu (paket sınırı). "
+                    "Sınırsız sohbet içeren üst pakete geçebilirsin."
+                ),
+                chat_quota_exceeded=True,
+                usage_kind="plus_monthly",
+                usage_remaining=0,
+                usage_limit=plim,
+            )
+
+    from rag_service import chat_general as rebi_chat_general
+
+    reply = await rebi_chat_general(
+        user_message=req.message,
+        history=req.history,
+        user_id=req.user_id,
+        accept_lang=_primary_lang_from_header(request.headers.get("accept-language") or "tr"),
+    )
+
+    if jwt_auth_enabled():
+        # Başarılı tur sayımı (free / plus capped)
+        r = (reply or "").strip()
+        err_like = (
+            not r
+            or r.startswith("Bir hata oluştu")
+            or r.startswith("Bağlantı kurulamadı")
+            or r.startswith("Şu an çok yoğunuz")
+            or r.startswith("İşlem tamamlanamadı")
+        )
+        if not plus:
+            if not err_like:
+                free_chat_record_successful_turn(req.user_id)
+        elif plus_chat_capped:
+            if not err_like:
+                plus_chat_record_successful_turn(req.user_id)
+
+    uk, ur, ul, _ = _chat_usage_row(request, req.user_id) if jwt_auth_enabled() else ("plus_unlimited", None, None, None)
+    return ChatGeneralResponse(
+        reply=reply or "",
+        usage_kind=uk,
+        usage_remaining=ur,
+        usage_limit=ul,
+        chat_quota_exceeded=False,
     )
 
 

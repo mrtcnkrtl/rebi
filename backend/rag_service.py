@@ -1925,6 +1925,93 @@ Cevabının sonuna ekle:
         return {"reply": "Bir hata oluştu, tekrar dener misin?", "is_complete": False}
 
 
+def _chat_general_shape(text: str) -> str:
+    """
+    Chat (genel) çıktısı: rapor/başlık hissini kırp, daha konuşma dili.
+    """
+    s = (text or "").strip()
+    if not s:
+        return ""
+    # Başlık gibi duran kalıpları yumuşat
+    s = re.sub(r"(?i)\bhakkinda\s*hizli\s*bir\s*cerceve\s*birakayim\.?\s*", "", s).strip()
+    s = re.sub(r"(?i)\bnot:\s*", "Not: ", s).strip()
+    # Çok uzun tek paragrafı 2-3 cümlede tut
+    sent = [x.strip() for x in re.split(r"(?<=[\.\?\!])\s+", s) if x.strip()]
+    return " ".join(sent[:5]).strip()
+
+
+async def chat_general(
+    *,
+    user_message: str,
+    history: Optional[list] = None,
+    user_id: Optional[str] = None,
+    accept_lang: str = "tr",
+) -> str:
+    """
+    Rebi Chat (genel): rutin motorundan ayrı, konuşma dili odaklı Q/A.
+    - RAG varsa: kısa bağlamla cevap
+    - RAG yoksa: ingredient_db/entity tabanlı deterministik kısa cevap
+    """
+    um = (user_message or "").strip()
+    hist = list(history or [])
+    if not um:
+        return ""
+
+    # Kırmızı bayrak / teşhis isteği: deterministik sınır
+    ctx = _free_chat_infer_user_context(um, hist)
+    if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
+        return _free_chat_medical_boundary_reply()
+
+    # Yazım toleransı + konu yakalama (user_id ile dinamik vocab)
+    um2 = _free_chat_fuzzy_correct_terms(um, user_id=user_id) or um
+
+    # INCI listesi hızlı raporu
+    inci = _free_chat_inci_report(um2, ctx=ctx)
+    if inci:
+        return _chat_general_shape(inci)
+
+    # RAG bağlamı dene (entity + vektör)
+    kb = _build_free_chat_rag_context(user_id, um2, hist)
+    if _free_chat_has_usable_rag(kb) and gemini_client:
+        final_user = (
+            "REFERANS (indekslenmiş makale/kitap pasajları):\n\n"
+            f"{kb}\n\n---\nSoru: {um2}\n"
+            "Kurallar: teşhis yok, marka/ürün adı yok. 2-5 cümle, konuşma dili. "
+            "Kullanıcı kişisel rutin isterse tek cümleyle Analiz'e yönlendir ama cevabı kesme."
+        )
+        contents: list = []
+        for msg in hist[-8:]:
+            role = "model" if msg.get("role") == "assistant" else "user"
+            contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", "") or "")]))
+        contents.append(types.Content(role="user", parts=[types.Part.from_text(text=final_user)]))
+
+        system_instruction = (
+            "Sen Rebi Chat'sin: Türkçe, premium ve sade; kullanıcıyla doğal konuş. "
+            "Ürün/marka önerme; yalnız etken madde/formül kriteri. "
+            "Tıbbi teşhis koyma; kırmızı bayrakta uzmana yönlendir. "
+            "Yanıt: 2-5 cümle + gerekirse 1 kısa soru. Başlıklama yok."
+        )
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=0.35,
+                    max_output_tokens=260,
+                ),
+            )
+            reply = _gemini_response_text(response)
+            reply = _strip_repetitive_greeting(reply, hist)
+            return _chat_general_shape(reply)
+        except Exception as e:
+            log.warning("chat_general model yanıtı alınamadı: %s", e)
+
+    # RAG yok veya model yok: deterministik kısa cevap (ingredient_db + güvenlik)
+    base = _free_chat_compact_guidance_body_fallback(um2, hist)
+    return _chat_general_shape(base)
+
+
 async def _free_chat(
     user_message: str,
     history: list = None,

@@ -182,14 +182,13 @@ export default function Chat() {
 
     try {
       const auth = await apiAuthHeaders();
-      const res = await fetch(`${API_URL}/chat_assessment`, {
+      const res = await fetch(`${API_URL}/chat_general`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...auth },
         body: JSON.stringify({
           user_id: user?.id || DEMO_USER_ID,
           message: msg,
           history: newHist,
-          user_profile: { name: userName, mode: "free_chat" },
         }),
       });
       const data = await res.json().catch(() => ({}));
