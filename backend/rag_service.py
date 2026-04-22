@@ -75,7 +75,7 @@ def _load_entity_vocab_for_user(user_id: Optional[str]) -> set[str]:
 _MEDICAL_RED_FLAGS = re.compile(
     r"(?i)\b("
     r"iltihapli|irin|kanayan|kanama|"
-    r"cok\s*agrili|şiddetli\s*agri|agri(?!siz)|"
+    r"cok\s*agrili|şiddetli\s*agri|"
     r"ates|ateş|"
     r"yayiliyor|hizla\s*yayiliyor|"
     r"goz\s*cevresi|göz\s*cevresi|goze\s*yakın|"
@@ -94,18 +94,29 @@ def _free_chat_infer_user_context(text: str, history: Optional[List[Any]] = None
     """
     blob = _free_chat_recent_turns_blob(history, max_len=520) if history else ""
     merged = (blob + "\n" + (text or "")).strip() if blob else (text or "")
+    # Kırmızı bayrak / teşhis isteği gibi sinyaller yalnızca kullanıcı metninden çıkarılsın
+    # (assistant'ın önceki uyarıları false-positive üretmesin).
+    user_lines: list[str] = []
+    for m in (history or [])[-10:]:
+        if isinstance(m, dict) and m.get("role") == "user":
+            c = (m.get("content") or "").strip()
+            if c:
+                user_lines.append(c)
+    merged_user = ("\n".join(user_lines[-4:]) + "\n" + (text or "")).strip() if user_lines else (text or "")
     t = _free_chat_normalize_query(merged)
     ctx = {
-        "pregnant": bool(re.search(r"(?i)\bhamile|gebeyim|gebelik\b", merged)),
-        "breastfeeding": bool(re.search(r"(?i)\bemzir|emziriyorum\b", merged)),
+        "pregnant": bool(re.search(r"(?i)\bhamile|gebeyim|gebelik\b", merged_user)),
+        "breastfeeding": bool(re.search(r"(?i)\bemzir|emziriyorum\b", merged_user)),
         "sensitive": "hassas" in t or "irit" in t or "tahris" in t,
         "dry": "kuru" in t,
         "oily": "yagli" in t or "sebum" in t,
-        "dehydrated_hint": bool(re.search(r"(?i)\b(nemsiz|susuz)\b", merged)),
+        "dehydrated_hint": bool(re.search(r"(?i)\b(nemsiz|susuz)\b", merged_user)),
         # plan kelimesi çok genel; chat'te gereksiz yönlendirme yapmasın
-        "wants_routine": bool(re.search(r"(?i)\b(rutin|program|sabah|akşam|aksam|adım\s*adım)\b", merged)),
-        "medical_red_flag": bool(_MEDICAL_RED_FLAGS.search(merged)),
-        "diagnosis_request": bool(re.search(r"(?i)\b(rozasea|rosacea|kistik\s*akne|egzama|dermatit|teshis|tan[iı])\b", merged)),
+        "wants_routine": bool(re.search(r"(?i)\b(rutin|program|sabah|akşam|aksam|adım\s*adım)\b", merged_user)),
+        "medical_red_flag": bool(_MEDICAL_RED_FLAGS.search(merged_user)),
+        "diagnosis_request": bool(
+            re.search(r"(?i)\b(rozasea|rosacea|kistik\s*akne|egzama|dermatit|teshis|tan[iı])\b", merged_user)
+        ),
     }
     return ctx
 
@@ -1210,6 +1221,27 @@ def _free_chat_compact_guidance_body_fallback(
 
     # Intent-first mini plan: kullanıcı “ne yapacağım” diye kaldığında boşta bırakma
     if intent == "acne_flare":
+        # Kullanıcı bir önceki turda "ağrılı/iltihaplı" diye netleştirdiyse aynı soruyu tekrar etme.
+        already_answered = False
+        try:
+            already_answered = bool(
+                re.search(r"(?i)\b(agrili|ağrılı|iltihap|derin|kistik)\b", merged2 or "")
+                and history
+                and any(
+                    ("Tek soru:" in (m.get("content") or "")) and ("komedon" in (m.get("content") or ""))
+                    for m in (history or [])[-8:]
+                    if isinstance(m, dict) and m.get("role") == "assistant"
+                )
+            )
+        except Exception:
+            already_answered = False
+        if already_answered:
+            return (
+                "Anladım—bu ağrılı/iltihaplı tip daha yorucu oluyor. Kozmetik tarafta hedef: şişliği artırmadan sakinleştirmek. "
+                "48 saat için yeni aktif ekleme; nazik temizleyici + hafif nemlendirici + gündüz SPF ile kal. "
+                "Eğer hızla büyüyor, sıcak/çok ağrılı, yayılıyor veya iz bırakacak kadar derinse bu kozmetik sınırı aşabilir—dermatolog en doğru adres. "
+                "Tek soru: son 1 haftada yeni bir aktif (retinoid/AHA/BHA/C vitamini) veya saç ürünü (jel/sprey/yağ) ekledin mi?"
+            )
         return (
             "Bunu yaşamak moral bozuyor ama sakin ilerleyince toparlanıyor. İlk hedef: bariyeri bozmadan alevlenmeyi söndürmek. "
             "48 saat için: nazik temizleyici + hafif nemlendirici + gündüz SPF; yeni ürün/peeling/sert fırçalama yok. "
@@ -1239,6 +1271,15 @@ def _free_chat_compact_guidance_body_fallback(
             "Badem yağı saçın “hızlı uzamasını” garanti eden bir şey değil; saç uzaması daha çok genetik, hormonlar, stres, beslenme ve saç derisi sağlığıyla gider. "
             "Ama iyi bir yağ, özellikle uçlarda sürtünme/kırılmayı azaltıp saçın daha ‘uzuyor gibi’ görünmesine katkı verebilir. "
             "Tek soru: hedefin daha çok saç dökülmesi mi, yoksa sadece kırılma/kuruluk mu?"
+        )
+    if (
+        ("papatya" in t_intent or "chamomile" in t_intent)
+        and any(x in t_intent for x in ("kuru", "kuruluk", "gergin", "pul pul", "barrier", "bariyer"))
+    ):
+        return (
+            "Papatya özü bazı kişilerde yatıştırıcı hissettirebilir ama “kuruluğu tek başına çözer” gibi garanti bir etkisi yok; ayrıca hassas ciltte temas alerjisi/iritasyon yapabilenlerde de var. "
+            "Kuruluk için asıl oyun genelde bariyer desteği (nem + yağ fazı + tahrişi azaltma) tarafında. "
+            "Tek soru: papatya dediğin leave‑on (krem/serum) mu, yoksa yıkanan bir ürün mü?"
         )
 
     inci = _free_chat_inci_report(merged, ctx=ctx)
