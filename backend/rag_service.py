@@ -2019,7 +2019,25 @@ async def chat_general(
 
     # RAG yok veya model yok: deterministik kısa cevap (ingredient_db + güvenlik)
     base = _free_chat_compact_guidance_body_fallback(um2, hist)
-    return _chat_general_shape(base)
+    out = _chat_general_shape(base)
+
+    # PubMed/EuropePMC: yalnızca başlık+link (okuma), uygun sorgularda ekle
+    try:
+        from knowledge.free_literature import fetch_skin_literature_pairs, skip_external_literature_for_query
+
+        if not skip_external_literature_for_query(um2):
+            pairs = await fetch_skin_literature_pairs(um2, max_results=3)
+            if pairs:
+                lines = ["Ek okuma (talimat değil):"]
+                for (title, url) in pairs[:3]:
+                    if title and url:
+                        lines.append(f"- {title} ({url})")
+                if len(lines) > 1:
+                    out = (out + "\n\n" + "\n".join(lines)).strip()
+    except Exception as e:
+        log.debug("chat_general external literature skipped: %s", e)
+
+    return out
 
 
 async def _free_chat(
