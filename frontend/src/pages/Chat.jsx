@@ -492,7 +492,6 @@ export default function Chat() {
               <div className="flex justify-start">
                 <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.primary }} />
-                  <span className="text-sm text-gray-400">{t("chat.thinking")}</span>
                 </div>
               </div>
             )}

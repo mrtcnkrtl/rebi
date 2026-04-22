@@ -1284,9 +1284,9 @@ def _free_chat_compact_guidance_body_fallback(
                 "Sana tek soru: gün içinde parlama var mı, yoksa hep mat/gergin mi? Buna göre “yağ mı, su mu” tarafını ayırıp ilerleyelim."
             )
         return (
-            "Bunu sağlıklı konuşmak için ürün formu ve cilt bağlamı lazım (serum mu krem mi, yüzdesi var mı, cildin hassas mı/yağlı mı). "
-            "İstersen 1–2 net detay yaz; burada kısa çerçeveyle yön vereyim. "
-            "Adım adım kişisel sıra ve programa da Analiz ile rutin oluşturunca birlikte netleştiririz."
+            "Bunu “tek doğru” diye söylemek için elimde yeterince net bilgi yok; o yüzden güvenli bir çerçeve çizeyim. "
+            "İlk adım: son 7 günde yeni eklediğin bir ürün/aktif var mı, ve şikâyetin daha çok yanma-kızarıklık mı yoksa sivilce/komedon mu? "
+            "İstersen kullandığın ürünün INCI listesini yapıştır (veya 2-3 aktif adı yaz); çakışma/sinerji filtresi gibi bakabilirim."
         )
 
     if "retinol" in t or "retinoid" in t or "tretinoin" in t or "adapalen" in t:
@@ -1835,7 +1835,7 @@ async def assessment_chat(
             if _free_chat_has_usable_rag(fb):
                 return {
                     "reply": (
-                        "Şu an özet üretilemiyor; yüklü RAG pasajları:\n\n" + fb[:4500]
+                        "Şu an kısa bir özet üretemedim; elimdeki kanıta dayalı kaynak parçaları:\n\n" + fb[:4500]
                     ),
                     "is_complete": False,
                 }
@@ -2261,14 +2261,14 @@ async def _free_chat(
         if "429" in et or "quota" in et or "resource_exhausted" in et:
             return {
                 "reply": (
-                    "Şu an yapay zekâ kotası doldu; yüklü RAG pasajları:\n\n" + kb[:4500]
+                    "Şu an yapay zekâ kotası doldu; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
                 ),
                 "is_complete": False,
                 "extracted_data": None,
             }
         return {
             "reply": (
-                "Şu an yapay zekâ yanıtı alınamadı; yüklü RAG pasajları:\n\n" + kb[:4500]
+                "Şu an yapay zekâ yanıtı alınamadı; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
             ),
             "is_complete": False,
             "extracted_data": None,
