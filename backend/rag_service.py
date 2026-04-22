@@ -16,6 +16,7 @@ import json
 import re
 import unicodedata
 import difflib
+from datetime import date
 from typing import Any, Dict, List, Literal, Optional
 from google import genai
 from google.genai import types
@@ -24,6 +25,52 @@ from flow_engine import sanitize_routine_items_details
 from knowledge.query_expand import expand_skin_query_for_vector_search, strip_conversational_turkish
 
 log = get_logger("rag_service")
+
+_ENTITY_VOCAB_CACHE: dict[str, dict] = {}
+
+
+def _entity_vocab_cache_key(user_id: Optional[str]) -> str:
+    return (user_id or "").strip() or "_none_"
+
+
+def _load_entity_vocab_for_user(user_id: Optional[str]) -> set[str]:
+    """
+    Ölçekli sözlük: yeni eklenen maddeleri tek tek kodlamadan yakalamak için
+    knowledge_entities tablosundan (en sık geçen) isimleri çekip cache'ler.
+    """
+    uid = (user_id or "").strip()
+    if not uid:
+        return set()
+    key = _entity_vocab_cache_key(uid)
+    today = date.today().isoformat()
+    cached = _ENTITY_VOCAB_CACHE.get(key)
+    if cached and cached.get("day") == today and isinstance(cached.get("vocab"), set):
+        return cached["vocab"]
+
+    vocab: set[str] = set()
+    try:
+        from knowledge.entity_search import list_entities
+
+        for who in (uid, (KNOWLEDGE_CATALOG_USER_ID or "").strip()):
+            if not who:
+                continue
+            ents = list_entities(user_id=who, folder_slug="data-pdfs", q=None, k=2000) or []
+            for e in ents:
+                name = str((e or {}).get("name") or "").strip()
+                if not name:
+                    continue
+                nn = _free_chat_normalize_query(name)
+                if not nn:
+                    continue
+                vocab.add(nn)
+                for tok in nn.split():
+                    if 4 <= len(tok) <= 28:
+                        vocab.add(tok)
+    except Exception:
+        vocab = set()
+
+    _ENTITY_VOCAB_CACHE[key] = {"day": today, "vocab": vocab}
+    return vocab
 
 _MEDICAL_RED_FLAGS = re.compile(
     r"(?i)\b("
@@ -71,7 +118,7 @@ def _free_chat_medical_boundary_reply() -> str:
     )
 
 
-def _free_chat_fuzzy_correct_terms(text: str) -> str:
+def _free_chat_fuzzy_correct_terms(text: str, *, user_id: Optional[str] = None) -> str:
     """
     Ölçekli yazım toleransı: tek tek fixup eklemek yerine, bilinen aktif/ana terim sözlüğüne
     yakın eşleşmeleri otomatik düzelt.
@@ -112,6 +159,9 @@ def _free_chat_fuzzy_correct_terms(text: str) -> str:
         }
     )
 
+    # Knowledge entity index'ten gelen dinamik sözlük (yeni maddeler burada otomatik görünür)
+    vocab.update(_load_entity_vocab_for_user(user_id))
+
     tokens = t.split()
     if not tokens or not vocab:
         return t
@@ -128,7 +178,8 @@ def _free_chat_fuzzy_correct_terms(text: str) -> str:
             out.append(tok)
             continue
         # yakın eşleşme bul (difflib)
-        cand = difflib.get_close_matches(tok, vocab, n=1, cutoff=0.88)
+        cutoff = 0.88 if len(tok) <= 8 else 0.86
+        cand = difflib.get_close_matches(tok, vocab, n=1, cutoff=cutoff)
         if cand:
             out.append(cand[0])
             changed += 1
@@ -1087,21 +1138,21 @@ def _free_chat_recent_turns_blob(history: Optional[List[Any]], *, max_len: int =
 
 
 def _free_chat_allows_general_guidance_without_rag(
-    msg: str, history: Optional[List[Any]] = None
+    msg: str, history: Optional[List[Any]] = None, *, user_id: Optional[str] = None
 ) -> bool:
     """
     Pasaj yokken kompakt yol (kısa model + isteğe bağlı başlıklar) açılsın mı — kaba süzgeç.
     Kısa 'peki…' takiplerinde son tur metniyle birleştirilir (yağ yazımı kaçsa bile önceki bağlam yakalanır).
     """
     # Yazım toleransı: needle eşleşmesi öncesi fuzzy düzelt
-    t = _free_chat_fuzzy_correct_terms(msg)
+    t = _free_chat_fuzzy_correct_terms(msg, user_id=user_id)
     if len(t) < 4:
         return False
     if _free_chat_message_matches_guidance_needles(t):
         return True
     blob = _free_chat_recent_turns_blob(history, max_len=360)
     if blob and len(t) < 120:
-        merged = _free_chat_fuzzy_correct_terms(blob + "\n" + msg)
+        merged = _free_chat_fuzzy_correct_terms(blob + "\n" + msg, user_id=user_id)
         if _free_chat_message_matches_guidance_needles(merged):
             return True
     return False
@@ -1282,7 +1333,7 @@ async def _free_chat_compact_guidance_from_model(
         return None
     # Yazım/typo toleransı: modele giden payload'da kritik terimleri düzelt
     um_raw = (user_message or "").strip()
-    um = _free_chat_fuzzy_correct_terms(um_raw) or um_raw
+    um = _free_chat_fuzzy_correct_terms(um_raw, user_id=user_id) or um_raw
     if len(um) > 900:
         um = um[:900].rsplit(" ", 1)[0]
     blob = _free_chat_recent_turns_blob(history, max_len=320) if history else ""
@@ -1425,7 +1476,7 @@ async def _free_chat_compact_guidance_without_rag(
     Pasaj yok; cilt/ürün sorusu: önce hafif model özeti, kısa takipte ince bağlam; yedekte tek şablon + isteğe bağlı literatür başlıkları.
     """
     um = (user_message or "").strip()
-    if not um or not _free_chat_allows_general_guidance_without_rag(um, history):
+    if not um or not _free_chat_allows_general_guidance_without_rag(um, history, user_id=user_id):
         return None
 
     from knowledge.free_literature import (
