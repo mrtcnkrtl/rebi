@@ -1284,9 +1284,9 @@ def _free_chat_compact_guidance_body_fallback(
                 "Sana tek soru: gün içinde parlama var mı, yoksa hep mat/gergin mi? Buna göre “yağ mı, su mu” tarafını ayırıp ilerleyelim."
             )
         return (
-            "Bunu “tek doğru” diye söylemek için elimde yeterince net bilgi yok; o yüzden güvenli bir çerçeve çizeyim. "
-            "İlk adım: son 7 günde yeni eklediğin bir ürün/aktif var mı, ve şikâyetin daha çok yanma-kızarıklık mı yoksa sivilce/komedon mu? "
-            "İstersen kullandığın ürünün INCI listesini yapıştır (veya 2-3 aktif adı yaz); çakışma/sinerji filtresi gibi bakabilirim."
+            "Bunu “tek doğru” diye söylemek için elimde yeterince net bilgi yok; o yüzden önce iki hızlı soru ile yönünü bulalım. "
+            "1) Son 7 günde yeni eklediğin bir ürün/aktif var mı? 2) Şikâyet daha çok yanma‑kızarıklık mı, yoksa sivilce/komedon mu? "
+            "Bu iki cevapla burada genel çerçeveyi netleştiririm; istersen devamında Analiz’te rutini kurup (sabah/akşam + sıklık) işi cildine tam oturturuz."
         )
 
     if "retinol" in t or "retinoid" in t or "tretinoin" in t or "adapalen" in t:
