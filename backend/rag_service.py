@@ -102,7 +102,8 @@ def _free_chat_infer_user_context(text: str, history: Optional[List[Any]] = None
         "dry": "kuru" in t,
         "oily": "yagli" in t or "sebum" in t,
         "dehydrated_hint": bool(re.search(r"(?i)\b(nemsiz|susuz)\b", merged)),
-        "wants_routine": bool(re.search(r"(?i)\b(rutin|program|plan|sabah|aksam|adim adim)\b", merged)),
+        # plan kelimesi çok genel; chat'te gereksiz yönlendirme yapmasın
+        "wants_routine": bool(re.search(r"(?i)\b(rutin|program|sabah|akşam|aksam|adım\s*adım)\b", merged)),
         "medical_red_flag": bool(_MEDICAL_RED_FLAGS.search(merged)),
         "diagnosis_request": bool(re.search(r"(?i)\b(rozasea|rosacea|kistik\s*akne|egzama|dermatit|teshis|tan[iı])\b", merged)),
     }
@@ -212,12 +213,19 @@ def _free_chat_detect_ingredient_topic(text: str) -> Optional[str]:
         "c vitamin": "vitamin_c",
         "niacinamide": "niacinamid",
         "niasinamid": "niacinamid",
+        "niasinamid": "niacinamid",
+        "hyaluronik asit": "hyaluronik_asit",
+        "hyaluronik": "hyaluronik_asit",
+        "hyaluron": "hyaluronik_asit",
+        "bha": "salisilik_asit",
+        "salisilik": "salisilik_asit",
+        "salisilik asit": "salisilik_asit",
         "azelaik": "azelaik_asit",
         "azelaic": "azelaik_asit",
     }
     for a, k in alias.items():
         # Bazı projelerde ingredient_db anahtarları farklı olabilir; alias'ı anahtar kontrolüne takmadan yakala.
-        if a in t and (k in keys or k == "vitamin_c" or k == "niacinamid"):
+        if a in t and (k in keys or k in ("vitamin_c", "niacinamid", "salisilik_asit", "hyaluronik_asit", "azelaik_asit")):
             return k
 
     # doğrudan alt-string eşleşmesi (retinol, niacinamid gibi)
@@ -1934,6 +1942,8 @@ def _chat_general_shape(text: str) -> str:
         return ""
     # Başlık gibi duran kalıpları yumuşat
     s = re.sub(r"(?i)\bhakkinda\s*hizli\s*bir\s*cerceve\s*birakayim\.?\s*", "", s).strip()
+    s = re.sub(r"(?i)\bhızlı\s*bir\s*çerçeve\s*bırakayım\.?\s*", "", s).strip()
+    s = re.sub(r"(?i)\bhakkında\s*", "", s).strip()
     s = re.sub(r"(?i)\bnot:\s*", "Not: ", s).strip()
     # Çok uzun tek paragrafı 2-3 cümlede tut
     sent = [x.strip() for x in re.split(r"(?<=[\.\?\!])\s+", s) if x.strip()]
