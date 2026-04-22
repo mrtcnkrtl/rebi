@@ -1187,6 +1187,12 @@ def _free_chat_compact_guidance_body_fallback(
         Not: teşhis değil; sadece güvenli yönlendirme/mini plan seçimi.
         """
         t0 = text_norm
+        if (
+            ("sac" in t0 or "hair" in t0 or "scalp" in t0)
+            and any(x in t0 for x in ("uzat", "uzar", "hizli uz", "hızlı uz", "growth", "grow"))
+            and any(x in t0 for x in ("badem", "argan", "jojoba", "zeytin", "hindistan", "lavanta", "yag", "yagi", "oil", "yap"))
+        ):
+            return "hair_growth_oil"
         if any(x in t0 for x in ("sivilce", "akne", "komedon", "blackhead", "whitehead", "pustul", "iltihap")):
             return "acne_flare"
         if any(x in t0 for x in ("kizar", "kızar", "yanma", "batma", "tahris", "irit", "hassas", "alerji")):
@@ -1227,6 +1233,12 @@ def _free_chat_compact_guidance_body_fallback(
             "Leke/ton eşitsizliğinde en hızlı kazanım genelde “koruma”dan gelir: her gün yeterli SPF + yeniden uygulama. "
             "Aktiflere geçmeden önce bariyer konforu iyi mi, onu netleştirmek önemli; tahriş varsa leke daha kalıcı görünebilir. "
             "Tek soru: lekeler yeni mi çıktı (haftalar) yoksa uzun süredir mi var?"
+        )
+    if intent == "hair_growth_oil":
+        return (
+            "Badem yağı saçın “hızlı uzamasını” garanti eden bir şey değil; saç uzaması daha çok genetik, hormonlar, stres, beslenme ve saç derisi sağlığıyla gider. "
+            "Ama iyi bir yağ, özellikle uçlarda sürtünme/kırılmayı azaltıp saçın daha ‘uzuyor gibi’ görünmesine katkı verebilir. "
+            "Tek soru: hedefin daha çok saç dökülmesi mi, yoksa sadece kırılma/kuruluk mu?"
         )
 
     inci = _free_chat_inci_report(merged, ctx=ctx)
