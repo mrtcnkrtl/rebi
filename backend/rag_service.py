@@ -1181,6 +1181,54 @@ def _free_chat_compact_guidance_body_fallback(
     if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
         return _free_chat_medical_boundary_reply()
 
+    def _intent(text_norm: str) -> str:
+        """
+        Serbest sohbet için şikayet sınıfı (intent) çıkarımı.
+        Not: teşhis değil; sadece güvenli yönlendirme/mini plan seçimi.
+        """
+        t0 = text_norm
+        if any(x in t0 for x in ("sivilce", "akne", "komedon", "blackhead", "whitehead", "pustul", "iltihap")):
+            return "acne_flare"
+        if any(x in t0 for x in ("kizar", "kızar", "yanma", "batma", "tahris", "irit", "hassas", "alerji")):
+            return "irritation"
+        if any(x in t0 for x in ("cok kuru", "çok kuru", "kuruyor", "gergin", "pul pul", "soyul", "bariyer")):
+            return "dryness"
+        if any(x in t0 for x in ("leke", "melaz", "pigment", "ton esitsiz", "hiperpig")):
+            return "pigmentation"
+        return "unknown"
+
+    blob = _free_chat_recent_turns_blob(history, max_len=360) if history else ""
+    merged2 = (blob + "\n" + (user_message or "")).strip() if blob else (user_message or "")
+    t_intent = _free_chat_normalize_query(merged2)
+    intent = _intent(t_intent)
+
+    # Intent-first mini plan: kullanıcı “ne yapacağım” diye kaldığında boşta bırakma
+    if intent == "acne_flare":
+        return (
+            "Bunu yaşamak moral bozuyor ama sakin ilerleyince toparlanıyor. İlk hedef: bariyeri bozmadan alevlenmeyi söndürmek. "
+            "48 saat için: nazik temizleyici + hafif nemlendirici + gündüz SPF; yeni ürün/peeling/sert fırçalama yok. "
+            "Eğer ağrılı, çok iltihaplı, hızla yayılan veya iz bırakacak gibi derin lezyonlar varsa bu kozmetik sınırı aşabilir—dermatolog en doğru adres. "
+            "Tek soru: çıkanlar daha çok küçük tıkalı komedon gibi mi, yoksa ağrılı/iltihaplı sivilce mi?"
+        )
+    if intent == "irritation":
+        return (
+            "Bu genelde cildin “fazla yük bindirdik” sinyali. 48–72 saat reset iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz nemlendirici; gündüz SPF. "
+            "Retinol/AHA/BHA/C vitamini gibi güçlü aktifler varsa birkaç gün ara ver. "
+            "Tek soru: yanma-batma var mı, yoksa daha çok kızarıklık/kuruluk mu?"
+        )
+    if intent == "dryness":
+        return (
+            "Bu can sıkıcı—ama genelde bariyerin yorulduğunu söyler. 48–72 saat “reset” iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz yoğun nemlendirici; gündüz mutlaka SPF. "
+            "Şu ara retinol/AHA/BHA gibi güçlü aktifler kullanıyorsan 2-3 gün ara verip önce konforu toparla. "
+            "Tek soru: yanma/batma da var mı, yoksa sadece kuruluk/gerginlik mi?"
+        )
+    if intent == "pigmentation":
+        return (
+            "Leke/ton eşitsizliğinde en hızlı kazanım genelde “koruma”dan gelir: her gün yeterli SPF + yeniden uygulama. "
+            "Aktiflere geçmeden önce bariyer konforu iyi mi, onu netleştirmek önemli; tahriş varsa leke daha kalıcı görünebilir. "
+            "Tek soru: lekeler yeni mi çıktı (haftalar) yoksa uzun süredir mi var?"
+        )
+
     inci = _free_chat_inci_report(merged, ctx=ctx)
     if inci:
         return inci
