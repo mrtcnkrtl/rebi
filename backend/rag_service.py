@@ -1168,7 +1168,174 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     """
     um = (user_message or "").strip()
     qs = _strict_no_evidence_questions(um)
-    # “Kanıt yok” yerine doğal dil: birkaç temel bilgi iste.
+    # Eğer kullanıcı bir maddeyi “nedir/ne işe yarar” diye soruyorsa, dış literatürden (PubMed)
+    # kısa bir özeti çekip sisteme ekleyebiliriz; kullanıcıya link göstermeyiz.
+    um_norm = _free_chat_normalize_query(um)
+    is_ingredient_definition = bool(
+        re.search(r"(?i)\b(nedir|ne\s*ise\s*yarar|ne\s*i[sş]e\s*yarar|i[sş]e\s*yarar|kullansam)\b", um)
+    )
+    if is_ingredient_definition:
+        try:
+            from knowledge.free_literature import fetch_pubmed_abstracts
+
+            arts = await fetch_pubmed_abstracts(um, max_results=1)
+        except Exception:
+            arts = []
+        # If Turkish query yields nothing, try a compact English keyword query via LLM (no user-facing labels).
+        if not arts and gemini_client:
+            try:
+                response = gemini_client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=[
+                        types.Content(
+                            role="user",
+                            parts=[
+                                types.Part.from_text(
+                                    text=(
+                                        "Convert this user query into 3-7 English PubMed search keywords. "
+                                        "Return ONLY the keywords, separated by spaces.\n\n"
+                                        f"Query: {um}"
+                                    )
+                                )
+                            ],
+                        )
+                    ],
+                    config=types.GenerateContentConfig(
+                        system_instruction="Return only keywords. No punctuation. No extra text.",
+                        temperature=0.1,
+                        max_output_tokens=40,
+                    ),
+                )
+                kw = _gemini_response_text(response)
+                kw = re.sub(r"[^A-Za-z0-9\\s]", " ", kw or "")
+                kw = re.sub(r"\\s{2,}", " ", kw).strip()
+                if kw:
+                    arts = await fetch_pubmed_abstracts(kw, max_results=1)
+            except Exception:
+                pass
+        if arts:
+            a0 = arts[0] or {}
+            title = (a0.get("title") or "").strip()
+            abstract = (a0.get("abstract") or "").strip()
+            pmid = (a0.get("pmid") or "").strip()
+            if abstract:
+                # ingest into internal knowledge store for reuse
+                try:
+                    from knowledge.db import pg_conn
+                    from knowledge.ingest import embed_texts_google, _pg_vector_literal
+
+                    uid = (KNOWLEDGE_CATALOG_USER_ID or "").strip() or "00000000-0000-4000-8000-000000000001"
+                    folder_slug = "external-pubmed"
+                    folder_title = "External (PubMed) cache"
+                    source_url = f"pubmed:{pmid}" if pmid else f"pubmed:{hash(title + abstract)}"
+                    with pg_conn(autocommit=True) as conn:
+                        with conn.cursor() as cur:
+                            cur.execute(
+                                """
+                                insert into public.knowledge_folders (user_id, slug, title)
+                                values (%s::uuid, %s, %s)
+                                on conflict (user_id, slug) do update set title = excluded.title
+                                returning id
+                                """,
+                                (uid, folder_slug, folder_title),
+                                prepare=False,
+                            )
+                            folder_id = cur.fetchone()[0]
+                            cur.execute(
+                                """
+                                select id from public.knowledge_documents
+                                where user_id = %s::uuid and folder_id = %s::uuid and source_url = %s
+                                limit 1
+                                """,
+                                (uid, folder_id, source_url),
+                                prepare=False,
+                            )
+                            row = cur.fetchone()
+                            if row:
+                                doc_id = row[0]
+                            else:
+                                cur.execute(
+                                    """
+                                    insert into public.knowledge_documents
+                                      (user_id, folder_id, source_type, title, source_url, raw_text, tags)
+                                    values (%s::uuid, %s::uuid, %s, %s, %s, %s, %s::jsonb)
+                                    returning id
+                                    """,
+                                    (
+                                        uid,
+                                        folder_id,
+                                        "pubmed",
+                                        title or "PubMed abstract",
+                                        source_url,
+                                        abstract,
+                                        json.dumps(["pubmed", "external", "auto"]),
+                                    ),
+                                    prepare=False,
+                                )
+                                doc_id = cur.fetchone()[0]
+                            # upsert chunk 0
+                            cur.execute(
+                                """
+                                insert into public.knowledge_chunks
+                                  (user_id, folder_id, document_id, chunk_index, chunk_text, embed_model, embed_ok)
+                                values (%s::uuid, %s::uuid, %s::uuid, 0, %s, %s, false)
+                                on conflict (document_id, chunk_index) do update
+                                  set chunk_text = excluded.chunk_text
+                                """,
+                                (uid, folder_id, doc_id, abstract[:7000], "gemini-embedding-001"),
+                                prepare=False,
+                            )
+                            # embed and mark ok
+                            vec = embed_texts_google([abstract[:3500]], model="gemini-embedding-001", output_dimensionality=768)[0]
+                            cur.execute(
+                                """
+                                update public.knowledge_chunks
+                                set embedding = %s::vector, embed_ok = true, embed_error = null
+                                where document_id = %s::uuid and chunk_index = 0
+                                """,
+                                (_pg_vector_literal(vec), doc_id),
+                                prepare=False,
+                            )
+                except Exception:
+                    pass
+
+                # respond: summarize only the abstract (no links, no labels)
+                if gemini_client:
+                    try:
+                        response = gemini_client.models.generate_content(
+                            model="gemini-2.0-flash",
+                            contents=[
+                                types.Content(
+                                    role="user",
+                                    parts=[
+                                        types.Part.from_text(
+                                            text=(
+                                                "Aşağıdaki PubMed özeti üzerinden, yalnızca bu metne sadık kalarak 2-4 kısa cümleyle açıkla. "
+                                                "Teşhis yok, marka yok. Türkçe.\n\n"
+                                                f"Başlık: {title}\nÖzet: {abstract}"
+                                            )
+                                        )
+                                    ],
+                                )
+                            ],
+                            config=types.GenerateContentConfig(
+                                system_instruction=(
+                                    "Sen Rebi’sin. Sadece verilen özet metnine dayan; ek iddia ekleme. "
+                                    "Kısa ve net yaz."
+                                ),
+                                temperature=0.2,
+                                max_output_tokens=220,
+                            ),
+                        )
+                        text = _gemini_response_text(response)
+                        text = _strip_repetitive_greeting(text, history)
+                        return _chat_general_shape(text)
+                    except Exception:
+                        pass
+                # fallback: plain abstract snippet
+                return _chat_general_shape((abstract[:480] + ("…" if len(abstract) > 480 else "")).strip())
+
+    # Default strict path: ask for 1-2 basics, then (optionally) route to Analysis after some turns.
     lines = ["Bunu sağlıklı söylemek için senden 1-2 temel bilgi almam lazım."]
     if qs:
         lines.append("Şunları yazarsan hızlıca netleştiririm:")
@@ -1187,20 +1354,6 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     if user_turns >= 2:
         lines.append("")
         lines.append("İstersen bu konu için Analiz’te rutin oluşturup (sabah/akşam + sıklık) işi cildine tam oturtabiliriz.")
-
-    try:
-        from knowledge.free_literature import fetch_skin_literature_pairs, skip_external_literature_for_query
-
-        if not skip_external_literature_for_query(um):
-            pairs = await fetch_skin_literature_pairs(um, max_results=3)
-            if pairs:
-                lines.append("")
-                lines.append("Ek okuma (talimat değil):")
-                for (title, url) in pairs[:3]:
-                    if title and url:
-                        lines.append(f"- {title} ({url})")
-    except Exception:
-        pass
 
     return "\n".join(lines).strip()
 

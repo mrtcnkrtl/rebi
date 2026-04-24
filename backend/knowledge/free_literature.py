@@ -303,6 +303,87 @@ async def _pubmed_titles(term: str, *, max_results: int = 4) -> list[tuple[str, 
     return out
 
 
+def _strip_xml_tags(s: str) -> str:
+    s = re.sub(r"<[^>]+>", " ", s or "")
+    s = html.unescape(s)
+    s = re.sub(r"\s{2,}", " ", s).strip()
+    return s
+
+
+def _extract_pubmed_articles(xml_text: str) -> list[dict[str, str]]:
+    """
+    Very lightweight PubMed XML parsing (no heavy deps).
+    Extracts: pmid, title, abstract.
+    """
+    x = xml_text or ""
+    out: list[dict[str, str]] = []
+    # Split on PubmedArticle blocks
+    blocks = re.split(r"</?PubmedArticle>", x, flags=re.I)
+    for b in blocks:
+        if "<PMID" not in b:
+            continue
+        pmid_m = re.search(r"<PMID[^>]*>(\d+)</PMID>", b, flags=re.I)
+        pmid = pmid_m.group(1) if pmid_m else ""
+        title_m = re.search(r"<ArticleTitle[^>]*>([\s\S]*?)</ArticleTitle>", b, flags=re.I)
+        title = _strip_xml_tags(title_m.group(1)) if title_m else ""
+        abs_parts = re.findall(r"<AbstractText[^>]*>([\s\S]*?)</AbstractText>", b, flags=re.I)
+        abstract = " ".join(_strip_xml_tags(p) for p in abs_parts if p)[:5000].strip()
+        if pmid and (title or abstract):
+            out.append({"pmid": pmid, "title": title, "abstract": abstract})
+        if len(out) >= 4:
+            break
+    return out
+
+
+async def fetch_pubmed_abstracts(
+    user_message: str, *, max_results: int = 2
+) -> list[dict[str, str]]:
+    """
+    Fetch PubMed abstracts (title+abstract) for building reusable internal evidence.
+    Returns [] on disable/error.
+    """
+    # Abstract fetch is used to enrich internal evidence; allow even when public hint links are disabled.
+    q_raw = (user_message or "").strip()
+    if len(q_raw) < 3 or skip_external_literature_for_query(q_raw):
+        return []
+    q_compact = _compact_literature_query(q_raw)
+    # For definition/explanation, avoid forcing a dermatology anchor; it can hide general pharm/botany papers.
+    term = _sanitize_pubmed_term(q_compact)
+    ids = await _pubmed_titles(term, max_results=max(1, int(max_results)))
+    if not ids:
+        return []
+    pmids = [pid for (pid, _t) in ids[: max(1, int(max_results))] if str(pid).isdigit()]
+    if not pmids:
+        return []
+
+    params: dict[str, str | int] = {
+        "db": "pubmed",
+        "retmode": "xml",
+        "id": ",".join(pmids),
+        "tool": "rebi_knowledge",
+    }
+    if PUBMED_CONTACT_EMAIL:
+        params["email"] = PUBMED_CONTACT_EMAIL
+    if NCBI_API_KEY:
+        params["api_key"] = NCBI_API_KEY
+
+    async with httpx.AsyncClient(timeout=14.0) as client:
+        r = await client.get(f"{EUTILS_BASE}/efetch.fcgi", params=params)
+        r.raise_for_status()
+        xml = r.text or ""
+
+    arts = _extract_pubmed_articles(xml)
+    # Keep only relevant titles
+    out: list[dict[str, str]] = []
+    for a in arts:
+        if a.get("title") and not _title_relevant_to_query(q_raw, a.get("title") or ""):
+            continue
+        out.append(a)
+        if len(out) >= max(1, int(max_results)):
+            break
+    return out
+
+
 async def _europepmc_titles(term: str, *, max_results: int = 4) -> list[tuple[str, str]]:
     """(pmid veya source id, title); PubMed sonuç yoksa yedek."""
     term = _sanitize_pubmed_term(term)
