@@ -30,7 +30,7 @@ _ENTITY_VOCAB_CACHE: dict[str, dict] = {}
 _DOC_META_CACHE: dict[str, dict] = {}
 
 # Evidence-first RAG: keep the policy in one place.
-_EVIDENCE_OK_THRESHOLD = 0.55
+_EVIDENCE_OK_THRESHOLD = 0.30
 
 
 def _entity_vocab_cache_key(user_id: Optional[str]) -> str:
@@ -2371,6 +2371,11 @@ async def chat_general(
             return _chat_general_shape(reply)
         except Exception as e:
             log.warning("chat_general model yanıtı alınamadı: %s", e)
+            # Evidence exists but model is unavailable (quota/429 etc.) → return evidence snippets instead of no-evidence questions.
+            if kb:
+                return _chat_general_shape(
+                    "Şu an kısa bir özet üretemedim; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
+                )
 
     # Evidence weak/missing or model unavailable:
     # - If we have evidence but no model: return the evidence snippets (transparent).

@@ -63,7 +63,7 @@ def find_chunks_by_entity(
                 join public.knowledge_chunks c on c.id = ce.chunk_id
                 where e.user_id = %s
                   and (%s::uuid is null or e.folder_id = %s::uuid)
-                  and (%s is null or e.kind = %s)
+                  and (%s::text is null or e.kind = %s::text)
                   and e.name like %s
                 order by c.created_at asc
                 limit %s

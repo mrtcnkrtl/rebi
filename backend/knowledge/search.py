@@ -59,15 +59,28 @@ def search_chunks(
 
     with pg_conn(autocommit=True) as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                select chunk_id, document_id, chunk_text, similarity
-                from public.match_knowledge_chunks(%s::uuid, %s::vector, %s, %s::uuid, %s::text[])
-                """,
-                (user_id, vec_lit, max(int(k), 1), folder_id, topics),
-                prepare=False,
-            )
-            rows = cur.fetchall() or []
+            rows = []
+            # Newer installs may have a 4-arg function (no topics). Older installs may have 5 args.
+            try:
+                cur.execute(
+                    """
+                    select chunk_id, document_id, chunk_text, similarity
+                    from public.match_knowledge_chunks(%s::uuid, %s::vector, %s, %s::uuid)
+                    """,
+                    (user_id, vec_lit, max(int(k), 1), folder_id),
+                    prepare=False,
+                )
+                rows = cur.fetchall() or []
+            except Exception:
+                cur.execute(
+                    """
+                    select chunk_id, document_id, chunk_text, similarity
+                    from public.match_knowledge_chunks(%s::uuid, %s::vector, %s, %s::uuid, %s::text[])
+                    """,
+                    (user_id, vec_lit, max(int(k), 1), folder_id, topics),
+                    prepare=False,
+                )
+                rows = cur.fetchall() or []
 
     out: list[ChunkMatch] = []
     for r in rows:
