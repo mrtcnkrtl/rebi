@@ -1167,6 +1167,18 @@ def _free_chat_allows_general_guidance_without_rag(
     t = _free_chat_fuzzy_correct_terms(msg, user_id=user_id)
     if len(t) < 4:
         return False
+    # Ingredient/aktif sorusu olabilir: "arbutin kullansam" gibi (needle listesine eklemek sürdürülebilir değil).
+    # Dinamik entity sözlüğünde geçen bir terim varsa kompakt (model) yolu aç.
+    try:
+        vocab = _load_entity_vocab_for_user(user_id)
+    except Exception:
+        vocab = set()
+    if vocab:
+        toks = [x for x in t.split() if 4 <= len(x) <= 30][:10]
+        if any(tok in vocab for tok in toks):
+            return True
+    if re.search(r"(?i)\b(nedir|ne\s*ise\s*yarar|i[sş]e\s*yarar|yararli\s*mi|etkili\s*mi|kullansam|kullanilir)\b", msg or ""):
+        return True
     if _free_chat_message_matches_guidance_needles(t):
         return True
     blob = _free_chat_recent_turns_blob(history, max_len=360)
@@ -1183,11 +1195,18 @@ def _free_chat_compact_guidance_body_fallback(
     """
     Model kapalı veya hata: tek güvenli şablon (yeni madde/durum için iğne eklemek gerekmez).
     """
-    # Konu takibi: kısa takipte kullanıcı tekrar "retinol" demeyebilir.
-    # Bu yüzden son birkaç tur + mevcut mesajı birleştirip ana konuyu çıkar.
+    # Konu takibi: kısa takipte kullanıcı tekrar ana kelimeyi söylemeyebilir.
+    # Ama intent ve güvenlik kararları assistant metninden etkilenmesin → yalnızca USER metnini birleştir.
     blob = _free_chat_recent_turns_blob(history, max_len=360) if history else ""
     merged = (blob + "\n" + (user_message or "")).strip() if blob else (user_message or "")
-    t = _free_chat_normalize_query(merged)
+    user_lines: list[str] = []
+    for m in (history or [])[-12:]:
+        if isinstance(m, dict) and m.get("role") == "user":
+            c = (m.get("content") or "").strip()
+            if c:
+                user_lines.append(c)
+    merged_user = ("\n".join(user_lines[-4:]) + "\n" + (user_message or "")).strip() if user_lines else (user_message or "")
+    t = _free_chat_normalize_query(merged_user)
     ctx = _free_chat_infer_user_context(user_message, history)
     if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
         return _free_chat_medical_boundary_reply()
@@ -1221,9 +1240,8 @@ def _free_chat_compact_guidance_body_fallback(
             return "pigmentation"
         return "unknown"
 
-    blob = _free_chat_recent_turns_blob(history, max_len=360) if history else ""
-    merged2 = (blob + "\n" + (user_message or "")).strip() if blob else (user_message or "")
-    t_intent = _free_chat_normalize_query(merged2)
+    # Intent için de yalnızca user metnini kullan (assistant şablonu intent'i kilitlemesin)
+    t_intent = _free_chat_normalize_query(merged_user)
     intent = _intent(t_intent)
 
     # Intent-first mini plan: kullanıcı “ne yapacağım” diye kaldığında boşta bırakma
@@ -1232,7 +1250,7 @@ def _free_chat_compact_guidance_body_fallback(
         already_answered = False
         try:
             already_answered = bool(
-                re.search(r"(?i)\b(agrili|ağrılı|iltihap|derin|kistik)\b", merged2 or "")
+                re.search(r"(?i)\b(agrili|ağrılı|iltihap|derin|kistik)\b", merged_user or "")
                 and history
                 and any(
                     ("Tek soru:" in (m.get("content") or "")) and ("komedon" in (m.get("content") or ""))
@@ -1301,12 +1319,12 @@ def _free_chat_compact_guidance_body_fallback(
             "Papatya dediğin leave‑on (krem/serum) mu, yoksa yıkanan bir ürün mü?"
         )
 
-    inci = _free_chat_inci_report(merged, ctx=ctx)
+    inci = _free_chat_inci_report(merged_user, ctx=ctx)
     if inci:
         return inci
 
     # 1) Eğer konuşma “madde/aktif” gibi görünüyorsa INGREDIENT_DB'den doğru mini yanıt üret.
-    topic = _free_chat_detect_ingredient_topic(merged)
+    topic = _free_chat_detect_ingredient_topic(merged_user)
     if topic:
         db = _free_chat_compact_from_ingredient_db(topic, user_message, ctx=ctx)
         if db:
