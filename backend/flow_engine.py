@@ -898,6 +898,18 @@ def _get_preferred_agents(concern: str, level: str, age_group: dict) -> dict:
             prefer.append("Bisabolol")
             prefer.append(_fmt("petrolatum", "standart"))
 
+    elif concern == "pores":
+        # Siyah nokta / gözenek: komedon tıkacı + sebum dengesi (akne kadar agresif değil)
+        prefer = [_fmt("salisilik_asit", "acne_hafif"), _fmt("niacinamid", "acne_genel"), "Çinko PCA"]
+        avoid = ["Sert fiziksel peeling", "Aşırı alkollü tonikler"]
+        if level == "şiddetli":
+            prefer.append("Kaolin/kil maskesi (haftada 1-2)")
+
+    elif concern == "oiliness":
+        # Yağlılık: sebum dengesi + gözenek desteği
+        prefer = [_fmt("niacinamid", "acne_genel"), "Çinko PCA", _fmt("salisilik_asit", "acne_hafif")]
+        avoid = ["Ağır yağlar", "Aşırı oklüzif katmanlar"]
+
     else:
         prefer = [_fmt("niacinamid", "acne_genel"), _fmt("hyaluronik_asit", "genel")]
         avoid = []
@@ -3421,6 +3433,8 @@ CONCERN_FOCUS_USER_TR = {
     "dryness": "kuruluk ve bariyer",
     "pigmentation": "leke ve ton eşitsizliği",
     "sensitivity": "hassasiyet ve sakinleşme",
+    "pores": "siyah nokta, tıkanıklık ve gözenek görünümü",
+    "oiliness": "sebum dengesi ve parlama",
 }
 
 SEVERITY_CONTEXT_USER_TR = {

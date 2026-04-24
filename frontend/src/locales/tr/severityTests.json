@@ -279,4 +279,76 @@
       }
     ]
   }
+  ,
+  "pores": {
+    "title": "Gözenek / Siyah Nokta Testi",
+    "subtitle": "Tıkanıklık ve siyah nokta durumunu değerlendir",
+    "icon": "🕳️",
+    "questions": [
+      {
+        "id": "area",
+        "text": "Siyah nokta daha çok nerede?",
+        "options": [
+          { "label": "Yok veya çok az", "score": 0 },
+          { "label": "Burun çevresi", "score": 1 },
+          { "label": "T bölgesi (burun + alın + çene)", "score": 2 },
+          { "label": "Yanaklar dahil yaygın", "score": 3 }
+        ]
+      },
+      {
+        "id": "pore_visibility",
+        "text": "Gözenek görünümü ne kadar belirgin?",
+        "options": [
+          { "label": "Yakından bakınca", "score": 0 },
+          { "label": "Gün ışığında belirgin", "score": 1 },
+          { "label": "Her zaman belirgin", "score": 2 }
+        ]
+      },
+      {
+        "id": "oiliness",
+        "text": "Gün içinde parlama/sebum durumu?",
+        "options": [
+          { "label": "Az", "score": 0 },
+          { "label": "Orta (T bölgesi)", "score": 1 },
+          { "label": "Yüksek (yüz geneli)", "score": 2 },
+          { "label": "Çok yüksek, hızlı parlıyor", "score": 3 }
+        ]
+      }
+    ]
+  },
+  "oiliness": {
+    "title": "Yağlılık / Sebum Testi",
+    "subtitle": "Parlama ve sebum dengesini değerlendir",
+    "icon": "💧",
+    "questions": [
+      {
+        "id": "shine",
+        "text": "Gün içinde yüzün ne kadar parlıyor?",
+        "options": [
+          { "label": "Nadiren", "score": 0 },
+          { "label": "Öğlene doğru T bölgesi parlıyor", "score": 1 },
+          { "label": "Öğleden önce bile belirgin parlama", "score": 2 },
+          { "label": "Kısa sürede aşırı parlama", "score": 3 }
+        ]
+      },
+      {
+        "id": "makeup_break",
+        "text": "Makyaj/SPF gün içinde nasıl duruyor?",
+        "options": [
+          { "label": "Normal", "score": 0 },
+          { "label": "Biraz kayıyor/parlıyor", "score": 1 },
+          { "label": "Çabuk bozuluyor, parlama artıyor", "score": 2 }
+        ]
+      },
+      {
+        "id": "clogging",
+        "text": "Tıkanma/komedon eğilimin var mı?",
+        "options": [
+          { "label": "Nadiren", "score": 0 },
+          { "label": "Ara sıra", "score": 1 },
+          { "label": "Sık", "score": 2 }
+        ]
+      }
+    ]
+  }
 }

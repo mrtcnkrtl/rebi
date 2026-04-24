@@ -279,4 +279,76 @@
       }
     ]
   }
+  ,
+  "pores": {
+    "title": "Pores / blackheads assessment",
+    "subtitle": "Rate clogged pores and blackheads",
+    "icon": "🕳️",
+    "questions": [
+      {
+        "id": "area",
+        "text": "Where are blackheads most noticeable?",
+        "options": [
+          { "label": "None or very few", "score": 0 },
+          { "label": "Around the nose", "score": 1 },
+          { "label": "T-zone (nose + forehead + chin)", "score": 2 },
+          { "label": "Widespread including cheeks", "score": 3 }
+        ]
+      },
+      {
+        "id": "pore_visibility",
+        "text": "How visible are your pores?",
+        "options": [
+          { "label": "Only up close", "score": 0 },
+          { "label": "Noticeable in daylight", "score": 1 },
+          { "label": "Noticeable most of the time", "score": 2 }
+        ]
+      },
+      {
+        "id": "oiliness",
+        "text": "How oily does your skin feel during the day?",
+        "options": [
+          { "label": "Low", "score": 0 },
+          { "label": "Moderate (T-zone)", "score": 1 },
+          { "label": "High (whole face)", "score": 2 },
+          { "label": "Very high, shines quickly", "score": 3 }
+        ]
+      }
+    ]
+  },
+  "oiliness": {
+    "title": "Oiliness / sebum assessment",
+    "subtitle": "Rate shine and sebum balance",
+    "icon": "💧",
+    "questions": [
+      {
+        "id": "shine",
+        "text": "How much does your face shine during the day?",
+        "options": [
+          { "label": "Rarely", "score": 0 },
+          { "label": "T-zone shines by noon", "score": 1 },
+          { "label": "Noticeable shine before noon", "score": 2 },
+          { "label": "Very oily quickly", "score": 3 }
+        ]
+      },
+      {
+        "id": "makeup_break",
+        "text": "How does makeup/SPF wear throughout the day?",
+        "options": [
+          { "label": "Fine", "score": 0 },
+          { "label": "Some slipping/shine", "score": 1 },
+          { "label": "Breaks down quickly, shine increases", "score": 2 }
+        ]
+      },
+      {
+        "id": "clogging",
+        "text": "Do you tend to get clogged pores/comedones?",
+        "options": [
+          { "label": "Rarely", "score": 0 },
+          { "label": "Sometimes", "score": 1 },
+          { "label": "Often", "score": 2 }
+        ]
+      }
+    ]
+  }
 }
