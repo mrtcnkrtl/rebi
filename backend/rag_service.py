@@ -1168,11 +1168,25 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     """
     um = (user_message or "").strip()
     qs = _strict_no_evidence_questions(um)
-    lines = ["Arşivimde bu soruya net şekilde bağlayabileceğim bir kanıt parçası bulamadım."]
+    # “Kanıt yok” yerine doğal dil: birkaç temel bilgi iste.
+    lines = ["Bunu sağlıklı söylemek için senden 1-2 temel bilgi almam lazım."]
     if qs:
-        lines.append("Şunu netleştirirsek doğru yere hızlı gideriz:")
+        lines.append("Şunları yazarsan hızlıca netleştiririm:")
         for q in qs[:2]:
             lines.append(f"- {q}")
+
+    # Kullanıcı bir kaç tur sohbet ettiyse, tek cümleyle Analiz yönlendirmesi ekle (her mesajda spam değil).
+    try:
+        user_turns = sum(
+            1
+            for m in (history or [])
+            if isinstance(m, dict) and m.get("role") == "user" and str(m.get("content") or "").strip()
+        )
+    except Exception:
+        user_turns = 0
+    if user_turns >= 2:
+        lines.append("")
+        lines.append("İstersen bu konu için Analiz’te rutin oluşturup (sabah/akşam + sıklık) işi cildine tam oturtabiliriz.")
 
     try:
         from knowledge.free_literature import fetch_skin_literature_pairs, skip_external_literature_for_query
@@ -1397,9 +1411,9 @@ def _free_chat_compact_guidance_body_fallback(
             return db
     # Strict mode fallback (sync): no evidence => no generic guidance.
     qs = _strict_no_evidence_questions(user_message)
-    out = ["Arşivimde bu soruya net şekilde bağlayabileceğim bir kanıt parçası bulamadım."]
+    out = ["Bunu sağlıklı söylemek için senden 1-2 temel bilgi almam lazım."]
     if qs:
-        out.append("Şunu netleştirirsek doğru yere hızlı gideriz:")
+        out.append("Şunları yazarsan hızlıca netleştiririm:")
         for q in qs[:2]:
             out.append(f"- {q}")
     return "\n".join(out).strip()
