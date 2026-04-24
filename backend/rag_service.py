@@ -1183,10 +1183,18 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
         return ["Bunu daha çok nerede yaşıyorsun (yüz, saç derisi, vücut) ve ne zamandır?"]
 
     qs: list[str] = []
+    # Ingredient tanımı sorularında (nedir/ne işe yarar vs.) "form" sorusuna kilitlenmeyelim.
+    # Önce kullanım alanını netleştirmek genelde yeterli.
+    if re.search(
+        r"(?i)\b(nedir|ne\s*ise\s*yarar|ne\s*i[sş]e\s*yarar|i[sş]e\s*yarar|yararli\s*mi|etkili\s*mi|kullansam|kullanilir)\b",
+        raw or "",
+    ):
+        return ["Bunu daha çok nerede kullanmayı düşünüyorsun (yüz, saç derisi, saç boyu, vücut) ?"]
+
     botanical = any(x in t for x in ("yag", "yagi", "oil", "extract", "ekstrakt", "oz", "ucu", "uçucu", "essential"))
     if botanical:
-        qs.append("Bu bir leave‑on (ciltte kalan) ürün mü, yoksa yıkanan bir şey mi?")
-        qs.append("Cildin hassas/alerjiye yatkın mı, yoksa genel olarak dayanıklı mı?")
+        qs.append("Bunu daha çok nerede kullanmayı düşünüyorsun (yüz, saç derisi, saç boyu, vücut) ?")
+        qs.append("Cildin/saç derin hassas/alerjiye yatkın mı, yoksa genel olarak dayanıklı mı?")
         return qs[:2]
 
     if any(x in t for x in ("kizar", "kızar", "kizariklik", "kızarıklık")):
@@ -1213,7 +1221,14 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     # kısa bir özeti çekip sisteme ekleyebiliriz; kullanıcıya link göstermeyiz.
     um_norm = _free_chat_normalize_query(um)
     is_ingredient_definition = bool(
-        re.search(r"(?i)\b(nedir|ne\s*ise\s*yarar|ne\s*i[sş]e\s*yarar|i[sş]e\s*yarar|kullansam)\b", um)
+        re.search(
+            r"(?i)\b(nedir|ne\s*ise\s*yarar|ne\s*i[sş]e\s*yarar|i[sş]e\s*yarar|yararli\s*mi|etkili\s*mi|kullansam|kullanilir)\b",
+            um,
+        )
+        or re.search(
+            r"(?i)\b(bilmiyorum|emin\s*degilim|tam\s*bilmiyorum)\b.*\b(ne\s*oldug(u|ü)nu|nedir)\b",
+            um,
+        )
     )
     if is_ingredient_definition:
         try:
@@ -1375,6 +1390,16 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                         pass
                 # fallback: plain abstract snippet
                 return _chat_general_shape((abstract[:480] + ("…" if len(abstract) > 480 else "")).strip())
+
+        # Eğer PubMed'den veri çekemediysek: "tanım" döngüsüne girme.
+        # Burada düşük-iddialı bir çerçeve verip sadece kullanım alanını sor.
+        oil_like = bool(re.search(r"(?i)\b(yag|yağ|yagi|yağı|oil)\b", um_norm or um))
+        if oil_like:
+            return _chat_general_shape(
+                "Kısaca: bu bir bitkisel taşıyıcı yağdır (tohum/bitki kaynağından elde edilir) ve genelde ciltte yumuşatıcı/oklüzif bir katman gibi davranır. "
+                "Etkinlik kişiden kişiye değişebilir; özellikle hassas veya akneye yatkın ciltte iritasyon ya da tıkanma yapma riski de olabilir.\n"
+                "Bunu yüz için mi, saç derisi/saç boyu için mi düşünüyorsun?"
+            )
 
     # Default strict path: ask for 1-2 basics, then (optionally) route to Analysis after some turns.
     lines = ["Bunu sağlıklı söylemek için senden 1-2 temel bilgi almam lazım."]
