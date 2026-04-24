@@ -498,6 +498,10 @@ class ChatGeneralResponse(BaseModel):
     usage_remaining: Optional[int] = None
     usage_limit: Optional[int] = None
     chat_quota_exceeded: bool = False
+    # Evidence-first RAG (optional, UI can ignore)
+    evidence_used: Optional[bool] = None
+    evidence_score: Optional[float] = None
+    evidence_sources: Optional[list[dict]] = None
 
 
 class ChatUsageResponse(BaseModel):
@@ -1230,6 +1234,8 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
             )
 
     from rag_service import chat_general as rebi_chat_general
+    from rag_service import _build_free_chat_evidence_bundle as _build_ev_bundle
+    from rag_service import _EVIDENCE_OK_THRESHOLD as _EV_OK
 
     # Hafif profil hafızası: profiles + en son assessment concern (varsa)
     profile_hint = {}
@@ -1268,6 +1274,18 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
         accept_lang=_primary_lang_from_header(request.headers.get("accept-language") or "tr"),
     )
 
+    # Evidence metadata (best-effort; does not affect the reply)
+    evidence_used = None
+    evidence_score = None
+    evidence_sources = None
+    try:
+        ev = _build_ev_bundle(req.user_id, req.message, req.history)
+        evidence_score = float((ev or {}).get("score") or 0.0)
+        evidence_sources = (ev or {}).get("sources") or []
+        evidence_used = bool(evidence_score >= float(_EV_OK))
+    except Exception:
+        evidence_used, evidence_score, evidence_sources = None, None, None
+
     if jwt_auth_enabled():
         # Başarılı tur sayımı (free / plus capped)
         r = (reply or "").strip()
@@ -1292,6 +1310,9 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
         usage_remaining=ur,
         usage_limit=ul,
         chat_quota_exceeded=False,
+        evidence_used=evidence_used,
+        evidence_score=evidence_score,
+        evidence_sources=evidence_sources,
     )
 
 

@@ -17,7 +17,7 @@ import re
 import unicodedata
 import difflib
 from datetime import date
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Tuple
 from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY, KNOWLEDGE_CATALOG_USER_ID, get_logger
@@ -27,6 +27,10 @@ from knowledge.query_expand import expand_skin_query_for_vector_search, strip_co
 log = get_logger("rag_service")
 
 _ENTITY_VOCAB_CACHE: dict[str, dict] = {}
+_DOC_META_CACHE: dict[str, dict] = {}
+
+# Evidence-first RAG: keep the policy in one place.
+_EVIDENCE_OK_THRESHOLD = 0.55
 
 
 def _entity_vocab_cache_key(user_id: Optional[str]) -> str:
@@ -128,6 +132,207 @@ def _free_chat_medical_boundary_reply() -> str:
         "en güvenlisi bir dermatoloğa (gerekirse acile) başvurmak. "
         "O zamana kadar yeni aktifleri bırak, nazik temizleyici + sade nemlendirici + gündüz SPF ile bariyeri sakin tut."
     )
+
+
+def _doc_meta(document_id: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Fetch minimal document metadata for evidence transparency.
+    Returns (title, source_url). Cached per process.
+    """
+    did = str(document_id or "").strip()
+    if not did:
+        return None, None
+    cached = _DOC_META_CACHE.get(did)
+    if cached:
+        return cached.get("title"), cached.get("url")
+    title = None
+    url = None
+    try:
+        from knowledge.db import pg_conn
+
+        with pg_conn(autocommit=True) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "select title, source_url from public.knowledge_documents where id = %s::uuid limit 1",
+                    (did,),
+                    prepare=False,
+                )
+                row = cur.fetchone()
+                if row:
+                    title = str(row[0] or "").strip() or None
+                    url = str(row[1] or "").strip() or None
+    except Exception:
+        title, url = None, None
+    _DOC_META_CACHE[did] = {"title": title, "url": url}
+    return title, url
+
+
+def _evidence_score(*, entity_text: str, vector_hits: list, used_docs: int) -> float:
+    """
+    Heuristic evidence score (0..1). Simple on purpose.
+    - Vector hits with high similarity lift confidence.
+    - Multiple docs / non-trivial length lift confidence.
+    """
+    et = (entity_text or "").strip()
+    et_len = len(et)
+    score = 0.0
+    # Entity index: usually precise but can be short.
+    if et_len >= 600:
+        score += 0.35
+    elif et_len >= 240:
+        score += 0.22
+    elif et_len >= 90:
+        score += 0.12
+
+    sims: list[float] = []
+    for h in vector_hits or []:
+        try:
+            sims.append(float(getattr(h, "similarity", 0.0) or 0.0))
+        except Exception:
+            sims.append(0.0)
+    max_sim = max(sims) if sims else 0.0
+    if max_sim >= 0.86:
+        score += 0.55
+    elif max_sim >= 0.80:
+        score += 0.45
+    elif max_sim >= 0.74:
+        score += 0.35
+    elif max_sim >= 0.68:
+        score += 0.25
+    elif max_sim >= 0.62:
+        score += 0.18
+    elif max_sim >= 0.56:
+        score += 0.10
+
+    # Diversity bonus.
+    if used_docs >= 2:
+        score += 0.08
+    if used_docs >= 3:
+        score += 0.05
+
+    return max(0.0, min(score, 1.0))
+
+
+def _build_free_chat_evidence_bundle(
+    user_id: Optional[str],
+    user_message: str,
+    history: Optional[List[Any]] = None,
+) -> dict:
+    """
+    Evidence-first retrieval bundle:
+    - entity_text: cheap entity index chunks (if any)
+    - vector_hits: semantic matches with similarity
+    - sources: document titles / urls (best-effort)
+    - context_text: canonical RAG context string (kept compatible with existing prompts)
+    - score: heuristic evidence confidence
+    """
+    um = (user_message or "").strip()
+    if len(um) < 2:
+        return {
+            "entity_text": "",
+            "vector_hits": [],
+            "sources": [],
+            "context_text": "",
+            "score": 0.0,
+            "reason": "empty",
+        }
+
+    entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
+    vector_hits: list[Any] = []
+    seen_sig: set[str] = set()
+    um_vec = _free_chat_vector_query_text(um, history)
+    klass_topics: Optional[List[str]] = _free_chat_infer_klass_topics(um)
+
+    run_vector = (len(entity_text) < 900) and (not _entity_text_supersedes_vector(entity_text))
+    if run_vector:
+        log.info("free_chat RAG yolu: vektör araması açık (entity_len=%d)", len(entity_text))
+    else:
+        log.info("free_chat RAG yolu: vektör atlandı — entity yeterli veya uzun (entity_len=%d)", len(entity_text))
+
+    if run_vector:
+        from knowledge.search import search_chunks
+
+        uids: list[str] = []
+        for u in ((user_id or "").strip(), (KNOWLEDGE_CATALOG_USER_ID or "").strip()):
+            if u and u not in uids:
+                uids.append(u)
+
+        def _consume_hits(hit_list) -> None:
+            for h in hit_list or []:
+                t = (getattr(h, "chunk_text", None) or "").strip()
+                if len(t) < 22:
+                    continue
+                sig = t[:140]
+                if sig in seen_sig:
+                    continue
+                seen_sig.add(sig)
+                vector_hits.append(h)
+                if len(vector_hits) >= 4:
+                    return
+
+        for uid in uids:
+            try:
+                hits_primary = search_chunks(
+                    user_id=uid,
+                    folder_slug="data-pdfs",
+                    query=um_vec,
+                    k=10,
+                    klass_topics=klass_topics,
+                )
+                _consume_hits(hits_primary)
+                if len(vector_hits) < 1:
+                    q_exp = expand_skin_query_for_vector_search(um, cleaned_query=um_vec)
+                    if q_exp and q_exp.strip() != um_vec.strip():
+                        _consume_hits(
+                            search_chunks(
+                                user_id=uid,
+                                folder_slug="data-pdfs",
+                                query=q_exp,
+                                k=10,
+                                klass_topics=klass_topics,
+                            )
+                        )
+                if vector_hits:
+                    break
+            except Exception as e:
+                log.warning("Semantik RAG atlandı (user=%s): %s", uid, e)
+
+    vector_blocks: list[str] = []
+    used_doc_ids: list[str] = []
+    for h in vector_hits[:4]:
+        t = (getattr(h, "chunk_text", None) or "").strip()
+        if t:
+            vector_blocks.append(t)
+        did = str(getattr(h, "document_id", "") or "").strip()
+        if did and did not in used_doc_ids:
+            used_doc_ids.append(did)
+
+    vec_joined = "\n\n---\n\n".join(vector_blocks[:4])[:3000]
+    parts: list[str] = []
+    if entity_text:
+        parts.append("[Madde / içerik endeksi]\n" + entity_text)
+    if vec_joined:
+        parts.append("[Anlamsal arama — ilgili pasajlar]\n" + vec_joined)
+    context_text = "\n\n".join(parts).strip()
+    if len(context_text) > 6200:
+        context_text = context_text[:6200]
+
+    sources: list[dict] = []
+    for did in used_doc_ids[:3]:
+        title, url = _doc_meta(did)
+        if title or url:
+            sources.append({"title": title or "", "url": url or ""})
+
+    score = _evidence_score(entity_text=entity_text, vector_hits=vector_hits, used_docs=len(used_doc_ids))
+    reason = "ok" if score >= _EVIDENCE_OK_THRESHOLD else "weak"
+    return {
+        "entity_text": entity_text,
+        "vector_hits": vector_hits,
+        "sources": sources,
+        "context_text": context_text,
+        "score": score,
+        "reason": reason,
+    }
 
 
 def _free_chat_fuzzy_correct_terms(text: str, *, user_id: Optional[str] = None) -> str:
@@ -873,93 +1078,14 @@ def _build_free_chat_rag_context(
     history: Optional[List[Any]] = None,
 ) -> str:
     """
-    1) Entity index (düşük maliyet)
-    2) Gerekirse tek vektör araması (embedding); entity zenginse atlanır — ekstra maliyet/gürültü yok.
+    Backwards-compatible wrapper. Prefer `_build_free_chat_evidence_bundle`.
     """
-    um = (user_message or "").strip()
-    if len(um) < 2:
+    try:
+        return str(
+            (_build_free_chat_evidence_bundle(user_id, user_message, history) or {}).get("context_text") or ""
+        )
+    except Exception:
         return ""
-
-    entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
-    vector_blocks: list[str] = []
-    seen_sig: set[str] = set()
-    um_vec = _free_chat_vector_query_text(um, history)
-    klass_topics: Optional[List[str]] = _free_chat_infer_klass_topics(um)
-
-    run_vector = (len(entity_text) < 900) and (not _entity_text_supersedes_vector(entity_text))
-    if run_vector:
-        log.info(
-            "free_chat RAG yolu: vektör araması açık (entity_len=%d)",
-            len(entity_text),
-        )
-    else:
-        log.info(
-            "free_chat RAG yolu: vektör atlandı — entity yeterli veya uzun (entity_len=%d)",
-            len(entity_text),
-        )
-
-    if run_vector:
-        from knowledge.search import search_chunks
-
-        uids: list[str] = []
-        for u in ((user_id or "").strip(), (KNOWLEDGE_CATALOG_USER_ID or "").strip()):
-            if u and u not in uids:
-                uids.append(u)
-
-        for uid in uids:
-            try:
-                hits_primary = search_chunks(
-                    user_id=uid,
-                    folder_slug="data-pdfs",
-                    query=um_vec,
-                    k=10,
-                    klass_topics=klass_topics,
-                )
-
-                def _consume_hits(hit_list) -> None:
-                    for h in hit_list or []:
-                        t = (h.chunk_text or "").strip()
-                        if len(t) < 22:
-                            continue
-                        sig = t[:140]
-                        if sig in seen_sig:
-                            continue
-                        seen_sig.add(sig)
-                        vector_blocks.append(t)
-                        if len(vector_blocks) >= 4:
-                            return
-
-                _consume_hits(hits_primary)
-                # İlk turda isabet yoksa veya metinler çok kısaysa: genişletilmiş sorgu (TR yağ/saç → EN klinik terim)
-                if len(vector_blocks) < 1:
-                    q_exp = expand_skin_query_for_vector_search(um, cleaned_query=um_vec)
-                    if q_exp and q_exp.strip() != um_vec.strip():
-                        _consume_hits(
-                            search_chunks(
-                                user_id=uid,
-                                folder_slug="data-pdfs",
-                                query=q_exp,
-                                k=10,
-                                klass_topics=klass_topics,
-                            )
-                        )
-                if vector_blocks:
-                    break
-            except Exception as e:
-                log.warning("Semantik RAG atlandı (user=%s): %s", uid, e)
-
-    vec_joined = "\n\n---\n\n".join(vector_blocks[:4])[:3000]
-
-    parts: list[str] = []
-    if entity_text:
-        parts.append("[Madde / içerik endeksi]\n" + entity_text)
-    if vec_joined:
-        parts.append("[Anlamsal arama — ilgili pasajlar]\n" + vec_joined)
-
-    full = "\n\n".join(parts).strip()
-    if len(full) > 6200:
-        full = full[:6200]
-    return full
 
 
 def _free_chat_has_usable_rag(kb: str) -> bool:
@@ -1006,21 +1132,68 @@ def _free_chat_meta_assistant_reply() -> str:
     )
 
 
-async def _free_chat_no_rag_full_reply(user_message: str) -> str:
-    """Meta soru → kısa açıklama; içerik sorusu → kısa not + isteğe bağlı literatür (LLM yok)."""
-    from knowledge.free_literature import skip_external_literature_for_query
+def _strict_no_evidence_questions(user_message: str) -> list[str]:
+    """
+    Sıkı mod: kanıt yokken öneri verme. Sadece 1-2 ayırıcı soru sor.
+    """
+    raw = (user_message or "").strip()
+    t = _free_chat_normalize_query(raw)
+    if not t:
+        return ["Bunu daha çok nerede yaşıyorsun (yüz, saç derisi, vücut) ve ne zamandır?"]
 
+    qs: list[str] = []
+    botanical = any(x in t for x in ("yag", "yagi", "oil", "extract", "ekstrakt", "oz", "ucu", "uçucu", "essential"))
+    if botanical:
+        qs.append("Bu bir leave‑on (ciltte kalan) ürün mü, yoksa yıkanan bir şey mi?")
+        qs.append("Cildin hassas/alerjiye yatkın mı, yoksa genel olarak dayanıklı mı?")
+        return qs[:2]
+
+    if any(x in t for x in ("kizar", "kızar", "kizariklik", "kızarıklık")):
+        qs.append("Kızarıklık yanma‑batma ile mi geliyor, yoksa daha çok sıcak basması/flush gibi mi?")
+    if any(x in t for x in ("sivilce", "akne", "komedon")):
+        qs.append("Daha çok ağrılı‑iltihaplı mı, yoksa küçük tıkalı komedon gibi mi?")
+    if any(x in t for x in ("kuru", "kuruluk", "pul", "soyul", "gergin")):
+        qs.append("Kurulukla birlikte yanma‑batma var mı?")
+
+    if not qs:
+        qs.append("Bunu daha çok nerede yaşıyorsun (yüz, saç derisi, vücut) ve ne zamandır?")
+        qs.append("Son 7 günde yeni eklediğin bir ürün/aktif var mı?")
+    return qs[:2]
+
+
+async def _strict_no_evidence_reply(user_message: str, history: Optional[List[Any]] = None) -> str:
+    """
+    Evidence-first (strict): no internal evidence => no generic guidance.
+    Provide: honest note + 1-2 questions + optional PubMed/EuropePMC reading links.
+    """
     um = (user_message or "").strip()
-    # RAG yoksa "arşivde çok şey var..." gibi tekrar eden metin yerine,
-    # konuya göre kısa ve konuşma dilinde bir çerçeve ver.
-    base = _free_chat_compact_guidance_body_fallback(um)
-    from knowledge.free_literature import fetch_skin_literature_hints
+    qs = _strict_no_evidence_questions(um)
+    lines = ["Arşivimde bu soruya net şekilde bağlayabileceğim bir kanıt parçası bulamadım."]
+    if qs:
+        lines.append("Şunu netleştirirsek doğru yere hızlı gideriz:")
+        for q in qs[:2]:
+            lines.append(f"- {q}")
 
-    if skip_external_literature_for_query(um):
-        return base
+    try:
+        from knowledge.free_literature import fetch_skin_literature_pairs, skip_external_literature_for_query
 
-    hints = await fetch_skin_literature_hints(user_message)
-    return f"{base}\n\n{hints}" if hints else base
+        if not skip_external_literature_for_query(um):
+            pairs = await fetch_skin_literature_pairs(um, max_results=3)
+            if pairs:
+                lines.append("")
+                lines.append("Ek okuma (talimat değil):")
+                for (title, url) in pairs[:3]:
+                    if title and url:
+                        lines.append(f"- {title} ({url})")
+    except Exception:
+        pass
+
+    return "\n".join(lines).strip()
+
+
+async def _free_chat_no_rag_full_reply(user_message: str) -> str:
+    """Evidence-first strict mode: no evidence => honest + questions + optional reading."""
+    return await _strict_no_evidence_reply(user_message)
 
 
 _FREE_CHAT_GUIDANCE_NEEDLES: tuple[str, ...] = (
@@ -1195,10 +1368,8 @@ def _free_chat_compact_guidance_body_fallback(
     """
     Model kapalı veya hata: tek güvenli şablon (yeni madde/durum için iğne eklemek gerekmez).
     """
-    # Konu takibi: kısa takipte kullanıcı tekrar ana kelimeyi söylemeyebilir.
-    # Ama intent ve güvenlik kararları assistant metninden etkilenmesin → yalnızca USER metnini birleştir.
-    blob = _free_chat_recent_turns_blob(history, max_len=360) if history else ""
-    merged = (blob + "\n" + (user_message or "")).strip() if blob else (user_message or "")
+    # Evidence-first (strict): this fallback should NOT invent generic advice.
+    # Only allow: medical boundary, INCI report, ingredient_db (curated internal index), otherwise ask questions.
     user_lines: list[str] = []
     for m in (history or [])[-12:]:
         if isinstance(m, dict) and m.get("role") == "user":
@@ -1210,114 +1381,6 @@ def _free_chat_compact_guidance_body_fallback(
     ctx = _free_chat_infer_user_context(user_message, history)
     if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
         return _free_chat_medical_boundary_reply()
-
-    def _intent(text_norm: str) -> str:
-        """
-        Serbest sohbet için şikayet sınıfı (intent) çıkarımı.
-        Not: teşhis değil; sadece güvenli yönlendirme/mini plan seçimi.
-        """
-        t0 = text_norm
-        # Botanik / uçucu yağ soruları: tek tek yağ adı ezberlemek yerine "yağ/öz + etki" kalıbını yakala.
-        if any(x in t0 for x in ("lavanta", "lavender")) and any(
-            x in t0 for x in ("yag", "yagi", "oil", "essential", "uçucu", "ucu", "ekstrakt", "extract", "oz", "özü")
-        ):
-            if any(x in t0 for x in ("kizar", "kızar", "kizariklik", "kızarıklık", "flush", "rosacea")):
-                return "botanical_redness"
-            return "botanical_general"
-        if (
-            ("sac" in t0 or "hair" in t0 or "scalp" in t0)
-            and any(x in t0 for x in ("uzat", "uzar", "hizli uz", "hızlı uz", "growth", "grow"))
-            and any(x in t0 for x in ("badem", "argan", "jojoba", "zeytin", "hindistan", "lavanta", "yag", "yagi", "oil", "yap"))
-        ):
-            return "hair_growth_oil"
-        if any(x in t0 for x in ("sivilce", "akne", "komedon", "blackhead", "whitehead", "pustul", "iltihap")):
-            return "acne_flare"
-        if any(x in t0 for x in ("kizar", "kızar", "yanma", "batma", "tahris", "irit", "hassas", "alerji")):
-            return "irritation"
-        if any(x in t0 for x in ("cok kuru", "çok kuru", "kuruyor", "gergin", "pul pul", "soyul", "bariyer")):
-            return "dryness"
-        if any(x in t0 for x in ("leke", "melaz", "pigment", "ton esitsiz", "hiperpig")):
-            return "pigmentation"
-        return "unknown"
-
-    # Intent için de yalnızca user metnini kullan (assistant şablonu intent'i kilitlemesin)
-    t_intent = _free_chat_normalize_query(merged_user)
-    intent = _intent(t_intent)
-
-    # Intent-first mini plan: kullanıcı “ne yapacağım” diye kaldığında boşta bırakma
-    if intent == "acne_flare":
-        # Kullanıcı bir önceki turda "ağrılı/iltihaplı" diye netleştirdiyse aynı soruyu tekrar etme.
-        already_answered = False
-        try:
-            already_answered = bool(
-                re.search(r"(?i)\b(agrili|ağrılı|iltihap|derin|kistik)\b", merged_user or "")
-                and history
-                and any(
-                    ("Tek soru:" in (m.get("content") or "")) and ("komedon" in (m.get("content") or ""))
-                    for m in (history or [])[-8:]
-                    if isinstance(m, dict) and m.get("role") == "assistant"
-                )
-            )
-        except Exception:
-            already_answered = False
-        if already_answered:
-            return (
-                "Anladım—bu ağrılı/iltihaplı tip daha yorucu oluyor. Kozmetik tarafta hedef: şişliği artırmadan sakinleştirmek. "
-                "48 saat için yeni aktif ekleme; nazik temizleyici + hafif nemlendirici + gündüz SPF ile kal. "
-                "Eğer hızla büyüyor, sıcak/çok ağrılı, yayılıyor veya iz bırakacak kadar derinse bu kozmetik sınırı aşabilir—dermatolog en doğru adres. "
-                "Son 1 haftada yeni bir aktif (retinoid/AHA/BHA/C vitamini) veya saç ürünü (jel/sprey/yağ) ekledin mi?"
-            )
-        return (
-            "Bunu yaşamak moral bozuyor ama sakin ilerleyince toparlanıyor. İlk hedef: bariyeri bozmadan alevlenmeyi söndürmek. "
-            "48 saat için: nazik temizleyici + hafif nemlendirici + gündüz SPF; yeni ürün/peeling/sert fırçalama yok. "
-            "Eğer ağrılı, çok iltihaplı, hızla yayılan veya iz bırakacak gibi derin lezyonlar varsa bu kozmetik sınırı aşabilir—dermatolog en doğru adres. "
-            "Çıkanlar daha çok küçük tıkalı komedon gibi mi, yoksa ağrılı/iltihaplı sivilce mi?"
-        )
-    if intent == "irritation":
-        return (
-            "Bu genelde cildin “fazla yük bindirdik” sinyali. 48–72 saat reset iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz nemlendirici; gündüz SPF. "
-            "Retinol/AHA/BHA/C vitamini gibi güçlü aktifler varsa birkaç gün ara ver. "
-            "Yanma-batma var mı, yoksa daha çok kızarıklık/kuruluk mu?"
-        )
-    if intent == "dryness":
-        return (
-            "Bu can sıkıcı—ama genelde bariyerin yorulduğunu söyler. 48–72 saat “reset” iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz yoğun nemlendirici; gündüz mutlaka SPF. "
-            "Şu ara retinol/AHA/BHA gibi güçlü aktifler kullanıyorsan 2-3 gün ara verip önce konforu toparla. "
-            "Yanma/batma da var mı, yoksa sadece kuruluk/gerginlik mi?"
-        )
-    if intent == "pigmentation":
-        return (
-            "Leke/ton eşitsizliğinde en hızlı kazanım genelde “koruma”dan gelir: her gün yeterli SPF + yeniden uygulama. "
-            "Aktiflere geçmeden önce bariyer konforu iyi mi, onu netleştirmek önemli; tahriş varsa leke daha kalıcı görünebilir. "
-            "Lekeler yeni mi çıktı (haftalar) yoksa uzun süredir mi var?"
-        )
-    if intent == "botanical_redness":
-        return (
-            "Lavanta yağı (özellikle uçucu yağ formu) yüzdeki kızarıklık için çoğu kişide iyi bir fikir değil; koku bileşenleri hassas ciltte iritasyon/alerji yapıp kızarıklığı artırabiliyor. "
-            "Kızarıklıkta daha güvenli yaklaşım genelde parfümsüz, bariyer‑dostu nem + güneş koruması ve tetikleyicileri azaltmak. "
-            "Lavanta dediğin saf uçucu yağ mı, yoksa üründe düşük oranda bir öz/ekstrakt olarak mı geçiyor?"
-        )
-    if intent == "botanical_general":
-        return (
-            "Bitkisel yağ/özlerde “doğal = nazik” her zaman doğru olmuyor; özellikle koku/uçucu bileşenler hassas ciltte iritasyon yapabiliyor. "
-            "Etkisi ürünün formuna ve konsantrasyonuna çok bağlı. "
-            "Bunu yüzünde mi kullanacaksın, yoksa saç/saç derisi gibi daha toleranslı bir bölgede mi?"
-        )
-    if intent == "hair_growth_oil":
-        return (
-            "Badem yağı saçın “hızlı uzamasını” garanti eden bir şey değil; saç uzaması daha çok genetik, hormonlar, stres, beslenme ve saç derisi sağlığıyla gider. "
-            "Ama iyi bir yağ, özellikle uçlarda sürtünme/kırılmayı azaltıp saçın daha ‘uzuyor gibi’ görünmesine katkı verebilir. "
-            "Hedefin daha çok saç dökülmesi mi, yoksa sadece kırılma/kuruluk mu?"
-        )
-    if (
-        ("papatya" in t_intent or "chamomile" in t_intent)
-        and any(x in t_intent for x in ("kuru", "kuruluk", "gergin", "pul pul", "barrier", "bariyer"))
-    ):
-        return (
-            "Papatya özü bazı kişilerde yatıştırıcı hissettirebilir ama “kuruluğu tek başına çözer” gibi garanti bir etkisi yok; ayrıca hassas ciltte temas alerjisi/iritasyon yapabilenlerde de var. "
-            "Kuruluk için asıl oyun genelde bariyer desteği (nem + yağ fazı + tahrişi azaltma) tarafında. "
-            "Papatya dediğin leave‑on (krem/serum) mu, yoksa yıkanan bir ürün mü?"
-        )
 
     inci = _free_chat_inci_report(merged_user, ctx=ctx)
     if inci:
@@ -1332,60 +1395,14 @@ def _free_chat_compact_guidance_body_fallback(
             if ctx.get("wants_routine"):
                 return db + " İstersen bunu günlük sıraya oturtmak için Analiz ile rutini çıkaralım; orada sabah/akşam planı netleşir."
             return db
-
-    def _retinol() -> str:
-        return (
-            "Kuru ve hassas ciltte retinolün “en güvenli” kullanımı: az miktar (bezelye tanesi), gece ve düşük sıklıkla başlamak. "
-            "Yüzde bilmiyorsan da ilerleyebilirsin: 1) 2 hafta haftada 2 gece, 2) iyi gidiyorsa haftada 3 geceye çıkar. "
-            "Serum formunda batma/kurutma daha sık olabildiği için ‘sandviç’ iyi çalışır: nemlendirici → retinol → nemlendirici. "
-            "Ertesi gün belirgin yanma/kızarıklık/pul pul olursa 3-5 gün ara verip sadece bariyer (nemlendirici + SPF) ile toparla."
-        )
-
-    def _vitc() -> str:
-        return (
-            "C vitamini (özellikle L-askorbik asit) daha çok antioksidan koruma ve leke görünümünde kullanılır; bazı formlar hassas ciltte batma yapabilir. "
-            "Form (L-AA / türev, yüzde) ve bariyer durumu önemli—tahriş varsa daha nazik türevlerle başlamak daha mantıklı olur. "
-            "Ürünün türünü/yüzdesini ve cildin hassas mı yaz; ona göre daha net söyleyeyim."
-        )
-
-    def _ha() -> str:
-        return (
-            "Hyaluronik asit seçerken en kritik şey isim değil form: düşük molekül ağırlık daha “iç dolgunluk” hissi verir ama hassas ciltte batma yapabilir; yüksek molekül ağırlık daha çok yüzeyde kayganlık/konfor sağlar. "
-            "Eğer kolay kızarıp yanan bir cildin varsa önce daha nazik (çoğunlukla yüksek/karışık ağırlık + panthenol/ceramide eşlikli) bir serumla başlamak daha güvenli olur. "
-            "İstersen cilt tipini (kuru/yağlı/hassas) ve ne istediğini (dolgunluk mu, bariyer konforu mu) söyle; ona göre 2-3 net kriter vereyim."
-        )
-
-    def _generic() -> str:
-        # Kullanıcı "bilmiyorum" diyorsa tekrar tekrar aynı soruyu sormayalım.
-        if re.search(r"(?i)\b(bilmiyorum|emin degilim|hatirlamiyorum)\b", user_message or ""):
-            return (
-                "Tamam—bilmediğin yerleri sorun etmeyelim. En güvenli yol: düşük sıklıkla başla, bir ürünü tek değişken yap, tahriş olursa geri adım at. "
-                "Ne kullandığını (serum/krem), cildinin kuru-hassas olduğunu söyledin; buna göre nazik bir başlangıç planı çıkarabiliriz."
-            )
-        if re.search(r"(?i)\b(cok\s*kuru|çok\s*kuru|kuruyor|gergin|pul\s*pul|soyul)\b", user_message or ""):
-            return (
-                "Bu can sıkıcı—ama genelde bariyerin yorulduğunu söyler. 48–72 saat “reset” iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz yoğun nemlendirici; gündüz mutlaka SPF. "
-                "Şu ara retinol/AHA/BHA gibi güçlü aktifler kullanıyorsan 2-3 gün ara verip önce konforu toparla. "
-                "Yanma/batma da var mı, yoksa sadece kuruluk/gerginlik mi?"
-            )
-        if ("kuru" in t or "dry" in t) and ("yagli" in t or "oily" in t or "parlama" in (user_message or "").lower()):
-            return (
-                "Bu çok sık oluyor: ‘kuru’ dediğin şey bazen yağlı ama susuz (dehidrate) cilt olabiliyor. "
-                "Sana tek soru: gün içinde parlama var mı, yoksa hep mat/gergin mi? Buna göre “yağ mı, su mu” tarafını ayırıp ilerleyelim."
-            )
-        return (
-            "Bunu “tek doğru” diye söylemek için elimde yeterince net bilgi yok; o yüzden önce iki hızlı soru ile yönünü bulalım. "
-            "1) Son 7 günde yeni eklediğin bir ürün/aktif var mı? 2) Şikâyet daha çok yanma‑kızarıklık mı, yoksa sivilce/komedon mu? "
-            "Bu iki cevapla burada genel çerçeveyi netleştiririm; istersen devamında Analiz’te rutini kurup (sabah/akşam + sıklık) işi cildine tam oturturuz."
-        )
-
-    if "retinol" in t or "retinoid" in t or "tretinoin" in t or "adapalen" in t:
-        return _retinol()
-    if "vitamin c" in t or "askorb" in t:
-        return _vitc()
-    if "hyaluron" in t or "hyaluronik" in t or "hyaluronic" in t or "hyaluronat" in t:
-        return _ha()
-    return _generic()
+    # Strict mode fallback (sync): no evidence => no generic guidance.
+    qs = _strict_no_evidence_questions(user_message)
+    out = ["Arşivimde bu soruya net şekilde bağlayabileceğim bir kanıt parçası bulamadım."]
+    if qs:
+        out.append("Şunu netleştirirsek doğru yere hızlı gideriz:")
+        for q in qs[:2]:
+            out.append(f"- {q}")
+    return "\n".join(out).strip()
 
 
 def _free_chat_soft_context_notes(
@@ -2133,11 +2150,14 @@ async def chat_general(
     if inci:
         return _chat_general_shape(inci)
 
-    # RAG bağlamı dene (entity + vektör)
-    kb = _build_free_chat_rag_context(user_id, um2, hist)
-    if _free_chat_has_usable_rag(kb) and gemini_client:
+    # Evidence-first RAG bundle (entity + vector + score)
+    ev = _build_free_chat_evidence_bundle(user_id, um2, hist)
+    kb = str((ev or {}).get("context_text") or "")
+    ev_score = float((ev or {}).get("score") or 0.0)
+
+    if ev_score >= _EVIDENCE_OK_THRESHOLD and kb and gemini_client:
         final_user = (
-            "REFERANS (indekslenmiş makale/kitap pasajları):\n\n"
+            "REFERANS (indekslenmiş kanıt parçaları):\n\n"
             f"{kb}\n\n---\nSoru: {um2}\n"
             "Kurallar: teşhis yok, marka/ürün adı yok. 2-5 cümle, konuşma dili. "
             "Kullanıcı kişisel rutin isterse tek cümleyle Analiz'e yönlendir ama cevabı kesme."
@@ -2182,27 +2202,15 @@ async def chat_general(
         except Exception as e:
             log.warning("chat_general model yanıtı alınamadı: %s", e)
 
-    # RAG yok veya model yok: deterministik kısa cevap (ingredient_db + güvenlik)
-    base = _free_chat_compact_guidance_body_fallback(um2, hist)
-    out = _chat_general_shape(base)
+    # Evidence weak/missing or model unavailable:
+    # - If we have evidence but no model: return the evidence snippets (transparent).
+    if ev_score >= _EVIDENCE_OK_THRESHOLD and kb and not gemini_client:
+        return _chat_general_shape(
+            "Şu an kısa bir özet üretemedim; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
+        )
 
-    # PubMed/EuropePMC: yalnızca başlık+link (okuma), uygun sorgularda ekle
-    try:
-        from knowledge.free_literature import fetch_skin_literature_pairs, skip_external_literature_for_query
-
-        if not skip_external_literature_for_query(um2):
-            pairs = await fetch_skin_literature_pairs(um2, max_results=3)
-            if pairs:
-                lines = ["Ek okuma (talimat değil):"]
-                for (title, url) in pairs[:3]:
-                    if title and url:
-                        lines.append(f"- {title} ({url})")
-                if len(lines) > 1:
-                    out = (out + "\n\n" + "\n".join(lines)).strip()
-    except Exception as e:
-        log.debug("chat_general external literature skipped: %s", e)
-
-    return out
+    # Strict no-evidence path (no generic advice).
+    return _chat_general_shape(await _strict_no_evidence_reply(um2, hist))
 
 
 async def _free_chat(
@@ -2269,25 +2277,21 @@ async def _free_chat(
     if _free_chat_requests_action_plan(um):
         return redirect_app
 
-    kb = _build_free_chat_rag_context(user_id, um, hist)
+    ev = _build_free_chat_evidence_bundle(user_id, um, hist)
+    kb = str((ev or {}).get("context_text") or "")
+    ev_score = float((ev or {}).get("score") or 0.0)
 
-    if not _free_chat_has_usable_rag(kb):
-        compact = await _free_chat_compact_guidance_without_rag(um, hist, user_id=user_id)
-        if compact is not None:
-            log.info(
-                "Free chat: pasaj yok, kompakt yanıt (kısa model veya yedek şablon + isteğe bağlı başlıklar, %d karakter)",
-                len(compact),
-            )
-            return {"reply": compact, "is_complete": False, "extracted_data": None}
-        return {
-            "reply": await _free_chat_no_rag_full_reply(um),
-            "is_complete": False,
-            "extracted_data": None,
-        }
+    if ev_score < _EVIDENCE_OK_THRESHOLD or not kb:
+        # Strict: no evidence => no generic advice (but INCI / ingredient_db may still answer).
+        base = _free_chat_compact_guidance_body_fallback(um, hist)
+        # If fallback couldn't answer from internal index/INCI, use strict no-evidence reply (with reading links).
+        if base and base.startswith("Arşivimde bu soruya net"):
+            return {"reply": await _free_chat_no_rag_full_reply(um), "is_complete": False, "extracted_data": None}
+        return {"reply": base, "is_complete": False, "extracted_data": None}
 
     # Son kullanıcı mesajı: REFERANS ile (Gemini özeti yalnızca buna dayansın)
     final_user = (
-        "REFERANS (indekslenmiş makale/kitap pasajları):\n\n"
+        "REFERANS (indekslenmiş kanıt parçaları):\n\n"
         f"{kb}\n\n---\nSoru: {um}\n"
         "En fazla 3 kısa cümle; referandan özet; yoksa iddia yok. pH/ölçü yalnız pasajda varsa. "
         "Burada sabah-akşam rutin listesi verme; emir dili yerine 'deneyebilirsin / birkaç temelde şöyle düşünebilirsin' kullan. "
