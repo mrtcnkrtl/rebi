@@ -273,28 +273,32 @@ def _build_free_chat_evidence_bundle(
                 if len(vector_hits) >= 4:
                     return
 
+        folder_slugs = ["data-pdfs", "chat-guides"]
         for uid in uids:
             try:
-                hits_primary = search_chunks(
-                    user_id=uid,
-                    folder_slug="data-pdfs",
-                    query=um_vec,
-                    k=10,
-                    klass_topics=klass_topics,
-                )
-                _consume_hits(hits_primary)
-                if len(vector_hits) < 1:
-                    q_exp = expand_skin_query_for_vector_search(um, cleaned_query=um_vec)
-                    if q_exp and q_exp.strip() != um_vec.strip():
-                        _consume_hits(
-                            search_chunks(
-                                user_id=uid,
-                                folder_slug="data-pdfs",
-                                query=q_exp,
-                                k=10,
-                                klass_topics=klass_topics,
+                for fslug in folder_slugs:
+                    hits_primary = search_chunks(
+                        user_id=uid,
+                        folder_slug=fslug,
+                        query=um_vec,
+                        k=10,
+                        klass_topics=klass_topics,
+                    )
+                    _consume_hits(hits_primary)
+                    if len(vector_hits) < 1:
+                        q_exp = expand_skin_query_for_vector_search(um, cleaned_query=um_vec)
+                        if q_exp and q_exp.strip() != um_vec.strip():
+                            _consume_hits(
+                                search_chunks(
+                                    user_id=uid,
+                                    folder_slug=fslug,
+                                    query=q_exp,
+                                    k=10,
+                                    klass_topics=klass_topics,
+                                )
                             )
-                        )
+                    if vector_hits:
+                        break
                 if vector_hits:
                     break
             except Exception as e:

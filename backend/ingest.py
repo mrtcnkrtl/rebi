@@ -20,6 +20,7 @@ import os
 import sys
 import time
 from pathlib import Path
+import re
 
 from dotenv import load_dotenv
 from google import genai
@@ -74,6 +75,68 @@ def sanitize_text(text: str) -> str:
     if not text:
         return ""
     return text.replace("\x00", "").replace("\u0000", "").strip()
+
+
+def _parse_markdown_sections(text: str) -> list[dict]:
+    """
+    Markdown metnini başlıklara göre bölümleyip parça listesi döndürür.
+    Her bölüm:
+      { "title": str, "level": int, "lang_hint": str|None, "body": str }
+    """
+    lines = (text or "").splitlines()
+    sections: list[dict] = []
+
+    def flush(title: str, level: int, lang_hint: str | None, buf: list[str]):
+        body = "\n".join(buf).strip()
+        if not title and not body:
+            return
+        sections.append(
+            {
+                "title": (title or "").strip(),
+                "level": int(level or 1),
+                "lang_hint": (lang_hint or "").strip() or None,
+                "body": body,
+            }
+        )
+
+    current_title = ""
+    current_level = 1
+    current_lang = None
+    buf: list[str] = []
+
+    # Örnek başlık: "## 1. 🇬🇧 İngilizce (English) — ..."
+    lang_re = re.compile(r"^\s*#+\s*\d*\.?\s*([🇬🇧🇹🇷🇫🇷🇩🇪🇪🇸🇯🇵🇨🇳🇧🇷🇵🇹🇷🇺🇸🇦🇰🇷]+)\s+(.+)$")
+
+    for ln in lines:
+        m = re.match(r"^(#{1,6})\s+(.*)\s*$", ln)
+        if m:
+            flush(current_title, current_level, current_lang, buf)
+            hashes, title = m.group(1), m.group(2)
+            current_level = len(hashes)
+            current_title = title.strip()
+            buf = []
+            lm = lang_re.match(ln)
+            if lm:
+                # emoji bayrak(lar)ı + kalan başlık: sadece hint olarak sakla
+                current_lang = lm.group(1).strip()
+            else:
+                current_lang = None
+            continue
+        buf.append(ln)
+
+    flush(current_title, current_level, current_lang, buf)
+
+    # Çok küçük / boş bölümleri at
+    cleaned: list[dict] = []
+    for s in sections:
+        body = (s.get("body") or "").strip()
+        title = (s.get("title") or "").strip()
+        if not body and not title:
+            continue
+        if len(body) < 40 and len(title) < 10:
+            continue
+        cleaned.append(s)
+    return cleaned
 
 
 def chunk_text(text: str) -> list[str]:
@@ -299,6 +362,56 @@ def process_pdf(filepath: Path, gemini_client, supabase_client) -> int:
     return _embed_and_upload(all_chunks, filename, gemini_client, supabase_client)
 
 
+def process_text_file(filepath: Path, gemini_client, supabase_client) -> int:
+    """TXT/MD dosyasını metadata ile işler ve knowledge_base'e yükler."""
+    filename = filepath.name
+    log("📖", f"'{filename}' okunuyor...")
+    try:
+        text = filepath.read_text(encoding="utf-8", errors="ignore")
+    except Exception as e:
+        log("⚠️", f"Metin okuma hatası: {e}")
+        return 0
+
+    text = sanitize_text(text)
+    if not text:
+        return 0
+
+    sections = _parse_markdown_sections(text)
+    all_chunks = []
+    for s in sections:
+        title = sanitize_text(s.get("title") or "")
+        body = sanitize_text(s.get("body") or "")
+        level = int(s.get("level") or 2)
+        lang_hint = sanitize_text(s.get("lang_hint") or "")
+        # bölümü tek string olarak chunk'la
+        section_text = (f"{title}\n\n{body}").strip() if title else body
+        for chunk in chunk_text(section_text):
+            all_chunks.append(
+                {
+                    "content": chunk,
+                    "metadata": {
+                        "source": filename,
+                        "kategori": "Genel Rehber",
+                        "alt_kategori": "SSS",
+                        "doc_type": "text_guide",
+                        "section_title": title,
+                        "section_level": level,
+                        "lang_hint": lang_hint or None,
+                    },
+                }
+            )
+
+    # Mevcut tabanı silmeden güncelle: sadece aynı source + doc_type=text_guide kayıtlarını yenile
+    try:
+        supabase_client.table("knowledge_base").delete().filter(
+            "metadata->>source", "eq", filename
+        ).filter("metadata->>doc_type", "eq", "text_guide").execute()
+    except Exception as e:
+        log("⚠️", f"Önceki rehber kayıtlarını temizleme hatası (devam): {str(e)[:120]}")
+
+    return _embed_and_upload(all_chunks, filename, gemini_client, supabase_client)
+
+
 # ══════════════════════════════════════════════════════════════════════
 # ORTAK: Embed + Upload
 # ══════════════════════════════════════════════════════════════════════
@@ -357,13 +470,9 @@ def main():
     gemini_client = genai.Client(api_key=GEMINI_API_KEY)
     supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-    # Eski verileri temizle
-    log("🗑️", "Eski veriler temizleniyor...")
-    try:
-        supabase_client.table("knowledge_base").delete().gt("id", 0).execute()
-        log("✅", "Eski kayıtlar silindi.")
-    except Exception as e:
-        log("⚠️", f"Silme hatası (devam ediliyor): {e}")
+    # Mevcut bilgi tabanını SİLMEYİN.
+    # Bu script artık global delete yapmaz; yalnızca bazı kaynaklar (örn. text_guide) source bazında yenilenir.
+    log("ℹ️", "Mevcut bilgi tabanı korunur (global delete yok).")
 
     log("🔗", f"Supabase: {SUPABASE_URL}")
     log("🤖", f"Model: {EMBEDDING_MODEL} ({EMBEDDING_DIMENSIONS} boyut)")
@@ -373,7 +482,12 @@ def main():
         log("❌", f"Klasör bulunamadı: {DOCUMENTS_DIR}")
         sys.exit(1)
 
+    # Routine/Analysis knowledge_base içindir. Chat-only rehberleri buraya ALMAYIN.
+    # Chat rehberleri knowledge_documents/chunks tarafına `backend/knowledge/ingest.py` ile ayrı ingest edilir.
     supported = (".pdf", ".xlsx", ".xls")
+    include_text_guides = str(os.getenv("INGEST_TEXT_GUIDES") or "").strip().lower() in {"1", "true", "yes"}
+    if include_text_guides:
+        supported = (".pdf", ".xlsx", ".xls", ".txt", ".md")
     files = sorted([f for f in DOCUMENTS_DIR.iterdir() if f.suffix.lower() in supported])
 
     if not files:
@@ -403,6 +517,8 @@ def main():
                 count = process_excel(filepath, gemini_client, supabase_client)
             elif suffix == ".pdf":
                 count = process_pdf(filepath, gemini_client, supabase_client)
+            elif suffix in (".txt", ".md") and include_text_guides:
+                count = process_text_file(filepath, gemini_client, supabase_client)
             else:
                 continue
 
