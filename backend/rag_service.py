@@ -2101,6 +2101,9 @@ def _chat_general_shape(text: str) -> str:
     s = (text or "").strip()
     if not s:
         return ""
+    # Çok satırlı / madde işaretli yanıtları bozma (özellikle strict no-evidence ve INCI raporu).
+    if "\n-" in s or s.lstrip().startswith("- "):
+        return s.strip()
     # Başlık gibi duran kalıpları yumuşat
     s = re.sub(r"(?i)\bhakkinda\s*hizli\s*bir\s*cerceve\s*birakayim\.?\s*", "", s).strip()
     s = re.sub(r"(?i)\bhızlı\s*bir\s*çerçeve\s*bırakayım\.?\s*", "", s).strip()
