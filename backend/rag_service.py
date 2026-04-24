@@ -1198,6 +1198,13 @@ def _free_chat_compact_guidance_body_fallback(
         Not: teşhis değil; sadece güvenli yönlendirme/mini plan seçimi.
         """
         t0 = text_norm
+        # Botanik / uçucu yağ soruları: tek tek yağ adı ezberlemek yerine "yağ/öz + etki" kalıbını yakala.
+        if any(x in t0 for x in ("lavanta", "lavender")) and any(
+            x in t0 for x in ("yag", "yagi", "oil", "essential", "uçucu", "ucu", "ekstrakt", "extract", "oz", "özü")
+        ):
+            if any(x in t0 for x in ("kizar", "kızar", "kizariklik", "kızarıklık", "flush", "rosacea")):
+                return "botanical_redness"
+            return "botanical_general"
         if (
             ("sac" in t0 or "hair" in t0 or "scalp" in t0)
             and any(x in t0 for x in ("uzat", "uzar", "hizli uz", "hızlı uz", "growth", "grow"))
@@ -1240,37 +1247,49 @@ def _free_chat_compact_guidance_body_fallback(
                 "Anladım—bu ağrılı/iltihaplı tip daha yorucu oluyor. Kozmetik tarafta hedef: şişliği artırmadan sakinleştirmek. "
                 "48 saat için yeni aktif ekleme; nazik temizleyici + hafif nemlendirici + gündüz SPF ile kal. "
                 "Eğer hızla büyüyor, sıcak/çok ağrılı, yayılıyor veya iz bırakacak kadar derinse bu kozmetik sınırı aşabilir—dermatolog en doğru adres. "
-                "Tek soru: son 1 haftada yeni bir aktif (retinoid/AHA/BHA/C vitamini) veya saç ürünü (jel/sprey/yağ) ekledin mi?"
+                "Son 1 haftada yeni bir aktif (retinoid/AHA/BHA/C vitamini) veya saç ürünü (jel/sprey/yağ) ekledin mi?"
             )
         return (
             "Bunu yaşamak moral bozuyor ama sakin ilerleyince toparlanıyor. İlk hedef: bariyeri bozmadan alevlenmeyi söndürmek. "
             "48 saat için: nazik temizleyici + hafif nemlendirici + gündüz SPF; yeni ürün/peeling/sert fırçalama yok. "
             "Eğer ağrılı, çok iltihaplı, hızla yayılan veya iz bırakacak gibi derin lezyonlar varsa bu kozmetik sınırı aşabilir—dermatolog en doğru adres. "
-            "Tek soru: çıkanlar daha çok küçük tıkalı komedon gibi mi, yoksa ağrılı/iltihaplı sivilce mi?"
+            "Çıkanlar daha çok küçük tıkalı komedon gibi mi, yoksa ağrılı/iltihaplı sivilce mi?"
         )
     if intent == "irritation":
         return (
             "Bu genelde cildin “fazla yük bindirdik” sinyali. 48–72 saat reset iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz nemlendirici; gündüz SPF. "
             "Retinol/AHA/BHA/C vitamini gibi güçlü aktifler varsa birkaç gün ara ver. "
-            "Tek soru: yanma-batma var mı, yoksa daha çok kızarıklık/kuruluk mu?"
+            "Yanma-batma var mı, yoksa daha çok kızarıklık/kuruluk mu?"
         )
     if intent == "dryness":
         return (
             "Bu can sıkıcı—ama genelde bariyerin yorulduğunu söyler. 48–72 saat “reset” iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz yoğun nemlendirici; gündüz mutlaka SPF. "
             "Şu ara retinol/AHA/BHA gibi güçlü aktifler kullanıyorsan 2-3 gün ara verip önce konforu toparla. "
-            "Tek soru: yanma/batma da var mı, yoksa sadece kuruluk/gerginlik mi?"
+            "Yanma/batma da var mı, yoksa sadece kuruluk/gerginlik mi?"
         )
     if intent == "pigmentation":
         return (
             "Leke/ton eşitsizliğinde en hızlı kazanım genelde “koruma”dan gelir: her gün yeterli SPF + yeniden uygulama. "
             "Aktiflere geçmeden önce bariyer konforu iyi mi, onu netleştirmek önemli; tahriş varsa leke daha kalıcı görünebilir. "
-            "Tek soru: lekeler yeni mi çıktı (haftalar) yoksa uzun süredir mi var?"
+            "Lekeler yeni mi çıktı (haftalar) yoksa uzun süredir mi var?"
+        )
+    if intent == "botanical_redness":
+        return (
+            "Lavanta yağı (özellikle uçucu yağ formu) yüzdeki kızarıklık için çoğu kişide iyi bir fikir değil; koku bileşenleri hassas ciltte iritasyon/alerji yapıp kızarıklığı artırabiliyor. "
+            "Kızarıklıkta daha güvenli yaklaşım genelde parfümsüz, bariyer‑dostu nem + güneş koruması ve tetikleyicileri azaltmak. "
+            "Lavanta dediğin saf uçucu yağ mı, yoksa üründe düşük oranda bir öz/ekstrakt olarak mı geçiyor?"
+        )
+    if intent == "botanical_general":
+        return (
+            "Bitkisel yağ/özlerde “doğal = nazik” her zaman doğru olmuyor; özellikle koku/uçucu bileşenler hassas ciltte iritasyon yapabiliyor. "
+            "Etkisi ürünün formuna ve konsantrasyonuna çok bağlı. "
+            "Bunu yüzünde mi kullanacaksın, yoksa saç/saç derisi gibi daha toleranslı bir bölgede mi?"
         )
     if intent == "hair_growth_oil":
         return (
             "Badem yağı saçın “hızlı uzamasını” garanti eden bir şey değil; saç uzaması daha çok genetik, hormonlar, stres, beslenme ve saç derisi sağlığıyla gider. "
             "Ama iyi bir yağ, özellikle uçlarda sürtünme/kırılmayı azaltıp saçın daha ‘uzuyor gibi’ görünmesine katkı verebilir. "
-            "Tek soru: hedefin daha çok saç dökülmesi mi, yoksa sadece kırılma/kuruluk mu?"
+            "Hedefin daha çok saç dökülmesi mi, yoksa sadece kırılma/kuruluk mu?"
         )
     if (
         ("papatya" in t_intent or "chamomile" in t_intent)
@@ -1279,7 +1298,7 @@ def _free_chat_compact_guidance_body_fallback(
         return (
             "Papatya özü bazı kişilerde yatıştırıcı hissettirebilir ama “kuruluğu tek başına çözer” gibi garanti bir etkisi yok; ayrıca hassas ciltte temas alerjisi/iritasyon yapabilenlerde de var. "
             "Kuruluk için asıl oyun genelde bariyer desteği (nem + yağ fazı + tahrişi azaltma) tarafında. "
-            "Tek soru: papatya dediğin leave‑on (krem/serum) mu, yoksa yıkanan bir ürün mü?"
+            "Papatya dediğin leave‑on (krem/serum) mu, yoksa yıkanan bir ürün mü?"
         )
 
     inci = _free_chat_inci_report(merged, ctx=ctx)
@@ -1329,7 +1348,7 @@ def _free_chat_compact_guidance_body_fallback(
             return (
                 "Bu can sıkıcı—ama genelde bariyerin yorulduğunu söyler. 48–72 saat “reset” iyi gelir: nazik temizleyici (veya sadece su) + parfümsüz yoğun nemlendirici; gündüz mutlaka SPF. "
                 "Şu ara retinol/AHA/BHA gibi güçlü aktifler kullanıyorsan 2-3 gün ara verip önce konforu toparla. "
-                "Tek soru: yanma/batma da var mı, yoksa sadece kuruluk/gerginlik mi?"
+                "Yanma/batma da var mı, yoksa sadece kuruluk/gerginlik mi?"
             )
         if ("kuru" in t or "dry" in t) and ("yagli" in t or "oily" in t or "parlama" in (user_message or "").lower()):
             return (
