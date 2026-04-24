@@ -296,7 +296,7 @@ def _sanitize_routine_no_products(routine_items: list) -> None:
             item[key] = text
 
 
-def _optional_natural_examples_routine_item(concern: str) -> list:
+def _optional_natural_examples_routine_item(concern: str, *, knowledge_result: Optional[dict] = None) -> list:
     """
     Rutinin sonuna tek kısa satır: takviye / bitkisel isteğe bağlı örnekler (lavanta uçucu yağı vb.).
     Uzun PDF özeti yok; bilgi tabanı içeriği yalnızca polish bağlamında kalır.
@@ -339,37 +339,34 @@ def _optional_natural_examples_routine_item(concern: str) -> list:
 
     usage_text = (examples + closing).strip()
 
-    # If knowledge store exists, enrich usage with top chunks from ingested DATA PDFs (demo folder).
-    # This is still optional and never replaces core routine.
+    # Knowledge Router'dan gelen doğal ürün PDF parçaları varsa, bu satırda 1-3 kısa not olarak göster.
     try:
-        from knowledge.search import search_chunks
-
-        PUBLIC_KNOWLEDGE_USER_ID = "00000000-0000-4000-8000-000000000001"
-        folder_slug = "data-pdfs"
-        q = f"{c} doğal alternatif mekanizma kanıt klinik"
-        matches = search_chunks(user_id=PUBLIC_KNOWLEDGE_USER_ID, folder_slug=folder_slug, query=q, k=4)
-        if matches:
-            picks = []
-            for m in matches:
-                t = (m.chunk_text or "").strip()
-                t = t.replace("\n", " ")
-                t = " ".join(t.split())
-                if len(t) > 240:
-                    t = t[:240].rstrip() + "…"
-                picks.append(f"- {t} (src: {m.chunk_id})")
-            usage_text = usage_text + "\n\nBilimsel notlar (DATA PDF):\n" + "\n".join(picks)
+        if isinstance(knowledge_result, dict):
+            by_cat = knowledge_result.get("by_category") or {}
+            nat_chunks = by_cat.get("Doğal alternatifler (bilgi tabanı)") or []
+            if nat_chunks:
+                picks = []
+                for ch in nat_chunks[:3]:
+                    t = str(ch or "").replace("\x00", " ").replace("\n", " ").strip()
+                    t = " ".join(t.split())
+                    if len(t) > 220:
+                        t = t[:220].rstrip() + "…"
+                    if t:
+                        picks.append(f"- {t}")
+                if picks:
+                    usage_text = usage_text + "\n\nBitkisel notlar (opsiyonel):\n" + "\n".join(picks[:3])
     except Exception:
         pass
 
     return [
         {
             "time": "Günlük",
-            "category": "Yaşam",
+            "category": "Bitkisel",
             "icon": "🌿",
             "action": "Opsiyonel — bitkisel alternatif (istersen)",
             "detail": (
                 "Bu madde tamamen opsiyonel: rutinini kurmak için şart değil. "
-                "İstersen 'doğal' içeriklerden örnek fikirler aşağıda."
+                "İstersen 'bitkisel' içeriklerden örnek fikirler aşağıda; etkinlik kişiden kişiye değişebilir."
             ),
             "usage": usage_text,
             "step_order": 95,
@@ -906,9 +903,9 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     knowledge_result = await execute_query_plan(query_plan)
     knowledge_context = await get_targeted_context(knowledge_result, max_chars=2000)
 
-    # Rutinin altına tek kısa “lavanta vb. isteğe bağlı” örnek satırı
+    # Rutinin altına tek kısa opsiyonel bitkisel satır (varsa PDF verisiyle beslenir)
     routine_items = list(routine_items)
-    routine_items.extend(_optional_natural_examples_routine_item(req.concern))
+    routine_items.extend(_optional_natural_examples_routine_item(req.concern, knowledge_result=knowledge_result))
 
     # ADIM 4: AI Polish (~400 TOKEN)
     accept_lang = (request.headers.get("accept-language") or "").strip()
@@ -1237,7 +1234,7 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
     from rag_service import _build_free_chat_evidence_bundle as _build_ev_bundle
     from rag_service import _EVIDENCE_OK_THRESHOLD as _EV_OK
 
-    # Hafif profil hafızası: profiles + en son assessment concern (varsa)
+    # Hafif profil hafızası: profiles + en son assessment concern (varsa) + (varsa) aktif rutin özeti
     profile_hint = {}
     try:
         supabase = get_supabase()
@@ -1253,7 +1250,7 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
                     profile_hint["city"] = row.get("city")
             a = (
                 supabase.table("assessments")
-                .select("concern,created_at")
+                .select("concern,created_at,lifestyle_data")
                 .eq("user_id", req.user_id)
                 .order("created_at", desc=True)
                 .limit(1)
@@ -1263,6 +1260,55 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
                 ar0 = a.data[0] or {}
                 if ar0.get("concern"):
                     profile_hint["concern"] = ar0.get("concern")
+                # Kişisel tolerans/flag'ler: chat'te tonu ve sıklık önerilerini yumuşatmak için
+                ld = ar0.get("lifestyle_data") or {}
+                if isinstance(ld, dict):
+                    if ld.get("actives_tolerance") is not None:
+                        profile_hint["actives_tolerance"] = ld.get("actives_tolerance")
+                    if ld.get("special_flags") is not None:
+                        profile_hint["special_flags"] = ld.get("special_flags")
+
+            # Aktif rutin: kullanıcı sorularını "mevcut plana göre" yanıtlamak için kısa özet
+            try:
+                r = (
+                    supabase.table("routines")
+                    .select("active_routine,created_at")
+                    .eq("user_id", req.user_id)
+                    .eq("is_active", True)
+                    .order("created_at", desc=True)
+                    .limit(1)
+                    .execute()
+                )
+                if r.data and r.data[0].get("active_routine"):
+                    routine = list(r.data[0].get("active_routine") or [])
+                    # Marka/ürün adı temizliği (etken düzeyi)
+                    try:
+                        _sanitize_routine_no_products(routine)
+                    except Exception:
+                        pass
+                    lines = []
+                    for it in routine:
+                        if not isinstance(it, dict):
+                            continue
+                        time = (it.get("time") or "").strip()
+                        action = (it.get("action") or "").strip()
+                        detail = (it.get("detail") or "").strip()
+                        wd = it.get("weekly_days")
+                        wd_txt = ""
+                        if isinstance(wd, list) and wd:
+                            wd_txt = f" [haftalık_günler={','.join(str(x) for x in wd[:7])}]"
+                        s = f"{time}: {action}"
+                        if detail:
+                            s = s + f" — {detail}"
+                        s = (s + wd_txt).strip()
+                        if s:
+                            lines.append(s)
+                        if len(lines) >= 8:
+                            break
+                    if lines:
+                        profile_hint["routine_summary"] = "\n".join(lines)[:1200]
+            except Exception:
+                pass
     except Exception:
         profile_hint = {}
 

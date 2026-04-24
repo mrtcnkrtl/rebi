@@ -2353,6 +2353,15 @@ async def chat_general(
     if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
         return _free_chat_medical_boundary_reply()
 
+    def _is_routine_placement_question(text: str) -> bool:
+        t = (text or "").lower()
+        return bool(
+            re.search(
+                r"\b(nereye|hangi adım|hangi adim|sabah mı|sabah mi|akşam mı|aksam mi|rutine ekle|rutinime|rutinimde|sırası|sirasi)\b",
+                t,
+            )
+        )
+
     # Yazım toleransı + konu yakalama (user_id ile dinamik vocab)
     um2 = _free_chat_fuzzy_correct_terms(um, user_id=user_id) or um
 
@@ -2389,14 +2398,19 @@ async def chat_general(
             pbits.append(f"sehir={ph.get('city')}")
         if ph.get("concern"):
             pbits.append(f"son_endise={ph.get('concern')}")
+        if ph.get("routine_summary"):
+            pbits.append("aktif_rutin_ozeti_var")
         profile_line = ("Profil ipuçları: " + ", ".join(pbits) + ".\n") if pbits else ""
+        routine_line = ""
+        if ph.get("routine_summary"):
+            routine_line = "Aktif rutin özeti (ürün adı yok, adım/etken):\n" + str(ph.get("routine_summary") or "") + "\n"
 
         system_instruction = (
             "Sen Rebi Chat'sin: Türkçe, premium ve sade; kullanıcıyla doğal konuş. "
             "Ürün/marka önerme; yalnız etken madde/formül kriteri. "
             "Tıbbi teşhis koyma; kırmızı bayrakta uzmana yönlendir. "
             "Yanıt: 2-5 cümle + gerekirse 1 kısa soru. Başlıklama yok."
-            "\n" + profile_line
+            "\n" + profile_line + routine_line
         )
         try:
             response = gemini_client.models.generate_content(
@@ -2427,6 +2441,14 @@ async def chat_general(
         )
 
     # Strict no-evidence path (no generic advice).
+    # If the user asks "where to place this" and we have their active routine summary, ask targeted clarifiers referencing their plan.
+    if ph.get("routine_summary") and _is_routine_placement_question(um2):
+        return _chat_general_shape(
+            "Mevcut rutininden anladığım kadarıyla bir planın var.\n"
+            "Bunu rutinde doğru yere koyabilmem için iki şeyi netleştireyim:\n"
+            "- Eklemek istediğin şey tam olarak ne (aktif/ürün tipi) ve amacı ne?\n"
+            "- Şu an rutininde akşamları güçlü aktif (asit/retinoid gibi) var mı; haftada kaç gece kullanıyorsun?"
+        )
     return _chat_general_shape(await _strict_no_evidence_reply(um2, hist))
 
 
