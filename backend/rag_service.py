@@ -30,6 +30,7 @@ _ENTITY_VOCAB_CACHE: dict[str, dict] = {}
 _DOC_META_CACHE: dict[str, dict] = {}
 
 # Evidence-first RAG: keep the policy in one place.
+# Backward-compatible numeric score threshold (used only for metadata).
 _EVIDENCE_OK_THRESHOLD = 0.30
 
 
@@ -167,11 +168,10 @@ def _doc_meta(document_id: str) -> Tuple[Optional[str], Optional[str]]:
     return title, url
 
 
-def _evidence_score(*, entity_text: str, vector_hits: list, used_docs: int) -> float:
+def _evidence_metrics(*, entity_text: str, vector_hits: list, used_docs: int) -> dict:
     """
-    Heuristic evidence score (0..1). Simple on purpose.
-    - Vector hits with high similarity lift confidence.
-    - Multiple docs / non-trivial length lift confidence.
+    Evidence heuristics.
+    Returns: {score, max_sim, used_docs, entity_len, ok}
     """
     et = (entity_text or "").strip()
     et_len = len(et)
@@ -210,7 +210,10 @@ def _evidence_score(*, entity_text: str, vector_hits: list, used_docs: int) -> f
     if used_docs >= 3:
         score += 0.05
 
-    return max(0.0, min(score, 1.0))
+    score = max(0.0, min(score, 1.0))
+    # Strict "ok" gate: accept only strong signals (avoid weak-vector hallucinations).
+    ok = bool(et_len >= 220 or max_sim >= 0.78 or (max_sim >= 0.72 and used_docs >= 2))
+    return {"score": score, "max_sim": max_sim, "used_docs": int(used_docs), "entity_len": et_len, "ok": ok}
 
 
 def _build_free_chat_evidence_bundle(
@@ -323,14 +326,18 @@ def _build_free_chat_evidence_bundle(
         if title or url:
             sources.append({"title": title or "", "url": url or ""})
 
-    score = _evidence_score(entity_text=entity_text, vector_hits=vector_hits, used_docs=len(used_doc_ids))
-    reason = "ok" if score >= _EVIDENCE_OK_THRESHOLD else "weak"
+    metrics = _evidence_metrics(entity_text=entity_text, vector_hits=vector_hits, used_docs=len(used_doc_ids))
+    score = float(metrics.get("score") or 0.0)
+    ok = bool(metrics.get("ok"))
+    reason = "ok" if ok else "weak"
     return {
         "entity_text": entity_text,
         "vector_hits": vector_hits,
         "sources": sources,
         "context_text": context_text,
         "score": score,
+        "ok": ok,
+        "max_sim": float(metrics.get("max_sim") or 0.0),
         "reason": reason,
     }
 
@@ -384,10 +391,11 @@ def _free_chat_fuzzy_correct_terms(text: str, *, user_id: Optional[str] = None) 
         return t
 
     out: list[str] = []
-    # yalnızca 4+ harf tokenlarda düzeltme dene; en fazla 3 düzeltme yap
+    # Yalnızca 5+ harf tokenlarda düzeltme dene; kısa TR kelimeleri (saça/cam gibi) yanlış düzeltmesin.
+    # En fazla 3 düzeltme yap.
     changed = 0
     for tok in tokens:
-        if changed >= 3 or len(tok) < 4:
+        if changed >= 3 or len(tok) < 5:
             out.append(tok)
             continue
         # zaten bilinen bir kelimeyse dokunma
@@ -685,6 +693,37 @@ def knowledge_entity_fallback_text(
     msg_l = msg_work.lower()
 
     raw_tokens: list[str] = []
+    stop = {
+        "cilt",
+        "yuz",
+        "yuzum",
+        "yuzumde",
+        "yuzumdeki",
+        "sac",
+        "saca",
+        "sacim",
+        "scalp",
+        "hair",
+        "yag",
+        "yagi",
+        "oil",
+        "iyi",
+        "gelir",
+        "mi",
+        "mu",
+        "mü",
+        "mı",
+        "nedir",
+        "ne",
+        "ise",
+        "yarar",
+        "kullan",
+        "kullansam",
+        "sorun",
+        "konu",
+        "cam",
+        "çam",
+    }
     for t in (
         msg_l.replace("/", " ")
         .replace(",", " ")
@@ -695,7 +734,9 @@ def knowledge_entity_fallback_text(
         .replace(";", " ")
     ).split():
         tt = "".join(ch for ch in t if ch.isalnum() or ch in ("+", "%", "-"))
-        if 3 <= len(tt) <= 32:
+        tt2 = tt.strip().lower()
+        # Keep only meaningful tokens: avoid generic words (hair/skin/oil) that cause unrelated entity matches.
+        if 5 <= len(tt2) <= 32 and tt2 not in stop:
             raw_tokens.append(tt)
 
     seen: set[str] = set()
@@ -2324,8 +2365,9 @@ async def chat_general(
     ev = _build_free_chat_evidence_bundle(user_id, um2, hist)
     kb = str((ev or {}).get("context_text") or "")
     ev_score = float((ev or {}).get("score") or 0.0)
+    ev_ok = bool((ev or {}).get("ok"))
 
-    if ev_score >= _EVIDENCE_OK_THRESHOLD and kb and gemini_client:
+    if ev_ok and kb and gemini_client:
         final_user = (
             "REFERANS (indekslenmiş kanıt parçaları):\n\n"
             f"{kb}\n\n---\nSoru: {um2}\n"
@@ -2379,7 +2421,7 @@ async def chat_general(
 
     # Evidence weak/missing or model unavailable:
     # - If we have evidence but no model: return the evidence snippets (transparent).
-    if ev_score >= _EVIDENCE_OK_THRESHOLD and kb and not gemini_client:
+    if ev_ok and kb and not gemini_client:
         return _chat_general_shape(
             "Şu an kısa bir özet üretemedim; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
         )
@@ -2455,12 +2497,13 @@ async def _free_chat(
     ev = _build_free_chat_evidence_bundle(user_id, um, hist)
     kb = str((ev or {}).get("context_text") or "")
     ev_score = float((ev or {}).get("score") or 0.0)
+    ev_ok = bool((ev or {}).get("ok"))
 
-    if ev_score < _EVIDENCE_OK_THRESHOLD or not kb:
+    if (not ev_ok) or (not kb):
         # Strict: no evidence => no generic advice (but INCI / ingredient_db may still answer).
         base = _free_chat_compact_guidance_body_fallback(um, hist)
         # If fallback couldn't answer from internal index/INCI, use strict no-evidence reply (with reading links).
-        if base and base.startswith("Arşivimde bu soruya net"):
+        if base and base.startswith("Bunu sağlıklı söylemek için senden"):
             return {"reply": await _free_chat_no_rag_full_reply(um), "is_complete": False, "extracted_data": None}
         return {"reply": base, "is_complete": False, "extracted_data": None}
 
