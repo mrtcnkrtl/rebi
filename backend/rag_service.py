@@ -1458,6 +1458,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     except Exception:
         stated_goals = []
     llm_q = ""
+    llm_text = ""
     if gemini_client:
         try:
             response = gemini_client.models.generate_content(
@@ -1468,8 +1469,10 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                         parts=[
                             types.Part.from_text(
                                 text=(
-                                    "Aşağıdaki kullanıcı mesajlarından sadece 1 tane, en ayırt edici takip sorusu üret.\n"
-                                    "Kurallar: Türkçe, tek cümle, soru işareti ile bitsin. Madde işareti yok. Sayı yok.\n"
+                                    "Aşağıdaki kullanıcı mesajlarına göre kısa ve doğal bir yanıt üret.\n"
+                                    "Kurallar: Türkçe, sohbet dili. Marka/ürün adı yok. Teşhis yok.\n"
+                                    "Eğer kullanıcı hedefini söylemişse önce 1-2 kısa cümleyle güvenli bir çerçeve çiz (kesin iddia yok), sonra tek bir takip sorusu sor.\n"
+                                    "Takip sorusu tek cümle olsun ve soru işareti ile bitsin. Madde işareti yok. Sayı yok.\n"
                                     "Kullanıcı zaten bölgeyi söylediyse 'nerede' diye sorma. Yüz/makyaj/SPF bağlamında saç derisini sorma.\n"
                                     "Şikayet yoksa 'son 7 günde ne ekledin' gibi triage soruları sorma.\n"
                                     + (f"Kullanıcının zaten söylediği hedefler: {', '.join(stated_goals)}. Bu hedefleri tekrar sorma.\n" if stated_goals else "")
@@ -1481,17 +1484,20 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                     )
                 ],
                 config=types.GenerateContentConfig(
-                    system_instruction="Return only the question. No extra text.",
+                    system_instruction="Return only the final user-visible reply. No labels, no headings.",
                     temperature=0.25,
-                    max_output_tokens=60,
+                    max_output_tokens=140,
                 ),
             )
-            llm_q = (_gemini_response_text(response) or "").strip()
-            llm_q = llm_q.split("\n", 1)[0].strip()
-            if llm_q and not llm_q.endswith("?"):
-                llm_q = llm_q.rstrip(".") + "?"
+            llm_text = (_gemini_response_text(response) or "").strip()
+            llm_text = _strip_repetitive_greeting(llm_text, history)
+            llm_text = _chat_general_shape(llm_text)
+            # If the model returned something unusable, fallback to question mode below.
+            if llm_text and len(llm_text) >= 12:
+                return llm_text
         except Exception:
             llm_q = ""
+            llm_text = ""
 
     pick_q = (llm_q or (qs[0] if qs else "")).strip()
     intro = "Seni anlıyorum. Bir şeyi netleştirirsek daha doğru yön buluruz:"
