@@ -1906,6 +1906,93 @@ def _strip_repetitive_greeting(text: str, history: Optional[List[Any]] = None) -
     return s
 
 
+def _strip_markdown_bullets_any(text: str) -> str:
+    """
+    Model bazen markdown bullet/numara üretir; kullanıcıya düz metin olarak yansıt.
+    """
+    s = (text or "").strip()
+    if not s:
+        return ""
+    s = s.replace("**", "")
+    # markdown bullets -> plain bullet
+    s = re.sub(r"(?m)^\s*[\*\-]\s+", "• ", s)
+    # numbered lists -> plain bullet
+    s = re.sub(r"(?m)^\s*\d+[\)\.]\s+", "• ", s)
+    s = s.replace("*", "")
+    s = re.sub(r"\n{3,}", "\n\n", s).strip()
+    return s
+
+
+def _strip_botty_openers(text: str) -> str:
+    """
+    Serbest sohbet yanıtlarında sık görülen otomatik giriş kalıplarını kırp.
+    Amaç: 'canım/geçmiş olsun/çok can sıkıcı' şablonunu her turda dayatmamak.
+    """
+    s = (text or "").strip()
+    if not s:
+        return ""
+    # Yalın hitap + ünlem/virgül ile başlayan kalıplar
+    s = re.sub(
+        r"(?i)^\s*(canım(\s+benim)?|tatlım|güzelim|canım\s+ya|selam\s+canım|canım\s+merhaba)\s*[!,.]\s*",
+        "",
+        s,
+    ).strip()
+    # 'Çok can sıkıcı' / 'kafa karıştırıcı' gibi otomatik empati açılışlarını yumuşat
+    s = re.sub(
+        r"(?i)^\s*(bu\s+durumun\s+)?(gerçekten\s+)?(çok\s+)?(can\s+sıkıcı|sinir\s+bozucu|kafa\s+karıştırıcı)\s+olmalı\s*[!,.]?\s*",
+        "",
+        s,
+    ).strip()
+    # "Anlıyorum, ..." gibi otomatik girişler (uzman dilini zayıflatıyor)
+    s = re.sub(r"(?i)^\s*anl[ıi]yorum\s*[!,.]?\s*", "", s).strip()
+    # Tek başına 'çok geçmiş olsun' ile başlayanları kırp (tıbbi acil olmayan bağlamlarda bot hissi veriyor)
+    s = re.sub(r"(?i)^\s*çok\s+geçmiş\s+olsun\s*[!,.]?\s*", "", s).strip()
+    # Uzman lisanı: otomatik 'can sıkıcı bir durum' kalıbını çıkar (özellikle ilk cümlede bot kokusu veriyor)
+    s = re.sub(r"(?i)\bcan\s+s[ıi]k[ıi]c[ıi]\s+bir\s+durum\b", "", s).strip()
+    # Noktalama düzeltmeleri (kırpma sonrası "olman ." gibi kalıntılar oluşabilir)
+    s = re.sub(r"\s+\.", ".", s)
+    s = re.sub(r"\b(olman|olması)\s*\.\s*", r"\1. ", s, flags=re.I)
+    s = re.sub(r"\s{2,}", " ", s).strip()
+    return s
+
+
+def _strip_broad_routine_questions(reply: str, *, user_message: str) -> str:
+    """
+    Kullanıcı rutin sormuyorsa 'rutininde ne var?' gibi geniş soruları kırp.
+    Sadece rutin yerleşimi/uyum sorusu gibi gerçekten gerekli bağlamda bırak.
+    """
+    s = (reply or "").strip()
+    if not s:
+        return ""
+    um = (user_message or "").strip().lower()
+
+    # Kullanıcı açıkça rutin/yerleştirme/uyumluluk soruyorsa bu sorular kalsın.
+    routine_intent = bool(
+        re.search(
+            r"\b(rutin|rutine|rutinimde|hangi\s+adım|hangi\s+adim|sabah\s+mı|sabah\s+mi|akşam\s+mı|aksam\s+mi|"
+            r"neyle\s+birlikte|aynı\s+anda|ayni\s+anda|kombin|uyumlu|çakış|cakis|üstüne|altına|"
+            r"birlikte\s+kullan(ılır)?\s*mı|kullanilir\s*mi|sıra|sirasi)\b",
+            um,
+        )
+    )
+    if routine_intent:
+        return s
+
+    # Geniş rutin sorularını kırp: "rutinin nasıl", "rutininde neler var", "hangi ürünleri kullanıyorsun" vb.
+    # Not: kullanıcı ürün/INCI paylaşmak istemeyebilir; bu sorular bot hissi veriyor.
+    patterns = [
+        r"(?i)\b(şu\s+an(k[iı])?\s+)?cilt\s+bak[ıi]m\s+rutin(in)?\s+nas[ıi]l\b[^\.\?\!]*[\.\?\!]\s*",
+        r"(?i)\b(rutin(in)?de|rutininde)\s+(neler\s+var|ne\s+var|neler\s+kullan[ıi]yorsun|ne\s+kullan[ıi]yorsun)\b[^\.\?\!]*[\.\?\!]\s*",
+        r"(?i)\b(hangi\s+)[üu]r[üu]n(leri)?\s+kullan[ıi]yorsun\b[^\.\?\!]*[\.\?\!]\s*",
+        r"(?i)\b(rutin(e)?\s+bak(al[ıi]m|abilir\s+miyiz)|bir\s+de\s+onlara\s+g[öo]z\s+atal[ıi]m)\b[^\.\?\!]*[\.\?\!]\s*",
+    ]
+    for p in patterns:
+        s = re.sub(p, "", s).strip()
+
+    # Eğer cevap tamamen boşaldıysa, en azından kalan metni koru (boş dönme).
+    return s.strip()
+
+
 def _free_chat_compact_typo_bridge(text: str) -> str:
     """
     Sık yazım/shape hatalarında modele tek satır ipucu (LLM değil, deterministik).
@@ -2039,12 +2126,13 @@ async def _free_chat_compact_guidance_from_model(
             out.extend(tail_lines[:6])
         return "\n".join(out).strip()
     system_instruction = (
-        "Sen Rebi’sin: Türkçe, sıcak ve samimi; cilt bakımında yanında duran bir dert ortağı gibi konuş, bilimsel doğruluktan ödün verme.\n"
+        "Sen Rebi’sin: Türkçe; cilt bakımında bilgili bir uzman gibi, sıcak ama ölçülü konuş. Klinik netlik + gündelik anlaşılabilirlik.\n"
         "Bu turda alıntılı pasaj yok → genel çerçeveyle yanıtla; arşiv geniş ama şu an elinde alıntı yok. 'Kaynakta şöyle' gibi cümleler kurma.\n"
         "Kapsam: cilt/saç/tırnak bakımı, içerik maddeleri, formülasyon, doğal ürünler (bitkisel yağlar, hidrosoller, kil vb.).\n"
         "Çoklu soru/kriz varsa: HER birine tek tek cevap ver, hiçbirini atlama. Aynı şeyi iki kez söyleme. Kullanıcı numaralandırdıysa aynı numaralarla (1-5) dön.\n"
         "Bağlam kuralı: Kullanıcının mesajında net söylenen bilgiyi tekrar sorma. Önce 1 cümleyle doğru anladığını yansıt (örn 'makyajda pütürlenme = ürünler kavga ediyor gibi'). Sonra mekanizmayı tek cümleyle açıkla. Sonra uygulanabilir bir hamle ver. Ancak gerçekten kritikse 1 hedef soru sor.\n"
-        "Anti-bot kuralı: Her cevaba 'Canım benim/çok can sıkıcı/geçmiş olsun' diye otomatik başlama. Giriş cümlesi her seferinde farklı ve anlamlı olsun; mümkünse doğrudan mini teşhis/hipotezle gir.\n"
+        "Anti-bot kuralı: Her cevaba 'canım/tatlım/geçmiş olsun/çok can sıkıcı' gibi otomatik empatiyle başlama. İlk cümle çoğunlukla mini teşhis/hipotez olsun.\n"
+        "Uzman lisanı: 'mucize', 'porselen' gibi kullanıcı metaforlarını 1 kez yakala ama cevabı teknik-terim dökümü yapmadan netleştir (örn 'susuz-yağlı', 'bariyer', 'iritasyon').\n"
         "Rebi modu: Sadece soru sorma; önce 'neden böyle oluyor' hissi veren 1 kısa teşhis/hipotez koy (kesin hüküm değil). Ardından 1-2 net kaldıraç ver. En sonda tek hedef soru soracaksan, soru kullanıcının kararını değiştirecek kadar ayırt edici olsun.\n"
         "Anti-şablon kuralı: Her yanıtta aynı sırayı/formatı kullanma; bazen tek paragraf, bazen 1-2 satırlık mini liste olabilir (ama otomatik değil).\n"
         "Açılış: Her seferinde selamlaşma yapma; çoğu zaman direkt konuya gir.\n"
@@ -2090,6 +2178,9 @@ async def _free_chat_compact_guidance_from_model(
         shaped = _compact_answer_shape(cleaned, max_sentences=4, max_bullets=2)
         # Kompakt modda ilk turda da "selam/merhaba" kırp (bot hissi).
         shaped = re.sub(r"(?i)^\s*(merhaba|selam|hey|canım|tatlım)\s*[!,.]\s*", "", shaped).strip()
+        shaped = _strip_markdown_bullets_any(shaped)
+        shaped = _strip_botty_openers(shaped)
+        shaped = _strip_broad_routine_questions(shaped, user_message=user_message)
         return _strip_repetitive_greeting(shaped, history)
     except Exception as e:
         log.warning("Free chat kompakt model yanıtı alınamadı: %s", e)
@@ -2668,18 +2759,15 @@ async def chat_general(
 
         slots = _extract_chat_slots_llm(" ".join([str(m.get("content") or "") for m in hist[-6:] if isinstance(m, dict) and m.get("role") == "user"] + [um2]))
         system_instruction = (
-            "Sen Rebi’sin: Türkçe, samimi ve 'kız kıza' gerçek bir sohbet gibi yaz; kısa, net ve sıcak ol.\n"
-            "Her yanıtta şu iskeleti uygula:\n"
-            "1) 1 kısa empati cümlesi.\n"
-            "2) 1 kısa mekanizma/“aha” cümlesi (kesin konuşma; iddia üretme).\n"
-            "3) 1 kısa güvenli yön.\n"
-            "4) Kullanıcı sorusu 'ne yapayım' modundaysa, önce 1 tane düşük riskli pratik kaldıraç ver (uygulama/sıklık/yerleştirme/temizleme/SPF miktarı gibi).\n"
-            "Bu pratik kaldıraç bir 'ürün tipi' tavsiyesi de olabilir (marka yok): ör. jel-krem nemlendirici, mineral SPF, yağ bazlı temizleyici, azelaik asit gibi.\n"
-            "5) Eğer gerçekten tek bir kritik bilgi eksikse 1 takip sorusu sor; kullanıcı zaten söylediyse tekrar sorma. "
-            "Asla 'rutininde neler var?' diye geniş liste isteme; sadece tek ayırt edici soru sor.\n"
-            "Eğer cevap için yeterli bilgi varsa soru sorma; öneriyle bitir.\n"
+            "Sen Rebi’sin: Türkçe; cilt bakımında bilgili bir uzman gibi konuş (net, sakin, güven veren). Sıcak ol ama abartılı duygusal giriş yapma.\n"
+            "Anti-bot: Her yanıta otomatik 'canım/tatlım/geçmiş olsun/çok can sıkıcı' ile başlama. Selamlaşma genelde yok; direkt konuya gir.\n"
+            "Bağlam: Kullanıcının söylediğini tekrar sorma. Özellikle kullanıcı zaten derdini/alanı söylediyse 'rutininde ne var' gibi geniş soru SORMA.\n"
+            "INCI/ürün içerik listesi isteme; kullanıcı çoğu zaman bilmez. Bunun yerine kullanıcının bileceği kontrolleri sor: doku (jel/krem/yağ), bitiş (mat/parlak), miktar, katman sayısı, bekleme süresi, uygulama aracı, iritasyon (yanma/batma) var mı.\n"
+            "Rebi dokunuşu: Önce 1 kısa mini teşhis/hipotez (kesin hüküm değil). Sonra 1 kısa mekanizma/aha cümlesi. Sonra 1-2 uygulanabilir hamle ver.\n"
+            "Soru dengesi: Gerek yoksa soru sorma. Gerekirse 1 soru sor. Nadir durumlarda (kararı gerçekten değiştirecekse) 2 kısa soru sorabilirsin.\n"
+            "Sohbete yay: Tek mesajda her şeyi bitirmeye çalışma. 1 mini çerçeve + 1 hamle yeter; devamını kullanıcı döndükçe kur.\n"
             "Kurallar: ürün/marka adı ASLA yazma; sadece etken madde ve formül kriteri. Teşhis yok. Kırmızı bayrakta uzmana yönlendir.\n"
-            "Biçim: 3-6 kısa cümle. Başlık ve madde işareti yok.\n"
+            "Biçim: 3-7 kısa cümle. Başlık yok; madde işareti kullanacaksan en fazla 2 satır ve kısa tut.\n"
             f"Kullanıcı slotları: {json.dumps(slots, ensure_ascii=False)}\n"
             + profile_line
             + routine_line
@@ -2695,6 +2783,9 @@ async def chat_general(
                 ),
             )
             reply = _gemini_response_text(response)
+            reply = _strip_markdown_bullets_any(reply)
+            reply = _strip_botty_openers(reply)
+            reply = _strip_broad_routine_questions(reply, user_message=um2)
             reply = _strip_repetitive_greeting(reply, hist)
             return _chat_general_shape(reply)
         except Exception as e:
@@ -2704,6 +2795,67 @@ async def chat_general(
                 return _chat_general_shape(
                     "Şu an kısa bir özet üretemedim; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
                 )
+
+    # If internal evidence is weak/missing, try external PubMed abstracts as evidence (no links shown).
+    # This keeps the "evidence-first" promise without forcing generic advice.
+    if (not ev_ok or not kb) and gemini_client:
+        try:
+            from knowledge.free_literature import fetch_pubmed_abstracts, skip_external_literature_for_query
+
+            if not skip_external_literature_for_query(um2):
+                arts = await fetch_pubmed_abstracts(um2, max_results=2)
+            else:
+                arts = []
+
+            if arts:
+                blocks: list[str] = []
+                for a in arts[:2]:
+                    title = (a.get("title") or "").strip()
+                    abstract = (a.get("abstract") or "").strip()
+                    if title and abstract:
+                        blocks.append(f"Başlık: {title}\nÖzet: {abstract[:1200].strip()}")
+                    elif title:
+                        blocks.append(f"Başlık: {title}")
+                ext_kb = "\n\n---\n\n".join(blocks).strip()[:3800]
+
+                final_user = (
+                    "DIŞ KANIT (PubMed özetleri; link verme, sadece bu metne dayan):\n\n"
+                    f"{ext_kb}\n\n---\nSoru: {um2}\n"
+                    "Kurallar: teşhis yok, marka/ürün adı yok. 3-7 kısa cümle. "
+                    "Belirsizse 1-2 ayırt edici soru sorabilirsin ama 'rutininde ne var' diye geniş liste isteme. "
+                    "Bu özetler genel düzeydedir; kesin konuşma."
+                )
+
+                contents: list = []
+                for msg in hist[-8:]:
+                    role = "model" if msg.get("role") == "assistant" else "user"
+                    contents.append(types.Content(role=role, parts=[types.Part.from_text(text=msg.get("content", "") or "")]))
+                contents.append(types.Content(role="user", parts=[types.Part.from_text(text=final_user)]))
+
+                system_instruction = (
+                    "Sen Rebi’sin: Türkçe; cilt bakımında bilgili bir uzman gibi konuş (net, sakin, güven veren). "
+                    "Klişe giriş yapma. Önce 1 mini teşhis/hipotez, sonra 1 mekanizma cümlesi, sonra 1-2 uygulanabilir hamle.\n"
+                    "INCI isteme. 'Rutininde ne var' diye geniş soru sorma.\n"
+                    "Yalnızca verilen PubMed özetlerinden çıkarım yap; metinde yoksa 'elimde net kanıt yok' deyip uydurma.\n"
+                )
+
+                response = gemini_client.models.generate_content(
+                    model="gemini-2.0-flash",
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        temperature=0.25,
+                        max_output_tokens=260,
+                    ),
+                )
+                reply = _gemini_response_text(response)
+                reply = _strip_markdown_bullets_any(reply)
+                reply = _strip_botty_openers(reply)
+                reply = _strip_broad_routine_questions(reply, user_message=um2)
+                reply = _strip_repetitive_greeting(reply, hist)
+                return _chat_general_shape(reply)
+        except Exception as e:
+            log.warning("chat_general external PubMed fallback failed: %s", e)
 
     # Evidence weak/missing or model unavailable:
     # - If we have evidence but no model: return the evidence snippets (transparent).
@@ -2858,6 +3010,9 @@ async def _free_chat(
                 "is_complete": False,
                 "extracted_data": None,
             }
+        reply = _strip_markdown_bullets_any(reply)
+        reply = _strip_botty_openers(reply)
+        reply = _strip_broad_routine_questions(reply, user_message=um)
         reply = _strip_repetitive_greeting(reply, hist)
         log.info("Free chat yanıtı (%d karakter)", len(reply))
         return {"reply": reply, "is_complete": False, "extracted_data": None}
