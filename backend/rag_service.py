@@ -1212,9 +1212,11 @@ def _strict_no_evidence_questions(user_message: str, history: Optional[List[Any]
     # bilgi/uyumluluk
     if re.search(r"(?i)\b(birlikte|ayn[iı]\s*anda|kombin|uyumlu|kullanilir\s*mi|olur\s*m[uü])\b", raw):
         return ["Bunu aynı rutinde üst üste mi düşünüyorsun, yoksa biri sabah biri akşam gibi mi?"]
-    # şikayet
-    if re.search(r"(?i)\b(sivilce|akne|kizar|kızar|kuruluk|yanma|batma|leke|donuk|pul)\b", t):
-        return ["Bu aralar daha çok ne baskın: yağlanma/sivilce mi, yoksa kuruluk-yanma mı?"]
+    # Şikayet: kullanıcı zaten "sivilce" diye net söylediyse tekrar "sivilce mi?" diye sorma.
+    if re.search(r"(?i)\b(sivilce|akne)\b", t):
+        return ["Son birkaç günde daha önce denemediğin bir ürün/aktif ekledin mi, sence bir şey tetiklemiş olabilir mi?"]
+    if re.search(r"(?i)\b(kizar|kızar|kuruluk|yanma|batma|leke|donuk|pul)\b", t):
+        return ["Bu aralar cildin daha çok irrite mi oluyor (yanma-batma), yoksa sadece görüntü/ton eşitsizliği gibi mi?"]
     # tanım / içerik
     if re.search(r"(?i)\b(nedir|ne\s*i[sş]e\s*yarar|kullansam)\b", raw):
         return ["Bunu yüz için mi düşünüyorsun, yoksa başka bir bölge için mi?"]
@@ -1457,6 +1459,19 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
         stated_goals = list(dict.fromkeys(stated_goals))
     except Exception:
         stated_goals = []
+
+    stated_facts: list[str] = []
+    try:
+        b2 = (merged_user or "").lower()
+        if re.search(r"\b(sivilce|akne|kocaman|dev\s*gibi|ucu\s*yok|kirmizi|kıpkırmızı|a[rğ]rili|acıyan)\b", b2):
+            stated_facts.append("sivilce/ağrılı kızarık lezyon tarif edildi")
+        if re.search(r"\b(gozenek|gözenek|cam\s*cilt)\b", b2):
+            stated_facts.append("gözenek/cam cilt hedefi söylendi")
+        if re.search(r"\b(leke|melaz|pigment|bıyık)\b", b2):
+            stated_facts.append("leke/pigment hedefi söylendi")
+        stated_facts = list(dict.fromkeys(stated_facts))
+    except Exception:
+        stated_facts = []
     llm_q = ""
     llm_text = ""
     if gemini_client:
@@ -1479,6 +1494,11 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                                     + (
                                         f"Kullanıcının zaten söylediği hedefler: {', '.join(stated_goals)}. Bu hedefleri tekrar sorma.\n"
                                         if stated_goals
+                                        else ""
+                                    )
+                                    + (
+                                        f"Kullanıcının söylediği net durumlar: {', '.join(stated_facts)}. Bunları tekrar sorma.\n"
+                                        if stated_facts
                                         else ""
                                     )
                                     + f"Intent: {intent}\n"
