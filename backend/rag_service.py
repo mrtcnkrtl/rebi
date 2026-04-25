@@ -2044,6 +2044,12 @@ async def _free_chat_compact_guidance_from_model(
         "Kapsam: cilt/saç/tırnak bakımı, içerik maddeleri, formülasyon, doğal ürünler (bitkisel yağlar, hidrosoller, kil vb.).\n"
         "Çoklu soru/kriz varsa: HER birine tek tek cevap ver, hiçbirini atlama. Aynı şeyi iki kez söyleme. Kullanıcı numaralandırdıysa aynı numaralarla (1-5) dön.\n"
         "Bağlam kuralı: Kullanıcının mesajında net söylenen bilgiyi tekrar sorma. Önce 1 cümleyle doğru anladığını yansıt (örn 'makyajda pütürlenme = ürünler kavga ediyor gibi'). Sonra mekanizmayı tek cümleyle açıkla. Sonra uygulanabilir bir hamle ver. Ancak gerçekten kritikse 1 hedef soru sor.\n"
+        "Anti-bot kuralı: Her cevaba 'Canım benim/çok can sıkıcı/geçmiş olsun' diye otomatik başlama. Giriş cümlesi her seferinde farklı ve anlamlı olsun; mümkünse doğrudan mini teşhis/hipotezle gir.\n"
+        "Rebi modu: Sadece soru sorma; önce 'neden böyle oluyor' hissi veren 1 kısa teşhis/hipotez koy (kesin hüküm değil). Ardından 1-2 net kaldıraç ver. En sonda tek hedef soru soracaksan, soru kullanıcının kararını değiştirecek kadar ayırt edici olsun.\n"
+        "Anti-şablon kuralı: Her yanıtta aynı sırayı/formatı kullanma; bazen tek paragraf, bazen 1-2 satırlık mini liste olabilir (ama otomatik değil).\n"
+        "Açılış: Her seferinde selamlaşma yapma; çoğu zaman direkt konuya gir.\n"
+        "Soru dengesi: Gerek yoksa soru sorma. Gerekirse 1 soru sor. Nadir durumlarda (kararı gerçekten değiştirecekse) 2 kısa soru sorabilirsin; asla soru yağmuruna dönme.\n"
+        "Kaldıraç: Cevapta genelde en az 1 uygulanabilir hamle ver; mekanizma anlatıp havada bırakma.\n"
         "Kural: Her madde için aynı şeyi söyleme; formül tipine göre ayır (saf yağ / su bazlı serum-krem / asitler / retinoidler / güneş koruyucu). "
         "Formu kritik ama belirsizse açıkça belirt ve 1 cümlede yaygın formları örnekle (örn hyaluronik asit formları).\n"
         "Doğal ürünlerde: 'doğal=zararsız' deme; parfüm/uçucu bileşenler ve alerji/iritasyon riskini kısaca hatırlat; kesin hüküm verme.\n"
@@ -2079,7 +2085,9 @@ async def _free_chat_compact_guidance_from_model(
         if not text or len(text.strip()) < 36:
             return None
         cleaned = _strip_markdown_bullets(text.strip())
-        shaped = _compact_answer_shape(cleaned, max_sentences=3, max_bullets=2)
+        shaped = _compact_answer_shape(cleaned, max_sentences=4, max_bullets=2)
+        # Kompakt modda ilk turda da "selam/merhaba" kırp (bot hissi).
+        shaped = re.sub(r"(?i)^\s*(merhaba|selam|hey|canım|tatlım)\s*[!,.]\s*", "", shaped).strip()
         return _strip_repetitive_greeting(shaped, history)
     except Exception as e:
         log.warning("Free chat kompakt model yanıtı alınamadı: %s", e)
