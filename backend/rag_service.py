@@ -1214,6 +1214,18 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
             raw or "",
         )
     )
+
+    # Bilgi/uyumluluk sorusu mu? (şikâyet triage'ına kayma)
+    info_ctx = bool(
+        re.search(
+            r"(?i)\b(birlikte|ayn[iı]\s*anda|kombin|kombinlen|same\s*day|same\s*night|mix|katman|sira|sıra|hangi\s*sira|rutinde)\b",
+            raw or "",
+        )
+        or re.search(
+            r"(?i)\b(kullanilir\s*mi|kullanılır\s*mı|olur\s*mu|olur\s*m[uü]|uyumlu\s*mu|uyumlu\s*m[uü])\b",
+            raw or "",
+        )
+    )
     # Ingredient tanımı sorularında (nedir/ne işe yarar vs.) "form" sorusuna kilitlenmeyelim.
     # Önce kullanım alanını netleştirmek genelde yeterli.
     if re.search(
@@ -1234,6 +1246,13 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
             qs.append("Cildin hassas/alerjiye yatkın mı, yoksa genel olarak dayanıklı mı?")
         return qs[:2]
 
+    # Bilgi sorusu (örn. "retinol ve C birlikte kullanılır mı?"): semptom triage soruları değil, uyumluluk soruları sor.
+    if info_ctx:
+        return [
+            "İkisini aynı gün mü kullanmayı düşünüyorsun (biri sabah biri akşam gibi), yoksa aynı rutinde üst üste mi?",
+            "Cildin kolay irrite olur mu (yanma-batma), yoksa genelde dayanıklı mı?",
+        ][:2]
+
     if any(x in t for x in ("kizar", "kızar", "kizariklik", "kızarıklık")):
         qs.append("Kızarıklık yanma‑batma ile mi geliyor, yoksa daha çok sıcak basması/flush gibi mi?")
     if any(x in t for x in ("sivilce", "akne", "komedon")):
@@ -1242,7 +1261,7 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
         qs.append("Kurulukla birlikte yanma‑batma var mı?")
 
     if not qs:
-        qs.append("Bunu daha çok nerede yaşıyorsun (yüz, saç derisi, vücut) ve ne zamandır?")
+        qs.append("Bu daha çok yüzünde mi, yoksa vücudunda da var mı? Ne zamandır fark ediyorsun?")
         qs.append("Son 7 günde yeni eklediğin bir ürün/aktif var mı?")
     return qs[:2]
 
