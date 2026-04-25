@@ -1424,12 +1424,18 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                 "Bunu yüz için mi, saç derisi/saç boyu için mi düşünüyorsun?"
             )
 
-    # Default strict path: ask for 1-2 basics, then (optionally) route to Analysis after some turns.
-    lines = ["Bunu sağlıklı söylemek için senden 1-2 temel bilgi almam lazım."]
-    if qs:
-        lines.append("Şunları yazarsan hızlıca netleştiririm:")
-        for q in qs[:2]:
-            lines.append(f"- {q}")
+    # Default strict path: ask for 1-2 basics in a natural chat tone (no form-like bullet list).
+    # Evidence-first still applies: we ask questions instead of giving generic advice.
+    intro = "Bunu net söylemek için iki küçük şeyi bilmem lazım; yoksa yanlış yönlendirmek istemem."
+    q1 = (qs[0] if len(qs) >= 1 else "").strip()
+    q2 = (qs[1] if len(qs) >= 2 else "").strip()
+    if q1 and q2:
+        body = f" Mesela {q1[:-1] if q1.endswith('?') else q1}? Bir de {q2[:-1] if q2.endswith('?') else q2}?"
+    elif q1:
+        body = f" Mesela {q1[:-1] if q1.endswith('?') else q1}?"
+    else:
+        body = ""
+    lines = [(intro + body).strip()]
 
     # Kullanıcı bir kaç tur sohbet ettiyse, tek cümleyle Analiz yönlendirmesi ekle (her mesajda spam değil).
     try:
@@ -1441,8 +1447,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     except Exception:
         user_turns = 0
     if user_turns >= 2:
-        lines.append("")
-        lines.append("İstersen bu konu için Analiz’te rutin oluşturup (sabah/akşam + sıklık) işi cildine tam oturtabiliriz.")
+        lines.append("İstersen uygulamadaki Analiz’den rutin oluşturup sabah/akşam ve sıklığı da cildine göre netleştirebiliriz.")
 
     return "\n".join(lines).strip()
 
@@ -2492,10 +2497,9 @@ async def chat_general(
     # If the user asks "where to place this" and we have their active routine summary, ask targeted clarifiers referencing their plan.
     if ph.get("routine_summary") and _is_routine_placement_question(um2):
         return _chat_general_shape(
-            "Mevcut rutininden anladığım kadarıyla bir planın var.\n"
-            "Bunu rutinde doğru yere koyabilmem için iki şeyi netleştireyim:\n"
-            "- Eklemek istediğin şey tam olarak ne (aktif/ürün tipi) ve amacı ne?\n"
-            "- Şu an rutininde akşamları güçlü aktif (asit/retinoid gibi) var mı; haftada kaç gece kullanıyorsun?"
+            "Mevcut rutininden anladığım kadarıyla bir planın var. Şunu doğru yere koyabilmem için iki şeyi netleştireyim: "
+            "Eklemek istediğin şey tam olarak ne (aktif/ürün tipi) ve amacı ne? Bir de şu an akşamları güçlü bir aktif "
+            "(asit/retinoid gibi) kullanıyor musun; haftada kaç gece?"
         )
     return _chat_general_shape(await _strict_no_evidence_reply(um2, hist))
 
