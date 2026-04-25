@@ -1206,6 +1206,9 @@ def _strict_no_evidence_questions(user_message: str, history: Optional[List[Any]
     t = _free_chat_normalize_query(raw)
     if not t:
         return ["Bana biraz daha anlatır mısın: asıl hedefin ne ve bunu en çok ne tetikliyor gibi?"]
+    # Hedef zaten netse (örn. gözenek, leke, donukluk), tekrar "ne istiyorsun?" deme.
+    if re.search(r"(?i)\b(gozenek|gözenek|siyah\s*nokta|leke|melaz|pigment|donuk|cam\s*cilt|parlama|yagli|yağlı)\b", raw):
+        return ["Cildin kolay irrite olur mu (yanma-batma), yoksa genelde dayanıklı mı?"]
     # bilgi/uyumluluk
     if re.search(r"(?i)\b(birlikte|ayn[iı]\s*anda|kombin|uyumlu|kullanilir\s*mi|olur\s*m[uü])\b", raw):
         return ["Bunu aynı rutinde üst üste mi düşünüyorsun, yoksa biri sabah biri akşam gibi mi?"]
@@ -1434,6 +1437,26 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
         return "other"
 
     intent = _infer_intent_for_clarify(merged_user)
+
+    # Kullanıcı zaten hedefi söylediyse LLM'in bunu tekrar sormasını engelle.
+    stated_goals: list[str] = []
+    try:
+        blob = (merged_user or "").lower()
+        goal_map = [
+            (r"\bgozenek|gözenek|cam\s*cilt\b", "gözenek/cam cilt"),
+            (r"\bleke|melaz|pigment|hiperpig", "leke/pigment"),
+            (r"\bdonuk|mat\b", "donukluk/ışıltı"),
+            (r"\bsivilce|akne|komedon|siyah\s*nokta\b", "sivilce/komedon"),
+            (r"\bkuruluk|gergin|pul|soyul|bariyer\b", "kuruluk/bariyer"),
+            (r"\bparlama|sebum|yagli|yağlı\b", "parlama/yağ dengesi"),
+        ]
+        for pat, label in goal_map:
+            if re.search(pat, blob, flags=re.I):
+                stated_goals.append(label)
+        # de-dupe preserve order
+        stated_goals = list(dict.fromkeys(stated_goals))
+    except Exception:
+        stated_goals = []
     llm_q = ""
     if gemini_client:
         try:
@@ -1449,6 +1472,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                                     "Kurallar: Türkçe, tek cümle, soru işareti ile bitsin. Madde işareti yok. Sayı yok.\n"
                                     "Kullanıcı zaten bölgeyi söylediyse 'nerede' diye sorma. Yüz/makyaj/SPF bağlamında saç derisini sorma.\n"
                                     "Şikayet yoksa 'son 7 günde ne ekledin' gibi triage soruları sorma.\n"
+                                    + (f"Kullanıcının zaten söylediği hedefler: {', '.join(stated_goals)}. Bu hedefleri tekrar sorma.\n" if stated_goals else "")
                                     f"Intent: {intent}\n"
                                     f"Mesajlar: {merged_user}"
                                 )
