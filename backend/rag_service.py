@@ -1509,9 +1509,38 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                 "Bunu yüz için mi, saç derisi/saç boyu için mi düşünüyorsun?"
             )
 
+    # Genel bakım soruları: soru sormak şart değil. Burada düşük riskli, kısa çerçeve ver.
+    merged_user = " ".join(
+        [
+            str(m.get("content") or "").strip()
+            for m in (history or [])
+            if isinstance(m, dict) and m.get("role") == "user" and str(m.get("content") or "").strip()
+        ]
+        + [um]
+    ).strip()
+    if merged_user:
+        if re.search(
+            r"(?i)\b(cift\s*asamal[iı]|double\s*cleans|double\s*cleansing|ya[gğ]\s*bazl[iı]\s*temizleyici|oil\s*cleanser|balm|jel\s*temizleyici|gel\s*cleanser)\b",
+            merged_user,
+        ):
+            return _chat_general_shape(
+                "Canım hiç korkma—yağ bazlı temizleyici “yüzüme yağ sürmek” gibi kalıcı bir şey değil. "
+                "Makyajı/SPF’yi çözüyor, suyla emülsiye olup akıyor; üstüne nazik bir jel/temizleyiciyle kalanı alıyorsun. "
+                "Yağlı/akneye meyilli ciltte genelde mesele ‘yağ’ değil; ağır/parfümlü formüller veya iyi durulanmaması. "
+                "İyi emülsiye edip iyice durularsan gözenekte kalıp siyah nokta yapması daha az olası."
+            )
+        if re.search(
+            r"(?i)\b(retinol|retinoid|tretinoin|adapalen).*(c\s*vit|vitamin\s*c|askorb)\b|\b(c\s*vit|vitamin\s*c|askorb).*(retinol|retinoid|tretinoin|adapalen)\b",
+            merged_user,
+        ):
+            return _chat_general_shape(
+                "Genelde en rahat yol: C vitaminini sabah, retinoidi akşam kullanmak (aynı rutinde üst üste bindirmemek). "
+                "İkisi de güçlü olabildiği için yeni başlıyorsan sıklığı yavaş artırmak ve bariyeri iyi nemlendirmek işleri çok kolaylaştırıyor."
+            )
+
     # Default strict path: ask for 1-2 basics in a natural chat tone (no form-like bullet list).
     # Evidence-first still applies: we ask questions instead of giving generic advice.
-    intro = "Seni anlıyorum—böyle olunca insanın canı sıkılıyor. Yine de doğru söylemek için iki küçük şeyi bilmem lazım."
+    intro = "Seni anlıyorum—böyle olunca insanın canı sıkılıyor. Yine de doğru söylemek için birkaç küçük şey netleşsin isterim."
     q1 = (qs[0] if len(qs) >= 1 else "").strip()
     q2 = (qs[1] if len(qs) >= 2 else "").strip()
     def _q(s: str) -> str:
