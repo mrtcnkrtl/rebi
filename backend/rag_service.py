@@ -1196,11 +1196,39 @@ def _free_chat_meta_assistant_reply() -> str:
     )
 
 
-def _strict_no_evidence_questions(user_message: str) -> list[str]:
+def _strict_no_evidence_questions(user_message: str, history: Optional[List[Any]] = None) -> list[str]:
     """
     Sıkı mod: kanıt yokken öneri verme. Sadece 1-2 ayırıcı soru sor.
     """
-    raw = (user_message or "").strip()
+    # Kullanıcı çoğu zaman bölgeyi/bağlamı bir önceki mesajda söyler.
+    # Bu yüzden sadece son mesajı değil, son birkaç USER mesajını birleştirip bakıyoruz.
+    def _merged_user_context_text(msg: str, hist: Optional[List[Any]]) -> str:
+        parts: list[str] = []
+        try:
+            for m in (hist or [])[-6:]:
+                if not isinstance(m, dict):
+                    continue
+                if m.get("role") != "user":
+                    continue
+                c = str(m.get("content") or "").strip()
+                if c:
+                    parts.append(c)
+        except Exception:
+            pass
+        parts.append((msg or "").strip())
+        # de-dupe adjacent repeats
+        out: list[str] = []
+        last = None
+        for p in parts:
+            if not p:
+                continue
+            if last is not None and p == last:
+                continue
+            out.append(p)
+            last = p
+        return " ".join(out).strip()
+
+    raw = _merged_user_context_text(user_message, history)
     t = _free_chat_normalize_query(raw)
     if not t:
         return ["Bunu daha çok nerede yaşıyorsun (yüz, saç derisi, vücut) ve ne zamandır?"]
@@ -1283,7 +1311,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     Provide: honest note + 1-2 questions + optional PubMed/EuropePMC reading links.
     """
     um = (user_message or "").strip()
-    qs = _strict_no_evidence_questions(um)
+    qs = _strict_no_evidence_questions(um, history)
     # Eğer kullanıcı bir maddeyi “nedir/ne işe yarar” diye soruyorsa, dış literatürden (PubMed)
     # kısa bir özeti çekip sisteme ekleyebiliriz; kullanıcıya link göstermeyiz.
     um_norm = _free_chat_normalize_query(um)
@@ -1701,7 +1729,7 @@ def _free_chat_compact_guidance_body_fallback(
                 return db + " İstersen bunu günlük sıraya oturtmak için Analiz ile rutini çıkaralım; orada sabah/akşam planı netleşir."
             return db
     # Strict mode fallback (sync): no evidence => no generic guidance.
-    qs = _strict_no_evidence_questions(user_message)
+    qs = _strict_no_evidence_questions(user_message, history)
     out = ["Bunu sağlıklı söylemek için senden 1-2 temel bilgi almam lazım."]
     if qs:
         out.append("Şunları yazarsan hızlıca netleştiririm:")
