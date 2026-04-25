@@ -2792,11 +2792,71 @@ async def chat_general(
     if inci:
         return _chat_general_shape(inci)
 
+    # Router: intent/risk -> retrieval query augmentation (not hardcoded per-scenario; class-based)
+    slots_router: dict = {}
+    try:
+        if gemini_client:
+            # Use recent user-only history + current message for intent/risk extraction.
+            recent_user = " ".join(
+                [str(m.get("content") or "") for m in hist[-6:] if isinstance(m, dict) and m.get("role") == "user"]
+                + [um2]
+            ).strip()
+            slots_router = _extract_chat_slots_llm(recent_user) or {}
+    except Exception:
+        slots_router = {}
+
+    def _router_tags(text: str, slots: dict, ctx: dict) -> list[str]:
+        t = _free_chat_normalize_query(text or "")
+        tags: list[str] = []
+        # High-UV / sun exposure class (tanning / SPF-less oils etc.)
+        if any(x in t for x in ("guneslen", "bronz", "solaryum", "sunbat", "tatile", "deniz", "plaj")):
+            tags += ["photoprotection", "uv_exposure", "hyperpigmentation_risk"]
+        if any(x in t for x in ("kakao yagi", "kakao", "spf siz", "spfsiz", "gunes yagi", "sun oil")):
+            tags += ["no_spf_oil", "uv_burn_risk"]
+        # Active/irritation class (retinoids/acids)
+        if any(x in t for x in ("retinol", "retinoid", "tretinoin", "adapalene")):
+            tags += ["retinoid_irritation", "photosensitivity_window"]
+        if any(x in t for x in ("aha", "bha", "peeling", "glikolik", "salisilik", "asit")):
+            tags += ["exfoliation_irritation"]
+        # DIY chemical irritation class
+        if ctx.get("diy_irritation"):
+            tags += ["chemical_irritation", "barrier_repair"]
+        # Slot-based risk hint
+        if str((slots or {}).get("risk") or "").lower().strip() in ("high", "medium"):
+            tags += ["risk_calibration"]
+        # De-dupe, keep short
+        out: list[str] = []
+        seen = set()
+        for x in tags:
+            x = str(x).strip()
+            if not x or x in seen:
+                continue
+            seen.add(x)
+            out.append(x)
+        return out[:8]
+
+    tags = _router_tags(um2, slots_router, ctx)
+    um_retrieval = um2
+    if tags:
+        # Keep user-visible question intact; only augment retrieval string.
+        um_retrieval = f"{um2}\n\n[retrieval_hints: {', '.join(tags)}]"
+
     # Evidence-first RAG bundle (entity + vector + score)
-    ev = _build_free_chat_evidence_bundle(user_id, um2, hist)
+    ev = _build_free_chat_evidence_bundle(user_id, um_retrieval, hist)
     kb = str((ev or {}).get("context_text") or "")
     ev_score = float((ev or {}).get("score") or 0.0)
     ev_ok = bool((ev or {}).get("ok"))
+    try:
+        log.info(
+            "chat_general retrieval: ok=%s score=%.3f max_sim=%.3f entity_len=%d tags=%s",
+            bool(ev_ok),
+            float(ev_score),
+            float((ev or {}).get("max_sim") or 0.0),
+            len(str((ev or {}).get("entity_text") or "")),
+            ",".join(tags) if tags else "-",
+        )
+    except Exception:
+        pass
 
     if ev_ok and kb and gemini_client:
         final_user = (
@@ -2839,6 +2899,7 @@ async def chat_general(
             "Kurallar: ürün/marka adı ASLA yazma; sadece etken madde ve formül kriteri. Teşhis yok. Kırmızı bayrakta uzmana yönlendir.\n"
             "Biçim: 3-7 kısa cümle. Başlık yok; madde işareti kullanacaksan en fazla 2 satır ve kısa tut.\n"
             f"Kullanıcı slotları: {json.dumps(slots, ensure_ascii=False)}\n"
+            + (f"Risk/bağlam ipuçları: {', '.join(tags)}.\n" if tags else "")
             + profile_line
             + routine_line
         )
