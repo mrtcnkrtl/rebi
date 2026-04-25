@@ -90,12 +90,64 @@ _MEDICAL_RED_FLAGS = re.compile(
     r"nefes\s*darligi|dudak\s*sisme|yuz\s*sisme|anafilaksi|"
     # burns
     r"yanik|yanık|kimyasal\s*yanik|"
-    # emergency wording (avoid colloquial “acil detoks” etc.)
-    r"acil\s*(servis|yardim|112)|112|ambulans|"
+    # emergency wording (avoid colloquial “acil yardım” false positives)
+    r"acil\s*(servis|112)|112|ambulans|"
     # eye area only when paired with severe signs (not just “göz altı”)
     r"(?:goz\s*cevresi|göz\s*cevresi|goze\s*yakın)\s*(?:sisme|şiş|kanama|irin|yanma|yanik|yanık|şiddetli|cok\s*agrili|bulan|gorme|görme)"
     r")\b"
 )
+
+
+def _free_chat_irritation_first_aid_reply(text: str, history: Optional[List[Any]] = None) -> str:
+    """
+    Ev yapımı asit/alkali + sürtünme sonrası iritasyon/kimyasal tahriş şüphesinde,
+    teşhis koymadan güvenli ilk yardım çerçevesi. Amaç: panik değil, net ve uygulanabilir yön.
+    """
+    t = _free_chat_normalize_query(text or "")
+    # If user already got a first-aid reply in thread, don't repeat the whole block.
+    hist_blob = _free_chat_recent_turns_blob(history, max_len=700) if history else ""
+    hb = _free_chat_normalize_query(hist_blob)
+    already = bool(
+        hb
+        and (
+            "bariyer" in hb
+            or "limon" in hb
+            or "karbonat" in hb
+            or "peeling" in hb
+            or "iritasyon" in hb
+            or "tahris" in hb
+        )
+    )
+
+    base = (
+        "Bu tablo en çok tahriş/kimyasal iritasyon + sürtünme (peeling) sonrası bariyerin zorlanmasına benziyor. "
+        "Şu an hedef: cildi daha fazla uyarmadan sakinleştirmek."
+    )
+    steps = (
+        "Şimdilik limon/karbonat/kahve telvesi/kantaron yağı dahil her şeyi bırak. "
+        "Ilık suyla nazikçe durula; yanıyorsa temizleyiciyle ovalama. "
+        "Koku içermeyen, sade bir nemlendiriciyle (bariyer odaklı) ince tabaka halinde destekle; gün içinde SPF şart."
+    )
+    red = (
+        "Eğer kabarcık, hızla artan şişme, göz çevresine yayılma, nefes darlığı veya dayanılmaz ağrı varsa gecikmeden sağlık desteği al."
+    )
+
+    # Answer common follow-ups succinctly
+    follow = ""
+    if re.search(r"\b(iz|kalici|kalıcı)\b", t) or "pütür" in t:
+        follow = "Pütür ve kızarıklık çoğu kişide günler içinde azalır; bu süreçte ‘soyma/peeling’ ekleme, sabırlı ol."
+    if "yogurt" in t or "yoğurt" in t:
+        follow = (follow + " " if follow else "") + "Yoğurt/limon gibi mutfak uygulamalarını şimdi önermem; fermente/asitli yapı daha da irrite edebilir."
+    if "cica" in t or "cica" in (text or "").lower():
+        follow = (follow + " " if follow else "") + "Cica tarzı yatıştırıcı bir krem rahatlattıysa ince tabaka halinde devam edebilirsin; kaşıntı artarsa kes."
+
+    if already:
+        # Keep only what answers the new question + red flags (avoid repeating the whole first-aid block).
+        out = " ".join([x for x in [follow, red] if x]).strip()
+        return out or red
+
+    out = " ".join([base, steps, follow, red]).strip()
+    return out
 
 
 def _free_chat_infer_user_context(text: str, history: Optional[List[Any]] = None) -> dict:
@@ -128,16 +180,29 @@ def _free_chat_infer_user_context(text: str, history: Optional[List[Any]] = None
         "diagnosis_request": bool(
             re.search(r"(?i)\b(rozasea|rosacea|kistik\s*akne|egzama|dermatit|teshis|tan[iı])\b", merged_user)
         ),
+        "diy_irritation": bool(
+            re.search(
+                r"(?i)\b(limon|karbonat|kahve\s*telvesi|kantaron|kolonya|alkol|diş\s*macunu)\b",
+                merged_user,
+            )
+            and re.search(r"(?i)\b(kizar|kızar|kıpkırmızı|yanma|batma|s[ıi]zla|kaşın|geril)\b", merged_user)
+        ),
+        "severe_emergency": bool(
+            re.search(
+                r"(?i)\b(nefes\s*darligi|dudak\s*sisme|yuz\s*sisme|anafilaksi|112|ambulans|acil\s*servis|"
+                r"kabarcik|su\s*topla|kanama|irin|iltihap|ates|ateş|gorme|görme|bulan)\b",
+                merged_user,
+            )
+        ),
     }
     return ctx
 
 
 def _free_chat_medical_boundary_reply() -> str:
     return (
-        "Bunu duyunca içim sıkıldı—anlattığın tablo kozmetik sohbetin sınırını aşabilir. "
-        "Ben burada teşhis koyamam veya tedavi önermem; özellikle ağrı/iltihap/kanama, hızla yayılma ya da göz çevresi gibi durumlarda "
-        "en güvenlisi bir dermatoloğa (gerekirse acile) başvurmak. "
-        "O zamana kadar yeni aktifleri bırak, nazik temizleyici + sade nemlendirici + gündüz SPF ile bariyeri sakin tut."
+        "Anlattığın tablo tıbbi değerlendirme gerektirebilir. Burada teşhis koyamam veya reçete önermem; "
+        "özellikle hızla artan şişme, göz çevresine yayılma, nefes darlığı, kabarcık/kanama/irin ya da şiddetli ağrı varsa gecikmeden sağlık desteği al. "
+        "O zamana kadar yeni aktifleri bırak; ılık suyla nazikçe temizle, sade bir nemlendiriciyle bariyeri destekle ve gündüz SPF kullan."
     )
 
 
@@ -2693,7 +2758,12 @@ async def chat_general(
         ctx["dry"] = True
     if ph.get("skin_type") == "oily":
         ctx["oily"] = True
-    if ctx.get("medical_red_flag") or ctx.get("diagnosis_request"):
+    if ctx.get("diagnosis_request"):
+        return _free_chat_medical_boundary_reply()
+    # DIY chemical irritation is common; give safe first aid unless true emergency signs exist.
+    if ctx.get("diy_irritation") and not ctx.get("severe_emergency"):
+        return _chat_general_shape(_free_chat_irritation_first_aid_reply(um, hist))
+    if ctx.get("medical_red_flag"):
         return _free_chat_medical_boundary_reply()
 
     def _is_routine_placement_question(text: str) -> bool:
