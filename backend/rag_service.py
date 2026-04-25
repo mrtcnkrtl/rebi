@@ -1260,6 +1260,13 @@ def _strict_no_evidence_questions(user_message: str, history: Optional[List[Any]
             raw or "",
         )
     )
+
+    cleanse_ctx = bool(
+        re.search(
+            r"(?i)\b(cift\s*asamal[iı]|double\s*cleans|double\s*cleansing|ya[gğ]\s*bazl[iı]\s*temizleyici|oil\s*cleanser|balm|makyaj\s*cozucu|makyaj\s*çözücü|jel\s*temizleyici|gel\s*cleanser)\b",
+            raw or "",
+        )
+    )
     # Ingredient tanımı sorularında (nedir/ne işe yarar vs.) "form" sorusuna kilitlenmeyelim.
     # Önce kullanım alanını netleştirmek genelde yeterli.
     if re.search(
@@ -1271,6 +1278,12 @@ def _strict_no_evidence_questions(user_message: str, history: Optional[List[Any]
         return ["Tam olarak nereye sürmeyi düşünüyorsun (yüz mü, vücut mu)?"]
 
     botanical = any(x in t for x in ("yag", "yagi", "oil", "extract", "ekstrakt", "oz", "ucu", "uçucu", "essential"))
+    if cleanse_ctx:
+        # Yağ bazlı temizleyici = "bitkisel yağ sürmek" değil; o yüzden kapsam sorusu yerine uygulama/arıtma sorusu sor.
+        return [
+            "Bunu genelde suya dayanıklı makyaj/SPF olan günlerde mi yapmak istiyorsun, yoksa her gün mü?",
+            "Çift temizlikten sonra cildin geriliyor mu, yoksa daha çok parlama/siyah nokta mı artıyor?",
+        ][:2]
     if botanical:
         if face_ctx:
             qs.append("Bunu yüz için mi düşünüyorsun; yoksa asıl derdin SPF/makyaj altında parlama-kusma gibi bir şey mi?")
@@ -1501,10 +1514,17 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     intro = "Seni anlıyorum—böyle olunca insanın canı sıkılıyor. Yine de doğru söylemek için iki küçük şeyi bilmem lazım."
     q1 = (qs[0] if len(qs) >= 1 else "").strip()
     q2 = (qs[1] if len(qs) >= 2 else "").strip()
+    def _q(s: str) -> str:
+        s = (s or "").strip()
+        if not s:
+            return ""
+        s = s[0].lower() + s[1:] if len(s) > 1 else s.lower()
+        return (s[:-1] if s.endswith("?") else s).strip()
+
     if q1 and q2:
-        body = f" Mesela {q1[:-1] if q1.endswith('?') else q1}? Bir de {q2[:-1] if q2.endswith('?') else q2}?"
+        body = f" Mesela {_q(q1)}? Bir de {_q(q2)}?"
     elif q1:
-        body = f" Mesela {q1[:-1] if q1.endswith('?') else q1}?"
+        body = f" Mesela {_q(q1)}?"
     else:
         body = ""
     lines = [(intro + body).strip()]
