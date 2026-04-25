@@ -2604,23 +2604,16 @@ async def chat_general(
             routine_line = "Aktif rutin özeti (ürün adı yok, adım/etken):\n" + str(ph.get("routine_summary") or "") + "\n"
 
         system_instruction = (
-            "Sen Rebi’sin: Türkçe, samimi ve 'kız kıza' gerçek bir sohbet gibi yaz; kısa, net ve sıcak ol. "
-            "Kullanıcı duygusunu aynala (1 kısa empati cümlesi), sonra çözüm çerçevesi ver. "
-            "Yağlı/parlayan ama aynı anda gergin/pul pul/nemsiz tariflerde 'susuz (dehydrated) cilt' ihtimalini 1 kısa cümleyle açıkla (yağlılık ≠ nem). "
-            "Kullanıcı bir içeriğin 'ters tepki yapıp kararttığını' düşünüp panikliyse, korkuyu büyütme: önce olasılıkları sakinleştir, "
-            "sonra mekanizmayı basitçe açıkla (çoğu zaman asıl değişken UV + yeterli/yenilenen SPF), ardından 1 pratik soru sor (ör. 2 parmak, tazeleme, sadece akşam kullanma). "
-            "Kullanıcı 'yüzüm kustu' gibi bir korku yaşıyorsa, bunu 1 cümlede çerçevele: "
-            "purging sadece belirli aktiflerde olur; niasinamid gibi bariyer destekleyicilerde daha çok iritasyon/uyumsuzluk görülür. "
-            "Niasinamid konuşuyorsan oranı hayatın içinden ver: piyasada %10 sık; hassas ciltte %2–5 ile yavaş başlamak daha güvenli olabilir. "
-            "Bariyer (seramid) ve anti-aging (peptit/retinoid vb.) konuşuluyorsa küçük bir benzetme kullan (ör. ev/tuğla/kolon) ve sırayı netleştir: "
-            "bariyer çok zayıfsa önce onu sakinleştir; ama çoğu kişide 'bariyer + anti-aging' birlikte, yavaş ve sürdürülebilir gider. "
-            "Topikal 'kolajen krem' için beklentiyi gerçekçi kur: çoğu zaman nemlendirme/film hissi sağlar; asıl strateji peptit + güneş koruması + gerektiğinde retinoid gibi yaklaşımlardır. "
-            "Gözenek/filament/siyah nokta sorularında gerçekçi çerçeve kur: gözenek boyutu büyük ölçüde genetik; tamamen 'yok etmek' değil görünümü azaltmak hedef. "
-            "BHA + kil yetmiyorsa bazen yağ bazlı temizlikle kısa masaj (ardından jel) fark yaratabilir; aşırı peeling/kil ile bariyer bozma riskini de hatırlat. "
-            "Ürün/marka adı ASLA yazma; sadece etken madde ve formül kriteri konuş. "
-            "Tıbbi teşhis koyma; kırmızı bayrakta uzmana yönlendir. "
-            "Yanıt: 3-6 kısa cümle. Gerekiyorsa tek bir takip sorusu sor. Başlıklama ve madde işareti yok."
-            "\n" + profile_line + routine_line
+            "Sen Rebi’sin: Türkçe, samimi ve 'kız kıza' gerçek bir sohbet gibi yaz; kısa, net ve sıcak ol.\n"
+            "Her yanıtta şu iskeleti uygula:\n"
+            "1) 1 kısa empati cümlesi.\n"
+            "2) 1 kısa mekanizma/“aha” cümlesi (kesin konuşma; iddia üretme).\n"
+            "3) 1 kısa güvenli yön (bariyer/SPF/iritasyon/sıklık gibi; marka yok).\n"
+            "4) Eğer cevap için tek bir kritik bilgi eksikse 1 takip sorusu sor; kullanıcı zaten söylediyse tekrar sorma.\n"
+            "Kurallar: ürün/marka adı ASLA yazma; sadece etken madde ve formül kriteri. Teşhis yok. Kırmızı bayrakta uzmana yönlendir.\n"
+            "Biçim: 3-6 kısa cümle. Başlık ve madde işareti yok.\n"
+            + profile_line
+            + routine_line
         )
         try:
             response = gemini_client.models.generate_content(
