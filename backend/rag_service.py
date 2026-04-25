@@ -141,6 +141,55 @@ def _free_chat_medical_boundary_reply() -> str:
     )
 
 
+def _extract_chat_slots_llm(text: str) -> dict:
+    """
+    Lightweight NLU via LLM (no per-topic regex trees).
+    Returns a dict with keys we can safely use to avoid re-asking obvious details and to pick ONE
+    high-impact, low-risk practical lever.
+    """
+    if not gemini_client:
+        return {}
+    t = (text or "").strip()
+    if len(t) < 4:
+        return {}
+    try:
+        resp = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[
+                types.Content(
+                    role="user",
+                    parts=[
+                        types.Part.from_text(
+                            text=(
+                                "Extract user-stated skincare context as strict JSON.\n"
+                                "Return ONLY JSON with keys:\n"
+                                "- intent: one of [info, complaint, placement, definition, other]\n"
+                                "- goals: array of short strings\n"
+                                "- facts: array of short strings (explicit user details)\n"
+                                "- zone: string (face area if explicitly mentioned)\n"
+                                "- constraints: array (e.g., 'time_pressure', 'wants_one_product', 'very_sensitive')\n"
+                                "- risk: one of [low, medium, high]\n"
+                                "Rules: don't invent. Keep items short.\n\n"
+                                f"Text: {t}"
+                            )
+                        )
+                    ],
+                )
+            ],
+            config=types.GenerateContentConfig(
+                system_instruction="Return only JSON. No markdown.",
+                temperature=0.1,
+                max_output_tokens=220,
+            ),
+        )
+        js = (_gemini_response_text(resp) or "").strip()
+        m = re.search(r"\{[\s\S]*\}", js)
+        data = json.loads(m.group(0)) if m else {}
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
 def _doc_meta(document_id: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Fetch minimal document metadata for evidence transparency.
@@ -1479,12 +1528,12 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                 ),
             )
             js = (_gemini_response_text(resp) or "").strip()
-            m = re.search(r\"\\{[\\s\\S]*\\}\", js)
+            m = re.search(r"\{[\s\S]*\}", js)
             data = json.loads(m.group(0)) if m else {}
             if isinstance(data, dict):
-                g = data.get(\"goals\") or []
-                f = data.get(\"facts\") or []
-                z = data.get(\"zone\") or \"\"
+                g = data.get("goals") or []
+                f = data.get("facts") or []
+                z = data.get("zone") or ""
                 if isinstance(g, list):
                     stated_goals = [str(x).strip() for x in g if str(x).strip()][:6]
                 if isinstance(f, list):
@@ -2603,15 +2652,19 @@ async def chat_general(
         if ph.get("routine_summary"):
             routine_line = "Aktif rutin özeti (ürün adı yok, adım/etken):\n" + str(ph.get("routine_summary") or "") + "\n"
 
+        slots = _extract_chat_slots_llm(" ".join([str(m.get("content") or "") for m in hist[-6:] if isinstance(m, dict) and m.get("role") == "user"] + [um2]))
         system_instruction = (
             "Sen Rebi’sin: Türkçe, samimi ve 'kız kıza' gerçek bir sohbet gibi yaz; kısa, net ve sıcak ol.\n"
             "Her yanıtta şu iskeleti uygula:\n"
             "1) 1 kısa empati cümlesi.\n"
             "2) 1 kısa mekanizma/“aha” cümlesi (kesin konuşma; iddia üretme).\n"
-            "3) 1 kısa güvenli yön (bariyer/SPF/iritasyon/sıklık gibi; marka yok).\n"
-            "4) Eğer cevap için tek bir kritik bilgi eksikse 1 takip sorusu sor; kullanıcı zaten söylediyse tekrar sorma.\n"
+            "3) 1 kısa güvenli yön.\n"
+            "4) Kullanıcı sorusu 'ne yapayım' modundaysa, önce 1 tane düşük riskli pratik kaldıraç ver (uygulama/sıklık/yerleştirme/temizleme/SPF miktarı gibi).\n"
+            "5) Eğer gerçekten tek bir kritik bilgi eksikse 1 takip sorusu sor; kullanıcı zaten söylediyse tekrar sorma. "
+            "Asla 'rutininde neler var?' diye geniş liste isteme; sadece tek ayırt edici soru sor.\n"
             "Kurallar: ürün/marka adı ASLA yazma; sadece etken madde ve formül kriteri. Teşhis yok. Kırmızı bayrakta uzmana yönlendir.\n"
             "Biçim: 3-6 kısa cümle. Başlık ve madde işareti yok.\n"
+            f"Kullanıcı slotları: {json.dumps(slots, ensure_ascii=False)}\n"
             + profile_line
             + routine_line
         )
