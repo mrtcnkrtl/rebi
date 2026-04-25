@@ -2540,6 +2540,15 @@ async def chat_general(
             )
         )
 
+    def _is_compatibility_question(text: str) -> bool:
+        t = (text or "").lower()
+        return bool(
+            re.search(
+                r"\b(birlikte|aynı anda|ayni anda|kombin|uyumlu|etkile|etkisiz|çakış|cakis|kızar|kizar|flush|kullanılır mı|kullanilir mi|olur mu)\b",
+                t,
+            )
+        )
+
     # Yazım toleransı + konu yakalama (user_id ile dinamik vocab)
     um2 = _free_chat_fuzzy_correct_terms(um, user_id=user_id) or um
 
@@ -2621,7 +2630,8 @@ async def chat_general(
 
     # Strict no-evidence path (no generic advice).
     # If the user asks "where to place this" and we have their active routine summary, ask targeted clarifiers referencing their plan.
-    if ph.get("routine_summary") and _is_routine_placement_question(um2):
+    # If user asks a compatibility/info question (e.g., niacinamide + vitamin C), do NOT hijack into routine placement.
+    if ph.get("routine_summary") and _is_routine_placement_question(um2) and (not _is_compatibility_question(um2)):
         return _chat_general_shape(
             "Mevcut rutininden anladığım kadarıyla bir planın var. Şunu doğru yere koyabilmem için iki şeyi netleştireyim: "
             "Eklemek istediğin şey tam olarak ne (aktif/ürün tipi) ve amacı ne? Bir de şu an akşamları güçlü bir aktif "
