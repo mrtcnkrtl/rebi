@@ -1476,7 +1476,11 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                                     "Takip sorusu tek cümle olsun ve soru işareti ile bitsin. Madde işareti yok. Sayı yok.\n"
                                     "Kullanıcı zaten bölgeyi söylediyse 'nerede' diye sorma. Yüz/makyaj/SPF bağlamında saç derisini sorma.\n"
                                     "Şikayet yoksa 'son 7 günde ne ekledin' gibi triage soruları sorma.\n"
-                                    + (f"Kullanıcının zaten söylediği hedefler: {', '.join(stated_goals)}. Bu hedefleri tekrar sorma.\n" if stated_goals else "")
+                                    + (
+                                        f"Kullanıcının zaten söylediği hedefler: {', '.join(stated_goals)}. Bu hedefleri tekrar sorma.\n"
+                                        if stated_goals
+                                        else ""
+                                    )
                                     f"Intent: {intent}\n"
                                     f"Mesajlar: {merged_user}"
                                 )
