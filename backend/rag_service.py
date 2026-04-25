@@ -1214,6 +1214,12 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
             raw or "",
         )
     )
+    face_zone_ctx = bool(
+        re.search(
+            r"(?i)\b(cene|çene|jawline|çene\s*hatti|chin|aln(ı|i)n|burun|yanak|t\s*bolge|t\s*bölge)\b",
+            raw or "",
+        )
+    )
 
     # Bilgi/uyumluluk sorusu mu? (şikâyet triage'ına kayma)
     info_ctx = bool(
@@ -1234,7 +1240,7 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
     ):
         if face_ctx:
             return ["Yüz için düşünüyorsan: cildin daha çok yağlanmaya mı gidiyor, yoksa kolay kuruyup geriliyor mu?"]
-        return ["Bunu daha çok nerede kullanmayı düşünüyorsun (yüz, saç derisi, vücut) ?"]
+        return ["Tam olarak nereye sürmeyi düşünüyorsun (yüz mü, vücut mu)?"]
 
     botanical = any(x in t for x in ("yag", "yagi", "oil", "extract", "ekstrakt", "oz", "ucu", "uçucu", "essential"))
     if botanical:
@@ -1242,7 +1248,7 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
             qs.append("Bunu yüz için mi düşünüyorsun; yoksa asıl derdin SPF/makyaj altında parlama-kusma gibi bir şey mi?")
             qs.append("Cildin daha çok yağlanmaya mı gidiyor, yoksa kolay kuruyup geriliyor mu?")
         else:
-            qs.append("Bunu daha çok nerede kullanmayı düşünüyorsun (yüz, saç derisi, vücut) ?")
+            qs.append("Bunu daha çok nereye sürmeyi düşünüyorsun (yüz mü, vücut mu)?")
             qs.append("Cildin hassas/alerjiye yatkın mı, yoksa genel olarak dayanıklı mı?")
         return qs[:2]
 
@@ -1261,8 +1267,13 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
         qs.append("Kurulukla birlikte yanma‑batma var mı?")
 
     if not qs:
-        qs.append("Bu daha çok yüzünde mi, yoksa vücudunda da var mı? Ne zamandır fark ediyorsun?")
-        qs.append("Son 7 günde yeni eklediğin bir ürün/aktif var mı?")
+        # Kullanıcı zaten bölgeyi söylemişse tekrar "nerede" sorma.
+        if face_zone_ctx or face_ctx:
+            qs.append("Bu aralar daha çok ağrılı-iltihaplı mı geliyor, yoksa tıkalı komedon gibi mi?")
+            qs.append("Cildin kolay irrite olur mu (yanma-batma), yoksa genelde dayanıklı mı?")
+        else:
+            qs.append("Sorun daha çok nerede: yüz mü, vücut mu? Ne zamandır fark ediyorsun?")
+            qs.append("Son 7 günde yeni eklediğin bir ürün/aktif var mı?")
     return qs[:2]
 
 
@@ -1459,7 +1470,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
 
     # Default strict path: ask for 1-2 basics in a natural chat tone (no form-like bullet list).
     # Evidence-first still applies: we ask questions instead of giving generic advice.
-    intro = "Bunu net söylemek için iki küçük şeyi bilmem lazım; yoksa yanlış yönlendirmek istemem."
+    intro = "Seni anlıyorum—böyle olunca insanın canı sıkılıyor. Yine de doğru söylemek için iki küçük şeyi bilmem lazım."
     q1 = (qs[0] if len(qs) >= 1 else "").strip()
     q2 = (qs[1] if len(qs) >= 2 else "").strip()
     if q1 and q2:
