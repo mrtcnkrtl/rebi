@@ -1198,124 +1198,24 @@ def _free_chat_meta_assistant_reply() -> str:
 
 def _strict_no_evidence_questions(user_message: str, history: Optional[List[Any]] = None) -> list[str]:
     """
-    Sıkı mod: kanıt yokken öneri verme. Sadece 1-2 ayırıcı soru sor.
+    Sıkı mod (LLM yoksa): kanıt yokken öneri verme.
+    Burada kural şişirmemek için yalnızca 1 güvenli soru döndürür.
+    Asıl “doğal tek soru” üretimini LLM yapar (bkz. _strict_no_evidence_reply).
     """
-    # Kullanıcı çoğu zaman bölgeyi/bağlamı bir önceki mesajda söyler.
-    # Bu yüzden sadece son mesajı değil, son birkaç USER mesajını birleştirip bakıyoruz.
-    def _merged_user_context_text(msg: str, hist: Optional[List[Any]]) -> str:
-        parts: list[str] = []
-        try:
-            for m in (hist or [])[-6:]:
-                if not isinstance(m, dict):
-                    continue
-                if m.get("role") != "user":
-                    continue
-                c = str(m.get("content") or "").strip()
-                if c:
-                    parts.append(c)
-        except Exception:
-            pass
-        parts.append((msg or "").strip())
-        # de-dupe adjacent repeats
-        out: list[str] = []
-        last = None
-        for p in parts:
-            if not p:
-                continue
-            if last is not None and p == last:
-                continue
-            out.append(p)
-            last = p
-        return " ".join(out).strip()
-
-    raw = _merged_user_context_text(user_message, history)
+    raw = (user_message or "").strip()
     t = _free_chat_normalize_query(raw)
     if not t:
-        return ["Bunu daha çok nerede yaşıyorsun (yüz, saç derisi, vücut) ve ne zamandır?"]
-
-    qs: list[str] = []
-
-    # Eğer soru zaten çok net "yüz/SPF/makyaj" bağlamındaysa kapsamı genişletme (saç boyu vb. garip kaçar).
-    face_ctx = bool(
-        re.search(
-            r"(?i)\b(yuz|yüz|face|makyaj|makeup|spf|gunes|güne[sş]|sunscreen|parliyor|parlama|kusuyor|pilling)\b",
-            raw or "",
-        )
-    )
-    face_zone_ctx = bool(
-        re.search(
-            r"(?i)\b(cene|çene|jawline|çene\s*hatti|chin|aln(ı|i)n|burun|yanak|t\s*bolge|t\s*bölge)\b",
-            raw or "",
-        )
-    )
-
-    # Bilgi/uyumluluk sorusu mu? (şikâyet triage'ına kayma)
-    info_ctx = bool(
-        re.search(
-            r"(?i)\b(birlikte|ayn[iı]\s*anda|kombin|kombinlen|same\s*day|same\s*night|mix|katman|sira|sıra|hangi\s*sira|rutinde)\b",
-            raw or "",
-        )
-        or re.search(
-            r"(?i)\b(kullanilir\s*mi|kullanılır\s*mı|olur\s*mu|olur\s*m[uü]|uyumlu\s*mu|uyumlu\s*m[uü])\b",
-            raw or "",
-        )
-    )
-
-    cleanse_ctx = bool(
-        re.search(
-            r"(?i)\b(cift\s*asamal[iı]|double\s*cleans|double\s*cleansing|ya[gğ]\s*bazl[iı]\s*temizleyici|oil\s*cleanser|balm|makyaj\s*cozucu|makyaj\s*çözücü|jel\s*temizleyici|gel\s*cleanser)\b",
-            raw or "",
-        )
-    )
-    # Ingredient tanımı sorularında (nedir/ne işe yarar vs.) "form" sorusuna kilitlenmeyelim.
-    # Önce kullanım alanını netleştirmek genelde yeterli.
-    if re.search(
-        r"(?i)\b(nedir|ne\s*ise\s*yarar|ne\s*i[sş]e\s*yarar|i[sş]e\s*yarar|yararli\s*mi|etkili\s*mi|kullansam|kullanilir)\b",
-        raw or "",
-    ):
-        if face_ctx:
-            return ["Yüz için düşünüyorsan: cildin daha çok yağlanmaya mı gidiyor, yoksa kolay kuruyup geriliyor mu?"]
-        return ["Tam olarak nereye sürmeyi düşünüyorsun (yüz mü, vücut mu)?"]
-
-    botanical = any(x in t for x in ("yag", "yagi", "oil", "extract", "ekstrakt", "oz", "ucu", "uçucu", "essential"))
-    if cleanse_ctx:
-        # Yağ bazlı temizleyici = "bitkisel yağ sürmek" değil; o yüzden kapsam sorusu yerine uygulama/arıtma sorusu sor.
-        return [
-            "Bunu genelde suya dayanıklı makyaj/SPF olan günlerde mi yapmak istiyorsun, yoksa her gün mü?",
-            "Çift temizlikten sonra cildin geriliyor mu, yoksa daha çok parlama/siyah nokta mı artıyor?",
-        ][:2]
-    if botanical:
-        if face_ctx:
-            qs.append("Bunu yüz için mi düşünüyorsun; yoksa asıl derdin SPF/makyaj altında parlama-kusma gibi bir şey mi?")
-            qs.append("Cildin daha çok yağlanmaya mı gidiyor, yoksa kolay kuruyup geriliyor mu?")
-        else:
-            qs.append("Bunu daha çok nereye sürmeyi düşünüyorsun (yüz mü, vücut mu)?")
-            qs.append("Cildin hassas/alerjiye yatkın mı, yoksa genel olarak dayanıklı mı?")
-        return qs[:2]
-
-    # Bilgi sorusu (örn. "retinol ve C birlikte kullanılır mı?"): semptom triage soruları değil, uyumluluk soruları sor.
-    if info_ctx:
-        return [
-            "İkisini aynı gün mü kullanmayı düşünüyorsun (biri sabah biri akşam gibi), yoksa aynı rutinde üst üste mi?",
-            "Cildin kolay irrite olur mu (yanma-batma), yoksa genelde dayanıklı mı?",
-        ][:2]
-
-    if any(x in t for x in ("kizar", "kızar", "kizariklik", "kızarıklık")):
-        qs.append("Kızarıklık yanma‑batma ile mi geliyor, yoksa daha çok sıcak basması/flush gibi mi?")
-    if any(x in t for x in ("sivilce", "akne", "komedon")):
-        qs.append("Daha çok ağrılı‑iltihaplı mı, yoksa küçük tıkalı komedon gibi mi?")
-    if any(x in t for x in ("kuru", "kuruluk", "pul", "soyul", "gergin")):
-        qs.append("Kurulukla birlikte yanma‑batma var mı?")
-
-    if not qs:
-        # Kullanıcı zaten bölgeyi söylemişse tekrar "nerede" sorma.
-        if face_zone_ctx or face_ctx:
-            qs.append("Bu aralar daha çok ağrılı-iltihaplı mı geliyor, yoksa tıkalı komedon gibi mi?")
-            qs.append("Cildin kolay irrite olur mu (yanma-batma), yoksa genelde dayanıklı mı?")
-        else:
-            qs.append("Sorun daha çok nerede: yüz mü, vücut mu? Ne zamandır fark ediyorsun?")
-            qs.append("Son 7 günde yeni eklediğin bir ürün/aktif var mı?")
-    return qs[:2]
+        return ["Bana biraz daha anlatır mısın: asıl hedefin ne ve bunu en çok ne tetikliyor gibi?"]
+    # bilgi/uyumluluk
+    if re.search(r"(?i)\b(birlikte|ayn[iı]\s*anda|kombin|uyumlu|kullanilir\s*mi|olur\s*m[uü])\b", raw):
+        return ["Bunu aynı rutinde üst üste mi düşünüyorsun, yoksa biri sabah biri akşam gibi mi?"]
+    # şikayet
+    if re.search(r"(?i)\b(sivilce|akne|kizar|kızar|kuruluk|yanma|batma|leke|donuk|pul)\b", t):
+        return ["Bu aralar daha çok ne baskın: yağlanma/sivilce mi, yoksa kuruluk-yanma mı?"]
+    # tanım / içerik
+    if re.search(r"(?i)\b(nedir|ne\s*i[sş]e\s*yarar|kullansam)\b", raw):
+        return ["Bunu yüz için mi düşünüyorsun, yoksa başka bir bölge için mi?"]
+    return ["Tam olarak neyi çözmek istiyorsun: parlama mı, sivilce mi, kuruluk mu, leke mi?"]
 
 
 async def _strict_no_evidence_reply(user_message: str, history: Optional[List[Any]] = None) -> str:
@@ -1509,7 +1409,9 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                 "Bunu yüz için mi, saç derisi/saç boyu için mi düşünüyorsun?"
             )
 
-    # Genel bakım soruları: soru sormak şart değil. Burada düşük riskli, kısa çerçeve ver.
+    # Default strict path: ask for 1-2 basics in a natural chat tone (no form-like bullet list).
+    # Evidence-first still applies: we ask questions instead of giving generic advice.
+    # Prefer a single natural clarifying question via LLM (no bullet list, no corporate phrasing).
     merged_user = " ".join(
         [
             str(m.get("content") or "").strip()
@@ -1518,29 +1420,57 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
         ]
         + [um]
     ).strip()
-    if merged_user:
-        if re.search(
-            r"(?i)\b(cift\s*asamal[iı]|double\s*cleans|double\s*cleansing|ya[gğ]\s*bazl[iı]\s*temizleyici|oil\s*cleanser|balm|jel\s*temizleyici|gel\s*cleanser)\b",
-            merged_user,
-        ):
-            return _chat_general_shape(
-                "Canım hiç korkma—yağ bazlı temizleyici “yüzüme yağ sürmek” gibi kalıcı bir şey değil. "
-                "Makyajı/SPF’yi çözüyor, suyla emülsiye olup akıyor; üstüne nazik bir jel/temizleyiciyle kalanı alıyorsun. "
-                "Yağlı/akneye meyilli ciltte genelde mesele ‘yağ’ değil; ağır/parfümlü formüller veya iyi durulanmaması. "
-                "İyi emülsiye edip iyice durularsan gözenekte kalıp siyah nokta yapması daha az olası."
-            )
-        if re.search(
-            r"(?i)\b(retinol|retinoid|tretinoin|adapalen).*(c\s*vit|vitamin\s*c|askorb)\b|\b(c\s*vit|vitamin\s*c|askorb).*(retinol|retinoid|tretinoin|adapalen)\b",
-            merged_user,
-        ):
-            return _chat_general_shape(
-                "Genelde en rahat yol: C vitaminini sabah, retinoidi akşam kullanmak (aynı rutinde üst üste bindirmemek). "
-                "İkisi de güçlü olabildiği için yeni başlıyorsan sıklığı yavaş artırmak ve bariyeri iyi nemlendirmek işleri çok kolaylaştırıyor."
-            )
 
-    # Default strict path: ask for 1-2 basics in a natural chat tone (no form-like bullet list).
-    # Evidence-first still applies: we ask questions instead of giving generic advice.
-    intro = "Seni anlıyorum—böyle olunca insanın canı sıkılıyor. Yine de doğru söylemek için birkaç küçük şey netleşsin isterim."
+    def _infer_intent_for_clarify(text: str) -> str:
+        tt = (text or "").lower()
+        if re.search(r"\b(nereye|hangi adim|hangi adım|sira|sıra|rutine)\b", tt):
+            return "placement"
+        if re.search(r"\b(nedir|ne işe yarar|kullansam)\b", tt):
+            return "definition"
+        if re.search(r"\b(birlikte|uyumlu|kombin|aynı anda|olur mu|kullanılır mı)\b", tt):
+            return "compatibility"
+        if re.search(r"\b(sivilce|akne|kizar|kızar|kuruluk|yanma|batma|leke|donuk|pul)\b", tt):
+            return "complaint"
+        return "other"
+
+    intent = _infer_intent_for_clarify(merged_user)
+    llm_q = ""
+    if gemini_client:
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_text(
+                                text=(
+                                    "Aşağıdaki kullanıcı mesajlarından sadece 1 tane, en ayırt edici takip sorusu üret.\n"
+                                    "Kurallar: Türkçe, tek cümle, soru işareti ile bitsin. Madde işareti yok. Sayı yok.\n"
+                                    "Kullanıcı zaten bölgeyi söylediyse 'nerede' diye sorma. Yüz/makyaj/SPF bağlamında saç derisini sorma.\n"
+                                    "Şikayet yoksa 'son 7 günde ne ekledin' gibi triage soruları sorma.\n"
+                                    f"Intent: {intent}\n"
+                                    f"Mesajlar: {merged_user}"
+                                )
+                            )
+                        ],
+                    )
+                ],
+                config=types.GenerateContentConfig(
+                    system_instruction="Return only the question. No extra text.",
+                    temperature=0.25,
+                    max_output_tokens=60,
+                ),
+            )
+            llm_q = (_gemini_response_text(response) or "").strip()
+            llm_q = llm_q.split("\n", 1)[0].strip()
+            if llm_q and not llm_q.endswith("?"):
+                llm_q = llm_q.rstrip(".") + "?"
+        except Exception:
+            llm_q = ""
+
+    pick_q = (llm_q or (qs[0] if qs else "")).strip()
+    intro = "Seni anlıyorum. Bir şeyi netleştirirsek daha doğru yön buluruz:"
     q1 = (qs[0] if len(qs) >= 1 else "").strip()
     q2 = (qs[1] if len(qs) >= 2 else "").strip()
     def _q(s: str) -> str:
@@ -1550,13 +1480,10 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
         s = s[0].lower() + s[1:] if len(s) > 1 else s.lower()
         return (s[:-1] if s.endswith("?") else s).strip()
 
-    if q1 and q2:
-        body = f" Mesela {_q(q1)}? Bir de {_q(q2)}?"
-    elif q1:
-        body = f" Mesela {_q(q1)}?"
+    if pick_q:
+        lines = [f"{intro} {_q(pick_q)}?"]
     else:
-        body = ""
-    lines = [(intro + body).strip()]
+        lines = [intro]
 
     # Kullanıcı bir kaç tur sohbet ettiyse, tek cümleyle Analiz yönlendirmesi ekle (her mesajda spam değil).
     try:
