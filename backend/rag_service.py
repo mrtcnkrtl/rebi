@@ -79,15 +79,21 @@ def _load_entity_vocab_for_user(user_id: Optional[str]) -> set[str]:
 
 _MEDICAL_RED_FLAGS = re.compile(
     r"(?i)\b("
+    # infection / bleeding
     r"iltihapli|irin|kanayan|kanama|"
+    # severe pain (avoid triggering on casual “acıdı”)
     r"cok\s*agrili|şiddetli\s*agri|"
+    # systemic
     r"ates|ateş|"
     r"yayiliyor|hizla\s*yayiliyor|"
-    r"goz\s*cevresi|göz\s*cevresi|goze\s*yakın|"
-    r"nefes\s*darligi|dudak\s*sisme|yuz\s*sisme|"
-    r"anafilaksi|"
+    # anaphylaxis / swelling
+    r"nefes\s*darligi|dudak\s*sisme|yuz\s*sisme|anafilaksi|"
+    # burns
     r"yanik|yanık|kimyasal\s*yanik|"
-    r"acil|acil\s*yardim"
+    # emergency wording (avoid colloquial “acil detoks” etc.)
+    r"acil\s*(servis|yardim|112)|112|ambulans|"
+    # eye area only when paired with severe signs (not just “göz altı”)
+    r"(?:goz\s*cevresi|göz\s*cevresi|goze\s*yakın)\s*(?:sisme|şiş|kanama|irin|yanma|yanik|yanık|şiddetli|cok\s*agrili|bulan|gorme|görme)"
     r")\b"
 )
 
