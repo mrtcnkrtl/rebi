@@ -211,8 +211,27 @@ def _evidence_metrics(*, entity_text: str, vector_hits: list, used_docs: int) ->
         score += 0.05
 
     score = max(0.0, min(score, 1.0))
-    # Strict "ok" gate: accept only strong signals (avoid weak-vector hallucinations).
-    ok = bool(et_len >= 220 or max_sim >= 0.78 or (max_sim >= 0.72 and used_docs >= 2))
+    # Strict "ok" gate:
+    # - Keep it strict for arbitrary queries to prevent weak-vector hallucinations.
+    # - But allow slightly lower similarity for our curated `chat-guides` FAQ docs, because they are
+    #   intentionally generic and meant to answer common skincare questions.
+    guides_hits = 0
+    try:
+        for h in (vector_hits or [])[:6]:
+            did = str(getattr(h, "document_id", "") or "")
+            title, url = _doc_meta(did) if did else (None, None)
+            blob = f"{title or ''} {url or ''}".lower()
+            if "chat-documents" in blob or "chat-guides" in blob or "cilt-bakimi" in blob:
+                guides_hits += 1
+    except Exception:
+        guides_hits = 0
+
+    ok = bool(
+        et_len >= 220
+        or max_sim >= 0.78
+        or (max_sim >= 0.72 and used_docs >= 2)
+        or (guides_hits >= 1 and max_sim >= 0.62)
+    )
     return {"score": score, "max_sim": max_sim, "used_docs": int(used_docs), "entity_len": et_len, "ok": ok}
 
 
