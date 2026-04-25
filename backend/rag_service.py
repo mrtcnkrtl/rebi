@@ -1481,8 +1481,8 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                                         if stated_goals
                                         else ""
                                     )
-                                    f"Intent: {intent}\n"
-                                    f"Mesajlar: {merged_user}"
+                                    + f"Intent: {intent}\n"
+                                    + f"Mesajlar: {merged_user}"
                                 )
                             )
                         ],
