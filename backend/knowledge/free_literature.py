@@ -227,6 +227,50 @@ def _with_derm_context(term: str, user_message: str) -> str:
     return term
 
 
+def _query_wants_skin_context(user_message: str) -> bool:
+    """
+    If the user is clearly asking about topical/face/skin usage, prefer skin-scoped literature.
+    This avoids off-topic medical uses (e.g., surgery/bleeding) for ingredients like tranexamic acid.
+    """
+    t = _norm_query_for_skip(user_message)
+    needles = (
+        "cilt",
+        "skin",
+        "yuz",
+        "yüz",
+        "face",
+        "topical",
+        "cream",
+        "serum",
+        "leke",
+        "melasma",
+        "hiperpig",
+        "pigment",
+        "akne",
+        "acne",
+    )
+    return any(n in t for n in needles)
+
+
+def _abstract_seems_skin_related(title: str, abstract: str) -> bool:
+    blob = _norm_query_for_skip((title or "") + " " + (abstract or ""))
+    needles = (
+        "melasma",
+        "hyperpig",
+        "pigment",
+        "skin",
+        "topical",
+        "dermat",
+        "cream",
+        "serum",
+        "epiderm",
+        "stratum",
+        "acne",
+        "rosacea",
+    )
+    return any(n in blob for n in needles)
+
+
 def _title_relevant_to_query(user_message: str, title: str) -> bool:
     """
     Lightweight relevance filter: require at least 1-2 keyword overlaps.
@@ -347,8 +391,8 @@ async def fetch_pubmed_abstracts(
     if len(q_raw) < 3 or skip_external_literature_for_query(q_raw):
         return []
     q_compact = _compact_literature_query(q_raw)
-    # For definition/explanation, avoid forcing a dermatology anchor; it can hide general pharm/botany papers.
-    term = _sanitize_pubmed_term(q_compact)
+    # Prefer a derm anchor when user intent is skincare/topical; prevents off-topic medical uses.
+    term = _with_derm_context(q_compact, q_raw)
     ids = await _pubmed_titles(term, max_results=max(1, int(max_results)))
     if not ids:
         return []
@@ -377,6 +421,9 @@ async def fetch_pubmed_abstracts(
     out: list[dict[str, str]] = []
     for a in arts:
         if a.get("title") and not _title_relevant_to_query(q_raw, a.get("title") or ""):
+            continue
+        # If user intent is skincare, drop abstracts that look purely non-derm (e.g., surgery/bleeding).
+        if _query_wants_skin_context(q_raw) and not _abstract_seems_skin_related(a.get("title") or "", a.get("abstract") or ""):
             continue
         out.append(a)
         if len(out) >= max(1, int(max_results)):
