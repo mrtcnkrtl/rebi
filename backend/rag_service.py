@@ -1206,18 +1206,32 @@ def _strict_no_evidence_questions(user_message: str) -> list[str]:
         return ["Bunu daha çok nerede yaşıyorsun (yüz, saç derisi, vücut) ve ne zamandır?"]
 
     qs: list[str] = []
+
+    # Eğer soru zaten çok net "yüz/SPF/makyaj" bağlamındaysa kapsamı genişletme (saç boyu vb. garip kaçar).
+    face_ctx = bool(
+        re.search(
+            r"(?i)\b(yuz|yüz|face|makyaj|makeup|spf|gunes|güne[sş]|sunscreen|parliyor|parlama|kusuyor|pilling)\b",
+            raw or "",
+        )
+    )
     # Ingredient tanımı sorularında (nedir/ne işe yarar vs.) "form" sorusuna kilitlenmeyelim.
     # Önce kullanım alanını netleştirmek genelde yeterli.
     if re.search(
         r"(?i)\b(nedir|ne\s*ise\s*yarar|ne\s*i[sş]e\s*yarar|i[sş]e\s*yarar|yararli\s*mi|etkili\s*mi|kullansam|kullanilir)\b",
         raw or "",
     ):
-        return ["Bunu daha çok nerede kullanmayı düşünüyorsun (yüz, saç derisi, saç boyu, vücut) ?"]
+        if face_ctx:
+            return ["Yüz için düşünüyorsan: cildin daha çok yağlanmaya mı gidiyor, yoksa kolay kuruyup geriliyor mu?"]
+        return ["Bunu daha çok nerede kullanmayı düşünüyorsun (yüz, saç derisi, vücut) ?"]
 
     botanical = any(x in t for x in ("yag", "yagi", "oil", "extract", "ekstrakt", "oz", "ucu", "uçucu", "essential"))
     if botanical:
-        qs.append("Bunu daha çok nerede kullanmayı düşünüyorsun (yüz, saç derisi, saç boyu, vücut) ?")
-        qs.append("Cildin/saç derin hassas/alerjiye yatkın mı, yoksa genel olarak dayanıklı mı?")
+        if face_ctx:
+            qs.append("Bunu yüz için mi düşünüyorsun; yoksa asıl derdin SPF/makyaj altında parlama-kusma gibi bir şey mi?")
+            qs.append("Cildin daha çok yağlanmaya mı gidiyor, yoksa kolay kuruyup geriliyor mu?")
+        else:
+            qs.append("Bunu daha çok nerede kullanmayı düşünüyorsun (yüz, saç derisi, vücut) ?")
+            qs.append("Cildin hassas/alerjiye yatkın mı, yoksa genel olarak dayanıklı mı?")
         return qs[:2]
 
     if any(x in t for x in ("kizar", "kızar", "kizariklik", "kızarıklık")):
@@ -1447,7 +1461,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     except Exception:
         user_turns = 0
     if user_turns >= 2:
-        lines.append("İstersen uygulamadaki Analiz’den rutin oluşturup sabah/akşam ve sıklığı da cildine göre netleştirebiliriz.")
+        lines.append("İstersen gel bizim uygulamada bir analiz yapalım; sabah/akşam ve sıklığı da cildine göre netleştiririz.")
 
     return "\n".join(lines).strip()
 
