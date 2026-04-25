@@ -1507,6 +1507,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                                 text=(
                                     "Aşağıdaki kullanıcı mesajlarına göre kısa ve doğal bir yanıt üret.\n"
                                     "Kurallar: Türkçe, samimi 'kız kıza' ton. 1 kısa empati cümlesi + 1-2 cümle güvenli çerçeve (kesin teşhis/garanti yok) + gerekiyorsa 1 takip sorusu.\n"
+                                    "Eğer kullanıcı 'yağlı/parlıyor ama gergin/pul pul/nemsiz' gibi bir şey diyorsa, 'yağlılık ≠ nem' diye mini bir susuz (dehydrated) cilt çerçevesi ekle.\n"
                                     "Ürün/marka adı yok; sadece etken madde / formül kriteri. Teşhis yok.\n"
                                     "Eğer kullanıcı hedefini söylemişse önce kısa çerçeve ver, sonra tek bir takip sorusu sor.\n"
                                     "Takip sorusu tek cümle olsun ve soru işareti ile bitsin. Madde işareti yok. Sayı yok.\n"
@@ -2595,6 +2596,7 @@ async def chat_general(
         system_instruction = (
             "Sen Rebi’sin: Türkçe, samimi ve 'kız kıza' gerçek bir sohbet gibi yaz; kısa, net ve sıcak ol. "
             "Kullanıcı duygusunu aynala (1 kısa empati cümlesi), sonra çözüm çerçevesi ver. "
+            "Yağlı/parlayan ama aynı anda gergin/pul pul/nemsiz tariflerde 'susuz (dehydrated) cilt' ihtimalini 1 kısa cümleyle açıkla (yağlılık ≠ nem). "
             "Ürün/marka adı ASLA yazma; sadece etken madde ve formül kriteri konuş. "
             "Tıbbi teşhis koyma; kırmızı bayrakta uzmana yönlendir. "
             "Yanıt: 3-6 kısa cümle. Gerekiyorsa tek bir takip sorusu sor. Başlıklama ve madde işareti yok."
