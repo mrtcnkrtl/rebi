@@ -1440,38 +1440,53 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
 
     intent = _infer_intent_for_clarify(merged_user)
 
-    # Kullanıcı zaten hedefi söylediyse LLM'in bunu tekrar sormasını engelle.
+    # Kullanıcının söylediği hedef/durum/bölgeyi "kural şişirmeden" çıkar:
+    # Gemini varsa JSON slot extraction yap, yoksa boş bırak (LLM yine de tek soru üretir).
     stated_goals: list[str] = []
-    try:
-        blob = (merged_user or "").lower()
-        goal_map = [
-            (r"\bgozenek|gözenek|cam\s*cilt\b", "gözenek/cam cilt"),
-            (r"\bleke|melaz|pigment|hiperpig", "leke/pigment"),
-            (r"\bdonuk|mat\b", "donukluk/ışıltı"),
-            (r"\bsivilce|akne|komedon|siyah\s*nokta\b", "sivilce/komedon"),
-            (r"\bkuruluk|gergin|pul|soyul|bariyer\b", "kuruluk/bariyer"),
-            (r"\bparlama|sebum|yagli|yağlı\b", "parlama/yağ dengesi"),
-        ]
-        for pat, label in goal_map:
-            if re.search(pat, blob, flags=re.I):
-                stated_goals.append(label)
-        # de-dupe preserve order
-        stated_goals = list(dict.fromkeys(stated_goals))
-    except Exception:
-        stated_goals = []
-
     stated_facts: list[str] = []
-    try:
-        b2 = (merged_user or "").lower()
-        if re.search(r"\b(sivilce|akne|kocaman|dev\s*gibi|ucu\s*yok|kirmizi|kıpkırmızı|a[rğ]rili|acıyan)\b", b2):
-            stated_facts.append("sivilce/ağrılı kızarık lezyon tarif edildi")
-        if re.search(r"\b(gozenek|gözenek|cam\s*cilt)\b", b2):
-            stated_facts.append("gözenek/cam cilt hedefi söylendi")
-        if re.search(r"\b(leke|melaz|pigment|bıyık)\b", b2):
-            stated_facts.append("leke/pigment hedefi söylendi")
-        stated_facts = list(dict.fromkeys(stated_facts))
-    except Exception:
-        stated_facts = []
+    stated_zone: str = ""
+    if gemini_client:
+        try:
+            resp = gemini_client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[
+                            types.Part.from_text(
+                                text=(
+                                    "Extract user-stated skincare context as strict JSON.\n"
+                                    "Return ONLY JSON with keys: goals (array of short strings), facts (array), zone (string).\n"
+                                    "goals: what the user wants (pores/glow/pigmentation/acne/barrier etc).\n"
+                                    "facts: what user clearly stated (e.g., painful red pimple, pilling under makeup).\n"
+                                    "zone: face area if explicitly mentioned (chin/under-eye/etc), else empty.\n\n"
+                                    f"Text: {merged_user}"
+                                )
+                            )
+                        ],
+                    )
+                ],
+                config=types.GenerateContentConfig(
+                    system_instruction="Return only JSON. No markdown.",
+                    temperature=0.1,
+                    max_output_tokens=160,
+                ),
+            )
+            js = (_gemini_response_text(resp) or "").strip()
+            m = re.search(r\"\\{[\\s\\S]*\\}\", js)
+            data = json.loads(m.group(0)) if m else {}
+            if isinstance(data, dict):
+                g = data.get(\"goals\") or []
+                f = data.get(\"facts\") or []
+                z = data.get(\"zone\") or \"\"
+                if isinstance(g, list):
+                    stated_goals = [str(x).strip() for x in g if str(x).strip()][:6]
+                if isinstance(f, list):
+                    stated_facts = [str(x).strip() for x in f if str(x).strip()][:6]
+                if isinstance(z, str):
+                    stated_zone = z.strip()[:40]
+        except Exception:
+            stated_goals, stated_facts, stated_zone = [], [], \"\"
     llm_q = ""
     llm_text = ""
     if gemini_client:
@@ -1501,6 +1516,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                                         if stated_facts
                                         else ""
                                     )
+                                    + (f"Bölge: {stated_zone}.\n" if stated_zone else "")
                                     + f"Intent: {intent}\n"
                                     + f"Mesajlar: {merged_user}"
                                 )
