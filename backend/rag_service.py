@@ -1470,8 +1470,9 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                             types.Part.from_text(
                                 text=(
                                     "Aşağıdaki kullanıcı mesajlarına göre kısa ve doğal bir yanıt üret.\n"
-                                    "Kurallar: Türkçe, sohbet dili. Marka/ürün adı yok. Teşhis yok.\n"
-                                    "Eğer kullanıcı hedefini söylemişse önce 1-2 kısa cümleyle güvenli bir çerçeve çiz (kesin iddia yok), sonra tek bir takip sorusu sor.\n"
+                                    "Kurallar: Türkçe, samimi 'kız kıza' ton. 1 kısa empati cümlesi + 1-2 cümle güvenli çerçeve (kesin teşhis/garanti yok) + gerekiyorsa 1 takip sorusu.\n"
+                                    "Ürün/marka adı yok; sadece etken madde / formül kriteri. Teşhis yok.\n"
+                                    "Eğer kullanıcı hedefini söylemişse önce kısa çerçeve ver, sonra tek bir takip sorusu sor.\n"
                                     "Takip sorusu tek cümle olsun ve soru işareti ile bitsin. Madde işareti yok. Sayı yok.\n"
                                     "Kullanıcı zaten bölgeyi söylediyse 'nerede' diye sorma. Yüz/makyaj/SPF bağlamında saç derisini sorma.\n"
                                     "Şikayet yoksa 'son 7 günde ne ekledin' gibi triage soruları sorma.\n"
@@ -2537,10 +2538,11 @@ async def chat_general(
             routine_line = "Aktif rutin özeti (ürün adı yok, adım/etken):\n" + str(ph.get("routine_summary") or "") + "\n"
 
         system_instruction = (
-            "Sen Rebi Chat'sin: Türkçe, premium ve sade; kullanıcıyla doğal konuş. "
-            "Ürün/marka önerme; yalnız etken madde/formül kriteri. "
+            "Sen Rebi’sin: Türkçe, samimi ve 'kız kıza' gerçek bir sohbet gibi yaz; kısa, net ve sıcak ol. "
+            "Kullanıcı duygusunu aynala (1 kısa empati cümlesi), sonra çözüm çerçevesi ver. "
+            "Ürün/marka adı ASLA yazma; sadece etken madde ve formül kriteri konuş. "
             "Tıbbi teşhis koyma; kırmızı bayrakta uzmana yönlendir. "
-            "Yanıt: 2-5 cümle + gerekirse 1 kısa soru. Başlıklama yok."
+            "Yanıt: 3-6 kısa cümle. Gerekiyorsa tek bir takip sorusu sor. Başlıklama ve madde işareti yok."
             "\n" + profile_line + routine_line
         )
         try:
