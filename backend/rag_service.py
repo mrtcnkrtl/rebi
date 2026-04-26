@@ -2748,6 +2748,51 @@ async def chat_general(
     if not um:
         return ""
 
+    # ── Topic shift guard: keep context, but don't mix unrelated threads ─────────────
+    # If the user pivots to a different topic, trim transient history to avoid
+    # "answering the previous question" and hallucinated carryover.
+    def _topic_shifted(current_msg: str, history_list: list) -> bool:
+        cur = _free_chat_normalize_query(current_msg or "")
+        if len(cur) < 6:
+            return False
+        # Find last user message (excluding current)
+        last_user = ""
+        for m in reversed(history_list or []):
+            if isinstance(m, dict) and m.get("role") == "user":
+                c = (m.get("content") or "").strip()
+                if c and _free_chat_normalize_query(c) != cur:
+                    last_user = c
+                    break
+        if not last_user:
+            return False
+        prev = _free_chat_normalize_query(last_user)
+        if len(prev) < 6:
+            return False
+
+        # 1) Cheap lexical overlap
+        cur_toks = {t for t in re.findall(r"[a-z0-9çğıöşü]+", cur) if len(t) >= 4}
+        prev_toks = {t for t in re.findall(r"[a-z0-9çğıöşü]+", prev) if len(t) >= 4}
+        if not cur_toks or not prev_toks:
+            return False
+        inter = len(cur_toks & prev_toks)
+        union = max(1, len(cur_toks | prev_toks))
+        jacc = inter / union
+
+        # 2) Coarse topic tags (existing heuristic)
+        cur_topics = set(_free_chat_infer_klass_topics(current_msg) or [])
+        prev_topics = set(_free_chat_infer_klass_topics(last_user) or [])
+        topics_overlap = bool(cur_topics & prev_topics) if (cur_topics and prev_topics) else True
+
+        # Shift if both overlap is low and topics diverge.
+        return (jacc < 0.08) and (not topics_overlap)
+
+    if hist and _topic_shifted(um, hist):
+        try:
+            log.info("chat_general topic_shift=1 (history trimmed)")
+        except Exception:
+            pass
+        hist = []
+
     # Kırmızı bayrak / teşhis isteği: deterministik sınır
     ctx = _free_chat_infer_user_context(um, hist)
     ph = profile_hint or {}
