@@ -453,6 +453,7 @@ def _build_free_chat_evidence_bundle(
             "context_text": "",
             "score": 0.0,
             "reason": "empty",
+            "graph_kb_used": False,
         }
 
     entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
@@ -544,14 +545,25 @@ def _build_free_chat_evidence_bundle(
             used_doc_ids.append(did)
 
     vec_joined = "\n\n---\n\n".join(vector_blocks[:6])[:3800]
+    graph_block = ""
+    try:
+        from knowledge.graph_kb import format_graph_evidence_block
+
+        graph_block = (format_graph_evidence_block(um) or "").strip()
+    except Exception as e:
+        log.warning("graph_kb evidence block skipped: %s", e)
+
     parts: list[str] = []
+    if graph_block:
+        parts.append("[Yapısal bilgi tabanı]\n" + graph_block)
     if entity_text:
         parts.append("[Madde / içerik endeksi]\n" + entity_text)
     if vec_joined:
         parts.append("[Anlamsal arama — ilgili pasajlar]\n" + vec_joined)
     context_text = "\n\n".join(parts).strip()
-    if len(context_text) > 6200:
-        context_text = context_text[:6200]
+    _ctx_cap = 7000
+    if len(context_text) > _ctx_cap:
+        context_text = context_text[:_ctx_cap]
 
     sources: list[dict] = []
     for did in used_doc_ids[:3]:
@@ -572,6 +584,7 @@ def _build_free_chat_evidence_bundle(
         "ok": ok,
         "max_sim": float(metrics.get("max_sim") or 0.0),
         "reason": reason,
+        "graph_kb_used": bool(graph_block),
     }
 
 
