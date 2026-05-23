@@ -1,0 +1,464 @@
+{
+  "root": "ingredients",
+  "description_tr": "Maddeler klasörü: her madde kutusunun içinde profile, interactions, concern_links, safety, literature bölümleri vardır.",
+  "internal_folder_schema": {
+    "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+    "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+    "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+    "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+    "literature": "PDF/kitap pasajları (vektör + entity index)"
+  },
+  "subfolders": {
+    "ingredients/actives": {
+      "path": "ingredients/actives",
+      "ingredient_count": 20,
+      "ingredients": [
+        {
+          "ingredient_id": "alpha_arbutin",
+          "name_tr": "Alfa Arbutin",
+          "name_en": "Alpha Arbutin",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING013",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "azelaic_acid",
+          "name_tr": "Azelaik Asit",
+          "name_en": "Azelaic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING011",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "bakuchiol",
+          "name_tr": "Bakuchiol",
+          "name_en": "Bakuchiol",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING016",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "benzoyl_peroxide",
+          "name_tr": "Benzoil Peroksit",
+          "name_en": "Benzoyl Peroxide",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING008",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "ascorbic_acid",
+          "name_tr": "C Vitamini (L-Askorbik Asit)",
+          "name_en": "Ascorbic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING002",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "ferulic_acid",
+          "name_tr": "Ferulik Asit",
+          "name_en": "Ferulic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING015",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "glycolic_acid",
+          "name_tr": "Glikolik Asit",
+          "name_en": "Glycolic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING004",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "hyaluronic_acid",
+          "name_tr": "Hyalüronik Asit",
+          "name_en": "Hyaluronic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING006",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "coenzyme_q10",
+          "name_tr": "Koenzim Q10 (Ubiquinon)",
+          "name_en": "Coenzyme Q10",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING012",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "lactic_acid",
+          "name_tr": "Laktik Asit",
+          "name_en": "Lactic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING019",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "niacinamide",
+          "name_tr": "Niasinamid",
+          "name_en": "Niacinamide",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING001",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "nicotinic_acid",
+          "name_tr": "Niyasin (Nikotinik Asit)",
+          "name_en": "Nicotinic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING020",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "palmitoyl_pentapeptide_4",
+          "name_tr": "Peptid (Palmitoil Pentapeptid-4)",
+          "name_en": "Palmitoyl Pentapeptide-4",
+          "kind": "peptide",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING017",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "retinol",
+          "name_tr": "Retinol",
+          "name_en": "Retinol",
+          "kind": "retinoid",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING003",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "resveratrol",
+          "name_tr": "Rezveratrol",
+          "name_en": "Resveratrol",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING014",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "salicylic_acid",
+          "name_tr": "Salisilik Asit",
+          "name_en": "Salicylic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING005",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "ceramide",
+          "name_tr": "Seramid",
+          "name_en": "Ceramide",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING007",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "titanium_dioxide",
+          "name_tr": "Titanyum Dioksit",
+          "name_en": "Titanium Dioxide",
+          "kind": "spf",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING010",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "tranexamic_acid",
+          "name_tr": "Traneksamik Asit",
+          "name_en": "Tranexamic Acid",
+          "kind": "active",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING018",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "zinc_oxide",
+          "name_tr": "Çinko Oksit",
+          "name_en": "Zinc Oxide",
+          "kind": "spf",
+          "folder_slug": "ingredients/actives",
+          "graph_ingredient_id": "ING009",
+          "ingredient_db_key": null,
+          "sources": [
+            "graph_kb"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        }
+      ]
+    },
+    "ingredients/oils-botanicals": {
+      "path": "ingredients/oils-botanicals",
+      "ingredient_count": 3,
+      "ingredients": [
+        {
+          "ingredient_id": "argan_oil",
+          "name_tr": "Argan yağı",
+          "name_en": "Argan oil",
+          "kind": "oil",
+          "folder_slug": "ingredients/oils-botanicals",
+          "graph_ingredient_id": null,
+          "ingredient_db_key": null,
+          "sources": [
+            "seed_manual"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "almond_oil",
+          "name_tr": "Badem yağı",
+          "name_en": "Almond oil",
+          "kind": "oil",
+          "folder_slug": "ingredients/oils-botanicals",
+          "graph_ingredient_id": null,
+          "ingredient_db_key": null,
+          "sources": [
+            "seed_manual"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        },
+        {
+          "ingredient_id": "jojoba_oil",
+          "name_tr": "Jojoba yağı",
+          "name_en": "Jojoba oil",
+          "kind": "oil",
+          "folder_slug": "ingredients/oils-botanicals",
+          "graph_ingredient_id": null,
+          "ingredient_db_key": null,
+          "sources": [
+            "seed_manual"
+          ],
+          "internal_folders": {
+            "profile": "Konsantrasyon, pH, çözünürlük, hamilelik, kanıt düzeyi",
+            "interactions": "Çakışma, sinerji, pH koşulu, uygulama sırası (graf kenarları)",
+            "concern_links": "Hangi cilt/saç sorunları için eşleme var (priority, not)",
+            "safety": "Güvenlik kuralları (hamilelik, ilaç, hassas cilt)",
+            "literature": "PDF/kitap pasajları (vektör + entity index)"
+          }
+        }
+      ]
+    }
+  },
+  "total_ingredients": 23,
+  "built_from": "offline"
+}
