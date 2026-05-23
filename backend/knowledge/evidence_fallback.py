@@ -48,17 +48,19 @@ def build_graceful_evidence_fallback(
         kb,
         flags=re.DOTALL | re.IGNORECASE,
     )
+    graph_added = False
     if m:
         g = m.group(1).strip()
         if g:
             lines.append(g[: min(len(g), max_chars_per_snippet * 2)])
-            # When structural graph is present, avoid dumping long vector passages.
-            max_snippets = min(max_snippets, len(lines) + 1)
+            graph_added = True
 
     # Remaining sections split by chunk delimiter or section headers.
-    rest = kb
-    if m:
+    rest = "" if graph_added else kb
+    if m and not graph_added:
         rest = kb[m.end() :].strip()
+    elif not m:
+        rest = kb
 
     chunks = re.split(r"\n\n---\n\n", rest)
     for chunk in chunks:
