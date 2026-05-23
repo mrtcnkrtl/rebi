@@ -456,6 +456,8 @@ def _build_free_chat_evidence_bundle(
             "score": 0.0,
             "reason": "empty",
             "graph_kb_used": False,
+            "cabinet_status": "",
+            "cabinet_used": False,
         }
 
     entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
@@ -547,6 +549,16 @@ def _build_free_chat_evidence_bundle(
             used_doc_ids.append(did)
 
     vec_joined = "\n\n---\n\n".join(vector_blocks[:6])[:3800]
+    cabinet_block = ""
+    cabinet_meta: dict = {}
+    try:
+        from knowledge.cabinet_router import format_cabinet_evidence_block
+
+        cabinet_block, cabinet_meta = format_cabinet_evidence_block(um)
+        cabinet_block = (cabinet_block or "").strip()
+    except Exception as e:
+        log.warning("cabinet evidence block skipped: %s", e)
+
     graph_block = ""
     try:
         from knowledge.graph_kb import format_graph_evidence_block
@@ -556,6 +568,8 @@ def _build_free_chat_evidence_bundle(
         log.warning("graph_kb evidence block skipped: %s", e)
 
     parts: list[str] = []
+    if cabinet_block:
+        parts.append(cabinet_block)
     if graph_block:
         parts.append("[Yapısal bilgi tabanı]\n" + graph_block)
     if entity_text:
@@ -587,6 +601,8 @@ def _build_free_chat_evidence_bundle(
         "max_sim": float(metrics.get("max_sim") or 0.0),
         "reason": reason,
         "graph_kb_used": bool(graph_block),
+        "cabinet_status": str(cabinet_meta.get("cabinet_status") or ""),
+        "cabinet_used": bool(cabinet_block),
     }
 
 
@@ -3191,12 +3207,13 @@ async def chat_general(
     ev_ok = bool((ev or {}).get("ok"))
     try:
         log.info(
-            "chat_general retrieval: ok=%s score=%.3f max_sim=%.3f entity_len=%d graph_kb=%s tags=%s",
+            "chat_general retrieval: ok=%s score=%.3f max_sim=%.3f entity_len=%d graph_kb=%s cabinet=%s tags=%s",
             bool(ev_ok),
             float(ev_score),
             float((ev or {}).get("max_sim") or 0.0),
             len(str((ev or {}).get("entity_text") or "")),
             bool((ev or {}).get("graph_kb_used")),
+            str((ev or {}).get("cabinet_status") or "-"),
             ",".join(tags) if tags else "-",
         )
         if slots_router:

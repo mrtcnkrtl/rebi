@@ -1,0 +1,58 @@
+{
+  "ingredients": [
+    {
+      "ingredient_id": "almond_oil",
+      "slug": "almond_oil",
+      "name_tr": "Badem yağı",
+      "name_en": "Almond oil",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["badem yagi", "sweet almond oil", "prunus amygdalus"],
+      "summary_tr": "Taşıyıcı yağ; saç/uçlarda kuruluk hissinde bazı kişilerde nemlendirici his verebilir. Hassasiyet/alerji riski için küçük bölgede dene.",
+      "sources": ["seed_manual"]
+    },
+    {
+      "ingredient_id": "jojoba_oil",
+      "slug": "jojoba_oil",
+      "name_tr": "Jojoba yağı",
+      "name_en": "Jojoba oil",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["jojoba", "simmondsia"],
+      "summary_tr": "Wax ester yapılı taşıyıcı; hafif, çoğu cilt tipinde tolere edilir.",
+      "sources": ["seed_manual"]
+    },
+    {
+      "ingredient_id": "argan_oil",
+      "slug": "argan_oil",
+      "name_tr": "Argan yağı",
+      "name_en": "Argan oil",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["argan"],
+      "summary_tr": "Besleyici yağ; saç uçları ve kuru alanlar için yaygın kullanılır.",
+      "sources": ["seed_manual"]
+    }
+  ],
+  "concerns": [
+    {
+      "concern_id": "hair_dryness",
+      "slug": "hair_dryness",
+      "name_tr": "Kuru saç / saç kuruluğu",
+      "name_en": "Dry hair",
+      "body_area": "hair",
+      "folder_slug": "concerns/hair",
+      "aliases": ["sacim kuru", "sac kuru", "kuru sac", "kuruluk sac", "dry hair", "saç kuruluğu"]
+    },
+    {
+      "concern_id": "scalp_dryness",
+      "slug": "scalp_dryness",
+      "name_tr": "Kuru saç derisi",
+      "name_en": "Dry scalp",
+      "body_area": "hair",
+      "folder_slug": "concerns/hair",
+      "aliases": ["kuru sac derisi", "dry scalp", "kepek kuruluk"]
+    }
+  ],
+  "links": []
+}
