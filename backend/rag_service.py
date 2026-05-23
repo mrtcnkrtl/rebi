@@ -12,7 +12,9 @@ AI şu işleri YAPMAZ:
 - Risk skoru hesaplama (ingredient_db yapar)
 """
 
+import asyncio
 import json
+import random
 import re
 import unicodedata
 import difflib
@@ -2847,6 +2849,26 @@ def _chat_general_shape(text: str) -> str:
     return " ".join(sent[:5]).strip()
 
 
+async def _graceful_chat_fallback_reply(
+    *,
+    kb: str,
+    user_message: str,
+    history: Optional[list] = None,
+    rate_limited: bool = False,
+) -> str:
+    from knowledge.evidence_fallback import build_graceful_evidence_fallback
+
+    body = build_graceful_evidence_fallback(kb, user_message=user_message)
+    prefix = (
+        "Şu an yapay zekâ kotası dolu; kısa bir özet paylaşıyorum:"
+        if rate_limited
+        else "Şu an kısa bir özet üretemedim; elimdeki notların özeti:"
+    )
+    if body:
+        return _chat_general_shape(prefix + "\n\n" + body)
+    return _chat_general_shape(await _strict_no_evidence_reply(user_message, history or []))
+
+
 async def _chat_general_compose_with_evidence(
     *,
     evidence_kind: str,
@@ -2892,7 +2914,7 @@ async def _chat_general_compose_with_evidence(
         caution = "Belirsizse kesin konuşma; 'elimde net kanıt zayıf' diyerek 1-2 ayırt edici soru sor.\n"
 
     final_user = (
-        f"{ev_label}:\n\n{ev[:5200]}\n\n---\n"
+        f"{ev_label}:\n\n{ev[:4000]}\n\n---\n"
         f"Soru: {user_question}\n"
         "Kurallar: teşhis yok, marka/ürün adı yok. Kısa ve konuşma dili.\n"
     )
@@ -2918,25 +2940,47 @@ async def _chat_general_compose_with_evidence(
         + profile_line
         + routine_line
     )
-    try:
-        response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=contents,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                temperature=float(temperature),
-                max_output_tokens=int(max_tokens),
-            ),
-        )
-        reply = _gemini_response_text(response)
-        reply = _strip_markdown_bullets_any(reply)
-        reply = _strip_botty_openers(reply)
-        reply = _strip_broad_routine_questions(reply, user_message=user_question)
-        reply = _strip_repetitive_greeting(reply, history)
-        return _chat_general_shape(reply)
-    except Exception as e:
-        log.warning("chat_general composer failed (%s): %s", evidence_kind, e)
-        return None
+    from knowledge.evidence_fallback import is_gemini_non_retryable_error, is_gemini_retryable_error
+
+    last_err: Optional[Exception] = None
+    for attempt in range(3):
+        try:
+            response = gemini_client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_instruction,
+                    temperature=float(temperature),
+                    max_output_tokens=int(max_tokens),
+                ),
+            )
+            reply = _gemini_response_text(response)
+            reply = _strip_markdown_bullets_any(reply)
+            reply = _strip_botty_openers(reply)
+            reply = _strip_broad_routine_questions(reply, user_message=user_question)
+            reply = _strip_repetitive_greeting(reply, history)
+            return _chat_general_shape(reply)
+        except Exception as e:
+            last_err = e
+            if is_gemini_non_retryable_error(e):
+                log.warning("chat_general composer failed (%s, no retry): %s", evidence_kind, e)
+                return None
+            if attempt < 2 and is_gemini_retryable_error(e):
+                wait = (2**attempt) + random.uniform(0, 0.8)
+                log.info(
+                    "chat_general composer retry %d/2 in %.1fs (%s): %s",
+                    attempt + 1,
+                    wait,
+                    evidence_kind,
+                    e,
+                )
+                await asyncio.sleep(wait)
+                continue
+            log.warning("chat_general composer failed (%s): %s", evidence_kind, e)
+            return None
+    if last_err:
+        log.warning("chat_general composer exhausted retries (%s): %s", evidence_kind, last_err)
+    return None
 
 
 async def chat_general(
@@ -3147,11 +3191,12 @@ async def chat_general(
     ev_ok = bool((ev or {}).get("ok"))
     try:
         log.info(
-            "chat_general retrieval: ok=%s score=%.3f max_sim=%.3f entity_len=%d tags=%s",
+            "chat_general retrieval: ok=%s score=%.3f max_sim=%.3f entity_len=%d graph_kb=%s tags=%s",
             bool(ev_ok),
             float(ev_score),
             float((ev or {}).get("max_sim") or 0.0),
             len(str((ev or {}).get("entity_text") or "")),
+            bool((ev or {}).get("graph_kb_used")),
             ",".join(tags) if tags else "-",
         )
         if slots_router:
@@ -3181,9 +3226,11 @@ async def chat_general(
         )
         if composed:
             return composed
-        # If model unavailable (quota/429 etc.), return the evidence snippets transparently.
-        return _chat_general_shape(
-            "Şu an kısa bir özet üretemedim; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
+        return await _graceful_chat_fallback_reply(
+            kb=kb,
+            user_message=um2,
+            history=hist,
+            rate_limited=False,
         )
 
     # If internal evidence is weak/missing, try external PubMed abstracts as evidence (no links shown).
@@ -3225,9 +3272,7 @@ async def chat_general(
     # Evidence weak/missing or model unavailable:
     # - If we have evidence but no model: return the evidence snippets (transparent).
     if ev_ok and kb and not gemini_client:
-        return _chat_general_shape(
-            "Şu an kısa bir özet üretemedim; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
-        )
+        return await _graceful_chat_fallback_reply(kb=kb, user_message=um2, history=hist)
 
     # Strict no-evidence path (no generic advice).
     # If the user asks "where to place this" and we have their active routine summary, ask targeted clarifiers referencing their plan.
@@ -3348,10 +3393,14 @@ async def _free_chat(
     )
 
     if not gemini_client:
+        from knowledge.evidence_fallback import build_graceful_evidence_fallback
+
+        short = build_graceful_evidence_fallback(kb, user_message=um)
         return {
             "reply": (
-                "Şu an kısa özet üretemedim ama işte bilgi tabanından gelen pasajlar; "
-                "istersen buradan okuyup devam edebilirsin:\n\n" + kb[:2400]
+                "Şu an kısa özet üretemedim; işte kısa notların özeti:\n\n" + short
+                if short
+                else "Şu an kısa özet üretemedim. Biraz sonra tekrar dener misin?"
             ),
             "is_complete": False,
             "extracted_data": None,
@@ -3384,17 +3433,23 @@ async def _free_chat(
     except Exception as e:
         log.error("Free chat hatası: %s", e)
         et = str(e).lower()
-        if "429" in et or "quota" in et or "resource_exhausted" in et:
+        from knowledge.evidence_fallback import build_graceful_evidence_fallback, is_gemini_rate_limit_error
+
+        short = build_graceful_evidence_fallback(kb, user_message=um)
+        if short:
+            prefix = (
+                "Şu an yapay zekâ kotası doldu; kısa bir özet paylaşıyorum:"
+                if is_gemini_rate_limit_error(e)
+                else "Şu an yapay zekâ yanıtı alınamadı; elimdeki notların özeti:"
+            )
             return {
-                "reply": (
-                    "Şu an yapay zekâ kotası doldu; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
-                ),
+                "reply": prefix + "\n\n" + short,
                 "is_complete": False,
                 "extracted_data": None,
             }
         return {
             "reply": (
-                "Şu an yapay zekâ yanıtı alınamadı; elimdeki kanıta dayalı kaynak parçaları:\n\n" + kb[:4500]
+                "Şu an güvenli bir yanıt üretilemedi. Sorunu biraz kısaltıp tekrar dener misin?"
             ),
             "is_complete": False,
             "extracted_data": None,
