@@ -17,6 +17,7 @@ INGREDIENT_INTERNAL_FOLDERS: dict[str, str] = {
 INGREDIENT_FOLDER_SLUGS: dict[str, str] = {
     "active": "ingredients/actives",
     "oil": "ingredients/oils-botanicals",
+    "extract": "ingredients/extracts",
     "peptide": "ingredients/actives",
     "retinoid": "ingredients/actives",
     "spf": "ingredients/actives",

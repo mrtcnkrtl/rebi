@@ -34,6 +34,8 @@ def _kind_from_category(cat: str) -> str:
     c = (cat or "").lower()
     if "bariyer" in c or "barrier" in c:
         return "active"
+    if "extract" in c or "ekstrakt" in c or "özü" in c or "botanical extract" in c:
+        return "extract"
     if "oil" in c or "yağ" in c or "botanical" in c:
         return "oil"
     if "retinoid" in c:

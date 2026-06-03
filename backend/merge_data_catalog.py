@@ -2,7 +2,8 @@
 Build unified data catalog (canonical ingredients/concerns + links) from:
   - Graph KB tables (ingredient_profiles, skin_conditions, condition_ingredient_map)
   - INGREDIENT_DB (ingredient_db.py)
-  - backend/data/data_catalog_seeds.json (oils, hair concerns, manual rows)
+  - backend/knowledge/data_catalog_seeds.json (oils, hair concerns, manual rows)
+  - knowledge_entities promoted from PDFs (oils / extracts / actives folders)
 
 Requires migrations:
   - 20260503140000_skincare_graph_kb.sql
@@ -379,6 +380,79 @@ def merge_from_seeds(cur) -> dict:
     return {"ingredients": ni, "concerns": nc, "links": nl}
 
 
+_PROMOTE_STOP = {
+    "oil", "yag", "yagi", "extract", "ekstrakt", "ekstre", "ozu", "ozut",
+    "acid", "asit", "skin", "cilt", "hair", "sac", "water", "su", "vitamin",
+    "complex", "kompleks", "serum", "krem", "cream", "active", "aktif",
+}
+
+_OIL_HINTS = ("oil", "yag", "butter", "yagi", "butyrospermum", "oleum")
+_EXTRACT_HINTS = (
+    "extract", "ekstrakt", "ekstre", "ozu", "ferment", "mucin", "leaf",
+    "root", "flower", "bark", "seed", "fruit", "kabugu", "yapragi", "koku",
+    "cicegi", "venom", "honey", "bal ", "propolis",
+)
+
+
+def _classify_entity_folder(name: str) -> tuple[str, str]:
+    """Guess kind + folder slug for a free-text PDF entity name."""
+    n = (name or "").lower()
+    if any(w in n for w in _OIL_HINTS):
+        return "oil", "ingredients/oils-botanicals"
+    if any(w in n for w in _EXTRACT_HINTS):
+        return "extract", "ingredients/extracts"
+    return "active", "ingredients/actives"
+
+
+def promote_entities_to_catalog(cur, min_count: int = 2, limit: int = 500) -> int:
+    """
+    Promote frequent PDF-extracted entities (knowledge_entities) that are not yet
+    in canonical_ingredients into new catalog rows, routed to oils/extracts/actives.
+    This is what makes "PDF'de çok daha fazla yağ/ekstrakt" actually land in the cabinet.
+    """
+    try:
+        _exec(
+            cur,
+            """
+            select lower(name) as name, count(*) as c
+            from public.knowledge_entities
+            where kind = 'ingredient' and length(trim(name)) >= 3
+            group by lower(name)
+            having count(*) >= %s
+            order by c desc
+            limit %s
+            """,
+            (int(min_count), int(limit)),
+        )
+    except Exception as e:
+        log.warning("promote_entities_to_catalog skipped: %s", e)
+        return 0
+
+    added = 0
+    for name, _c in cur.fetchall() or []:
+        nm = (name or "").strip()
+        if len(nm) < 3 or nm in _PROMOTE_STOP:
+            continue
+        if _find_canonical_ingredient_id(cur, nm, nm):
+            continue
+        kind, folder = _classify_entity_folder(nm)
+        _upsert_ingredient(
+            cur,
+            {
+                "ingredient_id": _slugify(nm),
+                "slug": _slugify(nm),
+                "name_tr": nm,
+                "name_en": nm,
+                "kind": kind,
+                "folder_slug": folder,
+                "aliases": [nm],
+                "sources": ["pdf_entity"],
+            },
+        )
+        added += 1
+    return added
+
+
 def merge_entity_aliases(cur, limit: int = 400) -> int:
     """Attach frequent knowledge_entities names as aliases on existing canonical rows (best-effort)."""
     try:
@@ -421,6 +495,17 @@ def merge_entity_aliases(cur, limit: int = 400) -> int:
 def main() -> None:
     ap = argparse.ArgumentParser(description="Merge all Rebi data sources into canonical catalog")
     ap.add_argument("--inventory-only", action="store_true")
+    ap.add_argument(
+        "--no-promote",
+        action="store_true",
+        help="Skip promoting frequent PDF entities into the catalog (oils/extracts/actives).",
+    )
+    ap.add_argument(
+        "--promote-min-count",
+        type=int,
+        default=2,
+        help="Minimum chunk frequency for a PDF entity to be promoted (default: 2).",
+    )
     args = ap.parse_args()
 
     with pg_conn(autocommit=False) as conn:
@@ -436,6 +521,11 @@ def main() -> None:
                 "seeds": merge_from_seeds(cur),
                 "ingredient_db": merge_from_ingredient_db(cur),
                 "graph": merge_from_graph(cur),
+                "promoted_pdf_entities": (
+                    0
+                    if args.no_promote
+                    else promote_entities_to_catalog(cur, min_count=args.promote_min_count)
+                ),
                 "entity_alias_updates": merge_entity_aliases(cur),
             }
             inv2 = inventory(cur)
