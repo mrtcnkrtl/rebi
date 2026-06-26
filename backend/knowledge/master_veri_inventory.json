@@ -1,0 +1,3598 @@
+{
+  "source_file": "Dermatolojik_Veri_Analizi_Master.xlsx",
+  "box_count": 60,
+  "by_kind": {
+    "active": 19,
+    "oil": 1,
+    "topic": 40
+  },
+  "boxes": [
+    {
+      "name": "Kolajen Peptidleri",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Kanıt Seviyesi": 2,
+        "Mekanizma": 105,
+        "Etki Mekanizması": 1,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 2b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kolajen fragmantasyonu azalması: %44.6",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Esneklik artışı: %22.7",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kırışıklık azalması: %19.6",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sürdürülen etkisi: Haftalık doza göre daha iyi (günlük)5. Kuru Cilt ve Dehidratasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "13",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "18",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "8",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "19",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "19",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "19",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Karşılaştırmalı Etkinlik Analizi",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Clinical Efficacy Metrics for Top-Tier Consensus Dermocosmetic Ingredients",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Tretinoin vs. Bakuchiol",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Her ikisi kırışıklık yüzey alanında significant azalma gösterdi",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hiperpigmentasyon iyileştirmesi: Bakuchiol %59 vs. Retinol %44",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Tolerabilite: Bakuchiol daha iyi (daha az skalama/pıngil",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Fotosentivite: İkisinde de rapor yok",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Aktif MaddeSMD DeğeriIrritasyon Riski",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sisteamin 1.6 %42.2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hidrokinon 1.3 %50.9",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Traneksamik Asit 1.5 %0.8",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 109
+    },
+    {
+      "name": "Günlük Su İçimi",
+      "synonyms": [
+        "2000 mL Threshold) 81 82 83"
+      ],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 32,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "84",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "83",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "82",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "82",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mekanizma: Su yüksek tüketim grubunda daha az etki gösterir çünkü zaten doygunluğa",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "ulaşmışlardır.",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Bu, belgeli en önemli değişken:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Psikolojik stres → HPA axis aktivasyon → Cortisol ↑ → Keratinositlerdeki 11β-HSD1 ekspresyonu ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "→ Lokal cortisol ↑ → KRT10/KRT1 diferensiasyon belirteçleri ↓ → Bariyer disfonksiyonu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Nicel etki:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Basal TEWL artı şı %15-25 ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Stratum corneum integrityinde azalma (delta TEWL ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Uyku kalitesi + anksiyete ile korelasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Müdahale çerçevesi:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yüksek stres: Niacinamid %5 Seramidler + Kolajen peptidler (oral 10g/gün",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Orta stres: Niacinamid %4 Vitamin C kombinasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Düşük stres: Normal protokol",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "PM2.5 nanopelletler direkt cilt bariyerini penetrer:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mekanizma: PM2.5 → TNF α aracılı → Filaggrin FLG) ekspresyonu ↓ → Bariyer lipit defisiansı →",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "TEWL artış ı → FDPs (filaggrin degradation products) azalması",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Klinik Etkinlik",
+          "text": "Klinik sonuç: Hiperpigmentasyon, akne kötüleşmesi, kollagen bozulması",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "AQI-temelli strateji:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "AQI 50 Düşük): Standart protokol",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "AQI 50-150 Orta Vitamin C %10-15 Niacinamid ekleme",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "AQI 150 Yüksek Vitamin C %15-20 Salisilik asit %2 (keratolyt + FLG koruma",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 33
+    },
+    {
+      "name": "Seramidler",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Kanıt Seviyesi": 1,
+        "Mekanizma": 12,
+        "Uzman Görüşü": 1
+      },
+      "claims": [
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b-2b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Bariyer restorasyonu: TEWL (transepidermal su kayıpları) azalması",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kombinasyon: Niamidin ile sinerji 2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "14",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "14",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "15",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "15",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "14",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "14",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "16",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %82.1%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hidrasyon iyileştirmesi: %38",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Biyolojik mekanizma: Lipit bariyer restorasyonu",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 14
+    },
+    {
+      "name": "Retinoidler",
+      "synonyms": [
+        "Tretinoin",
+        "Retinol",
+        "Retinaldeyde"
+      ],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 1,
+        "Klinik Etkinlik": 1,
+        "Kanıt Seviyesi": 2,
+        "Etki Mekanizması": 1,
+        "Mekanizma": 3
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %96",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Klinik Etkinlik",
+          "text": "Klinik etkinlik: %32 kırışıklık derinliği azalması, %28 esneklik iyileştirmesi",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b (çok sayıda RCT",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Etki mekanizması: Kolajen sentezini uyarma, hücre döngüsünü hızlandırma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Zaman çizelgesi: 6-12 ay tam etki için",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Multi-yararı: Akne + fotoişınlanma tedavisi",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kombinasyon etkinlik: BP %29.8 vs. Retinoid+BP %58.5",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 8
+    },
+    {
+      "name": "Vitamin C",
+      "synonyms": [
+        "L Askorbit Asit",
+        "stabilize formlar"
+      ],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 2,
+        "Klinik Etkinlik": 1,
+        "Kanıt Seviyesi": 1,
+        "Mekanizma": 4
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %88.7%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Klinik Etkinlik",
+          "text": "Klinik sonuçlar: %9-13 kırışıklık azalması",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b-2b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Biyopsi verileri: Yeni kolajen oluşumu doğrulanmış",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "En etkili konsantrasyon: 5-20%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %87.1%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Depigleme özellikleri: Tirosinaz aktivitesi inhibisyonu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Uzun süreli kullanım: Daha etkili sonuçlar",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 8
+    },
+    {
+      "name": "Hyaluronik Asit",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 2,
+        "Mekanizma": 5
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %79%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Ani hidrasyon artışı: %134 (anında",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sürdürülen etki: %55 6. haftada",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "İnce çizgilerde iyileştirme: %31",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %79%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Oral etkisi: %24.43 sürdürülen hidrasyon artı şı 40 gün",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Topolojik formlar: Dermal yapıya penetrasyon",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 7
+    },
+    {
+      "name": "Mineral Güneş Filtresi",
+      "synonyms": [
+        "Çinko oksit",
+        "Titanyum dioksit"
+      ],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 2,
+        "Kanıt Seviyesi": 2,
+        "Etki Mekanizması": 1,
+        "Mekanizma": 2
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %96.8% (en yüksek konsensüs",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Etkinlik: Fotoişınlanmadan koruma, hasarı engelleme",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Eş zamanlı kullanım: Tüm diğer aktif maddelerle güvenli",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %95.2%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mekanizma: Fiziksel bariyer, inflamasyonu engeller",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 7
+    },
+    {
+      "name": "Niacinamid",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Kanıt Seviyesi": 2,
+        "Mekanizma": 5
+      },
+      "claims": [
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b-2b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Anti-inflamatuar etki: İ L 6, İ L 8 azalması",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sebase: Sebum düzenlemesi",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Anti-inflamatuar: İ L 1 α / İ L 1 α RA oranı azalması",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Bariyer tamir: Seramit sentezi uyarımı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Tolerabilite: Mükemmel, tüm ciltlerle uyumlu",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 7
+    },
+    {
+      "name": "Traneksamik Asit",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 7
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "9",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "10",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "9",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "9",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "11",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "12",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "13",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 7
+    },
+    {
+      "name": "Hidrokinon",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 1,
+        "Kanıt Seviyesi": 1,
+        "Mekanizma": 2,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %98.4% (en yüksek",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Meta-analiz verisi: SMD 1.3",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Uyarı: Yüksek irritasyon riski %50.9%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Klinik Etkinlik",
+          "text": "Klinik zaman çizelgesi: 8-12 hafta",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 5
+    },
+    {
+      "name": "Azelaikasit",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Kanıt Seviyesi": 1,
+        "Mekanizma": 3
+      },
+      "claims": [
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 2b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Meta-analiz verisi: SMD 1.3",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Irritasyon riski: %18.7",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Çift yararı: Akne + hiperpigmentasyon",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 4
+    },
+    {
+      "name": "Kojik Asit",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 1,
+        "Mekanizma": 3
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %93.6%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Meta-analiz verisi: SMD 0.9",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Irritasyon riski: %5.3 (çok daha düşük",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mekanizma: Melanin sentezini inhibe eder",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 4
+    },
+    {
+      "name": "Peptidler",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Klinik Etkinlik": 1,
+        "Kanıt Seviyesi": 1,
+        "Mekanizma": 2
+      },
+      "claims": [
+        {
+          "alt": "Klinik Etkinlik",
+          "text": "Klinik iyileş tirme: %56.25 %87.5 arasında",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 2b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Şişlik azalması: %24",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kolajen resintezi: Histolojik kanıt mevcut",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 4
+    },
+    {
+      "name": "Petrolatum",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 1,
+        "Kanıt Seviyesi": 1,
+        "Mekanizma": 2
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %85.5%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mekanizma: Okluzif, TEWL engeller",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Gold standart tedavi",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 4
+    },
+    {
+      "name": "Salisilik Asit",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Kanıt Seviyesi": 1,
+        "Etki Mekanizması": 1,
+        "Mekanizma": 2
+      },
+      "claims": [
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Etkinlik: Hızlı komedo azalması 2-4 hafta",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mekanizma: Keratolit etki, pori temizleme",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Benzoyl peroksitle kombinasyon: Artan etkinlik",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 4
+    },
+    {
+      "name": "Brimonidine",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 1,
+        "Mekanizma": 2
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %75.8%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mekanizma: Direkt vasokonstriksyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Reaksiyon: Akut kızarıklıkta hızlı etkinlik",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 3
+    },
+    {
+      "name": "Benzoyl Peroksit",
+      "synonyms": [],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Uzman Görüşü": 1,
+        "Kanıt Seviyesi": 1
+      },
+      "claims": [
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %95.2%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 1b (çok sayıda RCT Cilt Endikasyonlarına Göre Etkili Maddeler",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 2
+    },
+    {
+      "name": "Bariyer İntegrasyonu",
+      "synonyms": [
+        "TEWL Ölçümü) 78 79 91"
+      ],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "91",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 1
+    },
+    {
+      "name": "GAG",
+      "synonyms": [
+        "Glycosaminoglycan) Kaybı"
+      ],
+      "kind": "active",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Çay Ağacı Yağı",
+      "synonyms": [],
+      "kind": "oil",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 2,
+        "Kanıt Seviyesi": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "Akne Ciddiyeti İndeksi ASI) azalması: %66.7 vs. eritromisin %49.7",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt seviyesi: Level 2b-3",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Aktif bileşen: Terpinen-4-ol penetrasyonu",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 3
+    },
+    {
+      "name": "Sebum Dyslipidemi",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 861,
+        "Etki Mekanizması": 21,
+        "Klinik Etkinlik": 2
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "Yaşlanma etkisi:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "20-30 yaş : Optimal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "30-40 yaş : %20 elastin ↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "40+ yaş: %50 ↓ → Gözenek görünümü ↑ %300",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "RH%Gözenek GenişliğiMekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "40%Baseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "40-70% 30% Sebum ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "70% 60% Maksimal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "AQIRisk Etki",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50Baseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "150-50%Partikül tıkanıklığı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Tür NedenFaktörÇevreselRisk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yağ GözenekSebum ↑DHT ↑Nem 4x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Geniş GözenekKolajen ↓UV Yaş 6x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Salisilik asit %2 - Tıkanıklık çözücü",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Retinol %0.3 - Kolajen stimülasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Fraksiyonel RF - DermIS remodeling",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Karbon peeling - Temizlik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sonuç: Gözenek görünümü %60 sebum + %40 dermal destek. Düzenli bakım ile %80 kontrol",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "sağlanır.",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "⁂3. Elastikiyet Kaybı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "III. Çevresel Etkenler",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Nem/Sıcaklık",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "PM2.5",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "IV. Türler Tablosu",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 884
+    },
+    {
+      "name": "Post-İnflamatuar Hiperpigmentasyon",
+      "synonyms": [
+        "PIH"
+      ],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 128,
+        "Klinik Etkinlik": 3,
+        "Etki Mekanizması": 5
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "MC1R gen polimorfizmi:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kızıl saç geni R151C, R160W → MC1R fonksiyon kaybı → Pheomelanin ↑ → UV hassasiyeti ↑ →",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Leke riski ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UV Dozu Leke Riski Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Düşük SPF 50 BaselineMinimal ROS",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Orta SPF 15-30 30-50%p53 → POMC aktivasyonu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yüksek (korumasız) 80-150%MITF → Tyrosinase 3-5x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Klinik Etkinlik",
+          "text": "Klinik: Tek güneş yanığı → %35 melanin ↑ 2-4 hafta kalıcı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "AQILeke Riski Etki",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50BaselineMinimal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50-150-25-40%AhR Aryl hydrocarbon receptor) → Tyrosinase ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "150-50-80%ROS AhR → Kronik hiperpigmentasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mekanizma: PM2.5 nanopartikülleri → AhR aktivasyonu → CYP1A1 → ROS → Melanin ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "CortisolLeke Riski Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "NormalBaseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Orta 20-30%CRH → MC1R ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yüksek 40-60%HPA axis → ACTH/MSH ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Durum Leke RiskiSüre",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Gebelik 70% 3. trimester",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "OK kullanım 30% 6-12 ay",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Tiroid disfonksiyon 25% Kronik4. Genetik Faktörler",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "III. Çevresel Etmen Etkisi Seviyeleri",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UV Maruziyeti En Kritik Faktör",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "167",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "PM2.5 Kirliliği",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 136
+    },
+    {
+      "name": "Cilt Sorununun Ciddiyeti",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 123,
+        "Klinik Etkinlik": 1,
+        "Kanıt Seviyesi": 1,
+        "Etki Mekanizması": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "II. Algoritmanın Karar Yapısı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Çıktı: Kişiye özel 3-4 haftalık protokol",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sabah: Temizleme → Aktif 1 → Aktif 2 → SPF",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Akşam: Temizleme → Aktif 3 → Nemlendirici → Okluzif",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Haftalık: Özel tedaviler",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yaşam tarzı: Su + uyku + stres",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Clinical Assessment Parameters & Evidence-Based Skincare Recommendations with Quantified",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Improvements",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Level 1b En Yüksek): Retinoidler, Benzoyl peroksit, Vitamin C, Niacinamid, Mineral SPF",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Level 2b Orta : Hyaluronik asit, Seramidler, Peptidler, Azelaikasit, Traneksamik asit, Bakuchiol",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Level 3: Botanik ekstraktlar, Yeni aktifler",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Klinik Etkinlik",
+          "text": "Sistem 6 farklı hasta profili için tam protokol oluşturur:III. Klinik Kanıt Seviyeleri Sistem Tarafından Kullanılır",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "IV. 6 Kompleks Senaryo ve Ürün Stacking",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "6 Complex Patient Scenarios: Evidence-Based Product Stacking & Personalized Protocols",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Senaryo 1 Dehidrate + Yüksek Stres + Yüksek PM2.5 Yoğun Makyaj",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sorun: Bariyer disfunksiyon + pore obstruksiyonu + akne",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sabah: Niacinamid %5 → Vitamin C %15 → SPF 50",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Akşam: Double cleanse → Salisilik asit %2-2x/hafta) → Seramidler+Hyaluronik asit →",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Petrolatum",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Özel: Retinoid %0.025-2x/hafta) + Kolajen peptid (oral",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yaşam: 2000mL su/gün + 7-8 saat uyku + Stress management",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Beklenen sonuç: 4 hafta → Hidrasyon 30-40%, 8 hafta → Bariyer restore, 12 hafta → Anti-aging",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "görülmesi başlar",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Senaryo 2 Normal Hidrasyon + Orta Stres + Düşük PM2.5 Minimal Makyaj + Anti-Aging Odak",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sabah: Vitamin C %10-15 → Peptidler → SPF 30",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 126
+    },
+    {
+      "name": "İnflamasyon ve Sitokinler",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 115,
+        "Etki Mekanizması": 5,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "TNF α: Bariyer enzim inhibisyonu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "IL 4/IL 13: Atopik kurulukta",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hastalık Mekanizma TEWL Artışı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hipotiroidi Sebum ↓, epidermik turnover ↓ 150%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Diyabet AGEs → LAM crosslinking 200%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Böbrek yetmezliğiÜremik toksinler 300%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "RH%TEWL Artışı Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "60%Baseline Optimal hidrasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "30-60% 50-100%Hafif evaporatif kayıp",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "30% 200-400%Ciddi evaporatif kayıp",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kış etkisi: RH 20% → TEWL 500%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sistem TEWL Artışı Süre",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Merkezi ısıtma 300% Kronik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Klima (yaz) 250% Sezonsal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sobaya bağlı 400% Lokal yüksek",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "DurumHidrasyon EtkisiNem Artışı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "1L/gün 20% Minimal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "1.5-2L/günBaseline Optimal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "3L/gün 10% Maksimum",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Vitamin eksiklikleri:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Vitamin D: %30 hidrasyon ↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Omega-3: Ceramids ↓ %25",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Çinko: Filaggrin ↓ %204. Sistemik Faktörler",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "III. Çevresel Etmen Etkisi Seviyeleri 176 173",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Nem ve Sıcaklık",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 121
+    },
+    {
+      "name": "Advanced Glycation End-products",
+      "synonyms": [
+        "AGEs"
+      ],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 96,
+        "Etki Mekanizması": 5,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "UV Dozu Kolajen KaybıMMP 1 Artışı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Korunmuş Baseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Orta SPF 30 20% 10x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yüksek (korumasız) 50-80% 75x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Photoaging: Kronik UV %80 dermal hasar",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sigara/paket-yılKolajen Kaybı Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "10-15% ROS MMP ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "10-20-40% Elastin dejenerasyonu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "20-70% Neutrofil elastaz ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "KortizolKolajen SenteziSüre",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "NormalBaseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kronik↓ %30 Sürekli",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Akut↓ %15 Geçici",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "EksiklikKolajen Etkisi Kaynak",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "C Vitamini↓ %50 Kolajen hidroksilasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Bakır ↓ %30 Lizil oksidaz",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Çinko ↓ %20 MMP inhibisyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kırışıklık",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "TürüDerinlikPrimer",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "NedenBilimsel",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "FaktörEtki",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "SeviyesiÇevresel",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "TetikleyiciRisk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Artışı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "İnce Epidermis DehidrasyonGAG ↓ %20Hafif Nem ↓ 2x ↑",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 102
+    },
+    {
+      "name": "İnflamasyon Kaskadı",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 93,
+        "Kanıt Seviyesi": 1,
+        "Etki Mekanizması": 3,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "Biofilm formation 72h",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Virulence factor release (lipase, protease, CAMP",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Follicle rupture",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Cytokine elevation IL 1, IL 6, IL 8, TNF α",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Neutrophil infiltration → Pustule formation",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Scarring (if repeated cycles",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Environmental Factors Impact Matrix: Risk Assessment for Acne Development and Severity",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Escalation",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "AQI SeviyesiAkne Riski Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "35 μg/m³BaselineNormal bariyer",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "35-75 μg/m³ 25-40%PM2.5 pore settling, mild TNF α ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "75 μg/m³ 50-80%TNF α → FLG deficiency → TEWL ↑ → Dysbiosis",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Kanıt Seviyesi",
+          "text": "Kanıt: Beijing çalışması, PM2.5 konsantrasyonu ile akne klinik başvuruları pozitif korelasyonIII. Çevresel Etmen Etkisi Seviyeleri",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "PM2.5 Kirliliği",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "124",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "RH Seviyesi Akne Riski Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "30% 15-25% Paradoks)TEWL ↑ → Compensatory sebum ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "30-60% Baseline Optimal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "60% 40-60% Pore maceration, C. acnes IA1 ↑ 50% , anaerobic environment",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Tropikal klinik: Yüksek nem = Facial, neck, back akne predominanı (sebaceous-rich",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "TempAkne Riski Etki",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "10°C 10-20%TEWL ↑, sebum kompensasyon ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "10-25°CBaselineNormal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "25°C 30-50%Sebaceous enzyme ↑ 30-40%, Biofilm formation ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Synergy: Temp 25°C × Humidity 60% = 5x acne risk (tropical monsoon season",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 98
+    },
+    {
+      "name": "Mikrobiyal Faktör",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Etki Mekanizması": 3,
+        "Mekanizma": 85,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Etki Mekanizması",
+          "text": "III. Çevresel Etmen Etkisi Seviyeleri",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Nem ve Sıcaklık",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "PM2.5 Kirliliği",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "SüreRisk Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "4hBaseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "4-8h 25%Partial pore tıkanıklığı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "8h 50%Kronik oklüzyon → siyah nokta",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Siyah Nokta",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "TürüPrimer Neden Bilimsel FaktörEtki SeviyesiÇevresel",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "TetikleyiciRisk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Artışı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Primer Genetik Sebum dyslipidemiSebum 2.5x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↑Nem + sıcaklık 4x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hormonal Androjen DHT ↑, IGF 1 ↑ Kronik Diyet Genetik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Çevresel Dış maruziyetPM2.5",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "oksidasyonuAkut Kirlilik + makyaj3x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "DysseboreikLipid",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "dengesizliğiSqualene ↑ %34Orta-şiddetliTropik iklim 5x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Risk Grubu Kombinasyon Toplam RiskKomplikasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Düşük Nem + sıcaklık 40% Hafif siyah nokta",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Orta + Makyaj 70% Orta yaygınlık",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yüksek + PM2.5 + hormonal 120% Şiddetli T-zone",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kritik Genetik + tropik 200% Kronik siyah nokta",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 1: Dağılım? (T-zone/geni ş",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 89
+    },
+    {
+      "name": "İnflamasyon ve Feedback Loop",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 84,
+        "Etki Mekanizması": 4,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "RH%Sebum Artışı Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "40%Baseline Normal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "40-70% 30-50% Termoregülasyon stimülasyonu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "70% 80-120%Maksimal sebaceous aktivite",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Tropikal etki: Sebum salgısı 3x temperate iklime göre",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "KortizolSebum ArtışıSüre",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "NormalBaseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Akut stres 40% 24-48h Geçici",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kronik 80% Sürekli",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Gıda Sebum ArtışıMekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yüksek GI 25-40% IGF 1 ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Süt ürünleri 30% IGF 1, androjen ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Trans yağ 20% Lipogenezis ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "FaktörSebum Artışı Etki",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "PM2.5-20-30% AhR → Lipid sentezi",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Klima 15% Termoregülasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Makyaj 25% Oklüzif feedback",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Yağlanma TürüPrimer NedenBilimsel FaktörEtki SeviyesiÇevresel TetikleyiciRisk Artışı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Genel Yağ lı Genetik DHT duyarlılığı ↑Sebum 3x ↑Tropik iklim 5x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Karma T-zone Androjen IGF 1 lokal ↑ Sebum 2x ↑Nem + sıcaklık 3x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hormonal Puberte/PCOS5α-Reductase ↑Kronik Diyet Genetik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Stres Kortizol CRH reseptör ↑Akut flarePsikososyal 2x ↑III. Çevresel Etmen Etkisi Seviyeleri",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Nem ve Sıcaklık En Kritik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Stres Kortizol",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Diyet Faktörleri",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 89
+    },
+    {
+      "name": "Mast Hücre Hiperreaktivite",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Etki Mekanizması": 4,
+        "Mekanizma": 76,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Etki Mekanizması",
+          "text": "III. Çevresel Etmen Etkisi Seviyeleri",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sıcaklık Değişimleri En Kritik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UV Maruziyeti",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Faktör Hassasiyet ArtışıpH Etkisi",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Anionik sabun 500% TEWLpH 9-10",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Alkol içeren 300% Desikasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Fragrance 200% Kontakt dermatit",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "AQIEritem ArtışıMekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50Baseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50-150-25% ROS → iNOS ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "150-50% Kronik inflamasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Kızarıklık TürüPrimer Neden Bilimsel Faktör Etki SeviyesiÇevresel TetikleyiciRisk Artışı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Akut Termal TRPV1 → Substance PGeçici 300%Sıcak/soğ uk 3x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Rosacea Vasküler iNOS Endotelin Kronik UV + baharat 6x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kontakt İrritan IL 1α ↑ Lokal Sabun + fragrance4x ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Atopik Bariyer TEWL IL 4 Kronik Nem ↓ + alerjenGenetik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Risk GrubuKombinasyonToplam EritemTedavi Zorluğu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Düşük Sıcaklık değişimi 200% Bariyer",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Orta UV + sıcaklık 400% Topikal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Yüksek + PM2.5 + irritan 600% Steroid",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kritik Genetik + kronik 1000% Sistemik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 1: Akut/kronik?",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 2: Tetikleyiciler?",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 81
+    },
+    {
+      "name": "Inflamatuar Mediatorlar",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 47,
+        "Etki Mekanizması": 1,
+        "Klinik Etkinlik": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "III. Çevresel Etkenler",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UV Maruziyeti",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "AQIRisk Etki",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50Baseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50-150-30%AhR → Tyrosinase",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "150-60%ROS cascade",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Tür Derinlik Neden Faktör ÇevreselRisk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "EpidermalYüzey UV Tyrosinase ↑Güneş 3x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "DermalDerin Hormon VEGF ↑ Hormon + UV6x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "PIH Yüzey/ortaInflamasyonIL 1 → PGE2Akne + PM2.54x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "SPF 50 ZnO/TiO2 - Zorunlu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Traneksamik asit - First line",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Vitamin C %20 - Antioksidan",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Niacinamid %5 - Bariyer + pigment",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Q-switched lazer - Dermal için",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sonuç: Ton eşitsizliği %70 çevresel + %30 genetik/hormonal. Düzenli profilaksi ile %80 kontrol",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "sağlanır.",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Göz altı sorunları için kapsamlı analiz hazırladım. Bu çoklu patolojiyi (kırışıklık, morluk, torbalanma,",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "hassasiyet) tek sistemde sınıflandırır.",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Göz Altı Kırışıklıkları - İnce çizgiler (dehidrasyon + kolajen kaybı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Morluklar Periorbital Hiperpigmentasyon) - Vasküler + pigmentasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Torbalar - Yağ herniasyonu + lenfatik drenaj defekti",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hassasiyet - İnce deri + bariyer defektiPM2.5",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "IV. Türler Tablosu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "V. Tedavi Öncelikleri",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 49
+    },
+    {
+      "name": "Torbalanma",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 45,
+        "Etki Mekanizması": 3
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "III. Çevresel Etkenler",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Durum Morluk ArtışıMekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "6h uyku 40% Venöz staz",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Dehidrasyon 30% Volüm kaybı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "FaktörKırışıklıkMorluk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kronik UV 60% 30%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sigara 50% 20%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Eksiklik Etki Süre",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "DemirMorluk 25%Kronik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "C VitKolajen ↓ %30Sürekli",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "SorunPrimer Neden Faktör EtkiÇevreselRisk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "KırışıklıkKolajen kaybıMMP 1 ↑ %40 ↓UV + sigara5x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "MorlukVasküler Venöz staz %60Uyku ↓ 3x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "TorbaYağ herniasyonuSeptum zayıflığı%50Genetik 4x",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Mezoterapi/ışık dolgusu - Hyaluronik asit + vitaminler",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Retinoid - Kolajen stimülasyonu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "PRP - Otolog büyüme faktörleri",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Lazer Fraksiyonel) - Dermal remodeling",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Blefaroplasti (şiddetli torbalarda",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sonuç: Göz altı sorunları %50 anatomik + %30 çevresel + %20 tedavi edilebilir. Düzenli bakım ile",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "%70 kontrol sağlanır.",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "⁂Uyku ve Sıvı Alımı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UV ve Sigara",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Diyet ve Alerji",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "IV. Sorun Türleri Tablosu",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 48
+    },
+    {
+      "name": "Makyaj Süresi ve Oklüzyon Etkisi 91 92 93 94",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 26
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "92",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Uyarı: Aniyonik temizleyiciler bariyer irritasyonu yapar; non-anionic temizleyici zorunlu",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Direkt bariyer fonksiyonunu ölçer:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Normal TEWL: 3-6 g/m²/h",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Disfonksiyonel: 8 g/m²/h",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Okluzif Petrolatum) aplikasyonu: 25-35% TEWL azalması 2-3 hafta",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hafif: 3 bölge, 25% alan",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Orta: 3-5 bölge, 25-50% alan",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Şiddetli: 5 bölge, 50% alan",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Clinical Decision Tree: AI Driven Personalized Skincare Recommendation Algorithm",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sistem sıralı karar noktaları (sequential gating) kullanır:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 1: Corneometer ölçümü → Dehidrate/Normal/Hyperhydrated",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 2: Su tüketimi → <1L vs ≥ 1L",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 3: Stres skoru → Yüksek/Orta/Düşük",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 4: PM2.5 maruziyeti (AQI) → Yüksek/Orta/Düşük",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 5: Makyaj saati → Yoğun/Orta/Minimal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 6: Birincil cilt sorunu → İnce çizgiler/Akne/Melasma/Kızarıklık/Kuru",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Adım 7: Sorununun ciddiyeti → Hafif/Orta/ Şiddetli",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "↓",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 26
+    },
+    {
+      "name": "Siyah Nokta Oluşum Kaskadı",
+      "synonyms": [
+        "6 Adım"
+      ],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Etki Mekanizması": 2,
+        "Mekanizma": 21
+      },
+      "claims": [
+        {
+          "alt": "Etki Mekanizması",
+          "text": "Lipid NormalSiyah Nokta Etki",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Squalene %15 %20 34% Oksidasyon → siyah renk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Linoleik AsitYüksek%53 ↓ Keratinizasyon defekti",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Wax Esters%26%30 ↑ Pore okluzyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Triglyceridler%57%65 ↑ C. acnes substratı",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kritik: Squalene peroksitleri TLR4 → NF κ B → IL 1 α kaskadını başlatır",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Siyah renk nedeni:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sebum (renksiz) + O ₂ → Squalene peroxide (kahverengi) + Melanin-like polimerler → Siyah görü",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hava teması zorunlu (kapalı komedon = beyaz",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UV maruziyeti: Oksidasyonu %50 hızlandırır",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "C. acnes rolü Non-inflamatuar):",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "IA1 phylotype: %80 siyah noktada",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Lipaz: Triglyceridler → Free fatty acids (pore viskozitesi ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Biofilm yokluğu: Inflamatuar olmayan (papül/püstül için biofilm gerekli",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "RH%Siyah Nokta Riski Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "40%Düşük Sebum oksidasyonu ↓",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "40-70%Orta Optimal oksidasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "70%Yüksek 50% Pore tıkanıklığı ↑",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Etki Mekanizması",
+          "text": "AQIRisk Artışı Etki",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50Baseline",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "50-150-30% Partikül pore settling",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "150-60% Oksidatif stres ↑2. Lipid Profili Siyah Nokta Spesifik",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "192",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 23
+    },
+    {
+      "name": "Vasküler Reaktivite",
+      "synonyms": [
+        "Ana Patogenez"
+      ],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 22
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "TEWL korelasyonu:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Normal TEWL: 5 g/m²/h → Eritem yok",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hafif defekt: 12 g/m²/h → Hafif eritem",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Ciddi defekt: >20 g/m²/h → Şiddetli eritem",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Neurojenik faktörler:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Substance P: %400 ↑ hassas ciltte",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "NGF: Sinir uçlarında ↑ → Kronik hassasiyet",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Ana inflamatuar mediators:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "IL-1α /β → TNF- α → ICAM-1 ↑ → Lökosit adezyon → Kronik eritem",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "CXCL8 (IL-8) → Neutrofil kemotaksisi",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Histamin salınımı:",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Normal cilt: Minimal",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Hassas cilt: %500 ↑ (fiziksel/termal tetikleyici ile",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "TetikleyiciEritem ArtışıSüre",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sıcak içecek 200% 5-15 dk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Sauna/spor 400% 30-60 dk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Soğuk hava 150% Rebound",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Baharatlı yiyecek 300% 10-30 dk",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UV DozuEritem Riski Mekanizma",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UVA 50% Vasküler dilatasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "UVB 30% Direkt inflamasyon",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kombine 80% Sinergistik2. Bariyer Defekti ve Neurojenik İnflamasyon",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 22
+    },
+    {
+      "name": "İnce Çizgiler ve Kırışıklıklar",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 13
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "3",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "4 5",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "6",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "3",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "3",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "7",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "8",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "8",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "8",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 13
+    },
+    {
+      "name": "Koyu Lekeler ve Hiperpigmentasyon",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 10,
+        "Uzman Görüşü": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "14",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "14",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "14",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "14",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Uzman Görüşü",
+          "text": "Uzman fikir birliği: %87.1%",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Meta-analiz verisi: SMD 1.5",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Minimial irritasyon: %0.8",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Avantaj: Oral ve topolojik seçenekler mevcut",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Kombinasyon etkinliği: Hidrokinon ile daha etkili",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 11
+    },
+    {
+      "name": "Kızarıklık ve Sensitivite",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 5
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "12",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "13",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "17",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 5
+    },
+    {
+      "name": "Akne Vulgaris",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 4
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "2",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Inflamatuar lezyonlarda azalma: %58.5-12 hafta",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Bakterisidal etkinlik: Propionibacterium acnes'e karşı %97.5 azalması 15. gün",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "Güvenlik: Mükemmel tolerabilite",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 4
+    },
+    {
+      "name": "Hormonal Faktörler - IGF 1 ve Androjenler",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 2
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "123",
+          "kaynak": "Bilimsel Derleme"
+        },
+        {
+          "alt": "Mekanizma",
+          "text": "123",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 2
+    },
+    {
+      "name": "Cilt Hidrasyon Durumu",
+      "synonyms": [
+        "Corneometer Bazlı) 78 79 80"
+      ],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "79",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 1
+    },
+    {
+      "name": "Cutibacterium acnes Biofilm Dinamiği",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "122",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 1
+    },
+    {
+      "name": "Hormonal Faktörler - Estrojen ve Progesteron",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "166",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 1
+    },
+    {
+      "name": "Melanozom Üretimi ve Transferi",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "163",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 1
+    },
+    {
+      "name": "Stratum Corneum Bariyer Defekti",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "174",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 1
+    },
+    {
+      "name": "Stres Seviyesi ve Cortisol Mekanizması 85 86 87",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "86",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 1
+    },
+    {
+      "name": "Çevre",
+      "synonyms": [
+        "PM2.5 Kirliliği 88 89 90"
+      ],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {
+        "Mekanizma": 1
+      },
+      "claims": [
+        {
+          "alt": "Mekanizma",
+          "text": "88",
+          "kaynak": "Bilimsel Derleme"
+        }
+      ],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 1
+    },
+    {
+      "name": "Anatomik Zayıflık",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Aquaporin-3",
+      "synonyms": [
+        "AQP3 Defekti"
+      ],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Hormonal Regülasyon",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "IGF 1 ve İnsülin Yolakları",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Kolajen ve Elastin Dejenerasyonu",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Kırışıklık Patogenezi",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Melanin Üretim Kaskadı",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Mikrobiyom Dysbiosis",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Morluk Mekanizmaları",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Oksidasyon Mekanizması",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Pilosebase Birim Hiperplazisi",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Sebaceous Gland Hiperplazisi",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Sitokin ve Kemokinler",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    },
+    {
+      "name": "Telomer Kısalması ve Hücresel Senescence",
+      "synonyms": [],
+      "kind": "topic",
+      "category": "Tedavi Ajanı",
+      "subcategories": {},
+      "claims": [],
+      "sources": [
+        "Dermakozmetik"
+      ],
+      "claim_count": 0
+    }
+  ]
+}

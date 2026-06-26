@@ -456,6 +456,7 @@ def _build_free_chat_evidence_bundle(
             "score": 0.0,
             "reason": "empty",
             "graph_kb_used": False,
+            "literature_used": False,
             "cabinet_status": "",
             "cabinet_used": False,
         }
@@ -567,11 +568,24 @@ def _build_free_chat_evidence_bundle(
     except Exception as e:
         log.warning("graph_kb evidence block skipped: %s", e)
 
+    # Literature: raw cited passages from the matched ingredient box(es).
+    literature_block = ""
+    try:
+        cabinet_ing_ids = list(cabinet_meta.get("cabinet_ingredient_ids") or [])
+        if cabinet_ing_ids:
+            from knowledge.literature import format_literature_block
+
+            literature_block = (format_literature_block(cabinet_ing_ids) or "").strip()
+    except Exception as e:
+        log.warning("literature block skipped: %s", e)
+
     parts: list[str] = []
     if cabinet_block:
         parts.append(cabinet_block)
     if graph_block:
         parts.append("[Yapısal bilgi tabanı]\n" + graph_block)
+    if literature_block:
+        parts.append("[Literatür — ham pasajlar]\n" + literature_block)
     if entity_text:
         parts.append("[Madde / içerik endeksi]\n" + entity_text)
     if vec_joined:
@@ -601,6 +615,7 @@ def _build_free_chat_evidence_bundle(
         "max_sim": float(metrics.get("max_sim") or 0.0),
         "reason": reason,
         "graph_kb_used": bool(graph_block),
+        "literature_used": bool(literature_block),
         "cabinet_status": str(cabinet_meta.get("cabinet_status") or ""),
         "cabinet_used": bool(cabinet_block),
     }
