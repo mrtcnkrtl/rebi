@@ -54,5 +54,66 @@
       "aliases": ["kuru sac derisi", "dry scalp", "kepek kuruluk"]
     }
   ],
-  "links": []
+  "links": [
+    {
+      "ingredient_id": "argan_oil",
+      "concern_id": "hair_dryness",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Saç uçlarında az miktar kuruluk hissini azaltabilir; yıkama sonrası nemli saça uygulanır.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "jojoba_oil",
+      "concern_id": "hair_dryness",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Sebuma benzer yapısı ile hafif; uçlardaki kuruluk için küçük miktar.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "almond_oil",
+      "concern_id": "hair_dryness",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Emolyan; uçlarda az miktar nemlendirici his verebilir. Alerji için önce küçük bölgede dene.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.45
+    },
+    {
+      "ingredient_id": "jojoba_oil",
+      "concern_id": "scalp_dryness",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Saç derisinde hafif; kuru saç derisinde genelde tolere edilir.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "argan_oil",
+      "concern_id": "scalp_dryness",
+      "effect_status": "neutral",
+      "priority": 4,
+      "notes_tr": "Kuru saç derisinde besleyici olabilir; yağlı/komedojenik eğilimde dikkatli kullan.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "almond_oil",
+      "concern_id": "scalp_dryness",
+      "effect_status": "neutral",
+      "priority": 4,
+      "notes_tr": "Saç derisinde kanıt sınırlı; küçük miktar denenebilir, tahriş olursa bırak.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.35
+    }
+  ]
 }
