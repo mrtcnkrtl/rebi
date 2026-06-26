@@ -65,6 +65,24 @@ _CURATED_ALIASES: dict[str, str] = {
     "hiyaluronik asit": "hyaluronik_asit",
     "seramid": "seramidler",
     "seramidler": "seramidler",
+    # English forms pinned to the single survivor id (db-key), so PDF/graph
+    # spellings never split a box across duplicate canonical rows.
+    "ceramide": "seramidler",
+    "ceramides": "seramidler",
+    "niacinamide": "niacinamid",
+    "hyaluronic acid": "hyaluronik_asit",
+    "hyaluronic": "hyaluronik_asit",
+    "hydrolyzed hyaluronic acid": "hyaluronik_asit",
+    "salicylic acid": "salisilik_asit",
+    "salicylic": "salisilik_asit",
+    "tranexamic acid": "traneksamik_asit",
+    "benzoyl peroxide": "benzoil_peroksit",
+    "ascorbic acid": "vitamin_c",
+    "l ascorbic acid": "vitamin_c",
+    "ascorbic": "vitamin_c",
+    "alpha arbutin": "alfa_arbutin",
+    "alfa arbutin": "alfa_arbutin",
+    "arbutin": "alfa_arbutin",
 }
 
 _OIL_HINTS = ("yag", "oil", "butter", "yağ")
