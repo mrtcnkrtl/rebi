@@ -45,7 +45,8 @@ def test_build_box_records_resolves_and_skips_topics():
     }
     r = build_resolver(load_from_db=False)
     records, stats = build_box_records(inv, r)
-    assert stats["topic_skipped"] == 1
+    # "İnflamasyon Kaskadı" is a topic with no concern match -> unmatched, no record.
+    assert stats["topic_unmatched"] == 1
     assert stats["resolved"] >= 1
     by_name = {rec["name"]: rec for rec in records}
     assert by_name["Retinoidler"]["ingredient_id"] == "retinol"

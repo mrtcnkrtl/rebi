@@ -72,16 +72,41 @@ def build_box_records(inventory: dict, resolver) -> tuple[list[dict], dict]:
     separate step) but counted in stats.
     """
     records: list[dict] = []
-    stats = {"resolved": 0, "candidate": 0, "topic_skipped": 0, "chunks": 0}
+    stats = {
+        "resolved": 0,
+        "candidate": 0,
+        "concern_resolved": 0,
+        "topic_unmatched": 0,
+        "chunks": 0,
+    }
     for box in inventory.get("boxes") or []:
         kind = box.get("kind")
-        if kind == "topic":
-            stats["topic_skipped"] += 1
-            continue
-        res = resolver.resolve(box.get("name") or "")
         chunks = pack_claims_into_chunks(box)
         if not chunks:
             continue
+
+        if kind == "topic":
+            # Topic boxes (mechanisms/conditions) -> concern literature when resolvable.
+            cres = resolver.resolve_concern(box.get("name") or "")
+            if cres.is_candidate:
+                stats["topic_unmatched"] += 1
+                continue
+            stats["concern_resolved"] += 1
+            stats["chunks"] += len(chunks)
+            records.append(
+                {
+                    "name": box.get("name"),
+                    "kind": "concern",
+                    "concern_id": cres.ingredient_id,
+                    "ingredient_id": None,
+                    "is_candidate": False,
+                    "slug": cres.suggested_slug,
+                    "chunks": chunks,
+                }
+            )
+            continue
+
+        res = resolver.resolve(box.get("name") or "")
         ingredient_id = res.ingredient_id or res.suggested_slug
         if res.is_candidate:
             stats["candidate"] += 1
@@ -91,7 +116,9 @@ def build_box_records(inventory: dict, resolver) -> tuple[list[dict], dict]:
         records.append(
             {
                 "name": box.get("name"),
+                "kind": "ingredient",
                 "ingredient_id": ingredient_id,
+                "concern_id": None,
                 "is_candidate": res.is_candidate,
                 "slug": res.suggested_slug,
                 "chunks": chunks,
@@ -151,17 +178,23 @@ def _write_records(records: list[dict], *, user_id: str, embed: bool, embed_mode
                 doc_id = cur.fetchone()[0]
                 inserted_docs += 1
 
-                canon_ids = [] if rec["is_candidate"] else [rec["ingredient_id"]]
+                ing_ids: list[str] = []
+                cnd_ids: list[str] = []
+                if rec.get("kind") == "concern" and rec.get("concern_id"):
+                    cnd_ids = [rec["concern_id"]]
+                elif not rec["is_candidate"] and rec.get("ingredient_id"):
+                    ing_ids = [rec["ingredient_id"]]
                 chunks = [_sanitize_text_for_pg(c) for c in rec["chunks"]]
                 for idx, ch in enumerate(chunks):
                     cur.execute(
                         """
                         insert into public.knowledge_chunks
                           (user_id, folder_id, document_id, chunk_index, chunk_text,
-                           embed_model, embed_ok, source_kind, source_ref, canonical_ingredient_ids)
-                        values (%s,%s,%s,%s,%s,%s,false,'master_veri',%s,%s)
+                           embed_model, embed_ok, source_kind, source_ref,
+                           canonical_ingredient_ids, canonical_concern_ids)
+                        values (%s,%s,%s,%s,%s,%s,false,'master_veri',%s,%s,%s)
                         """,
-                        (user_id, folder_id, doc_id, idx, ch, embed_model, source_url, canon_ids),
+                        (user_id, folder_id, doc_id, idx, ch, embed_model, source_url, ing_ids, cnd_ids),
                     )
                 inserted_chunks += len(chunks)
 
@@ -211,7 +244,12 @@ def main() -> None:
     print(json.dumps({"inventory_boxes": inv["box_count"], **stats}, ensure_ascii=False, indent=2))
     print("\nÇözümlenen kutular:")
     for rec in records:
-        tag = "ADAY" if rec["is_candidate"] else rec["ingredient_id"]
+        if rec.get("kind") == "concern":
+            tag = f"[sorun] {rec['concern_id']}"
+        elif rec["is_candidate"]:
+            tag = "ADAY"
+        else:
+            tag = rec["ingredient_id"]
         print(f"  - {rec['name']:30s} -> {tag}  ({len(rec['chunks'])} chunk)")
 
     if args.dry_run:

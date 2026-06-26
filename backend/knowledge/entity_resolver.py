@@ -39,6 +39,9 @@ _CURATED_ALIASES: dict[str, str] = {
     "retinaldeyde": "retinol",
     "retinaldehit": "retinol",
     "vitamin c": "vitamin_c",
+    "c vitamini": "vitamin_c",
+    "gunes koruyucu": "mineral_spf",
+    "gunes filtresi": "mineral_spf",
     "l askorbik asit": "vitamin_c",
     "l askorbit asit": "vitamin_c",
     "askorbik asit": "vitamin_c",
@@ -66,6 +69,59 @@ _CURATED_ALIASES: dict[str, str] = {
 
 _OIL_HINTS = ("yag", "oil", "butter", "yağ")
 _EXTRACT_HINTS = ("ekstr", "ozu", "özü", "extract", "ferment")
+
+# Curated Turkish concern words -> canonical concern_id (slug of graph condition_en,
+# produced by merge_data_catalog._slugify). DB rows (load_from_db) take priority.
+_CURATED_CONCERNS: dict[str, str] = {
+    "akne": "acne_vulgaris",
+    "akne vulgaris": "acne_vulgaris",
+    "kistik": "acne_vulgaris",
+    "kistik akne": "acne_vulgaris",
+    "derece 4 kistik": "acne_vulgaris",
+    "komedon": "comedones_open_closed",
+    "derece 1 komedon": "comedones_open_closed",
+    "siyah nokta": "comedones_open_closed",
+    "beyaz nokta": "comedones_open_closed",
+    "leke": "hyperpigmentation_melasma",
+    "koyu leke": "hyperpigmentation_melasma",
+    "koyu lekeler": "hyperpigmentation_melasma",
+    "hiperpigmentasyon": "hyperpigmentation_melasma",
+    "melazma": "hyperpigmentation_melasma",
+    "melasma": "hyperpigmentation_melasma",
+    "pih": "post_inflammatory_hyperpigmentation",
+    "kirisiklik": "photoaging_premature_aging",
+    "kırışıklık": "photoaging_premature_aging",
+    "ince cizgiler": "photoaging_premature_aging",
+    "ince çizgiler": "photoaging_premature_aging",
+    "yaslanma": "photoaging_premature_aging",
+    "yaşlanma": "photoaging_premature_aging",
+    "fotoyaslanma": "photoaging_premature_aging",
+    "kuru cilt": "dry_skin_xerosis",
+    "kuruluk": "dry_skin_xerosis",
+    "kserozis": "dry_skin_xerosis",
+    "yagli cilt": "oily_skin_seborrhea",
+    "yağlı cilt": "oily_skin_seborrhea",
+    "sebore": "oily_skin_seborrhea",
+    "rosacea": "rosacea",
+    "kizariklik": "rosacea",
+    "kızarıklık": "rosacea",
+    "sensitivite": "rosacea",
+    "hassasiyet": "rosacea",
+    "gozenek": "enlarged_pores",
+    "gözenek": "enlarged_pores",
+    "sarkma": "skin_laxity",
+    "gevsek cilt": "skin_laxity",
+    "mor halka": "dark_circles_periorbital_hyperpigmentation",
+    "goz alti": "dark_circles_periorbital_hyperpigmentation",
+    "göz altı": "dark_circles_periorbital_hyperpigmentation",
+    "egzama": "atopic_dermatitis",
+    "atopik dermatit": "atopic_dermatitis",
+    # hair (seed concerns)
+    "kuru sac": "hair_dryness",
+    "kuru saç": "hair_dryness",
+    "sac kurulugu": "hair_dryness",
+    "kuru sac derisi": "scalp_dryness",
+}
 
 
 def slugify(s: str) -> str:
@@ -99,6 +155,9 @@ class EntityResolver:
     # normalized phrase -> ingredient_id
     _index: dict[str, str] = field(default_factory=dict)
     _names: dict[str, str] = field(default_factory=dict)  # ingredient_id -> display name
+    # normalized phrase -> concern_id
+    _cindex: dict[str, str] = field(default_factory=dict)
+    _cnames: dict[str, str] = field(default_factory=dict)
 
     def _add(self, ingredient_id: str, *phrases: str) -> None:
         iid = (ingredient_id or "").strip()
@@ -108,6 +167,15 @@ class EntityResolver:
             np = normalize(p)
             if len(np) >= 3:
                 self._index.setdefault(np, iid)
+
+    def _add_concern(self, concern_id: str, *phrases: str) -> None:
+        cid = (concern_id or "").strip()
+        if not cid:
+            return
+        for p in phrases:
+            np = normalize(p)
+            if len(np) >= 3:
+                self._cindex.setdefault(np, cid)
 
     def resolve(self, name: str) -> ResolveResult:
         q = normalize(name)
@@ -132,6 +200,26 @@ class EntityResolver:
             return ResolveResult(name, best, "substring", False, slugify(name), kind, folder)
         return ResolveResult(name, None, None, True, slugify(name), kind, folder)
 
+    def resolve_concern(self, name: str) -> ResolveResult:
+        """Map free-text concern text to a canonical concern_id (or candidate)."""
+        q = normalize(name)
+        if len(q) < 3:
+            return ResolveResult(name, None, None, True, slugify(name), "concern", "concerns/skin")
+        if q in self._cindex:
+            return ResolveResult(name, self._cindex[q], "exact", False, slugify(name), "concern", "concerns/skin")
+        cur = _CURATED_CONCERNS.get(q) or _CURATED_CONCERNS.get(normalize(q))
+        if cur:
+            return ResolveResult(name, cur, "curated", False, slugify(name), "concern", "concerns/skin")
+        # substring against curated keys and index (longest first to avoid noise)
+        for key in sorted(_CURATED_CONCERNS, key=len, reverse=True):
+            kn = normalize(key)
+            if len(kn) >= 4 and kn in q:
+                return ResolveResult(name, _CURATED_CONCERNS[key], "curated_sub", False, slugify(name), "concern", "concerns/skin")
+        for phrase, cid in self._cindex.items():
+            if len(phrase) >= 4 and (phrase in q or q in phrase):
+                return ResolveResult(name, cid, "substring", False, slugify(name), "concern", "concerns/skin")
+        return ResolveResult(name, None, None, True, slugify(name), "concern", "concerns/skin")
+
 
 def build_resolver(*, load_from_db: bool = False) -> EntityResolver:
     r = EntityResolver()
@@ -147,6 +235,14 @@ def build_resolver(*, load_from_db: bool = False) -> EntityResolver:
             phrases = [row.get("name_tr"), row.get("name_en"), row.get("slug"), iid]
             phrases += row.get("aliases") or []
             r._add(iid, *[p for p in phrases if p])
+        for row in data.get("concerns") or []:
+            cid = row.get("concern_id") or row.get("slug")
+            if not cid:
+                continue
+            r._cnames[cid] = row.get("name_tr") or cid
+            cphrases = [row.get("name_tr"), row.get("name_en"), row.get("slug"), cid]
+            cphrases += row.get("aliases") or []
+            r._add_concern(cid, *[p for p in cphrases if p])
 
     # INGREDIENT_DB (key + display name)
     try:
@@ -178,6 +274,14 @@ def build_resolver(*, load_from_db: bool = False) -> EntityResolver:
                         r._names[iid] = ntr or iid
                         al = aliases if isinstance(aliases, list) else []
                         r._add(iid, slug, ntr, nen, *al)
+                    cur.execute(
+                        "select concern_id, slug, name_tr, name_en, aliases from public.canonical_concerns",
+                        prepare=False,
+                    )
+                    for cid, slug, ntr, nen, aliases in cur.fetchall() or []:
+                        r._cnames[cid] = ntr or cid
+                        al = aliases if isinstance(aliases, list) else []
+                        r._add_concern(cid, slug, ntr, nen, *al)
         except Exception:
             pass
 
