@@ -511,6 +511,48 @@ def promote_entities_to_catalog(cur, min_count: int = 2, limit: int = 500) -> in
     return added
 
 
+# Natural Turkish phrasings (incl. inflected stems) so the cabinet's substring
+# matcher fires on real user questions, not just canonical concern names.
+_CONCERN_ALIASES: dict[str, list[str]] = {
+    "acne_vulgaris": ["akne", "sivilce", "sivilceler", "aknem", "akne vulgaris", "kistik akne", "kistik"],
+    "comedones_open_closed": ["komedon", "siyah nokta", "siyah noktalar", "beyaz nokta", "acik komedon", "kapali komedon"],
+    "hyperpigmentation_melasma": ["leke", "lekeler", "lekem", "koyu leke", "hiperpigmentasyon", "melazma", "melasma", "cilt tonu esitsizligi"],
+    "post_inflammatory_hyperpigmentation": ["akne sonrasi", "akne sonrasi leke", "inflamasyon sonrasi leke", "post inflamatuar", "kalan leke", "kalan lekeler", "akne izi", "sivilce izi", "kizariklik izi"],
+    "photoaging_premature_aging": ["kirisik", "kirisiklik", "kirisiklar", "ince cizgi", "ince cizgiler", "yaslanma", "fotoyaslanma", "yasli gorunum", "yas karsiti"],
+    "dry_skin_xerosis": ["kuru cilt", "kuruluk", "cildim kuru", "kserozis", "nem kaybi", "cilt kurulugu", "pullanma"],
+    "oily_skin_seborrhea": ["yagli cilt", "sebum", "parlama", "cildim yagli", "yaglanma", "sebore", "yag kontrolu"],
+    "rosacea": ["rosacea", "rozasea", "kizariklik", "kizardi", "hassasiyet", "hassas cilt", "kuperoz", "kupuroz", "yanma hissi"],
+    "enlarged_pores": ["gozenek", "gozenekler", "gozeneklerim", "genis gozenek", "acik gozenek", "por gorunumu", "gozenek gorunumu"],
+    "skin_laxity": ["sarkma", "sarkik", "sarkiyor", "gevsek", "gevseklik", "elastikiyet", "sikilik kaybi", "cilt sarkmasi", "sarkma gevseklik"],
+    "dark_circles_periorbital_hyperpigmentation": ["goz alti", "goz alti moru", "goz alti morlugu", "goz alti koyulugu", "mor halka", "mor halkalar", "koyu halka", "goz cevresi koyuluk"],
+    "atopic_dermatitis": ["egzama", "atopik dermatit", "atopik", "kasintili dermatit", "dermatit"],
+}
+
+
+def backfill_concern_aliases(cur) -> int:
+    """Attach rich Turkish alias stems to canonical_concerns so cabinet substring
+    matching fires on natural user phrasing (idempotent, de-duped)."""
+    updated = 0
+    for concern_id, phrases in _CONCERN_ALIASES.items():
+        _exec(
+            cur,
+            """
+            update public.canonical_concerns set
+              aliases = (
+                select coalesce(jsonb_agg(distinct v), '[]'::jsonb)
+                from jsonb_array_elements(coalesce(aliases, '[]'::jsonb) || %s::jsonb) v
+                where v is not null and v <> '""'::jsonb
+              ),
+              updated_at = now()
+            where concern_id = %s
+            """,
+            (json.dumps(phrases, ensure_ascii=False), concern_id),
+        )
+        if cur.rowcount:
+            updated += 1
+    return updated
+
+
 def merge_entity_aliases(cur, limit: int = 400) -> int:
     """Attach frequent knowledge_entities names as aliases on existing canonical rows (best-effort)."""
     try:
@@ -585,6 +627,7 @@ def main() -> None:
                     else promote_entities_to_catalog(cur, min_count=args.promote_min_count)
                 ),
                 "entity_alias_updates": merge_entity_aliases(cur),
+                "concern_alias_updates": backfill_concern_aliases(cur),
             }
             inv2 = inventory(cur)
             summary["inventory_after"] = inv2

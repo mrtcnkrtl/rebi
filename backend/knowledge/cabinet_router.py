@@ -79,9 +79,25 @@ def _load_catalog() -> None:
         _CACHE["loaded"] = True
 
 
+def _phrase_matches(ph: str, qnorm: str, qtokens: set[str], min_token: int) -> bool:
+    """Match a phrase either as a contiguous substring, or (for multi-word
+    phrases) when all of its significant tokens appear in the query. The token
+    path makes matching robust to inserted/inflected words, e.g. the alias
+    'yagli cilt' still matches 'yagli cildim var'."""
+    if len(ph) < min_token:
+        return False
+    if ph in qnorm:
+        return True
+    toks = [t for t in ph.split(" ") if len(t) >= 3]
+    if len(toks) >= 2 and all(any(t in qt for qt in qtokens) for t in toks):
+        return True
+    return False
+
+
 def _match_rows(qnorm: str, rows: list[dict], id_key: str, min_token: int = 3) -> list[dict]:
     hits: list[dict] = []
     seen: set[str] = set()
+    qtokens = {t for t in qnorm.split(" ") if t}
     for row in rows:
         rid = (row.get(id_key) or "").strip()
         if not rid or rid in seen:
@@ -93,9 +109,7 @@ def _match_rows(qnorm: str, rows: list[dict], id_key: str, min_token: int = 3) -
                 phrases.append(_norm(v))
         phrases.extend(_norm(a) for a in _aliases_list(row.get("aliases")))
         for ph in phrases:
-            if len(ph) < min_token:
-                continue
-            if ph in qnorm:
+            if _phrase_matches(ph, qnorm, qtokens, min_token):
                 hits.append(row)
                 seen.add(rid)
                 break
@@ -147,12 +161,76 @@ def _fetch_links(ingredient_ids: list[str], concern_ids: list[str]) -> list[dict
         return []
 
 
+def _fetch_links_by_concern(concern_ids: list[str], limit: int = 8) -> list[dict[str, Any]]:
+    """Top recommended ingredients (the roadmap chain) for a concern-only query."""
+    if not concern_ids:
+        return []
+    try:
+        with pg_conn(autocommit=True) as conn:
+            with conn.cursor() as cur:
+                _exec(
+                    cur,
+                    """
+                    select l.link_id, l.ingredient_id, l.concern_id, l.effect_status, l.priority,
+                           l.notes_tr, l.min_conc_recommended, l.max_conc_recommended, l.time_of_day,
+                           l.source, l.confidence,
+                           i.name_tr as ingredient_tr, c.name_tr as concern_tr
+                    from public.ingredient_concern_links l
+                    join public.canonical_ingredients i on i.ingredient_id = l.ingredient_id
+                    join public.canonical_concerns c on c.concern_id = l.concern_id
+                    where l.concern_id = any(%s)
+                    order by (l.effect_status = 'supports') desc,
+                             l.priority nulls last, l.confidence desc nulls last, l.link_id
+                    limit %s
+                    """,
+                    (concern_ids, int(limit)),
+                )
+                cols = [d[0] for d in cur.description]
+                return [dict(zip(cols, r)) for r in (cur.fetchall() or [])]
+    except Exception as e:
+        log.warning("cabinet concern-chain fetch failed: %s", e)
+        return []
+
+
+def _fetch_links_by_ingredient(ingredient_ids: list[str], limit: int = 8) -> list[dict[str, Any]]:
+    """Concerns this ingredient is recommended for (ingredient-only query)."""
+    if not ingredient_ids:
+        return []
+    try:
+        with pg_conn(autocommit=True) as conn:
+            with conn.cursor() as cur:
+                _exec(
+                    cur,
+                    """
+                    select l.link_id, l.ingredient_id, l.concern_id, l.effect_status, l.priority,
+                           l.notes_tr, l.min_conc_recommended, l.max_conc_recommended, l.time_of_day,
+                           l.source, l.confidence,
+                           i.name_tr as ingredient_tr, c.name_tr as concern_tr
+                    from public.ingredient_concern_links l
+                    join public.canonical_ingredients i on i.ingredient_id = l.ingredient_id
+                    join public.canonical_concerns c on c.concern_id = l.concern_id
+                    where l.ingredient_id = any(%s)
+                    order by (l.effect_status = 'supports') desc,
+                             l.priority nulls last, l.confidence desc nulls last, l.link_id
+                    limit %s
+                    """,
+                    (ingredient_ids, int(limit)),
+                )
+                cols = [d[0] for d in cur.description]
+                return [dict(zip(cols, r)) for r in (cur.fetchall() or [])]
+    except Exception as e:
+        log.warning("cabinet ingredient-chain fetch failed: %s", e)
+        return []
+
+
 def lookup(user_message: str) -> dict[str, Any]:
     """
     Full cabinet lookup with status:
       - hit: ingredient+concern with link rows
-      - partial_ingredient: ingredient known, concern known, no link
-      - partial: only ingredient or only concern
+      - partial_no_link: both known, no direct link
+      - concern_chain: only a concern matched -> surface its recommended ingredients
+      - ingredient_chain: only an ingredient matched -> surface concerns it treats
+      - partial_single: single match with no chain rows
       - miss: no canonical match
     """
     resolved = resolve_query(user_message)
@@ -161,13 +239,17 @@ def lookup(user_message: str) -> dict[str, Any]:
     ing_ids = [str(i.get("ingredient_id")) for i in ings if i.get("ingredient_id")]
     cnd_ids = [str(c.get("concern_id")) for c in cnds if c.get("concern_id")]
 
-    links = _fetch_links(ing_ids, cnd_ids) if ing_ids and cnd_ids else []
-
     if ing_ids and cnd_ids:
+        links = _fetch_links(ing_ids, cnd_ids)
         status = "hit" if links else "partial_no_link"
-    elif ing_ids or cnd_ids:
-        status = "partial_single"
+    elif cnd_ids:
+        links = _fetch_links_by_concern(cnd_ids)
+        status = "concern_chain" if links else "partial_single"
+    elif ing_ids:
+        links = _fetch_links_by_ingredient(ing_ids)
+        status = "ingredient_chain" if links else "partial_single"
     else:
+        links = []
         status = "miss"
 
     return {
@@ -178,7 +260,7 @@ def lookup(user_message: str) -> dict[str, Any]:
     }
 
 
-def format_cabinet_evidence_block(user_message: str, *, max_chars: int = 1100) -> tuple[str, dict[str, Any]]:
+def format_cabinet_evidence_block(user_message: str, *, max_chars: int = 1500) -> tuple[str, dict[str, Any]]:
     """
     Structured catalog block for RAG / deterministic hints.
     Returns (text, meta) where meta includes cabinet_status.
@@ -189,9 +271,13 @@ def format_cabinet_evidence_block(user_message: str, *, max_chars: int = 1100) -
     cnds = result.get("concerns") or []
     ing_ids = [str(i.get("ingredient_id")) for i in ings if i.get("ingredient_id")]
     cnd_ids = [str(c.get("concern_id")) for c in cnds if c.get("concern_id")]
+    # For a concern-only chain, expose the recommended ingredients so the
+    # literature block can surface their raw passages too.
+    chain_ids = [str(l.get("ingredient_id")) for l in (result.get("links") or []) if l.get("ingredient_id")]
+    lit_ids = ing_ids + [i for i in chain_ids if i not in ing_ids]
     meta = {
         "cabinet_status": status,
-        "cabinet_ingredient_ids": ing_ids,
+        "cabinet_ingredient_ids": lit_ids,
         "cabinet_concern_ids": cnd_ids,
         "cabinet_link_count": len(result.get("links") or []),
     }
@@ -212,19 +298,37 @@ def format_cabinet_evidence_block(user_message: str, *, max_chars: int = 1100) -
         folder = (cnd.get("folder_slug") or "concerns").strip()
         lines.append(f"- Şikâyet [{folder}]: {cnd.get('name_tr') or cnd.get('concern_id')}")
 
-    for link in (result.get("links") or [])[:4]:
+    links = result.get("links") or []
+    if status == "concern_chain" and cnds:
+        cnd_name = cnds[0].get("name_tr") or cnds[0].get("concern_id")
+        lines.append(f"- Öneri zinciri — {cnd_name} için öncelik sırasıyla etken maddeler:")
+    elif status == "ingredient_chain" and ings:
+        ing_name = ings[0].get("name_tr") or ings[0].get("ingredient_id")
+        lines.append(f"- Öneri zinciri — {ing_name} hangi şikâyetlerde önerilir:")
+
+    for link in links[:6]:
         ing_tr = link.get("ingredient_tr") or link.get("ingredient_id")
         cnd_tr = link.get("concern_tr") or link.get("concern_id")
         eff = link.get("effect_status") or "supports"
         note = (link.get("notes_tr") or "").strip()
         tod = (link.get("time_of_day") or "").strip()
+        pr = link.get("priority")
         conc = ""
         if link.get("min_conc_recommended") or link.get("max_conc_recommended"):
             conc = f" ({link.get('min_conc_recommended') or ''}-{link.get('max_conc_recommended') or ''})"
         tail = f" {note[:200]}" if note else ""
+        tags = []
+        if pr:
+            tags.append(f"öncelik {pr}")
         if tod:
-            tail += f" [{tod}]"
-        lines.append(f"- Eşleme: {ing_tr} + {cnd_tr} → {eff}{conc}.{tail}")
+            tags.append(tod)
+        tagstr = f" [{', '.join(tags)}]" if tags else ""
+        if status == "concern_chain":
+            lines.append(f"- {ing_tr} → {eff}{conc}.{tail}{tagstr}")
+        elif status == "ingredient_chain":
+            lines.append(f"- {cnd_tr} → {eff}{conc}.{tail}{tagstr}")
+        else:
+            lines.append(f"- Eşleme: {ing_tr} + {cnd_tr} → {eff}{conc}.{tail}{tagstr}")
 
     if status == "partial_no_link" and ing_ids and cnd_ids:
         ing_names = ", ".join((i.get("name_tr") or i.get("ingredient_id") for i in ings[:2]))
