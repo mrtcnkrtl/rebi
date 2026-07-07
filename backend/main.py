@@ -952,6 +952,38 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     except Exception as e:
         log.warning("Kanonik id etiketleme atlandı: %s", e)
 
+    # Faz 3 (gölge): motor seçimini kanonik zincirle karşılaştır. İçeriği
+    # DEĞİŞTİRMEZ; sadece hangi önerilen aktiflerin rutinde yer aldığını /
+    # eksik kaldığını raporlar (canlıya almadan önceki doğrulama katmanı).
+    chain_coverage = None
+    try:
+        from knowledge.cabinet_router import chain_actives_for_concern
+
+        _chain = [a for a in chain_actives_for_concern(req.concern) if a.get("effect_status") == "supports"]
+        if _chain:
+            _routine_ids = {
+                str(cid)
+                for it in polished_routine
+                for cid in (it.get("canonical_ingredient_ids") or [])
+            }
+            _covered = [a["name_tr"] for a in _chain if a["ingredient_id"] in _routine_ids]
+            _missing = [a["name_tr"] for a in _chain if a["ingredient_id"] not in _routine_ids]
+            chain_coverage = {
+                "concern": req.concern,
+                "recommended_total": len(_chain),
+                "covered": _covered,
+                "missing": _missing,
+            }
+            if _missing:
+                log.info(
+                    "Rutin zincir kapsaması: %d/%d karşılandı; eksik: %s",
+                    len(_covered),
+                    len(_chain),
+                    ", ".join(_missing[:5]),
+                )
+    except Exception as e:
+        log.warning("Zincir kapsama raporu atlandı: %s", e)
+
     # ADIM 5: Veritabanına Kaydet (demo kullanıcı: auth.users FK yok, atla)
     assessment_id = str(uuid.uuid4())
     supabase = get_supabase()
@@ -1057,6 +1089,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
             "absolute_enforcement_prefinal": flow_result.get("absolute_enforcement_report"),
             "knowledge_retrieved": knowledge_result.get("total_retrieved", 0),
             "sources": knowledge_result.get("sources", []),
+            "chain_coverage": chain_coverage,
             "token_estimate": "~400 (sadece AI polish)",
         },
     )

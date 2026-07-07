@@ -427,6 +427,34 @@ def format_routine_expert_block(concern_slug: str, *, max_chars: int = 1800) -> 
     return text, meta
 
 
+def chain_actives_for_concern(concern_slug: str, *, limit: int = 8) -> list[dict[str, Any]]:
+    """
+    Structured, priority-ordered recommended actives for a concern slug.
+    Used by the routine coverage report (shadow validation for Faz 3): compare
+    what the deterministic engine picked against the canonical chain.
+    """
+    cnd_ids = concern_ids_for_slug(concern_slug)
+    if not cnd_ids:
+        return []
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for link in _fetch_links_by_concern(cnd_ids, limit=limit):
+        iid = str(link.get("ingredient_id") or "").strip()
+        if not iid or iid in seen:
+            continue
+        seen.add(iid)
+        out.append(
+            {
+                "ingredient_id": iid,
+                "name_tr": link.get("ingredient_tr") or iid,
+                "priority": link.get("priority"),
+                "time_of_day": link.get("time_of_day"),
+                "effect_status": link.get("effect_status") or "supports",
+            }
+        )
+    return out
+
+
 def _ingredient_phrase_index(min_len: int = 4) -> list[tuple[str, set[str]]]:
     """(ingredient_id, {normalized phrases}) from the cached catalog for tagging."""
     _load_catalog()

@@ -66,3 +66,9 @@ def test_tag_items_merges_without_duplicates(monkeypatch):
 def test_tag_items_empty_is_noop(monkeypatch):
     _stub_catalog(monkeypatch)
     assert cr.tag_items_with_canonical_ids([]) == 0
+
+
+def test_chain_actives_empty_for_unmapped_slug():
+    # general/unknown slugs resolve to no concern ids -> no DB call, empty result
+    assert cr.chain_actives_for_concern("general") == []
+    assert cr.chain_actives_for_concern("nope") == []
