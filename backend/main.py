@@ -903,6 +903,22 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     knowledge_result = await execute_query_plan(query_plan)
     knowledge_context = await get_targeted_context(knowledge_result, max_chars=2000)
 
+    # ADIM 3b: Kanonik dolap — şikâyet için kanıta dayalı içerik zinciri + literatür.
+    # Rutin adımlarını değiştirmez; polish'in bilimsel bağlamını güçlendirir.
+    try:
+        from knowledge.cabinet_router import format_routine_expert_block
+
+        expert_block, _expert_meta = format_routine_expert_block(req.concern)
+        if expert_block:
+            knowledge_context = (expert_block + "\n\n" + (knowledge_context or "")).strip()
+            log.info(
+                "Rutin uzman bloğu eklendi: concern=%s ing=%d",
+                req.concern,
+                len(_expert_meta.get("ingredient_ids") or []),
+            )
+    except Exception as e:
+        log.warning("Rutin uzman bloğu atlandı: %s", e)
+
     # Rutinin altına tek kısa opsiyonel bitkisel satır (varsa PDF verisiyle beslenir)
     routine_items = list(routine_items)
     routine_items.extend(_optional_natural_examples_routine_item(req.concern, knowledge_result=knowledge_result))
@@ -925,6 +941,16 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     polished_routine, rule_enforcement_final = enforce_absolute_rules_on_routine(polished_routine)
     sanitize_routine_items_details(polished_routine)
     polished_routine = await translate_routine_items(polished_routine, target_lang=target_lang)
+
+    # Faz 2: rutin adımlarını kanonik içerik id'leriyle etiketle (izlenebilirlik).
+    try:
+        from knowledge.cabinet_router import tag_items_with_canonical_ids
+
+        _n_tagged = tag_items_with_canonical_ids(polished_routine)
+        if _n_tagged:
+            log.info("Kanonik id etiketleme: %d rutin öğesi", _n_tagged)
+    except Exception as e:
+        log.warning("Kanonik id etiketleme atlandı: %s", e)
 
     # ADIM 5: Veritabanına Kaydet (demo kullanıcı: auth.users FK yok, atla)
     assessment_id = str(uuid.uuid4())

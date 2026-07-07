@@ -347,6 +347,139 @@ def format_cabinet_evidence_block(user_message: str, *, max_chars: int = 1500) -
     return text, meta
 
 
+# ── Routine integration (Faz 0/1/2) ────────────────────────────────────────
+# Bridge between flow_engine's coarse concern slugs and the canonical concern ids
+# so the routine pipeline can reuse the same evidence chains as free chat.
+CONCERN_SLUG_TO_CANONICAL: dict[str, list[str]] = {
+    "acne": ["acne_vulgaris", "comedones_open_closed", "post_inflammatory_hyperpigmentation"],
+    "aging": ["photoaging_premature_aging", "skin_laxity"],
+    "pigmentation": ["hyperpigmentation_melasma", "post_inflammatory_hyperpigmentation"],
+    "dryness": ["dry_skin_xerosis"],
+    "sensitivity": ["rosacea", "atopic_dermatitis"],
+    "pores": ["enlarged_pores"],
+    "oiliness": ["oily_skin_seborrhea"],
+    "general": [],
+}
+
+
+def concern_ids_for_slug(concern_slug: str) -> list[str]:
+    """Map a flow_engine concern slug to canonical concern ids (primary first)."""
+    return list(CONCERN_SLUG_TO_CANONICAL.get((concern_slug or "").strip().lower(), []))
+
+
+def _format_chain_line(link: dict) -> str:
+    ing_tr = link.get("ingredient_tr") or link.get("ingredient_id")
+    eff = link.get("effect_status") or "supports"
+    note = (link.get("notes_tr") or "").strip()
+    tod = (link.get("time_of_day") or "").strip()
+    pr = link.get("priority")
+    conc = ""
+    if link.get("min_conc_recommended") or link.get("max_conc_recommended"):
+        conc = f" ({link.get('min_conc_recommended') or ''}-{link.get('max_conc_recommended') or ''})"
+    tail = f" {note[:180]}" if note else ""
+    tags = []
+    if pr:
+        tags.append(f"öncelik {pr}")
+    if tod:
+        tags.append(tod)
+    tagstr = f" [{', '.join(tags)}]" if tags else ""
+    return f"- {ing_tr} → {eff}{conc}.{tail}{tagstr}"
+
+
+def format_routine_expert_block(concern_slug: str, *, max_chars: int = 1800) -> tuple[str, dict[str, Any]]:
+    """
+    Evidence block for the routine polish step: the canonical ingredient chain for
+    the user's concern + a few raw literature passages. Returns (text, meta) with
+    the resolved concern/ingredient ids so callers can tag or trace.
+    """
+    meta: dict[str, Any] = {"concern_ids": [], "ingredient_ids": []}
+    cnd_ids = concern_ids_for_slug(concern_slug)
+    if not cnd_ids:
+        return "", meta
+    meta["concern_ids"] = cnd_ids
+    links = _fetch_links_by_concern(cnd_ids, limit=8)
+    if not links:
+        return "", meta
+
+    ing_ids: list[str] = []
+    for link in links:
+        iid = str(link.get("ingredient_id") or "").strip()
+        if iid and iid not in ing_ids:
+            ing_ids.append(iid)
+    meta["ingredient_ids"] = ing_ids
+
+    lines = ["[Katalog — kanıta dayalı içerik zinciri (öncelik sırasıyla)]"]
+    for link in links[:8]:
+        lines.append(_format_chain_line(link))
+    text = "\n".join(lines)
+
+    try:
+        from knowledge.literature import format_literature_block
+
+        lit = format_literature_block(ing_ids[:4], limit=3, max_chars=900)
+        if lit:
+            text += "\n\n" + lit
+    except Exception as e:  # pragma: no cover - literature is best-effort
+        log.warning("routine literature block skipped: %s", e)
+
+    if len(text) > max_chars:
+        text = text[: max_chars - 1].rstrip() + "…"
+    return text, meta
+
+
+def _ingredient_phrase_index(min_len: int = 4) -> list[tuple[str, set[str]]]:
+    """(ingredient_id, {normalized phrases}) from the cached catalog for tagging."""
+    _load_catalog()
+    idx: list[tuple[str, set[str]]] = []
+    for ing in _CACHE.get("ingredients") or []:
+        iid = (ing.get("ingredient_id") or "").strip()
+        if not iid:
+            continue
+        phrases: set[str] = set()
+        for field in ("name_tr", "name_en", "slug"):
+            v = (ing.get(field) or "").strip()
+            if v:
+                phrases.add(_norm(v))
+        for a in _aliases_list(ing.get("aliases")):
+            na = _norm(a)
+            if na:
+                phrases.add(na)
+        phrases = {p for p in phrases if len(p) >= min_len}
+        if phrases:
+            idx.append((iid, phrases))
+    return idx
+
+
+def tag_items_with_canonical_ids(items: list[dict]) -> int:
+    """
+    Attach `canonical_ingredient_ids[]` to each routine item whose action/detail
+    text mentions a canonical ingredient (name/alias/slug). Uses the cached
+    catalog (no extra DB round-trips). Returns the number of tagged items.
+    """
+    if not items:
+        return 0
+    idx = _ingredient_phrase_index()
+    if not idx:
+        return 0
+    tagged = 0
+    for it in items:
+        if not isinstance(it, dict):
+            continue
+        text = _norm(f"{it.get('action', '')} {it.get('detail', '')}")
+        if len(text) < 3:
+            continue
+        found: list[str] = []
+        for iid, phrases in idx:
+            if any(p in text for p in phrases):
+                found.append(iid)
+        if not found:
+            continue
+        existing = [str(x) for x in (it.get("canonical_ingredient_ids") or [])]
+        it["canonical_ingredient_ids"] = list(dict.fromkeys([*existing, *found]))
+        tagged += 1
+    return tagged
+
+
 def invalidate_catalog_cache() -> None:
     _CACHE["loaded"] = False
     _CACHE["ingredients"] = []

@@ -478,7 +478,10 @@ def _build_free_chat_evidence_bundle(
             "cabinet_used": False,
         }
 
-    entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
+    # entity_text is a comparatively expensive PDF entity-index lookup (several
+    # sequential DB round-trips). It is computed lazily below, only when the
+    # cabinet does not already provide a strong structured answer.
+    entity_text = ""
     vector_hits: list[Any] = []
     seen_sig: set[str] = set()
     # QueryPack: run multiple vector searches, then merge+dedupe hits.
@@ -494,9 +497,73 @@ def _build_free_chat_evidence_bundle(
 
     klass_topics: Optional[List[str]] = _free_chat_infer_klass_topics(um)
 
+    # ── Structured evidence FIRST (cabinet chains + graph + literature) ──
+    # These are cheap, high-signal DB lookups. Computing them up front lets us
+    # skip the expensive vector fan-out (2-3s per query) when the catalog already
+    # answers the question. graph + literature run concurrently.
+    cabinet_block = ""
+    cabinet_meta: dict = {}
+    try:
+        from knowledge.cabinet_router import format_cabinet_evidence_block
+
+        cabinet_block, cabinet_meta = format_cabinet_evidence_block(um)
+        cabinet_block = (cabinet_block or "").strip()
+    except Exception as e:
+        log.warning("cabinet evidence block skipped: %s", e)
+
+    cabinet_ing_ids = list(cabinet_meta.get("cabinet_ingredient_ids") or [])
+
+    def _graph_job() -> str:
+        try:
+            from knowledge.graph_kb import format_graph_evidence_block
+
+            return (format_graph_evidence_block(um) or "").strip()
+        except Exception as e:
+            log.warning("graph_kb evidence block skipped: %s", e)
+            return ""
+
+    def _lit_job() -> str:
+        if not cabinet_ing_ids:
+            return ""
+        try:
+            from knowledge.literature import format_literature_block
+
+            return (format_literature_block(cabinet_ing_ids) or "").strip()
+        except Exception as e:
+            log.warning("literature block skipped: %s", e)
+            return ""
+
+    try:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            _fg = ex.submit(_graph_job)
+            _fl = ex.submit(_lit_job)
+            graph_block = _fg.result()
+            literature_block = _fl.result()
+    except Exception:
+        graph_block = _graph_job()
+        literature_block = _lit_job()
+
+    cabinet_strong = str(cabinet_meta.get("cabinet_status") or "") in ("hit", "concern_chain", "ingredient_chain")
+
+    # Entity index fallback is expensive (multiple DB round-trips) and its PDF
+    # passages are already covered by the literature block when the cabinet hits.
+    # Only run it when the cabinet did NOT produce a strong answer.
+    if not cabinet_strong:
+        entity_text = _knowledge_fallback_for_any_user(user_id, um) or ""
+
     run_vector = (len(entity_text) < 900) and (not _entity_text_supersedes_vector(entity_text))
+    # When the catalog already answers strongly, run a light vector pass (single
+    # query / folder / user) instead of the full qpack × folders × users fan-out.
+    light_vector = cabinet_strong and bool(literature_block or graph_block)
     if run_vector:
-        log.info("free_chat RAG yolu: vektör araması açık (entity_len=%d)", len(entity_text))
+        log.info(
+            "free_chat RAG yolu: vektör %s (entity_len=%d cabinet=%s)",
+            "hafif" if light_vector else "tam",
+            len(entity_text),
+            cabinet_meta.get("cabinet_status") or "-",
+        )
     else:
         log.info("free_chat RAG yolu: vektör atlandı — entity yeterli veya uzun (entity_len=%d)", len(entity_text))
 
@@ -521,11 +588,13 @@ def _build_free_chat_evidence_bundle(
                 if len(vector_hits) >= 6:
                     return
 
-        folder_slugs = ["data-pdfs", "chat-guides"]
-        for uid in uids:
+        vec_qpack = qpack[:1] if light_vector else qpack
+        vec_folders = ["data-pdfs"] if light_vector else ["data-pdfs", "chat-guides"]
+        vec_uids = uids[:1] if light_vector else uids
+        for uid in vec_uids:
             try:
-                for fslug in folder_slugs:
-                    for q in qpack:
+                for fslug in vec_folders:
+                    for q in vec_qpack:
                         q_vec = _free_chat_vector_query_text(q, history)
                         hits_primary = search_chunks(
                             user_id=uid,
@@ -535,7 +604,7 @@ def _build_free_chat_evidence_bundle(
                             klass_topics=klass_topics,
                         )
                         _consume_hits(hits_primary)
-                        if len(vector_hits) < 1:
+                        if len(vector_hits) < 1 and not light_vector:
                             q_exp = expand_skin_query_for_vector_search(q, cleaned_query=q_vec)
                             if q_exp and q_exp.strip() != q_vec.strip():
                                 _consume_hits(
@@ -567,34 +636,6 @@ def _build_free_chat_evidence_bundle(
             used_doc_ids.append(did)
 
     vec_joined = "\n\n---\n\n".join(vector_blocks[:6])[:3800]
-    cabinet_block = ""
-    cabinet_meta: dict = {}
-    try:
-        from knowledge.cabinet_router import format_cabinet_evidence_block
-
-        cabinet_block, cabinet_meta = format_cabinet_evidence_block(um)
-        cabinet_block = (cabinet_block or "").strip()
-    except Exception as e:
-        log.warning("cabinet evidence block skipped: %s", e)
-
-    graph_block = ""
-    try:
-        from knowledge.graph_kb import format_graph_evidence_block
-
-        graph_block = (format_graph_evidence_block(um) or "").strip()
-    except Exception as e:
-        log.warning("graph_kb evidence block skipped: %s", e)
-
-    # Literature: raw cited passages from the matched ingredient box(es).
-    literature_block = ""
-    try:
-        cabinet_ing_ids = list(cabinet_meta.get("cabinet_ingredient_ids") or [])
-        if cabinet_ing_ids:
-            from knowledge.literature import format_literature_block
-
-            literature_block = (format_literature_block(cabinet_ing_ids) or "").strip()
-    except Exception as e:
-        log.warning("literature block skipped: %s", e)
 
     parts: list[str] = []
     if cabinet_block:
@@ -2535,7 +2576,7 @@ async def polish_routine_with_ai(
         prompt = f"""Context: {context_summary}
 
 Scientific notes (reference):
-{knowledge_context[:1500] if knowledge_context else 'None'}
+{knowledge_context[:2400] if knowledge_context else 'None'}
 
 Improve the routine items below, keeping the plan deterministic:
 - Do NOT change action/time/category/icon; ONLY update the \"detail\" field
@@ -2561,7 +2602,7 @@ Return ONLY a JSON array (detail can change; action/time/category/icon must not 
         prompt = f"""Bağlam: {context_summary}
 
 Bilimsel Veri (referans):
-{knowledge_context[:1500] if knowledge_context else 'Yok'}
+{knowledge_context[:2400] if knowledge_context else 'Yok'}
 
 Aşağıdaki rutin öğelerini değerlendir ve EN OPTİMAL olanları seç/geliştir:
 - Tüm önerileri verme, kişiye EN UYGUN ve EN ETKİLİ olanları seç
