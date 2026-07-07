@@ -114,6 +114,190 @@
       "time_of_day": "Farketmez",
       "source": "seed_manual",
       "confidence": 0.35
+    },
+
+    {
+      "ingredient_id": "mineral_spf",
+      "concern_id": "post_inflammatory_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "PIH tedavisinin temeli: UV maruziyeti mevcut lekeyi derinleştirir, korunma olmadan diğer aktifler yetersiz kalır.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.85
+    },
+    {
+      "ingredient_id": "azelaik_asit",
+      "concern_id": "post_inflammatory_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Tirozinaz inhibisyonu + antiinflamatuar; özellikle akne sonrası PIH'de tercih edilir, hamilelikte de görece uygun.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.8
+    },
+    {
+      "ingredient_id": "niacinamid",
+      "concern_id": "post_inflammatory_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Melanozom transferini azaltır; iyi tolere edilir, diğer aktiflerle kombine edilebilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.75
+    },
+    {
+      "ingredient_id": "vitamin_c",
+      "concern_id": "post_inflammatory_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Antioksidan + tirozinaz inhibisyonu; sabah SPF ile birlikte lekeyi açar.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "traneksamik_asit",
+      "concern_id": "post_inflammatory_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Melanogenezi baskılar; inatçı PIH'de topikal olarak eklenebilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "retinol",
+      "concern_id": "post_inflammatory_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Hücre yenilenmesini hızlandırıp pigment atılımını destekler; tahriş PIH'i artırabileceğinden düşük dozda başla.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+
+    {
+      "ingredient_id": "salisilik_asit",
+      "concern_id": "enlarged_pores",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Yağda çözünen BHA; gözenek içindeki sebum/keratin tıkacını çözerek görünümü küçültür.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.8
+    },
+    {
+      "ingredient_id": "niacinamid",
+      "concern_id": "enlarged_pores",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Sebum düzenleme + gözenek görünümünde iyileşme; klinik çalışmalarla desteklenir, iyi tolere edilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.75
+    },
+    {
+      "ingredient_id": "retinol",
+      "concern_id": "enlarged_pores",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Keratinizasyonu düzenler ve kollajeni artırır; zamanla gözenek görünümünü iyileştirir.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "glycolic_acid",
+      "concern_id": "enlarged_pores",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "AHA; yüzey yenilenmesi ile pürüzlülük ve gözenek görünümüne katkı sağlar.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+
+    {
+      "ingredient_id": "retinol",
+      "concern_id": "skin_laxity",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Kollajen sentezini uyarır; ciltte sıkılık ve elastikiyet için en kanıtlı topikal aktiftir.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.8
+    },
+    {
+      "ingredient_id": "mineral_spf",
+      "concern_id": "skin_laxity",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Fotoyaşlanma sarkmanın başlıca nedenidir; günlük korunma elastikiyet kaybını yavaşlatır.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.8
+    },
+    {
+      "ingredient_id": "vitamin_c",
+      "concern_id": "skin_laxity",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Kollajen sentezinde kofaktör + antioksidan koruma; sıkılığı destekler.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "palmitoyl_pentapeptide_4",
+      "concern_id": "skin_laxity",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Matriks peptidleri kollajen üretimini destekler; nazik, kombine kullanılabilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+
+    {
+      "ingredient_id": "vitamin_c",
+      "concern_id": "dark_circles_periorbital_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Pigment kaynaklı koyulukta parlaklık sağlar; göz çevresi için nazik/düşük konsantrasyon form tercih et.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "niacinamid",
+      "concern_id": "dark_circles_periorbital_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Pigment transferini azaltır; ince göz çevresi cildinde iyi tolere edilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "retinol",
+      "concern_id": "dark_circles_periorbital_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Göz çevresi cildini kalınlaştırıp pigmenti azaltabilir; çok düşük dozda, tahrişe dikkat.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "alfa_arbutin",
+      "concern_id": "dark_circles_periorbital_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Pigment kaynaklı koyulukta tirozinaz inhibisyonu; damarsal/yapısal tipte etkisi sınırlıdır.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.45
     }
   ]
 }
