@@ -22,11 +22,28 @@ from datetime import date
 from typing import Any, Dict, List, Literal, Optional, Tuple
 from google import genai
 from google.genai import types
-from config import GEMINI_API_KEY, KNOWLEDGE_CATALOG_USER_ID, get_logger
+from config import GEMINI_API_KEY, GEMINI_MODEL, KNOWLEDGE_CATALOG_USER_ID, get_logger
 from flow_engine import sanitize_routine_items_details
 from knowledge.query_expand import expand_skin_query_for_vector_search, strip_conversational_turkish
 
 log = get_logger("rag_service")
+
+
+def _gen_config(**kwargs):
+    """
+    Build a GenerateContentConfig with model "thinking" disabled by default.
+    Gemini 2.5 models spend the max_output_tokens budget on hidden thinking,
+    which truncated our answers mid-sentence; thinking_budget=0 frees that
+    budget for the visible reply. Callers may still pass thinking_config to
+    override per call.
+    """
+    if "thinking_config" not in kwargs:
+        try:
+            kwargs["thinking_config"] = types.ThinkingConfig(thinking_budget=0)
+        except Exception:
+            pass
+    return types.GenerateContentConfig(**kwargs)
+
 
 _ENTITY_VOCAB_CACHE: dict[str, dict] = {}
 _DOC_META_CACHE: dict[str, dict] = {}
@@ -225,7 +242,7 @@ def _extract_chat_slots_llm(text: str) -> dict:
         return {}
     try:
         resp = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GEMINI_MODEL,
             contents=[
                 types.Content(
                     role="user",
@@ -252,7 +269,7 @@ def _extract_chat_slots_llm(text: str) -> dict:
                     ],
                 )
             ],
-            config=types.GenerateContentConfig(
+            config=_gen_config(
                 system_instruction="Return only JSON. No markdown.",
                 temperature=0.1,
                 max_output_tokens=220,
@@ -1510,7 +1527,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
         if not arts and gemini_client:
             try:
                 response = gemini_client.models.generate_content(
-                    model="gemini-2.0-flash",
+                    model=GEMINI_MODEL,
                     contents=[
                         types.Content(
                             role="user",
@@ -1525,7 +1542,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                             ],
                         )
                     ],
-                    config=types.GenerateContentConfig(
+                    config=_gen_config(
                         system_instruction="Return only keywords. No punctuation. No extra text.",
                         temperature=0.1,
                         max_output_tokens=40,
@@ -1628,7 +1645,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                 if gemini_client:
                     try:
                         response = gemini_client.models.generate_content(
-                            model="gemini-2.0-flash",
+                            model=GEMINI_MODEL,
                             contents=[
                                 types.Content(
                                     role="user",
@@ -1643,7 +1660,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                                     ],
                                 )
                             ],
-                            config=types.GenerateContentConfig(
+                            config=_gen_config(
                                 system_instruction=(
                                     "Sen Rebi’sin. Sadece verilen özet metnine dayan; ek iddia ekleme. "
                                     "Kısa ve net yaz."
@@ -1704,7 +1721,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     if gemini_client:
         try:
             resp = gemini_client.models.generate_content(
-                model="gemini-2.0-flash",
+                model=GEMINI_MODEL,
                 contents=[
                     types.Content(
                         role="user",
@@ -1722,7 +1739,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                         ],
                     )
                 ],
-                config=types.GenerateContentConfig(
+                config=_gen_config(
                     system_instruction="Return only JSON. No markdown.",
                     temperature=0.1,
                     max_output_tokens=160,
@@ -1748,7 +1765,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     if gemini_client:
         try:
             response = gemini_client.models.generate_content(
-                model="gemini-2.0-flash",
+                model=GEMINI_MODEL,
                 contents=[
                     types.Content(
                         role="user",
@@ -1791,7 +1808,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                         ],
                     )
                 ],
-                config=types.GenerateContentConfig(
+                config=_gen_config(
                     system_instruction="Return only the final user-visible reply. No labels, no headings.",
                     temperature=0.25,
                     max_output_tokens=140,
@@ -2378,9 +2395,9 @@ async def _free_chat_compact_guidance_from_model(
     )
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GEMINI_MODEL,
             contents=[types.Content(role="user", parts=[types.Part.from_text(text=payload)])],
-            config=types.GenerateContentConfig(
+            config=_gen_config(
                 system_instruction=system_instruction,
                 temperature=0.25,
                 max_output_tokens=280,
@@ -2571,9 +2588,9 @@ SADECE JSON array döndür (sadece detail güncellenebilir, action/time/category
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GEMINI_MODEL,
             contents=prompt,
-            config=types.GenerateContentConfig(
+            config=_gen_config(
                 system_instruction=system_instruction,
                 temperature=0.6,
                 max_output_tokens=1200,
@@ -2648,9 +2665,9 @@ async def translate_routine_items(
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GEMINI_MODEL,
             contents=prompt,
-            config=types.GenerateContentConfig(
+            config=_gen_config(
                 system_instruction=(
                     "You are a careful medical-adjacent translator. Do NOT add content. "
                     "Preserve ingredient names and concentrations verbatim. Return ONLY JSON."
@@ -2810,9 +2827,9 @@ Cevabının sonuna ekle:
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GEMINI_MODEL,
             contents=contents,
-            config=types.GenerateContentConfig(
+            config=_gen_config(
                 system_instruction=system_prompt,
                 temperature=0.5,
                 max_output_tokens=300,
@@ -2977,9 +2994,9 @@ async def _chat_general_compose_with_evidence(
     for attempt in range(3):
         try:
             response = gemini_client.models.generate_content(
-                model="gemini-2.0-flash",
+                model=GEMINI_MODEL,
                 contents=contents,
-                config=types.GenerateContentConfig(
+                config=_gen_config(
                     system_instruction=system_instruction,
                     temperature=float(temperature),
                     max_output_tokens=int(max_tokens),
@@ -3440,9 +3457,9 @@ async def _free_chat(
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GEMINI_MODEL,
             contents=contents,
-            config=types.GenerateContentConfig(
+            config=_gen_config(
                 system_instruction=system_instruction,
                 temperature=0.25,
                 max_output_tokens=220,
@@ -3627,9 +3644,9 @@ Bu soruyu bilgi tabanındaki verilere dayanarak yanıtla. Emin olmadığın konu
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GEMINI_MODEL,
             contents=prompt,
-            config=types.GenerateContentConfig(
+            config=_gen_config(
                 system_instruction=(
                     "Sen Rebi, bütüncül cilt bakım asistanısın. Türkçe konuş. "
                     "Bilimsel verilere dayalı, kısa ve anlaşılır cevaplar ver. "
@@ -3694,9 +3711,9 @@ Türkçe, sıcak, samimi ol. Bilgi yığını yapma."""
 
     try:
         response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
+            model=GEMINI_MODEL,
             contents=prompt,
-            config=types.GenerateContentConfig(
+            config=_gen_config(
                 system_instruction="Sen Rebi. Türkçe, kısa, sıcak notlar yaz. Max 3 cümle.",
                 temperature=0.6,
                 max_output_tokens=200,

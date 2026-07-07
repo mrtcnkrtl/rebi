@@ -16,6 +16,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY", "")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY", "")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+# Central Gemini model id (env-overridable). gemini-2.0-flash was retired and now
+# returns 404 on generateContent, so default to a current stable model.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 # PDF/knowledge ingest hangi user_id ile yapıldıysa entity araması (chat yedeği) bunu da dener
 KNOWLEDGE_CATALOG_USER_ID = os.getenv(
     "KNOWLEDGE_CATALOG_USER_ID",

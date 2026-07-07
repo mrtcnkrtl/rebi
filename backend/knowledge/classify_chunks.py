@@ -8,7 +8,7 @@ from typing import Optional
 
 from google.genai import types
 
-from config import get_logger
+from config import GEMINI_MODEL, get_logger
 from knowledge.db import pg_conn
 from rag_service import gemini_client, _gemini_response_text
 
@@ -554,7 +554,7 @@ def classify_chunks(
     document_id: Optional[str] = None,
     limit: int = 400,
     batch_size: int = 4,
-    model: str = "gemini-2.0-flash",
+    model: str = GEMINI_MODEL,
     force: bool = False,
     upgrade_regex: bool = False,
 ) -> dict:
@@ -881,7 +881,7 @@ if __name__ == "__main__":
     )
     ap.add_argument("--limit", type=int, default=400)
     ap.add_argument("--batch", type=int, default=4, help="Gemini batch size (smaller = more stable JSON)")
-    ap.add_argument("--model", default="gemini-2.0-flash")
+    ap.add_argument("--model", default=GEMINI_MODEL)
     ap.add_argument("--force", action="store_true", help="overwrite existing klass and rebuild entity links")
     ap.add_argument(
         "--upgrade-regex",
