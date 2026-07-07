@@ -85,6 +85,11 @@ def inventory(cur) -> dict:
 
 
 def _upsert_ingredient(cur, row: dict) -> None:
+    # ON CONFLICT preserves curated identity: once a row has ingredient_db_key
+    # (an INGREDIENT_DB survivor), later graph merges may only fill blanks + add
+    # aliases/sources; they must not clobber the curated slug/name/folder. This is
+    # what keeps a graph ingredient (e.g. "ceramide") from splitting the curated
+    # box ("seramidler") once callers resolve it to the survivor id.
     _exec(
         cur,
         """
@@ -93,16 +98,31 @@ def _upsert_ingredient(cur, row: dict) -> None:
           summary_tr, graph_ingredient_id, ingredient_db_key, sources
         ) values (%s,%s,%s,%s,%s,%s,%s::jsonb,%s,%s,%s,%s::jsonb)
         on conflict (ingredient_id) do update set
-          slug = excluded.slug,
-          name_tr = excluded.name_tr,
-          name_en = excluded.name_en,
-          kind = excluded.kind,
-          folder_slug = excluded.folder_slug,
-          aliases = excluded.aliases,
-          summary_tr = coalesce(excluded.summary_tr, canonical_ingredients.summary_tr),
+          slug = case when canonical_ingredients.ingredient_db_key is not null
+                      then canonical_ingredients.slug else excluded.slug end,
+          name_tr = case when canonical_ingredients.ingredient_db_key is not null
+                        then canonical_ingredients.name_tr else excluded.name_tr end,
+          name_en = coalesce(canonical_ingredients.name_en, excluded.name_en),
+          kind = case when canonical_ingredients.ingredient_db_key is not null
+                      then canonical_ingredients.kind else excluded.kind end,
+          folder_slug = case when canonical_ingredients.ingredient_db_key is not null
+                            then canonical_ingredients.folder_slug else excluded.folder_slug end,
+          aliases = (
+            select coalesce(jsonb_agg(distinct v), '[]'::jsonb)
+            from jsonb_array_elements(
+              coalesce(canonical_ingredients.aliases, '[]'::jsonb) || excluded.aliases
+            ) v
+            where v is not null and v <> '""'::jsonb
+          ),
+          summary_tr = coalesce(canonical_ingredients.summary_tr, excluded.summary_tr),
           graph_ingredient_id = coalesce(excluded.graph_ingredient_id, canonical_ingredients.graph_ingredient_id),
-          ingredient_db_key = coalesce(excluded.ingredient_db_key, canonical_ingredients.ingredient_db_key),
-          sources = canonical_ingredients.sources || excluded.sources,
+          ingredient_db_key = coalesce(canonical_ingredients.ingredient_db_key, excluded.ingredient_db_key),
+          sources = (
+            select coalesce(jsonb_agg(distinct s), '[]'::jsonb)
+            from jsonb_array_elements(
+              coalesce(canonical_ingredients.sources, '[]'::jsonb) || excluded.sources
+            ) s
+          ),
           updated_at = now()
         """,
         (
@@ -153,6 +173,13 @@ def _upsert_concern(cur, row: dict) -> None:
 
 def _upsert_link(cur, row: dict) -> None:
     link_id = row.get("link_id") or f"{row['ingredient_id']}__{row['concern_id']}"
+    # After id resolution/dedupe, many source rows collapse onto the same
+    # (ingredient_id, concern_id) pair while carrying their old map-based link_id.
+    # The table has a PK on link_id AND a UNIQUE on (ingredient_id, concern_id):
+    # a plain "on conflict (ingredient_id, concern_id)" insert can still hit the
+    # PK when a stale link_id lingers on a moved pair. Drop that link_id first so
+    # the pair-based upsert is the single source of truth.
+    _exec(cur, "delete from public.ingredient_concern_links where link_id = %s", (link_id,))
     _exec(
         cur,
         """
@@ -187,8 +214,34 @@ def _upsert_link(cur, row: dict) -> None:
     )
 
 
+def _resolve_graph_target(resolver, *names: str) -> str | None:
+    """
+    Map a graph ingredient (by en/tr name) onto an EXISTING curated canonical id
+    so graph rows attach to the INGREDIENT_DB survivor instead of creating a
+    duplicate slug row. Only accept high-confidence matches (exact/curated); a
+    substring guess is too risky to auto-merge identities.
+    """
+    if resolver is None:
+        return None
+    for nm in names:
+        if not nm:
+            continue
+        res = resolver.resolve(nm)
+        if not res.is_candidate and res.matched_via in ("exact", "curated"):
+            return res.ingredient_id
+    return None
+
+
 def merge_from_graph(cur) -> dict:
     counts = {"ingredients": 0, "concerns": 0, "links": 0}
+    try:
+        from knowledge.entity_resolver import build_resolver
+
+        resolver = build_resolver(load_from_db=False)
+    except Exception as e:  # pragma: no cover - resolver is optional safety net
+        log.warning("resolver unavailable, graph merge may create duplicates: %s", e)
+        resolver = None
+
     _exec(cur, "select ingredient_id, ingredient_tr, ingredient_en, category from public.ingredient_profiles")
     cols = [d[0] for d in cur.description]
     graph_ing_by_tr: dict[str, str] = {}
@@ -196,7 +249,8 @@ def merge_from_graph(cur) -> dict:
         row = dict(zip(cols, r))
         gid = row["ingredient_id"]
         slug = _slugify(row.get("ingredient_en") or row.get("ingredient_tr") or gid)
-        ing_id = slug
+        # Prefer an existing curated survivor id over a fresh slug row.
+        ing_id = _resolve_graph_target(resolver, row.get("ingredient_en"), row.get("ingredient_tr")) or slug
         graph_ing_by_tr[(row.get("ingredient_tr") or "").strip().lower()] = ing_id
         graph_ing_by_tr[gid] = ing_id
         kind = "active"
@@ -256,7 +310,11 @@ def merge_from_graph(cur) -> dict:
         row = dict(zip(cols, r))
         i_graph = row.get("ingredient_id") or ""
         c_graph = row.get("condition_id") or ""
-        ing_id = graph_ing_by_tr.get(i_graph) or _slugify(row.get("ingredient_tr") or i_graph)
+        ing_id = (
+            graph_ing_by_tr.get(i_graph)
+            or _resolve_graph_target(resolver, row.get("ingredient_tr"))
+            or _slugify(row.get("ingredient_tr") or i_graph)
+        )
         cnd_id = graph_cnd_by_id.get(c_graph) or _slugify(row.get("condition_tr") or c_graph)
         if not ing_id or not cnd_id:
             continue
