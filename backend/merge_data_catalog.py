@@ -114,7 +114,11 @@ def _upsert_ingredient(cur, row: dict) -> None:
             ) v
             where v is not null and v <> '""'::jsonb
           ),
-          summary_tr = coalesce(canonical_ingredients.summary_tr, excluded.summary_tr),
+          -- A curated summary is never overwritten, but graph/map merges leave the
+          -- column as '' (not null); nullif lets a later seed actually fill it.
+          summary_tr = coalesce(
+            nullif(canonical_ingredients.summary_tr, ''), excluded.summary_tr
+          ),
           graph_ingredient_id = coalesce(excluded.graph_ingredient_id, canonical_ingredients.graph_ingredient_id),
           ingredient_db_key = coalesce(canonical_ingredients.ingredient_db_key, excluded.ingredient_db_key),
           sources = (
@@ -553,6 +557,93 @@ def backfill_concern_aliases(cur) -> int:
     return updated
 
 
+def _keep_owned_aliases(aliases, ingredient_id: str, owner: dict[str, str]) -> tuple[list, bool]:
+    """Drop curated phrases that belong to a different canonical id.
+
+    Returns (kept, changed).
+    """
+    from knowledge.entity_resolver import normalize
+
+    if isinstance(aliases, str):
+        try:
+            aliases = json.loads(aliases)
+        except Exception:
+            aliases = [aliases] if aliases else []
+    al = aliases if isinstance(aliases, list) else []
+    kept = []
+    changed = False
+    for a in al:
+        if not isinstance(a, str):
+            kept.append(a)
+            continue
+        o = owner.get(normalize(a))
+        if o and o != ingredient_id:
+            changed = True
+            continue
+        kept.append(a)
+    return kept, changed
+
+
+def sync_curated_aliases(cur) -> int:
+    """Push the resolver's curated alias map onto canonical_ingredients.aliases
+    and strip those phrases from every other box.
+
+    A curated alias is exclusive: if 'tretinoin' belongs to retinol, it must not
+    linger on a retired or lookalike row. Additive merge without this strip is
+    how 'omega-3' stayed on GLA after we moved it.
+    """
+    from knowledge.entity_resolver import CURATED_ALIASES, normalize
+
+    by_target: dict[str, list[str]] = {}
+    owner: dict[str, str] = {}
+    for alias, target in CURATED_ALIASES.items():
+        by_target.setdefault(target, []).append(alias)
+        owner[normalize(alias)] = target
+
+    updated = 0
+    missing: list[str] = []
+    for target, phrases in by_target.items():
+        _exec(
+            cur,
+            """
+            update public.canonical_ingredients set
+              aliases = (
+                select coalesce(jsonb_agg(distinct v), '[]'::jsonb)
+                from jsonb_array_elements(coalesce(aliases, '[]'::jsonb) || %s::jsonb) v
+                where v is not null and v <> '""'::jsonb
+              ),
+              updated_at = now()
+            where ingredient_id = %s
+            """,
+            (json.dumps(phrases, ensure_ascii=False), target),
+        )
+        if cur.rowcount:
+            updated += 1
+        else:
+            missing.append(target)
+
+    _exec(cur, "select ingredient_id, aliases from public.canonical_ingredients")
+    rows = cur.fetchall() or []
+    stripped = 0
+    for iid, aliases in rows:
+        kept, changed = _keep_owned_aliases(aliases, iid, owner)
+        if changed:
+            _exec(
+                cur,
+                """
+                update public.canonical_ingredients
+                set aliases = %s::jsonb, updated_at = now()
+                where ingredient_id = %s
+                """,
+                (json.dumps(kept, ensure_ascii=False), iid),
+            )
+            stripped += 1
+    if missing:
+        log.warning("Curated alias hedefi bulunamadi (olu kutu): %s", sorted(missing))
+    log.info("Curated alias sync: targets=%d stripped_rows=%d", updated, stripped)
+    return updated + stripped
+
+
 def merge_entity_aliases(cur, limit: int = 400) -> int:
     """Attach frequent knowledge_entities names as aliases on existing canonical rows (best-effort)."""
     try:
@@ -628,6 +719,7 @@ def main() -> None:
                 ),
                 "entity_alias_updates": merge_entity_aliases(cur),
                 "concern_alias_updates": backfill_concern_aliases(cur),
+                "curated_alias_updates": sync_curated_aliases(cur),
             }
             inv2 = inventory(cur)
             summary["inventory_after"] = inv2

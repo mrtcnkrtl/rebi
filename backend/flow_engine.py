@@ -978,7 +978,7 @@ def _skin_niacin_tranexamic() -> str:
 
 
 def _skin_bakuchiol() -> str:
-    return "Bakuchiol serum (INCI: Bakuchiol; fitoretinol — serbest retinol değil)"
+    return "Bakuchiol serum (INCI: Bakuchiol; fitoretinoid — A vitamini türevi değil)"
 
 
 def _skin_peptide_light() -> str:
@@ -3259,6 +3259,23 @@ def run_flow(
         routine_items, avoided_families_from_tolerance(merged_actives_tol)
     )
 
+    # 14b. Kanonik dolap: eksik yağ/humektan/vitamin/pigmenti mevcut AM nem,
+    # PM nem veya SPF adımına kat; tedavi serumu ekleme.
+    cabinet_enrichment = {"folded": [], "avoid_stripped": [], "tagged": 0}
+    try:
+        from knowledge.cabinet_router import enrich_routine_from_cabinet
+
+        cabinet_enrichment = enrich_routine_from_cabinet(routine_items, concern)
+    except Exception:
+        cabinet_enrichment = {"folded": [], "avoid_stripped": [], "tagged": 0, "error": True}
+
+    try:
+        from knowledge.routine_identity import stamp_canonical_ids
+
+        stamp_canonical_ids(routine_items)
+    except Exception:
+        pass
+
     # 15. SORT: doğru uygulama sırası
     # Sabah: temizlik(10) → aktif serum(20) → nemlendirici(30) → SPF(40)
     # Akşam: temizlik(10) → aktif tedavi(20) → nemlendirici(30)
@@ -3331,6 +3348,13 @@ def run_flow(
     _optimize_weekly_days_for_strong_conflicts(routine_items)
     attach_structured_fields_to_routine_items(routine_items)
 
+    try:
+        from knowledge.routine_identity import stamp_canonical_ids
+
+        stamp_canonical_ids(routine_items)
+    except Exception:
+        pass
+
     # 16. Build context summary for AI
     mk_labels = {0: "yok", 1: "seyrek", 3: "haftada birkaç", 5: "günlük"}
     makeup_ctx = (
@@ -3399,6 +3423,21 @@ def run_flow(
         f"Kaçınılacaklar: {', '.join(severity['avoid'][:3]) if severity['avoid'] else 'yok'}."
     )
 
+    try:
+        from knowledge.routine_identity import stamp_canonical_ids, build_cabinet_active_plan
+
+        stamp_canonical_ids(routine_items)
+        cabinet_plan = build_cabinet_active_plan(
+            concern,
+            routine_items,
+            is_pregnant=(is_pregnant and gender == "female"),
+            avoided_families=avoided_families_from_tolerance(merged_actives_tol),
+        )
+        if cabinet_plan:
+            active_plan = cabinet_plan
+    except Exception:
+        pass
+
     care_guide = get_routine_care_guide(
         is_pregnant=(is_pregnant and gender == "female"),
     )
@@ -3416,6 +3455,7 @@ def run_flow(
         "risk_info": risk_info,
         "personalization": personalization,
         "active_plan": active_plan,
+        "cabinet_enrichment": cabinet_enrichment,
         "care_guide": care_guide,
         "absolute_rules_catalog": get_absolute_rules_catalog(),
         "absolute_enforcement_report": absolute_enforcement_report,
@@ -3602,6 +3642,9 @@ def _detect_ingredient_key(action_lower: str) -> str:
         ("niacinamid", "niacinamid"),
         ("hyaluronik", "hyaluronik_asit"),
         ("seramid", "seramidler"),
+        ("üre", "urea"),
+        ("urea", "urea"),
+        ("koloidal yulaf", "centella_panthenol"),
         ("petrolatum", "petrolatum"),
         ("vazelin", "petrolatum"),
         ("çay ağacı", "cay_agaci"),
@@ -3849,6 +3892,14 @@ def adapt_existing_routine(
     """
     from ingredient_db import get_daily_trigger_action, INGREDIENT_DB
 
+    _cabinet_checkin = {
+        "urea": {
+            "irritasyon": {"action": "pause", "days": 2, "note": "Üre keratolitik; tahrişte 2 gün ara"},
+            "kirik": {"action": "pause", "days": 2, "note": "Bariyer hasarında üreyi durdur"},
+            "kuru": {"action": "maintain", "note": "Nem çekimi için devam"},
+        },
+    }
+
     risk_level = risk_info["level"]
     skin_feeling = daily_data.get("skin_feeling", "iyi")
     changes = []
@@ -3887,70 +3938,86 @@ def adapt_existing_routine(
                 return
         it["weekly_days"] = _spread_n_days_across_week(new_n)
 
+    from knowledge.routine_identity import stamp_canonical_ids, trigger_for_item
+
+    try:
+        stamp_canonical_ids(current_routine)
+    except Exception:
+        pass
+
     for item in current_routine:
         action_lower = item.get("action", "").lower()
         ingredient_key = _detect_ingredient_key(action_lower)
         new_item = dict(item)
 
-        if ingredient_key:
-            trigger = get_daily_trigger_action(ingredient_key, skin_feeling)
-            action_type = trigger.get("action", "maintain")
+        trigger = trigger_for_item(new_item, skin_feeling)
+        extra = (_cabinet_checkin.get(ingredient_key) or {}).get(skin_feeling) if ingredient_key else None
+        if trigger is None:
+            if extra:
+                trigger = extra
+            elif ingredient_key:
+                trigger = get_daily_trigger_action(ingredient_key, skin_feeling)
+        if not trigger:
+            adapted.append(new_item)
+            continue
 
-            if action_type == "pause":
-                days = trigger.get("days", 3)
-                changes.append({
-                    "item": item.get("action", ""),
-                    "old": "aktif",
-                    "new": f"{days} gün ara ver",
-                    "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
-                })
-                new_item["action"] = f"⏸️ {item['action']} — {days} gün ara ver"
-                tn = trigger.get("note", "")
-                prior_u = (item.get("usage") or "").strip()
-                check_u = (
-                    f"Check-in: cilt hissi “{skin_feeling}”; bu adım yaklaşık {days} gün duraklatıldı"
-                    f"{(': ' + tn) if tn else ''}."
-                )
-                new_item["usage"] = sanitize_routine_detail_system_voice(
-                    f"{check_u} {prior_u}".strip() if prior_u else check_u
-                )
-                new_item["priority"] = 10
+        action_type = trigger.get("action", "maintain")
 
-            elif action_type == "reduce":
-                mult = trigger.get("freq_multiplier", 0.5)
-                changes.append({
-                    "item": item.get("action", ""),
-                    "old": "standart sıklık",
-                    "new": f"sıklık x{mult}",
-                    "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
-                })
-                tn = trigger.get("note", "")
-                prior_u = (item.get("usage") or "").strip()
-                _shrink_weekly_days_for_reduce(new_item, mult)
-                check_u = (
-                    f"Check-in: cilt hissi ({skin_feeling}); haftalık sıklık düşürüldü"
-                    f"{(': ' + tn) if tn else ''}."
-                )
-                new_item["usage"] = sanitize_routine_detail_system_voice(
-                    f"{check_u} {prior_u}".strip() if prior_u else check_u
-                )
+        if action_type == "pause":
+            days = trigger.get("days", 3)
+            changes.append({
+                "item": item.get("action", ""),
+                "old": "aktif",
+                "new": f"{days} gün ara ver",
+                "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
+            })
+            new_item["action"] = f"⏸️ {item['action']} — {days} gün ara ver"
+            tn = trigger.get("note", "")
+            prior_u = (item.get("usage") or "").strip()
+            check_u = (
+                f"Check-in: cilt hissi “{skin_feeling}”; bu adım yaklaşık {days} gün duraklatıldı"
+                f"{(': ' + tn) if tn else ''}."
+            )
+            new_item["usage"] = sanitize_routine_detail_system_voice(
+                f"{check_u} {prior_u}".strip() if prior_u else check_u
+            )
+            new_item["priority"] = 10
 
-            elif action_type == "increase":
-                changes.append({
-                    "item": item.get("action", ""),
-                    "old": "standart",
-                    "new": "artırıldı",
-                    "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
-                })
-                tn = trigger.get("note", "")
-                prior_u = (item.get("usage") or "").strip()
-                check_u = (
-                    f"Check-in: cilt hissi olumlu; sıklık hafif artırıldı"
-                    f"{(': ' + tn) if tn else ''}."
-                )
-                new_item["usage"] = sanitize_routine_detail_system_voice(
-                    f"{check_u} {prior_u}".strip() if prior_u else check_u
-                )
+        elif action_type == "reduce":
+            mult = trigger.get("freq_multiplier", 0.5)
+            changes.append({
+                "item": item.get("action", ""),
+                "old": "standart sıklık",
+                "new": f"sıklık x{mult}",
+                "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
+            })
+            tn = trigger.get("note", "")
+            prior_u = (item.get("usage") or "").strip()
+            _shrink_weekly_days_for_reduce(new_item, mult)
+            check_u = (
+                f"Check-in: cilt hissi ({skin_feeling}); haftalık sıklık düşürüldü"
+                f"{(': ' + tn) if tn else ''}."
+            )
+            new_item["usage"] = sanitize_routine_detail_system_voice(
+                f"{check_u} {prior_u}".strip() if prior_u else check_u
+            )
+
+        elif action_type == "increase":
+            changes.append({
+                "item": item.get("action", ""),
+                "old": "standart",
+                "new": "artırıldı",
+                "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
+            })
+            tn = trigger.get("note", "")
+            prior_u = (item.get("usage") or "").strip()
+            check_u = (
+                f"Check-in: cilt hissi “{skin_feeling}”; bu bariyer adımı öne alındı"
+                f"{(': ' + tn) if tn else ''}."
+            )
+            new_item["usage"] = sanitize_routine_detail_system_voice(
+                f"{check_u} {prior_u}".strip() if prior_u else check_u
+            )
 
         adapted.append(new_item)
 

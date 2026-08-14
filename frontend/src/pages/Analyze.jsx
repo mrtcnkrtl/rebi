@@ -693,6 +693,7 @@ export default function Analyze() {
           safetyAbsoluteRules: data.safety_absolute_rules,
           ruleEnforcementReport: data.rule_enforcement_report,
           aiPolishNote: data.ai_polish_note || null,
+          activePlan: Array.isArray(data.active_plan) ? data.active_plan : [],
         },
       });
     } catch (err) {

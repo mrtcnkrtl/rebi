@@ -93,12 +93,34 @@ def test_ambiguous_fragments_never_substring_match():
 
 def test_colorant_and_lookalike_fragments_blocked():
     """
-    'mica' hides inside 'cheMICAl sunscreen', 'milk' inside 'milk thistle' and
-    'cyanidin' inside 'procyanidin' — each pointing at an unrelated box.
+    'milk' hides inside 'milk thistle' and 'cyanidin' inside 'procyanidin' —
+    each pointing at an unrelated box.
     """
     r = build_resolver(load_from_db=False)
-    for name in ("mica", "milk", "cyanidin", "resorcinol"):
+    for name in ("milk", "cyanidin", "resorcinol"):
         assert r.resolve(name).is_candidate is True, name
+
+
+def test_blocked_names_still_resolve_by_exact_match():
+    """
+    The blocklist only disables substring matching. 'mica' and 'silica' own real
+    boxes, so an exact query must still land in them.
+    """
+    r = build_resolver(load_from_db=False)
+    assert r.resolve("mica").ingredient_id == "mica"
+    assert r.resolve("Silika").ingredient_id == "silica"
+
+
+def test_blocked_names_are_not_matched_as_catalog_fragments():
+    """
+    The guard has to work in both directions: 'mica' is a substring of
+    'cheMICAl' and 'silica' of 'magnesium siliCAte' (talc). Neither query may
+    be dragged into the wrong box by the catalog side of the match.
+    """
+    r = build_resolver(load_from_db=False)
+    assert r.resolve("chemical peeling").ingredient_id != "mica"
+    assert r.resolve("silica").ingredient_id == "silica"
+    assert r.resolve("silicon").is_candidate is True
 
 
 def test_bare_zinc_is_the_sunscreen_mineral():
@@ -117,6 +139,47 @@ def test_retinoid_esters_route_to_retinol():
     r = build_resolver(load_from_db=False)
     assert r.resolve("retinyl linoleate").ingredient_id == "retinol"
     assert r.resolve("retinyl palmitate").ingredient_id == "retinol"
+
+
+def test_omega3_and_omega6_are_separate_boxes():
+    """
+    GLA is an omega-6; folding omega-3 into it would make the cabinet give
+    factually wrong advice about fatty acid families.
+    """
+    r = build_resolver(load_from_db=False)
+    assert r.resolve("omega-3").ingredient_id == "omega_3_fatty_acids"
+    assert r.resolve("eicosapentaenoic acid").ingredient_id == "omega_3_fatty_acids"
+    assert r.resolve("gamma linolenic acid").ingredient_id == "gamma_linolenic_acid"
+
+
+def test_acid_family_synonyms_land_in_one_box():
+    r = build_resolver(load_from_db=False)
+    # BHA/aspirin are the salicylic acid box; PHA members share a single box.
+    assert r.resolve("bha").ingredient_id == "salisilik_asit"
+    assert r.resolve("aspirin").ingredient_id == "salisilik_asit"
+    assert r.resolve("gluconolactone").ingredient_id == "pha"
+    assert r.resolve("lactobionic acid").ingredient_id == "pha"
+
+
+def test_new_boxes_keep_kind_and_folder_in_sync():
+    """
+    Folder layout is derived from `kind`; a mismatch would scatter a box across
+    the cabinet. Every seeded row must agree with the mapping.
+    """
+    import json
+
+    from knowledge.entity_resolver import SEEDS_PATH
+
+    rows = json.loads(SEEDS_PATH.read_text(encoding="utf-8"))["ingredients"]
+    expected = {
+        "oil": "ingredients/oils-botanicals",
+        "extract": "ingredients/extracts",
+    }
+    for row in rows:
+        kind, folder = row.get("kind"), row.get("folder_slug")
+        if not kind or not folder:
+            continue
+        assert folder == expected.get(kind, "ingredients/actives"), row["ingredient_id"]
 
 
 def test_blocklist_entries_are_normalized():

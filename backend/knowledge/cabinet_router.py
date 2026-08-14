@@ -86,6 +86,15 @@ def _phrase_matches(ph: str, qnorm: str, qtokens: set[str], min_token: int) -> b
     'yagli cilt' still matches 'yagli cildim var'."""
     if len(ph) < min_token:
         return False
+    # Short phrases need a word boundary; a bare substring test hands them the
+    # most common Turkish stems ("aha" would fire on "daha", "tar" on "tarif").
+    # Abbreviations must be a standalone word, while 4-letter concern words have
+    # to survive suffixing ("akne" → "aknem", "leke" → "lekelerim"), so they may
+    # match a token prefix.
+    if len(ph) <= 3:
+        return ph in qtokens
+    if len(ph) == 4:
+        return any(qt.startswith(ph) for qt in qtokens)
     if ph in qnorm:
         return True
     toks = [t for t in ph.split(" ") if len(t) >= 3]
@@ -95,7 +104,14 @@ def _phrase_matches(ph: str, qnorm: str, qtokens: set[str], min_token: int) -> b
 
 
 def _match_rows(qnorm: str, rows: list[dict], id_key: str, min_token: int = 3) -> list[dict]:
+    """Rows whose name/alias matches the query, with exact matches taking over.
+
+    Without the exact-match precedence a fragment can outrank the real answer:
+    "retinyl linoleate" is an alias of Retinol, but it also contains the
+    "linoleate"/"oleate" aliases of two fatty acid boxes, so the query used to
+    return a retinol ester as evidence for the acids it is named after."""
     hits: list[dict] = []
+    exact: list[dict] = []
     seen: set[str] = set()
     qtokens = {t for t in qnorm.split(" ") if t}
     for row in rows:
@@ -108,12 +124,13 @@ def _match_rows(qnorm: str, rows: list[dict], id_key: str, min_token: int = 3) -
             if v:
                 phrases.append(_norm(v))
         phrases.extend(_norm(a) for a in _aliases_list(row.get("aliases")))
-        for ph in phrases:
-            if _phrase_matches(ph, qnorm, qtokens, min_token):
-                hits.append(row)
-                seen.add(rid)
-                break
-    return hits
+        if not any(_phrase_matches(ph, qnorm, qtokens, min_token) for ph in phrases):
+            continue
+        hits.append(row)
+        seen.add(rid)
+        if qnorm in phrases:
+            exact.append(row)
+    return exact or hits
 
 
 def resolve_query(user_message: str) -> dict[str, Any]:
@@ -184,7 +201,8 @@ def _fetch_links_by_concern(
                     select l.link_id, l.ingredient_id, l.concern_id, l.effect_status, l.priority,
                            l.notes_tr, l.min_conc_recommended, l.max_conc_recommended, l.time_of_day,
                            l.source, l.confidence,
-                           i.name_tr as ingredient_tr, c.name_tr as concern_tr
+                           i.name_tr as ingredient_tr, i.kind as ingredient_kind,
+                           c.name_tr as concern_tr
                     from public.ingredient_concern_links l
                     join public.canonical_ingredients i on i.ingredient_id = l.ingredient_id
                     join public.canonical_concerns c on c.concern_id = l.concern_id
@@ -469,6 +487,7 @@ def chain_actives_for_concern(concern_slug: str, *, limit: int = 8) -> list[dict
                 "priority": link.get("priority"),
                 "time_of_day": link.get("time_of_day"),
                 "effect_status": link.get("effect_status") or "supports",
+                "notes_tr": link.get("notes_tr") or "",
             }
         )
     return out
@@ -499,9 +518,10 @@ def _ingredient_phrase_index(min_len: int = 4) -> list[tuple[str, set[str]]]:
 
 def tag_items_with_canonical_ids(items: list[dict]) -> int:
     """
-    Attach `canonical_ingredient_ids[]` to each routine item whose action/detail
-    text mentions a canonical ingredient (name/alias/slug). Uses the cached
-    catalog (no extra DB round-trips). Returns the number of tagged items.
+    Attach `canonical_ingredient_ids[]` to each routine item whose action/usage
+    text mentions a canonical ingredient (name/alias/slug). Detail is skipped
+    because it is the "why" line and often names a forbidden alternative
+    ("Hamilelikte retinol yasak") which must not tag that ingredient.
     """
     if not items:
         return 0
@@ -512,7 +532,7 @@ def tag_items_with_canonical_ids(items: list[dict]) -> int:
     for it in items:
         if not isinstance(it, dict):
             continue
-        text = _norm(f"{it.get('action', '')} {it.get('detail', '')}")
+        text = _norm(f"{it.get('action', '')} {it.get('usage', '')}")
         if len(text) < 3:
             continue
         found: list[str] = []
@@ -525,6 +545,243 @@ def tag_items_with_canonical_ids(items: list[dict]) -> int:
         it["canonical_ingredient_ids"] = list(dict.fromkeys([*existing, *found]))
         tagged += 1
     return tagged
+
+
+# Barrier / oil / vitamin / pigment supports that belong inside an existing
+# AM moisturizer, PM moisturizer, or SPF step — not as extra treatment serums.
+# Treatment actives (retinoids, acids, BP) stay under the flow engine.
+_FOLD_INTO_MOISTURIZER = frozenset(
+    {
+        "glycerin",
+        "urea",
+        "hyaluronik_asit",
+        "cholesterol",
+        "dimethicone",
+        "squalane",
+        "mineral_oil",
+        "shea_butter",
+        "beeswax",
+        "petrolatum",
+        "lanolin",
+        "stearic_acid",
+        "cetyl_alcohol",
+        "lecithin",
+        "sorbitol",
+        "amino_acids_nmf",
+        "colloidal_oatmeal",
+        "aloe_vera",
+        "allantoin",
+        "vitamin_e",
+        "gamma_linolenic_acid",
+        "linoleic_acid",
+        "chitin",
+        "silk_protein",
+    }
+)
+_FOLD_INTO_SPF = frozenset({"iron_oxides", "zinc_oxide"})
+
+ACTIVE_KEY_TO_CANONICAL: dict[str, list[str]] = {
+    "sunscreen": ["mineral_spf", "chemical_spf", "zinc_oxide", "titanium_dioxide", "iron_oxides"],
+    "ceramides_cholesterol_fatty_acids": ["seramidler", "cholesterol", "stearic_acid"],
+    "panthenol": ["centella_panthenol"],
+    "niacinamide": ["niacinamid"],
+    "salicylic_acid": ["salisilik_asit"],
+    "benzoyl_peroxide": ["benzoil_peroksit"],
+    "azelaic_acid": ["azelaik_asit"],
+    "retinol": ["retinol"],
+    "adapalene": ["retinol"],
+    "vitamin_c_l_ascorbic_acid": ["vitamin_c"],
+    "vitamin_c_derivatives": ["vitamin_c"],
+    "glycolic_or_lactic_acid": ["glycolic_acid", "lactic_acid", "malic_acid", "tartaric_acid", "pha"],
+    "tranexamic_acid": ["traneksamik_asit"],
+    "alpha_arbutin": ["alfa_arbutin"],
+    "urea": ["urea"],
+    "sulfur": ["sulfur"],
+    "zinc_pca": ["zinc_oxide"],
+}
+
+
+def _routine_ids(items: list[dict]) -> set[str]:
+    out: set[str] = set()
+    for it in items or []:
+        for cid in it.get("canonical_ingredient_ids") or []:
+            out.add(str(cid))
+    return out
+
+
+def _is_spf_item(item: dict) -> bool:
+    a = _norm(item.get("action") or "")
+    return "spf" in a or "gunes koruyucu" in a
+
+
+def _is_moisturizer_item(item: dict) -> bool:
+    if item.get("category") not in ("Bakım", "Koruma"):
+        return False
+    if _is_spf_item(item):
+        return False
+    so = item.get("step_order")
+    if so in (30, 35):
+        return True
+    a = _norm(item.get("action") or "")
+    return any(k in a for k in ("nemlendirici", "gece", "bariyer", "seramid", "vazelin"))
+
+
+def _pick_slot(items: list[dict], time: str, pred) -> dict | None:
+    for it in items or []:
+        if it.get("time") == time and pred(it):
+            return it
+    return None
+
+
+def _short_fold_label(link: dict) -> str:
+    name = (link.get("ingredient_tr") or link.get("ingredient_id") or "").strip()
+    if "(" in name:
+        name = name.split("(", 1)[0].strip()
+    return name[:40]
+
+
+def _append_fold(item: dict, label: str, iid: str, note: str) -> None:
+    action = item.get("action") or ""
+    if not (_norm(label) and _norm(label) in _norm(action)):
+        sep = " + " if action and not action.endswith("+") else ""
+        item["action"] = f"{action}{sep}{label}".strip()
+    detail = (item.get("detail") or "").rstrip()
+    snippet = (note or "").strip()
+    if snippet:
+        extra = snippet[:140]
+        if extra and extra not in detail:
+            item["detail"] = (detail + (" " if detail else "") + extra).strip()
+    ids = [str(x) for x in (item.get("canonical_ingredient_ids") or [])]
+    if iid not in ids:
+        ids.append(iid)
+        item["canonical_ingredient_ids"] = ids
+    item["cabinet_enriched"] = True
+
+
+def enrich_routine_from_cabinet(
+    items: list[dict],
+    concern_slug: str,
+    *,
+    max_folds: int = 3,
+) -> dict[str, Any]:
+    """
+    Fold missing high-priority oils / humectants / vitamins / pigments into the
+    existing AM moisturizer, PM moisturizer, or SPF step. Does not add extra
+    treatment serums — those stay with the deterministic engine + active plan.
+
+    Also tags items and flags avoid-ingredient mentions on Bakım/Koruma rows.
+    """
+    report: dict[str, Any] = {"folded": [], "avoid_stripped": [], "tagged": 0}
+    if not items:
+        return report
+    tag_items_with_canonical_ids(items)
+    cnd_ids = concern_ids_for_slug(concern_slug)
+    if not cnd_ids:
+        report["tagged"] = sum(1 for it in items if it.get("canonical_ingredient_ids"))
+        return report
+
+    avoid = _fetch_links_by_concern(cnd_ids, limit=8, effect_statuses=["avoid"])
+    avoid_ids = {str(a.get("ingredient_id") or "") for a in avoid if a.get("ingredient_id")}
+    avoid_names = {
+        _norm(a.get("ingredient_tr") or ""): str(a.get("ingredient_id"))
+        for a in avoid
+        if a.get("ingredient_tr")
+    }
+    for it in items:
+        if it.get("category") not in ("Bakım", "Koruma"):
+            continue
+        text = _norm(f"{it.get('action', '')} {it.get('detail', '')}")
+        leaked = [iid for name, iid in avoid_names.items() if name and len(name) >= 4 and name in text]
+        leaked += [iid for iid in (it.get("canonical_ingredient_ids") or []) if iid in avoid_ids]
+        leaked = list(dict.fromkeys(leaked))
+        if not leaked:
+            continue
+        ids = [x for x in (it.get("canonical_ingredient_ids") or []) if str(x) not in avoid_ids]
+        it["canonical_ingredient_ids"] = ids
+        names = [a.get("ingredient_tr") for a in avoid if str(a.get("ingredient_id")) in leaked]
+        note = "Bu şikâyette kaçın: " + ", ".join(n for n in names if n)
+        detail = (it.get("detail") or "").strip()
+        if note not in detail:
+            it["detail"] = (detail + (" " if detail else "") + note).strip()
+        report["avoid_stripped"].extend(leaked)
+
+    supports = _fetch_links_by_concern(cnd_ids, limit=12, effect_statuses=["supports"])
+    present = _routine_ids(items)
+    folded = 0
+    for link in supports:
+        if folded >= max_folds:
+            break
+        iid = str(link.get("ingredient_id") or "").strip()
+        if not iid or iid in present or iid in avoid_ids:
+            continue
+        pr = link.get("priority")
+        try:
+            pr_n = int(pr) if pr is not None else 4
+        except (TypeError, ValueError):
+            pr_n = 4
+        if pr_n > 2:
+            continue
+        kind = (link.get("ingredient_kind") or "").strip().lower()
+        tod = (link.get("time_of_day") or "AM/PM").upper()
+        label = _short_fold_label(link)
+        note = (link.get("notes_tr") or "").strip()
+        target = None
+        if iid in _FOLD_INTO_SPF:
+            target = _pick_slot(items, "Sabah", _is_spf_item)
+        elif iid in _FOLD_INTO_MOISTURIZER or kind in ("oil",):
+            prefer_pm = "AM" not in tod or "PM" in tod
+            if prefer_pm:
+                target = _pick_slot(items, "Akşam", _is_moisturizer_item) or _pick_slot(
+                    items, "Sabah", _is_moisturizer_item
+                )
+            else:
+                target = _pick_slot(items, "Sabah", _is_moisturizer_item) or _pick_slot(
+                    items, "Akşam", _is_moisturizer_item
+                )
+        if target is None:
+            continue
+        _append_fold(target, label, iid, note)
+        present.add(iid)
+        folded += 1
+        report["folded"].append({"ingredient_id": iid, "name_tr": label, "time": target.get("time")})
+
+    report["tagged"] = sum(1 for it in items if it.get("canonical_ingredient_ids"))
+    return report
+
+
+def align_active_plan_with_routine(plan: list[dict], items: list[dict]) -> list[dict]:
+    """
+    Drop plan rows the live routine does not actually carry, except sunscreen
+    (SPF is always a morning step). Stops the UI showing BHA/retinol as 'plan'
+    when the engine (tolerance, pregnancy, starter ramp) left them out.
+    """
+    if not plan:
+        return []
+    tag_items_with_canonical_ids(items)
+    present = _routine_ids(items)
+    blob = _norm(" ".join(f"{it.get('action', '')}" for it in (items or [])))
+    kept: list[dict] = []
+    for row in plan:
+        key = str(row.get("active") or "").strip()
+        if key == "sunscreen":
+            kept.append(row)
+            continue
+        mapped = ACTIVE_KEY_TO_CANONICAL.get(key) or []
+        if any(m in present for m in mapped):
+            kept.append(row)
+            continue
+        if key == "ceramides_cholesterol_fatty_acids" and (
+            "seramid" in blob or "kolesterol" in blob
+        ):
+            kept.append(row)
+            continue
+        if key == "panthenol" and ("panthenol" in blob or "pantenol" in blob or "centella" in blob):
+            kept.append(row)
+            continue
+        if key == "urea" and ("ure" in blob or "urea" in blob):
+            kept.append(row)
+            continue
+    return kept
 
 
 def invalidate_catalog_cache() -> None:

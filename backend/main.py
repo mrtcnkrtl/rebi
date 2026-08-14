@@ -942,15 +942,27 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     sanitize_routine_items_details(polished_routine)
     polished_routine = await translate_routine_items(polished_routine, target_lang=target_lang)
 
-    # Faz 2: rutin adımlarını kanonik içerik id'leriyle etiketle (izlenebilirlik).
+    # Kanonik kimlik: motorun yazdığı action cümlelerinden id bas, sonra yedek etiketle.
     try:
+        from knowledge.routine_identity import stamp_canonical_ids, build_cabinet_active_plan
         from knowledge.cabinet_router import tag_items_with_canonical_ids
+        from flow_engine import avoided_families_from_tolerance, merge_actives_tolerance
 
+        stamp_canonical_ids(polished_routine)
         _n_tagged = tag_items_with_canonical_ids(polished_routine)
         if _n_tagged:
             log.info("Kanonik id etiketleme: %d rutin öğesi", _n_tagged)
+        _avoided = avoided_families_from_tolerance(
+            merge_actives_tolerance(req.actives_tolerance, req.actives_unused)
+        )
+        flow_result["active_plan"] = build_cabinet_active_plan(
+            req.concern,
+            polished_routine,
+            is_pregnant=bool(req.is_pregnant),
+            avoided_families=_avoided,
+        )
     except Exception as e:
-        log.warning("Kanonik id etiketleme atlandı: %s", e)
+        log.warning("Kanonik id / aktif plan atlandı: %s", e)
 
     # Faz 3 (gölge): motor seçimini kanonik zincirle karşılaştır. İçeriği
     # DEĞİŞTİRMEZ; sadece hangi önerilen aktiflerin rutinde yer aldığını /
@@ -1090,6 +1102,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
             "knowledge_retrieved": knowledge_result.get("total_retrieved", 0),
             "sources": knowledge_result.get("sources", []),
             "chain_coverage": chain_coverage,
+            "cabinet_enrichment": flow_result.get("cabinet_enrichment"),
             "token_estimate": "~400 (sadece AI polish)",
         },
     )

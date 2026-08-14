@@ -218,6 +218,7 @@ export default function Dashboard() {
       routine: st.routine,
       ...(st.checkinResult != null ? { checkinResult: st.checkinResult } : {}),
       ...(st.weather != null ? { weather: st.weather } : {}),
+      ...(Array.isArray(st.activePlan) ? { activePlan: st.activePlan } : {}),
     });
   }, [uid, accepted, location.key, location.state]);
 
@@ -246,6 +247,9 @@ export default function Dashboard() {
       ruleEnforcementReport: st.ruleEnforcementReport ?? snap?.ruleEnforcementReport ?? null,
       concern: st.concern ?? snap?.concern ?? null,
       assessmentId: st.assessmentId ?? snap?.assessmentId ?? null,
+      activePlan: Array.isArray(st.activePlan)
+        ? st.activePlan
+        : (Array.isArray(snap?.activePlan) ? snap.activePlan : []),
     };
   }, [nav, uid, accepted, fetchedRoutine, user]);
 
@@ -257,6 +261,7 @@ export default function Dashboard() {
   const checkinResult = merged.checkinResult;
   const safetyAbsoluteRules = merged.safetyAbsoluteRules;
   const ruleEnforcementReport = merged.ruleEnforcementReport;
+  const activePlan = Array.isArray(merged.activePlan) ? merged.activePlan : [];
 
   const handleAcceptRoutine = () => {
     if (!uid) return;
@@ -271,6 +276,7 @@ export default function Dashboard() {
       concern: merged.concern,
       assessmentId: merged.assessmentId,
       checkinResult: checkinResult || null,
+      activePlan: merged.activePlan || [],
     });
     setShowPlanExpanded(false);
     navigate(location.pathname, { replace: true, state: {} });
@@ -811,6 +817,45 @@ export default function Dashboard() {
               <div className="bg-white/70 rounded-xl p-2.5 text-center"><Sun className="w-4 h-4 text-amber-500 mx-auto mb-0.5" /><p className="text-base font-bold text-gray-800">{weather.uv_index}</p><p className="text-[10px] text-gray-500">UV</p></div>
               <div className="bg-white/70 rounded-xl p-2.5 text-center"><Droplets className="w-4 h-4 text-blue-500 mx-auto mb-0.5" /><p className="text-base font-bold text-gray-800">%{weather.humidity}</p></div>
             </div>
+          </div>
+        )}
+
+        {/* Aktif plan: dolaptaki önerilen maddeler ∩ bu rutin */}
+        {activePlan.length > 0 && (
+          <div className="card mb-4 border-teal-100 bg-white">
+            <div className="flex items-start gap-3 mb-3">
+              <Sparkles className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
+              <div>
+                <h3 className="font-bold text-gray-900 text-sm">{t("dashboard.activePlanTitle")}</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{t("dashboard.activePlanSubtitle")}</p>
+              </div>
+            </div>
+            <ul className="space-y-2">
+              {activePlan.map((p, i) => {
+                const whenKey =
+                  p?.when === "morning"
+                    ? "dashboard.activePlanWhenMorning"
+                    : p?.when === "evening"
+                      ? "dashboard.activePlanWhenEvening"
+                      : "dashboard.activePlanWhenBoth";
+                const name = p?.name_tr || p?.name || p?.active || "";
+                const why = p?.why || p?.why_tr || "";
+                return (
+                  <li
+                    key={`${p?.active || "active"}-${i}`}
+                    className="rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-semibold text-gray-900">{name}</span>
+                      <span className="text-[10px] font-medium uppercase tracking-wide text-teal-700 shrink-0">
+                        {t(whenKey)}
+                      </span>
+                    </div>
+                    {why ? <p className="text-xs text-gray-600 mt-1 leading-relaxed">{why}</p> : null}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         )}
 

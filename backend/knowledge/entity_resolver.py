@@ -33,7 +33,12 @@ def normalize(s: str) -> str:
 
 # Curated aliases for forms that don't auto-match by substring (spelling drift
 # between the master headers and the canonical keys/names).
-_CURATED_ALIASES: dict[str, str] = {
+#
+# This is the single declaration point for curated naming: merge_data_catalog
+# syncs it into canonical_ingredients.aliases so the cabinet (which reads only
+# the DB) answers the same phrasings the tagger resolves. Declaring an alias in
+# only one of the two layers is what silently made "kolajen" unanswerable.
+CURATED_ALIASES: dict[str, str] = {
     "retinoidler": "retinol",
     "retinoid": "retinol",
     "retinoids": "retinol",
@@ -59,10 +64,12 @@ _CURATED_ALIASES: dict[str, str] = {
     "titanyum dioksit": "mineral_spf",
     "cay agaci yagi": "cay_agaci",
     "cay agaci": "cay_agaci",
-    "kolajen peptidleri": "peptidler",
-    "kolajen": "peptidler",
-    "peptid": "peptidler",
-    "peptidler": "peptidler",
+    # The old "peptidler" box was merged into the PP-4 survivor by dedupe_canonical;
+    # a curated target must always name a live box or the tag goes nowhere.
+    "kolajen peptidleri": "palmitoyl_pentapeptide_4",
+    "kolajen": "palmitoyl_pentapeptide_4",
+    "peptid": "palmitoyl_pentapeptide_4",
+    "peptidler": "palmitoyl_pentapeptide_4",
     "hyaluronik asit": "hyaluronik_asit",
     "hiyaluronik asit": "hyaluronik_asit",
     "seramid": "seramidler",
@@ -100,7 +107,8 @@ _CURATED_ALIASES: dict[str, str] = {
 # Names whose substring match is misleading: they are a fragment of an unrelated
 # ingredient's alias ("rice" inside "licorice", "oleic acid" inside "linoleic
 # acid") or a distinct molecule that merely shares a stem ("thiourea" vs "urea").
-# These resolve only via exact/curated match, never by substring.
+# These resolve only via exact/curated match, never by substring — in either
+# direction: they are skipped both as a query and as a catalog phrase.
 _NEVER_SUBSTRING: frozenset[str] = frozenset(
     {
         "rice",
@@ -120,6 +128,10 @@ _NEVER_SUBSTRING: frozenset[str] = frozenset(
         # "milk" is not "milk thistle"; "cyanidin" is not "procyanidin";
         # bare "resorcinol" is a keratolytic, not the hexyl brightener.
         "mica",
+        # "silica" hides inside talc's "magnesium siliCATE"; the element name
+        # "silicon" is not the polymer "silicone".
+        "silica",
+        "silicate",
         "milk",
         "cyanidin",
         "resorcinol",
@@ -245,14 +257,14 @@ class EntityResolver:
         if q in self._index:
             return ResolveResult(name, self._index[q], "exact", False, slugify(name), kind, folder)
         # 2) curated alias
-        if q in _CURATED_ALIASES:
-            return ResolveResult(name, _CURATED_ALIASES[q], "curated", False, slugify(name), kind, folder)
+        if q in CURATED_ALIASES:
+            return ResolveResult(name, CURATED_ALIASES[q], "curated", False, slugify(name), kind, folder)
         # 3) substring either direction (guard length to avoid noise)
         if q in _NEVER_SUBSTRING:
             return ResolveResult(name, None, None, True, slugify(name), kind, folder)
         best: Optional[str] = None
         for phrase, iid in self._index.items():
-            if len(phrase) < 4:
+            if len(phrase) < 4 or phrase in _NEVER_SUBSTRING:
                 continue
             if phrase in q or (len(q) >= 4 and q in phrase):
                 best = iid
@@ -318,7 +330,7 @@ def build_resolver(*, load_from_db: bool = False) -> EntityResolver:
         pass
 
     # Curated alias targets must exist as resolvable ids even if only via curation.
-    for target in set(_CURATED_ALIASES.values()):
+    for target in set(CURATED_ALIASES.values()):
         r._names.setdefault(target, target)
 
     if load_from_db:
