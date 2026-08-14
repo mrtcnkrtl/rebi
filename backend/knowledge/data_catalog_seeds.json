@@ -32,6 +32,614 @@
       "aliases": ["argan"],
       "summary_tr": "Besleyici yağ; saç uçları ve kuru alanlar için yaygın kullanılır.",
       "sources": ["seed_manual"]
+    },
+
+    {
+      "ingredient_id": "hidrokinon",
+      "slug": "hidrokinon",
+      "name_tr": "Hidrokinon",
+      "name_en": "hidrokinon",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["hydroquinone", "hidrokinon", "hq", "hidrokinon kremi"],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "kojik_asit",
+      "slug": "kojik_asit",
+      "name_tr": "Kojik Asit",
+      "name_en": "kojik asit",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["kojic acid", "kojic", "kojik asit", "kojik", "kojic acid dipalmitate"],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "centella_panthenol",
+      "slug": "centella_panthenol",
+      "name_tr": "Centella Asiatica (Cica) + Panthenol",
+      "name_en": "centella panthenol",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": [
+        "centella", "centella asiatica", "cica", "madecassoside", "asiaticoside",
+        "madecassic acid", "asiatic acid", "panthenol", "pantenol", "dexpanthenol",
+        "provitamin b5", "gotu kola"
+      ],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "hyaluronik_asit",
+      "slug": "hyaluronik_asit",
+      "name_tr": "Hyaluronik Asit (HA, çoklu moleküler ağırlık)",
+      "name_en": "hyaluronik asit",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["sodium hyaluronate", "hyaluronan", "sodyum hyaluronat", "hyaluronate", "sodium acetylated hyaluronate"],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "coenzyme_q10",
+      "slug": "coenzyme_q10",
+      "name_tr": "Koenzim Q10 (Ubiquinon)",
+      "name_en": "Coenzyme Q10",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["ubiquinone", "ubiquinol", "coq10", "q10", "koenzim q10", "ubikinon"],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "mineral_spf",
+      "slug": "mineral_spf",
+      "name_tr": "Mineral Güneş Filtresi (Çinko oksit, Titanyum dioksit)",
+      "name_en": "mineral spf",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": [
+        "mineral sunscreen", "physical sunscreen", "inorganic sunscreen",
+        "fiziksel filtre", "mineral filtre", "mineral gunes kremi", "mineral güneş kremi",
+        "mineral gunes filtresi", "fiziksel gunes kremi"
+      ],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "palmitoyl_pentapeptide_4",
+      "slug": "palmitoyl_pentapeptide_4",
+      "name_tr": "Peptid (PP-4)",
+      "name_en": "Palmitoyl Pentapeptide-4",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": [
+        "peptides", "peptide", "pentapeptide", "matrixyl", "palmitoyl pentapeptide",
+        "signal peptide", "sinyal peptidi", "collagen", "ghk-cu", "ghk cu",
+        "copper peptide", "bakir peptit", "copper tripeptide"
+      ],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "nicotinic_acid",
+      "slug": "nicotinic_acid",
+      "name_tr": "Niyasin (Nikotinik Asit)",
+      "name_en": "Nicotinic Acid",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["niacin", "nicotinic acid", "niyasin", "nikotinik asit"],
+      "summary_tr": "Niasinamidin asit formu; niasinamidden farklı olarak damar genişletici (flushing) etkisi vardır, bu yüzden topikal bakımda niasinamid tercih edilir.",
+      "sources": ["seed_alias_fix"]
+    },
+
+    {
+      "ingredient_id": "urea",
+      "slug": "urea",
+      "name_tr": "Üre",
+      "name_en": "Urea",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["urea", "ure", "üre", "carbamide", "karbamid"],
+      "summary_tr": "Doğal nemlendirme faktörünün (NMF) parçası. Düşük dozda (%2–10) nem çeker, yüksek dozda (%10–40) keratolitik olarak kalınlaşmış/pullu deriyi çözer. Çatlamış topuk ve kalın kuruluk için en kanıtlı seçeneklerden biri.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "glycerin",
+      "slug": "glycerin",
+      "name_tr": "Gliserin",
+      "name_en": "Glycerin",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["glycerin", "glycerine", "glycerol", "gliserin", "gliserol"],
+      "summary_tr": "En iyi çalışılmış nemlendirici (humektan); suyu üst deriye çeker ve bariyer onarımını hızlandırır. Neredeyse tüm cilt tiplerinde güvenli, tahriş potansiyeli çok düşük.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "vitamin_e",
+      "slug": "vitamin_e",
+      "name_tr": "Vitamin E (Tokoferol)",
+      "name_en": "Vitamin E (Tocopherol)",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["vitamin e", "tocopherol", "tokoferol", "alpha tocopherol", "tocopheryl acetate", "e vitamini", "d alpha tocopherol"],
+      "summary_tr": "Yağda çözünen antioksidan; hücre zarındaki lipidleri oksidasyondan korur. C vitamini ile birlikte kullanıldığında ikisi birbirini rejenere ettiği için koruma belirgin şekilde artar.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "dimethicone",
+      "slug": "dimethicone",
+      "name_tr": "Dimetikon (Silikon)",
+      "name_en": "Dimethicone",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["dimethicone", "dimetikon", "silicone", "silikon", "polydimethylsiloxane", "cyclomethicone", "dimethiconol"],
+      "summary_tr": "Nefes alan bir film oluşturarak su kaybını azaltır. Komedojenik değildir ve tahriş etmez; bu yüzden hem yağlı hem hassas ciltte petrolatuma alternatif olarak kullanılır.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "caffeine",
+      "slug": "caffeine",
+      "name_tr": "Kafein",
+      "name_en": "Caffeine",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["caffeine", "kafein", "cafeine", "coffea", "trimethylxanthine"],
+      "summary_tr": "Damarları geçici olarak büzerek göz altındaki dolgunluk ve morluk görünümünü azaltabilir; ayrıca antioksidandır. Etkisi geçicidir, yapısal göz altı çukurunda işe yaramaz.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "allantoin",
+      "slug": "allantoin",
+      "name_tr": "Allantoin",
+      "name_en": "Allantoin",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["allantoin", "alantoin"],
+      "summary_tr": "Yatıştırıcı ve deri koruyucu; hafif keratolitik etkiyle pürüzlülüğü azaltır. Tahriş riski düşük olduğu için hassas cilt formüllerinde yaygındır.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "linoleic_acid",
+      "slug": "linoleic_acid",
+      "name_tr": "Linoleik Asit",
+      "name_en": "Linoleic Acid",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["linoleic acid", "linoleik asit", "linoleate", "omega 6", "omega-6"],
+      "summary_tr": "Bariyerin temel çoklu doymamış yağ asidi. Akneye eğilimli ciltlerin sebumunda linoleik asit oranı düşük, oleik asit oranı yüksek bulunur; bu yüzden linoleik asitten zengin yağlar tercih edilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "oleic_acid",
+      "slug": "oleic_acid",
+      "name_tr": "Oleik Asit",
+      "name_en": "Oleic Acid",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["oleic acid", "oleik asit", "oleate", "omega 9", "omega-9"],
+      "summary_tr": "Linoleik asidin karşıtı: tek başına yüksek oranda uygulandığında hücreler arası lipid düzenini bozarak deri bariyerini geçirgen hâle getirir. Zeytinyağı gibi oleik asitten zengin yağların kuru ve egzamalı ciltte önerilmemesinin nedeni budur.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "lanolin",
+      "slug": "lanolin",
+      "name_tr": "Lanolin",
+      "name_en": "Lanolin",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["lanolin", "lanolin alcohol", "wool alcohols", "wool wax", "adeps lanae", "lanolin alkolu"],
+      "summary_tr": "Koyun yapağısından elde edilen güçlü okluziv; çatlamış dudak ve meme başı gibi çok kuru alanlarda etkilidir. Buna karşın bilinen bir temas alerjeni olduğu için egzamalı ve hassas ciltte dikkatli kullanılmalı.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "propylene_glycol",
+      "slug": "propylene_glycol",
+      "name_tr": "Propilen Glikol",
+      "name_en": "Propylene Glycol",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["propylene glycol", "propilen glikol", "1,2-propanediol", "propanediol"],
+      "summary_tr": "Hem nem çekici hem çözücü olarak kullanılır ve aktif maddelerin deriye geçişini artırır. Yüksek oranlarda tahriş edici olabilir; bozulmuş bariyerde ve temas alerjisi olanlarda sorun çıkarabilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+
+    {
+      "ingredient_id": "squalane",
+      "slug": "squalane",
+      "name_tr": "Skualan",
+      "name_en": "Squalane",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["squalane", "skualan", "squalene", "skualen", "olive squalane", "sugarcane squalane"],
+      "summary_tr": "Sebumda doğal olarak bulunan skualenin kararlı hâli. Hafif, yağlı film bırakmayan bir emolyan; komedojenik değildir ve çoğu cilt tipinde iyi tolere edilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "mineral_oil",
+      "slug": "mineral_oil",
+      "name_tr": "Mineral Yağ",
+      "name_en": "Mineral Oil",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["mineral oil", "mineral yag", "paraffinum liquidum", "liquid paraffin", "parafin", "likit parafin"],
+      "summary_tr": "Kozmetik saflıkta okluziv; su kaybını ciddi biçimde azaltır. Kötü ününe rağmen kozmetik saflıkta komedojenik ve alerjen değildir, kuruluk ve egzamada güvenilir bir seçenektir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "shea_butter",
+      "slug": "shea_butter",
+      "name_tr": "Shea Yağı (Karite)",
+      "name_en": "Shea Butter",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["shea butter", "shea", "karite", "kariteh", "butyrospermum parkii", "shea yagi"],
+      "summary_tr": "Yüksek oranda doymuş yağ asidi ve triterpen içeren zengin emolyan. Kuru gövde cildinde ve el/ayakta iyi çalışır; yüzde ağır kalabildiği için yağlı ciltte dikkatli kullanılır.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "rosehip_oil",
+      "slug": "rosehip_oil",
+      "name_tr": "Kuşburnu Yağı",
+      "name_en": "Rosehip Oil",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["rosehip oil", "rosehip", "rose hip", "kusburnu yagi", "kusburnu", "rosa canina", "rosa moschata", "kuşburnu"],
+      "summary_tr": "Linoleik ve linolenik asitten zengin, eser miktarda A vitamini türevi içeren yağ. Kuruluk ve cilt tonu eşitsizliğinde destekleyici olarak kullanılır; retinoidin yerini tutmaz.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "coconut_oil",
+      "slug": "coconut_oil",
+      "name_tr": "Hindistan Cevizi Yağı",
+      "name_en": "Coconut Oil",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["coconut oil", "hindistan cevizi yagi", "cocos nucifera", "virgin coconut oil", "kokos yagi"],
+      "summary_tr": "Laurik asit içeriğiyle hafif antibakteriyel; atopik dermatitte mineral yağa kıyasla üstün bulunduğu çalışmalar var. Ancak yüzde belirgin komedojeniktir, akneye eğilimli ciltte kaçınılmalı.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "olive_oil",
+      "slug": "olive_oil",
+      "name_tr": "Zeytinyağı",
+      "name_en": "Olive Oil",
+      "kind": "oil",
+      "folder_slug": "ingredients/oils-botanicals",
+      "aliases": ["olive oil", "zeytinyagi", "zeytin yagi", "olea europaea", "zeytinyağı"],
+      "summary_tr": "Yüksek oleik asit oranı nedeniyle deri bariyerini bozabilir; bebeklerde ve egzamalı ciltte bariyer fonksiyonunu kötüleştirdiği gösterilmiştir. Mutfakta değerli olması cilde uygun olduğu anlamına gelmiyor.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+
+    {
+      "ingredient_id": "aloe_vera",
+      "slug": "aloe_vera",
+      "name_tr": "Aloe Vera",
+      "name_en": "Aloe Vera",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["aloe vera", "aloe", "aloe barbadensis", "acemannan", "sarisabir", "sarısabır", "aloe jeli"],
+      "summary_tr": "Su bazlı yatıştırıcı; polisakkaritleri (acemannan) sayesinde yanık ve tahriş sonrası rahatlama ve yara iyileşmesinde destek sağlar. Nemlendirir ama okluziv olmadığı için tek başına kuruluğu çözmez.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "green_tea",
+      "slug": "green_tea",
+      "name_tr": "Yeşil Çay (EGCG)",
+      "name_en": "Green Tea Extract",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["green tea", "green tea extract", "yesil cay", "yeşil çay", "camellia sinensis", "egcg", "epigallocatechin", "epigallocatechin gallate", "polifenol", "catechin"],
+      "summary_tr": "Polifenolleri (özellikle EGCG) güçlü antioksidan ve antiinflamatuardır; UV kaynaklı hasarı azaltır ve sebum üretimini baskılayabilir. Işığa duyarlı olduğu için formülün kararlılığı önemli.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "licorice_extract",
+      "slug": "licorice_extract",
+      "name_tr": "Meyan Kökü Ekstraktı",
+      "name_en": "Licorice Root Extract",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["licorice", "licorice extract", "licorice root", "meyan koku", "meyan kökü", "meyan", "glycyrrhiza", "glycyrrhiza glabra", "glabridin", "liquiritin", "dipotassium glycyrrhizinate"],
+      "summary_tr": "Glabridin içeriğiyle tirozinazı baskılayarak leke açar, glisirizinat bileşenleriyle kızarıklığı yatıştırır. Hidrokinona göre çok daha nazik olduğu için hassas ciltte leke bakımında tercih edilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "curcumin",
+      "slug": "curcumin",
+      "name_tr": "Kurkumin (Zerdeçal)",
+      "name_en": "Curcumin",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["curcumin", "kurkumin", "turmeric", "zerdecal", "zerdeçal", "curcuma longa", "curcuminoid"],
+      "summary_tr": "Güçlü antiinflamatuar ve antioksidan polifenol. Topikal kullanımda asıl sınırı zayıf deri geçirgenliği ve sarı lekelenmedir; bu yüzden etkisi formülasyona çok bağlıdır.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "colloidal_oatmeal",
+      "slug": "colloidal_oatmeal",
+      "name_tr": "Kolloidal Yulaf",
+      "name_en": "Colloidal Oatmeal",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["colloidal oatmeal", "kolloidal yulaf", "oatmeal", "avena sativa", "yulaf", "avenanthramide", "oat extract", "oat kernel"],
+      "summary_tr": "Avenantramitleri sayesinde kaşıntıyı ve kızarıklığı azaltır; beta-glukanı film oluşturup nem tutar. Atopik dermatitte en iyi belgelenmiş botanik bileşenlerden biridir ve deri koruyucu olarak resmen tanınır.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "chamomile",
+      "slug": "chamomile",
+      "name_tr": "Papatya (Bisabolol)",
+      "name_en": "Chamomile",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["chamomile", "papatya", "matricaria", "matricaria recutita", "chamomilla", "chamomilla recutita", "bisabolol", "azulene", "german chamomile", "alman papatyasi"],
+      "summary_tr": "Bisabolol ve kamazulen bileşenleriyle yatıştırıcı ve antiinflamatuar. Kızarıklık ve hassasiyette rahatlatır; papatya alerjisi olanlarda (Asteraceae ailesi) temas reaksiyonu görülebilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "calendula",
+      "slug": "calendula",
+      "name_tr": "Aynısefa (Calendula)",
+      "name_en": "Calendula",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["calendula", "calendula officinalis", "aynisefa", "aynısefa", "marigold", "portakal nergisi"],
+      "summary_tr": "Triterpenoidleriyle yara iyileşmesini ve yatıştırmayı destekler; geleneksel kullanımı geniş, klinik kanıtı orta düzeydedir. Papatyayla aynı bitki ailesinden olduğu için çapraz alerji olasılığı var.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "rosemary_extract",
+      "slug": "rosemary_extract",
+      "name_tr": "Biberiye Ekstraktı",
+      "name_en": "Rosemary Extract",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["rosemary", "rosemary extract", "biberiye", "rosmarinus officinalis", "salvia rosmarinus", "rosmarinic acid", "carnosic acid", "rozmarinik asit"],
+      "summary_tr": "Rosmarinik ve karnosik asit içeriğiyle antioksidan ve antimikrobiyal; formüldeki yağların oksitlenmesini de geciktirir. Uçucu yağ formu tahriş edici olabildiği için ekstrakt formu tercih edilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "lavender",
+      "slug": "lavender",
+      "name_tr": "Lavanta",
+      "name_en": "Lavender",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["lavender", "lavanta", "lavandula", "lavandula angustifolia", "lavender oil", "linalool", "linalyl acetate"],
+      "summary_tr": "Rahatlatıcı kokusuyla yaygın kullanılır ama cilt açısından asıl önemi linalool içeriğidir: oksitlendiğinde bilinen bir koku alerjenine dönüşür. Hassas ve rozaseli ciltte kaçınmak daha güvenli.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+
+    {
+      "ingredient_id": "niacinamid",
+      "slug": "niacinamid",
+      "name_tr": "Niasinamid (Vitamin B3)",
+      "name_en": "Niacinamide",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["nicotinamide", "nikotinamid"],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "retinol",
+      "slug": "retinol",
+      "name_tr": "Retinol",
+      "name_en": "Retinol",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["retinaldehyde", "retinal", "retinoic acid", "vitamin a", "a vitamini", "retinyl ester"],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "cay_agaci",
+      "slug": "cay_agaci",
+      "name_tr": "Çay Ağacı Yağı (Tea Tree Oil)",
+      "name_en": "Tea Tree Oil",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["melaleuca alternifolia", "melaleuca", "terpinen-4-ol"],
+      "sources": ["seed_alias_fix"]
+    },
+    {
+      "ingredient_id": "cholesterol",
+      "slug": "cholesterol",
+      "name_tr": "Kolesterol",
+      "name_en": "Cholesterol",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["cholesterol", "kolesterol", "cholesteryl"],
+      "summary_tr": "Deri bariyerinin üçüncü temel lipidi. Seramid ve serbest yağ asidiyle birlikte kabaca 1:1:1 oranında bulunur; bu üçlüden biri eksik olduğunda bariyer onarımı tam olmaz. Bu yüzden iyi bir onarıcı nemlendiricide seramid tek başına değil, kolesterolle birlikte aranır.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "amino_acids_nmf",
+      "slug": "amino_acids_nmf",
+      "name_tr": "Amino Asitler (NMF)",
+      "name_en": "Amino Acids (NMF)",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["arginine", "arjinin", "glycine", "glisin", "histidine", "histidin", "alanine", "alanin", "serine", "serin", "proline", "amino acids", "amino asit", "amino asitler"],
+      "summary_tr": "Doğal nemlendirme faktörünün (NMF) protein kökenli parçası; deride suyu bağlayarak esnekliği korur. Kuru ve atopik ciltte NMF havuzu azaldığı için dışarıdan verildiğinde nem tutma kapasitesini destekler.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "gamma_linolenic_acid",
+      "slug": "gamma_linolenic_acid",
+      "name_tr": "Gama-Linolenik Asit (GLA)",
+      "name_en": "Gamma-Linolenic Acid",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["gamma-linolenic acid", "gamma linolenic acid", "gla", "gama linolenik asit", "borage oil", "hodan yagi", "evening primrose", "evening primrose oil", "cuha cicegi yagi", "dihomo-gamma-linolenic acid"],
+      "summary_tr": "Hodan ve çuha çiçeği yağlarının etkin bileşeni; omega-3 değil omega-6 ailesindendir ve linoleik asitten türer. Antiinflamatuar eikozanoidlere dönüştüğü için atopik ciltte kaşıntı ve kızarıklığı azaltmada destekleyicidir; bariyer lipid profilini de iyileştirir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "chemical_spf",
+      "slug": "chemical_spf",
+      "name_tr": "Kimyasal (Organik) Güneş Filtresi",
+      "name_en": "Organic UV Filters",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": [
+        "oxybenzone", "avobenzone", "homosalate", "octocrylene", "octinoxate", "octisalate",
+        "tinosorb", "uvinul", "mexoryl", "ensulizole", "dioxybenzone",
+        "kimyasal filtre", "organik filtre", "kimyasal gunes kremi", "kimyasal güneş kremi",
+        "kimyasal gunes filtresi", "kimyasal güneş filtresi", "organik gunes filtresi",
+        "chemical sunscreen", "organic uv filter"
+      ],
+      "summary_tr": "UV ışığını emerek ısıya çeviren filtreler. Mineral filtrelere göre daha şeffaf ve kozmetik olarak hafiftir, bu yüzden koyu tenlerde beyaz iz bırakmaz. Avobenzon tek başına ışıkta bozunur ve oktokrilen gibi stabilizatörle birlikte kullanılır; hassas ciltte tahriş ve göz yanması daha sık görülür.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "sulfur",
+      "slug": "sulfur",
+      "name_tr": "Sülfür (Kükürt)",
+      "name_en": "Sulfur",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["sulfur", "sulphur", "kukurt", "kükürt", "sodium sulfacetamide", "colloidal sulfur"],
+      "summary_tr": "Keratolitik, antibakteriyel ve antifungal etkisi olan klasik bir reçetesiz aktif. Akne, rozase ve seboreik dermatitte kullanılır; benzoil peroksitten daha nazik olduğu için hassas ciltte tercih edilebilir. Asıl dezavantajı kokusu ve kurutucu etkisi.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "zinc_pyrithione",
+      "slug": "zinc_pyrithione",
+      "name_tr": "Çinko Piriton",
+      "name_en": "Zinc Pyrithione",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["zinc pyrithione", "cinko piriton", "çinko piriton", "pyrithione zinc", "zpt"],
+      "summary_tr": "Kepek ve seboreik dermatitin asıl sorumlusu olan Malassezia mayasını baskılar. Şampuanlarda en yaygın reçetesiz etkin madde; saç derisinde birkaç dakika bekletilerek durulanması etkinliği belirgin şekilde artırır.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "mandelic_acid",
+      "slug": "mandelic_acid",
+      "name_tr": "Mandelik Asit",
+      "name_en": "Mandelic Acid",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["mandelic acid", "mandelik asit", "mandelic"],
+      "summary_tr": "Molekülü glikolik asitten belirgin şekilde büyük olan bir AHA; bu yüzden deriye daha yavaş girer ve daha az tahriş eder. Hassas ciltte ve koyu tenlerde (tahrişe bağlı leke riski düşük olduğu için) glikolik asit yerine tercih edilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "hexylresorcinol",
+      "slug": "hexylresorcinol",
+      "name_tr": "Heksilrezorsinol",
+      "name_en": "Hexylresorcinol",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["hexylresorcinol", "heksilrezorsinol", "4-hexylresorcinol", "butylresorcinol", "4-n-butylresorcinol", "resorcinol turevi"],
+      "summary_tr": "Tirozinazı baskılayan rezorsinol türevi leke açıcı; hidrokinona kıyasla daha iyi tolere edilir ve bazı çalışmalarda benzer etkinlik göstermiştir. Rezorsinol ailesinden olduğu için hassas ciltte tahriş açısından test edilerek başlanmalı.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "menthol",
+      "slug": "menthol",
+      "name_tr": "Mentol",
+      "name_en": "Menthol",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["menthol", "mentol", "peppermint", "nane", "mentha", "peppermint oil", "nane yagi"],
+      "summary_tr": "Soğuk algısı reseptörlerini uyararak serinlik hissi verir ve kaşıntıyı geçici olarak bastırır. Ancak bu his rahatlama değil hafif bir tahriş yanıtıdır; rozase ve bozulmuş bariyerde kızarıklığı ve yanmayı tetikleyebilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "kinetin",
+      "slug": "kinetin",
+      "name_tr": "Kinetin",
+      "name_en": "Kinetin",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["kinetin", "zeatin", "cytokinin", "sitokinin", "furfuryladenine"],
+      "summary_tr": "Bitki kökenli sitokinin; ince çizgi ve cilt tonu düzensizliğinde retinoide benzer yönde ama daha zayıf etki gösterir. Asıl avantajı neredeyse hiç tahriş etmemesi, bu yüzden retinolü tolere edemeyenlerde alternatif olarak değerlendirilir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "biotin",
+      "slug": "biotin",
+      "name_tr": "Biotin (Vitamin B7)",
+      "name_en": "Biotin",
+      "kind": "active",
+      "folder_slug": "ingredients/actives",
+      "aliases": ["biotin", "vitamin b7", "vitamin h", "biyotin"],
+      "summary_tr": "Saç ve tırnak ürünlerinde çok sık geçer ama topikal kullanımının işe yaradığına dair ikna edici kanıt yok. Belgelenmiş fayda yalnızca gerçek biotin eksikliği olan kişilerde ve ağızdan alımda görülür; eksiklik ise nadirdir.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+
+    {
+      "ingredient_id": "polypodium_leucotomos",
+      "slug": "polypodium_leucotomos",
+      "name_tr": "Polypodium Leucotomos",
+      "name_en": "Polypodium Leucotomos",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["polypodium leucotomos", "polypodium", "fernblock", "kalaguala"],
+      "summary_tr": "Tropikal eğrelti ekstraktı; ağızdan alındığında UV'ye bağlı kızarıklık ve DNA hasarını azalttığı gösterilmiştir. Melazma ve fotosensitivitede güneş kremine ek destek olarak kullanılır, kremin yerini almaz.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "silymarin",
+      "slug": "silymarin",
+      "name_tr": "Silimarin (Deve Dikeni)",
+      "name_en": "Silymarin",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["silymarin", "silimarin", "silybin", "silybum marianum", "milk thistle", "deve dikeni"],
+      "summary_tr": "Deve dikeni flavonolignanı; UV kaynaklı oksidatif hasarı ve inflamasyonu azaltır. C vitamini ve ferulik asitle birlikte antioksidan serumlarda kullanıldığında koruma birikimli artar.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "quercetin",
+      "slug": "quercetin",
+      "name_tr": "Kersetin",
+      "name_en": "Quercetin",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["quercetin", "kersetin", "kuersetin", "flavonol"],
+      "summary_tr": "Yaygın bir bitkisel flavonol; antioksidan ve mast hücre stabilize edici etkisiyle kızarıklık ve kaşıntıyı azaltmada araştırılıyor. Topikal kanıt düzeyi henüz orta.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "ginkgo_biloba",
+      "slug": "ginkgo_biloba",
+      "name_tr": "Ginkgo Biloba",
+      "name_en": "Ginkgo Biloba",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["ginkgo biloba", "ginkgo", "ginko", "ginkgo flavonoid", "mabet agaci"],
+      "summary_tr": "Flavonoid ve terpenoid içeriğiyle antioksidan ve mikro dolaşımı destekleyici; kızarıklık ve donuk görünümde araştırılan bir bitkisel ekstrakt. Cilt üzerindeki klinik kanıtı sınırlı.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "astaxanthin",
+      "slug": "astaxanthin",
+      "name_tr": "Astaksantin",
+      "name_en": "Astaxanthin",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["astaxanthin", "astaksantin", "haematococcus", "haematococcus pluvialis"],
+      "summary_tr": "Mikroalg kökenli karotenoid; lipid oksidasyonuna karşı güçlü bir antioksidandır. Elastikiyet ve ince çizgide hem topikal hem ağızdan alımla olumlu sonuçlar bildiren küçük çalışmalar var.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "pycnogenol",
+      "slug": "pycnogenol",
+      "name_tr": "Pycnogenol (Çam Kabuğu)",
+      "name_en": "Pycnogenol (Pine Bark Extract)",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["pycnogenol", "piknogenol", "pine bark", "pine bark extract", "cam kabugu", "çam kabuğu", "procyanidin", "pinus pinaster"],
+      "summary_tr": "Deniz çamı kabuğu prosiyanidinleri; antioksidan etkisinin yanında melazmada ağızdan alımla leke yoğunluğunu azalttığını bildiren çalışmalar var. Damar duvarını desteklediği için kızarıklıkta da inceleniyor.",
+      "sources": ["seed_manual", "book_derived"]
+    },
+    {
+      "ingredient_id": "ellagic_acid",
+      "slug": "ellagic_acid",
+      "name_tr": "Ellajik Asit",
+      "name_en": "Ellagic Acid",
+      "kind": "extract",
+      "folder_slug": "ingredients/extracts",
+      "aliases": ["ellagic acid", "ellajik asit", "elajik asit", "pomegranate", "nar ekstrakti", "punica granatum"],
+      "summary_tr": "Nar ve bazı meyvelerde bulunan polifenol; bakırı bağlayarak tirozinazı baskılar ve antioksidan etki gösterir. Leke bakımında nazik bir destekleyici, ana aktif değil.",
+      "sources": ["seed_manual", "book_derived"]
     }
   ],
   "concerns": [
@@ -52,6 +660,20 @@
       "body_area": "hair",
       "folder_slug": "concerns/hair",
       "aliases": ["kuru sac derisi", "dry scalp", "kepek kuruluk"]
+    },
+    {
+      "concern_id": "seborrheic_dermatitis_dandruff",
+      "slug": "seborrheic_dermatitis_dandruff",
+      "name_tr": "Kepek / Seboreik Dermatit",
+      "name_en": "Dandruff / Seborrheic Dermatitis",
+      "body_area": "hair",
+      "folder_slug": "concerns/hair",
+      "aliases": [
+        "kepek", "kepeklenme", "kepegim", "kepeğim", "sac derisi kepek", "saç derisi kepek",
+        "seboreik dermatit", "seboreik", "sebaceous dermatit", "dandruff",
+        "seborrheic dermatitis", "sac dokulmesi kepek", "kasintili sac derisi",
+        "kaşıntılı saç derisi", "yagli kepek", "yağlı kepek", "malassezia"
+      ]
     }
   ],
   "links": [
@@ -298,6 +920,852 @@
       "time_of_day": "AM/PM",
       "source": "seed_manual",
       "confidence": 0.45
+    },
+
+    {
+      "ingredient_id": "glycerin",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Kuru ciltte ilk sıra humektan: nemi üst deriye çeker ve bariyer onarımını hızlandırır. Nemli deriye uygulanıp üzerine okluziv eklenirse en verimli çalışır.",
+      "min_conc_recommended": "%3",
+      "max_conc_recommended": "%10",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.85
+    },
+    {
+      "ingredient_id": "urea",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Hem nem çeker hem kalınlaşmış deriyi çözer. %5–10 nemlendirici, %10 üzeri keratolitik; çatlamış topuk ve pullu kuruluğun en etkili seçeneği.",
+      "min_conc_recommended": "%5",
+      "max_conc_recommended": "%20",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.85
+    },
+    {
+      "ingredient_id": "mineral_oil",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Okluziv film ile su kaybını azaltır. Kozmetik saflıkta komedojenik değildir; humektanın üzerine kapatıcı olarak uygulanır.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.75
+    },
+    {
+      "ingredient_id": "dimethicone",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Nefes alan silikon film; petrolatum kadar ağır hissettirmez. Yağlı ciltte kuruluğu kapatmak için tercih edilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "squalane",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Hafif emolyan; pürüzlülüğü azaltır ve yağlı film bırakmaz. Komedojenik olmadığı için karma ciltte de kullanılabilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "shea_butter",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Zengin emolyan; gövde, el ve ayaktaki kurulukta iyi çalışır. Yüzde ağır kalabilir.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "lanolin",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Çatlamış dudak ve çok kuru küçük alanlarda güçlü okluziv. Temas alerjeni olduğundan geniş alanda ve hassas ciltte dikkatli.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "vitamin_e",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Emolyan ve antioksidan katkı; tek başına kuruluğu çözmez, humektan ve okluzivin yanında destekleyicidir.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "linoleic_acid",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Bariyer lipidlerini besler; seramid ve kolesterolle birlikte kullanıldığında onarım daha verimli olur.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "rosehip_oil",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Linoleik asitten zengin hafif yağ; kurulukta destekleyici. Kolay oksitlendiği için koyu ambalaj ve serin saklama önemli.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.45
+    },
+
+    {
+      "ingredient_id": "colloidal_oatmeal",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Kaşıntı ve kızarıklığı azaltmada en iyi belgelenmiş botanik seçenek; avenantramitleri antiinflamatuar, beta-glukanı nem tutucu. Deri koruyucu olarak resmen tanınır.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.8
+    },
+    {
+      "ingredient_id": "glycerin",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Egzamada günlük nemlendirmenin temeli; tahriş potansiyeli çok düşük olduğu için alevlenme aralarında sürekli kullanılabilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.8
+    },
+    {
+      "ingredient_id": "mineral_oil",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Alerjen ve koku içermeyen okluziv; egzamada su kaybını azaltmak için güvenli bir kapatıcı.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "coconut_oil",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Laurik asit içeriğiyle S. aureus kolonizasyonunu azaltır; gövde egzamasında mineral yağa kıyasla üstün bulunduğu çalışmalar var. Yüzde komedojenik olduğu için gövdede kullan.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "linoleic_acid",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Atopik ciltte bariyer lipid profili bozuktur; linoleik asit bu eksiği kapatmaya yardım eder.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "allantoin",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Yatıştırıcı ve deri koruyucu; tahriş riski düşük olduğu için alevlenme sonrası bakımda kullanılır.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "urea",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Düşük konsantrasyonda (%5) nem verir; ancak çatlak ve açık derilerde yanma yapabileceğinden alevlenme sırasında kullanılmaz.",
+      "min_conc_recommended": "%5",
+      "max_conc_recommended": "%10",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "olive_oil",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "avoid",
+      "priority": 4,
+      "notes_tr": "Yüksek oleik asit oranı bariyeri daha da bozar; bebek ve egzamalı ciltte deri geçirgenliğini artırdığı gösterilmiştir. Geleneksel öneriye rağmen kullanılmamalı.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "oleic_acid",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "avoid",
+      "priority": 4,
+      "notes_tr": "Hücreler arası lipid düzenini bozup bariyer geçirgenliğini artırır; atopik ciltte kaşıntı ve alevlenmeyi kötüleştirebilir. Oleik asitten zengin yağlar yerine linoleik asitten zengin olanlar seçilmeli.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "oleic_acid",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "avoid",
+      "priority": 4,
+      "notes_tr": "Kuru ciltte bariyeri daha da zayıflatır; nemlendirme amacıyla yüksek oleik asitli yağ seçmek ters etki yapar.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "propylene_glycol",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "avoid",
+      "priority": 4,
+      "notes_tr": "Bozulmuş bariyerde tahriş edici olabilir ve bilinen bir temas alerjenidir; egzamalı ciltte yüksek oranda içeren ürünlerden kaçınmak daha güvenli.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+
+    {
+      "ingredient_id": "colloidal_oatmeal",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Kızarıklık ve yanma hissini yatıştırır; aktif tedavinin yanında tolere edilebilir bakım sağlar.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "licorice_extract",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Glisirizinat bileşenleri antiinflamatuardır; kızarıklığı azaltmada nazik bir destek.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "chamomile",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Bisabolol ve kamazulen kızarıklığı yatıştırır. Papatya (Asteraceae) alerjisi olanlarda ters etki yapabilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "aloe_vera",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Su bazlı, hafif ve serinletici; tahriş sonrası rahatlama sağlar. Alkol veya koku içeren jel formlarından kaçın.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "dimethicone",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Tahriş etmeyen film oluşturur ve bariyeri destekler; hassas ciltte ağırlık hissi vermeden kapatır.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "allantoin",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Nazik yatıştırıcı; hassas ciltte tahriş riski düşüktür.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "lavender",
+      "concern_id": "rosacea",
+      "effect_status": "avoid",
+      "priority": 4,
+      "notes_tr": "Linalool oksitlendiğinde koku alerjenine dönüşür; rozase ve hassas ciltte kızarıklığı tetikleyebilir. Rahatlatıcı kokusu cilt için avantaj değil.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+
+    {
+      "ingredient_id": "licorice_extract",
+      "concern_id": "hyperpigmentation_melasma",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Glabridin tirozinazı baskılar; hidrokinona göre çok daha nazik olduğu için uzun süreli ve hassas ciltte kullanıma uygun.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "vitamin_e",
+      "concern_id": "hyperpigmentation_melasma",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Tek başına leke açıcı değil; C vitamininin etkisini ve kararlılığını artırdığı için kombinasyonda anlamlı.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.45
+    },
+    {
+      "ingredient_id": "licorice_extract",
+      "concern_id": "post_inflammatory_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Hem pigment hem kızarıklık tarafına etki eder; tahrişe yatkın ciltte azelaik asidin yanında destek olarak kullanılır.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+
+    {
+      "ingredient_id": "green_tea",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "EGCG, UV kaynaklı serbest radikal hasarını azaltır; sabah SPF'in altında antioksidan destek olarak kullanılır. SPF'in yerini tutmaz.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "vitamin_e",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "C vitamini ile birlikte kullanıldığında ikisi birbirini yeniler ve fotokoruma belirgin şekilde artar; ferulik asit eklenirse daha da kararlı olur.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "curcumin",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Güçlü antioksidan ama topikal geçirgenliği zayıf ve sarı leke bırakabilir; etkisi formülasyona bağlı, ana aktif olarak seçilmez.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "rosehip_oil",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Eser miktarda A vitamini türevi içerir; cilt tonuna katkı sağlar ama retinolün yerine geçmez.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+
+    {
+      "ingredient_id": "green_tea",
+      "concern_id": "acne_vulgaris",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Antiinflamatuar polifenolleri lezyon sayısını azaltabilir ve sebum üretimini baskılar; ana tedavinin yanında destek olarak kullanılır.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "linoleic_acid",
+      "concern_id": "acne_vulgaris",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Akneli ciltte sebumun linoleik asit oranı düşüktür; linoleik asitten zengin hafif yağlar oleik asitten zengin olanlara tercih edilir.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.45
+    },
+    {
+      "ingredient_id": "coconut_oil",
+      "concern_id": "acne_vulgaris",
+      "effect_status": "avoid",
+      "priority": 4,
+      "notes_tr": "Yüzde belirgin komedojeniktir; gövde egzamasında yararlı olsa da akneye eğilimli yüz cildinde tıkanmayı artırır.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+
+    {
+      "ingredient_id": "green_tea",
+      "concern_id": "oily_skin_seborrhea",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Topikal polifenollerin sebum üretimini azalttığını gösteren çalışmalar var; niasinamidin yanında destekleyici olarak kullanılır.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "dimethicone",
+      "concern_id": "oily_skin_seborrhea",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Yağlı ciltte nemlendirmeyi ağırlık hissi vermeden sağlar; komedojenik olmadığı için yağ korkusuyla nemlendirmeyi atlamayı önler.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+
+    {
+      "ingredient_id": "caffeine",
+      "concern_id": "dark_circles_periorbital_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Damarları geçici olarak büzerek koyuluk ve dolgunluk görünümünü azaltır; sabah uygulamada fark daha belirgindir. Etkisi geçici, yapısal çukurlukta işe yaramaz.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "licorice_extract",
+      "concern_id": "dark_circles_periorbital_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "İnce göz çevresi cildinde nazik pigment açıcı; hidrokinon gibi agresif seçeneklere göre daha güvenli.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+
+    {
+      "ingredient_id": "aloe_vera",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "neutral",
+      "priority": 4,
+      "notes_tr": "Su verir ve serinletir ama okluziv değildir; tek başına kullanıldığında nem hızla buharlaşır, üzerine kapatıcı gerekir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "calendula",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Geleneksel kullanımı yaygın, yatıştırıcı ve yara iyileştirici; klinik kanıt düzeyi orta. Papatyayla çapraz alerji olasılığı var.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "chamomile",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Yatıştırıcı etkisi kaşıntıda rahatlama sağlayabilir; Asteraceae alerjisi olanlarda kaçınılmalı.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "rosemary_extract",
+      "concern_id": "acne_vulgaris",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Antimikrobiyal ve antioksidan katkı; kanıt düzeyi sınırlı, ana aktif değil. Uçucu yağ formu tahriş edebilir, ekstrakt formu tercih edilir.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.35
+    },
+    {
+      "ingredient_id": "urea",
+      "concern_id": "enlarged_pores",
+      "effect_status": "neutral",
+      "priority": 4,
+      "notes_tr": "Keratolitik etkisi yüzey pürüzlülüğünü azaltır ama gözenek görünümünde asıl seçenek BHA ve niasinamiddir.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.35
+    },
+
+    {
+      "ingredient_id": "zinc_pyrithione",
+      "concern_id": "seborrheic_dermatitis_dandruff",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Kepeğin asıl sorumlusu Malassezia mayasını baskılar; reçetesiz şampuanlarda birinci seçenek. Saç derisinde 3-5 dakika bekletip durulamak etkinliği belirgin artırır.",
+      "min_conc_recommended": "%1",
+      "max_conc_recommended": "%2",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.8
+    },
+    {
+      "ingredient_id": "salisilik_asit",
+      "concern_id": "seborrheic_dermatitis_dandruff",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Keratolitik etkisiyle yapışmış pulları çözer, böylece antifungal etkin maddenin saç derisine ulaşmasını kolaylaştırır. Tek başına mayayı baskılamaz.",
+      "min_conc_recommended": "%1.5",
+      "max_conc_recommended": "%3",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.7
+    },
+    {
+      "ingredient_id": "sulfur",
+      "concern_id": "seborrheic_dermatitis_dandruff",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Hem antifungal hem keratolitik; salisilik asitle birlikte klasik kepek kombinasyonudur. Kokusu kullanım konforunu düşürür.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "cay_agaci",
+      "concern_id": "seborrheic_dermatitis_dandruff",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "%5 şampuanda kepeği azalttığı gösterilmiştir; çinko pirituna göre daha zayıf ama bitkisel alternatif arayanlar için seçenek. Seyreltilmemiş uygulanmamalı.",
+      "min_conc_recommended": "%5",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "niacinamid",
+      "concern_id": "seborrheic_dermatitis_dandruff",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Sebum düzenleyici ve antiinflamatuar katkı; yağlı kepekte destekleyici olabilir, antifungalin yerini almaz.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.45
+    },
+
+    {
+      "ingredient_id": "cholesterol",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Bariyer üçlüsünün (seramid + kolesterol + yağ asidi) eksik kalan ayağı. Seramidi tek başına vermek yerine kolesterolle birlikte kullanmak onarımı belirgin şekilde hızlandırır.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.75
+    },
+    {
+      "ingredient_id": "cholesterol",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Atopik ciltte lipid oranları bozuktur; kolesterol içeren onarıcı nemlendiriciler bu dengeyi düzeltmeye yardım eder.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "amino_acids_nmf",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "NMF'in protein kökenli parçası; deride suyu bağlayarak esnekliği korur. Gliserinin yanında ikinci sıra humektan desteği.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "amino_acids_nmf",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Atopik ciltte NMF havuzu azalmıştır; dışarıdan amino asit vermek nem tutma kapasitesini destekler.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "gamma_linolenic_acid",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Antiinflamatuar eikozanoidlere dönüşerek kaşıntı ve kızarıklığı azaltır; hodan ve çuha çiçeği yağlarının atopik ciltte önerilmesinin nedeni budur.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "gamma_linolenic_acid",
+      "concern_id": "dry_skin_xerosis",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Bariyer lipid profilini iyileştirir; linoleik asitle birlikte kuruluğa yapısal destek sağlar.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+
+    {
+      "ingredient_id": "chemical_spf",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Fotoyaşlanmayı önlemenin temeli. Mineral filtreye göre şeffaf ve hafif olduğu için her gün kullanma alışkanlığını kolaylaştırır; asıl belirleyici hangi tip olduğu değil, düzenli ve yeterli miktarda sürülmesidir.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.85
+    },
+    {
+      "ingredient_id": "chemical_spf",
+      "concern_id": "hyperpigmentation_melasma",
+      "effect_status": "supports",
+      "priority": 1,
+      "notes_tr": "Leke bakımında korunma olmadan hiçbir aktif kalıcı sonuç vermez. Melazmada görünür ışık da tetikleyici olduğundan demir oksit içeren renkli formlar daha koruyucudur.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.85
+    },
+    {
+      "ingredient_id": "chemical_spf",
+      "concern_id": "rosacea",
+      "effect_status": "neutral",
+      "priority": 4,
+      "notes_tr": "Korunma rozasede şart ama organik filtreler hassas ciltte batma ve kızarıklık yapabilir; bu durumda mineral filtre tercih edilir.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "sulfur",
+      "concern_id": "acne_vulgaris",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Keratolitik ve antibakteriyel; benzoil peroksitten daha nazik olduğu için tahrişe yatkın akneli ciltte seçenek. Kurutucu etkisi ve kokusu kullanımı zorlaştırır.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "sulfur",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Papülopüstüler rozasede uzun süredir kullanılan reçetesiz seçenek; sodyum sülfasetamid ile kombine formları yaygındır.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "mandelic_acid",
+      "concern_id": "hyperpigmentation_melasma",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Büyük molekülü sayesinde yavaş girer ve az tahriş eder; tahrişe bağlı leke riski düşük olduğu için koyu tenlerde glikolik asit yerine tercih edilir.",
+      "min_conc_recommended": "%5",
+      "max_conc_recommended": "%10",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "mandelic_acid",
+      "concern_id": "acne_vulgaris",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Hafif antibakteriyel ve keratolitik; hassas akneli ciltte salisilik asit tolere edilemediğinde alternatif.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "hexylresorcinol",
+      "concern_id": "hyperpigmentation_melasma",
+      "effect_status": "supports",
+      "priority": 2,
+      "notes_tr": "Tirozinaz inhibisyonuyla lekeyi açar; karşılaştırmalı çalışmalarda hidrokinona yakın etki, daha iyi tolerans bildirilmiştir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "hexylresorcinol",
+      "concern_id": "post_inflammatory_hyperpigmentation",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Akne sonrası lekede nazik bir açıcı; azelaik asit veya niasinamidin yanında kombine kullanılabilir.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "kinetin",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "İnce çizgi ve cilt tonunda retinoide benzer yönde ama daha zayıf etki; asıl avantajı neredeyse hiç tahriş etmemesi. Retinolü tolere edemeyenlerde alternatif.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "kinetin",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Hassas ciltte retinol yerine yaş karşıtı destek arayanlar için tahriş etmeyen seçenek; etkisi yavaş ve sınırlıdır.",
+      "time_of_day": "PM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "menthol",
+      "concern_id": "rosacea",
+      "effect_status": "avoid",
+      "priority": 4,
+      "notes_tr": "Verdiği serinlik rahatlama değil hafif bir tahriş yanıtıdır; rozasede kızarıklığı ve yanmayı tetikleyen bilinen bir uyarandır.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.65
+    },
+    {
+      "ingredient_id": "menthol",
+      "concern_id": "atopic_dermatitis",
+      "effect_status": "avoid",
+      "priority": 4,
+      "notes_tr": "Kaşıntıyı kısa süreli bastırsa da bozulmuş bariyerde tahriş eder ve kaşıntı döngüsünü uzatabilir.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.6
+    },
+    {
+      "ingredient_id": "biotin",
+      "concern_id": "hair_dryness",
+      "effect_status": "insufficient_data",
+      "priority": 4,
+      "notes_tr": "Saç ürünlerinde çok sık geçmesine karşın topikal biotinin işe yaradığına dair ikna edici kanıt yok. Belgelenmiş fayda yalnızca gerçek biotin eksikliğinde ve ağızdan alımda; eksiklik ise nadirdir.",
+      "time_of_day": "Farketmez",
+      "source": "seed_manual",
+      "confidence": 0.3
+    },
+
+    {
+      "ingredient_id": "polypodium_leucotomos",
+      "concern_id": "hyperpigmentation_melasma",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Ağızdan alındığında UV'ye bağlı pigment yanıtını azaltır; inatçı melazmada güneş kremine ek destek olarak değerlendirilir, kremin yerini almaz.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "polypodium_leucotomos",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "UV kaynaklı kızarıklık ve DNA hasarını azalttığı gösterilmiştir; sistemik fotokoruma desteği sağlar.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "silymarin",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "UV kaynaklı oksidatif hasarı azaltır; C vitamini ve ferulik asitle birlikte kullanıldığında antioksidan koruma birikimli artar.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.55
+    },
+    {
+      "ingredient_id": "astaxanthin",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Lipid oksidasyonuna karşı güçlü karotenoid antioksidan; ince çizgi ve elastikiyette olumlu sonuç bildiren küçük çalışmalar var.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "astaxanthin",
+      "concern_id": "skin_laxity",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Elastikiyette destekleyici olarak inceleniyor; retinol ve SPF'in sağladığı etkiye ek katkı düzeyinde.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "pycnogenol",
+      "concern_id": "hyperpigmentation_melasma",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Ağızdan alımla melazmada leke yoğunluğunu azalttığını bildiren çalışmalar var; topikal etkisi daha az çalışılmış.",
+      "time_of_day": "AM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "pycnogenol",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Damar duvarını desteklediği için kızarıklıkta inceleniyor; kanıt düzeyi henüz sınırlı.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "ellagic_acid",
+      "concern_id": "hyperpigmentation_melasma",
+      "effect_status": "supports",
+      "priority": 3,
+      "notes_tr": "Bakırı bağlayarak tirozinazı baskılar; nar ekstraktlı leke ürünlerinin dayandığı bileşen. Nazik bir destekleyici, ana aktif değil.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.5
+    },
+    {
+      "ingredient_id": "quercetin",
+      "concern_id": "rosacea",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Mast hücre stabilize edici ve antioksidan etkisiyle kızarıklık/kaşıntıda araştırılıyor; topikal kanıt düzeyi orta.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.4
+    },
+    {
+      "ingredient_id": "ginkgo_biloba",
+      "concern_id": "photoaging_premature_aging",
+      "effect_status": "supports",
+      "priority": 4,
+      "notes_tr": "Flavonoid içeriğiyle antioksidan destek; cilt üzerindeki klinik kanıtı sınırlı olduğu için ana aktif olarak seçilmez.",
+      "time_of_day": "AM/PM",
+      "source": "seed_manual",
+      "confidence": 0.35
     }
   ]
 }

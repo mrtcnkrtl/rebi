@@ -161,8 +161,18 @@ def _fetch_links(ingredient_ids: list[str], concern_ids: list[str]) -> list[dict
         return []
 
 
-def _fetch_links_by_concern(concern_ids: list[str], limit: int = 8) -> list[dict[str, Any]]:
-    """Top recommended ingredients (the roadmap chain) for a concern-only query."""
+def _fetch_links_by_concern(
+    concern_ids: list[str],
+    limit: int = 8,
+    effect_statuses: list[str] | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Top recommended ingredients (the roadmap chain) for a concern-only query.
+
+    Pass `effect_statuses` to fetch one class on its own — the default ordering
+    puts 'supports' first, so an unfiltered call with a small limit would drop
+    the 'avoid' rows entirely.
+    """
     if not concern_ids:
         return []
     try:
@@ -179,11 +189,12 @@ def _fetch_links_by_concern(concern_ids: list[str], limit: int = 8) -> list[dict
                     join public.canonical_ingredients i on i.ingredient_id = l.ingredient_id
                     join public.canonical_concerns c on c.concern_id = l.concern_id
                     where l.concern_id = any(%s)
+                      and (%s::text[] is null or l.effect_status = any(%s))
                     order by (l.effect_status = 'supports') desc,
                              l.priority nulls last, l.confidence desc nulls last, l.link_id
                     limit %s
                     """,
-                    (concern_ids, int(limit)),
+                    (concern_ids, effect_statuses, effect_statuses, int(limit)),
                 )
                 cols = [d[0] for d in cur.description]
                 return [dict(zip(cols, r)) for r in (cur.fetchall() or [])]
@@ -397,7 +408,7 @@ def format_routine_expert_block(concern_slug: str, *, max_chars: int = 1800) -> 
     if not cnd_ids:
         return "", meta
     meta["concern_ids"] = cnd_ids
-    links = _fetch_links_by_concern(cnd_ids, limit=8)
+    links = _fetch_links_by_concern(cnd_ids, limit=8, effect_statuses=["supports"])
     if not links:
         return "", meta
 
@@ -411,6 +422,14 @@ def format_routine_expert_block(concern_slug: str, *, max_chars: int = 1800) -> 
     lines = ["[Katalog — kanıta dayalı içerik zinciri (öncelik sırasıyla)]"]
     for link in links[:8]:
         lines.append(_format_chain_line(link))
+
+    avoid = _fetch_links_by_concern(cnd_ids, limit=5, effect_statuses=["avoid"])
+    if avoid:
+        meta["avoid_ingredient_ids"] = [str(a.get("ingredient_id")) for a in avoid]
+        lines.append("")
+        lines.append("[Bu şikâyette kaçınılması gerekenler]")
+        for link in avoid:
+            lines.append(_format_chain_line(link))
     text = "\n".join(lines)
 
     try:

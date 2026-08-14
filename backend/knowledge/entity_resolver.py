@@ -35,6 +35,8 @@ def normalize(s: str) -> str:
 # between the master headers and the canonical keys/names).
 _CURATED_ALIASES: dict[str, str] = {
     "retinoidler": "retinol",
+    "retinoid": "retinol",
+    "retinoids": "retinol",
     "tretinoin": "retinol",
     "retinaldeyde": "retinol",
     "retinaldehit": "retinol",
@@ -83,7 +85,46 @@ _CURATED_ALIASES: dict[str, str] = {
     "alpha arbutin": "alfa_arbutin",
     "alfa arbutin": "alfa_arbutin",
     "arbutin": "alfa_arbutin",
+    # Retinoid esters belong to the retinol box, not to the acid they carry
+    # ("retinyl linoleate" would otherwise land in linoleic acid by substring).
+    "retinyl linoleate": "retinol",
+    "retinyl palmitate": "retinol",
+    "retinyl propionate": "retinol",
+    "oleic acid": "oleic_acid",
+    "oleik asit": "oleic_acid",
+    # Bare "zinc" means the sunscreen mineral, not the antifungal pyrithione salt.
+    "zinc": "zinc_oxide",
+    "cinko": "zinc_oxide",
 }
+
+# Names whose substring match is misleading: they are a fragment of an unrelated
+# ingredient's alias ("rice" inside "licorice", "oleic acid" inside "linoleic
+# acid") or a distinct molecule that merely shares a stem ("thiourea" vs "urea").
+# These resolve only via exact/curated match, never by substring.
+_NEVER_SUBSTRING: frozenset[str] = frozenset(
+    {
+        "rice",
+        "rose",
+        "palmitate",
+        "palmitat",
+        "thiourea",
+        "silicon",
+        "thioglycolic acid",
+        "acid",
+        "asit",
+        "oil",
+        "yag",
+        "extract",
+        "vitamin",
+        # "mica" is a colorant, but it hides inside "cheMICAl sunscreen";
+        # "milk" is not "milk thistle"; "cyanidin" is not "procyanidin";
+        # bare "resorcinol" is a keratolytic, not the hexyl brightener.
+        "mica",
+        "milk",
+        "cyanidin",
+        "resorcinol",
+    }
+)
 
 _OIL_HINTS = ("yag", "oil", "butter", "yağ")
 _EXTRACT_HINTS = ("ekstr", "ozu", "özü", "extract", "ferment")
@@ -207,6 +248,8 @@ class EntityResolver:
         if q in _CURATED_ALIASES:
             return ResolveResult(name, _CURATED_ALIASES[q], "curated", False, slugify(name), kind, folder)
         # 3) substring either direction (guard length to avoid noise)
+        if q in _NEVER_SUBSTRING:
+            return ResolveResult(name, None, None, True, slugify(name), kind, folder)
         best: Optional[str] = None
         for phrase, iid in self._index.items():
             if len(phrase) < 4:

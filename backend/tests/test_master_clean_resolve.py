@@ -1,7 +1,12 @@
 """Tests for Master Veri cleaner + canonical entity resolver (offline, pure)."""
 
 from clean_master_veri import fix_encoding, parse_header, guess_kind
-from knowledge.entity_resolver import build_resolver, normalize, guess_kind_folder
+from knowledge.entity_resolver import (
+    build_resolver,
+    normalize,
+    guess_kind_folder,
+    _NEVER_SUBSTRING,
+)
 
 
 # ---- fix_encoding ---------------------------------------------------------
@@ -71,3 +76,51 @@ def test_normalize_turkish():
 
 def test_guess_kind_folder_extract():
     assert guess_kind_folder("Yeşil Çay Özü")[1] == "ingredients/extracts"
+
+
+# ---- substring guard ------------------------------------------------------
+
+def test_ambiguous_fragments_never_substring_match():
+    """
+    'rice' sits inside 'licorice' and 'oleic acid' inside 'linoleic acid', so a
+    plain substring match files them under the wrong box. These must stay
+    unresolved unless an exact/curated entry claims them.
+    """
+    r = build_resolver(load_from_db=False)
+    for name in ("rice", "rose", "palmitate", "thiourea", "silicon"):
+        assert r.resolve(name).is_candidate is True, name
+
+
+def test_colorant_and_lookalike_fragments_blocked():
+    """
+    'mica' hides inside 'cheMICAl sunscreen', 'milk' inside 'milk thistle' and
+    'cyanidin' inside 'procyanidin' — each pointing at an unrelated box.
+    """
+    r = build_resolver(load_from_db=False)
+    for name in ("mica", "milk", "cyanidin", "resorcinol"):
+        assert r.resolve(name).is_candidate is True, name
+
+
+def test_bare_zinc_is_the_sunscreen_mineral():
+    # "zinc" must not drift to the antifungal pyrithione salt.
+    r = build_resolver(load_from_db=False)
+    assert r.resolve("zinc").ingredient_id == "zinc_oxide"
+
+
+def test_oleic_acid_resolves_to_its_own_box_not_linoleic():
+    r = build_resolver(load_from_db=False)
+    assert r.resolve("oleic acid").ingredient_id == "oleic_acid"
+    assert r.resolve("oleik asit").ingredient_id == "oleic_acid"
+
+
+def test_retinoid_esters_route_to_retinol():
+    r = build_resolver(load_from_db=False)
+    assert r.resolve("retinyl linoleate").ingredient_id == "retinol"
+    assert r.resolve("retinyl palmitate").ingredient_id == "retinol"
+
+
+def test_blocklist_entries_are_normalized():
+    # resolve() compares the normalized query against the set, so any entry
+    # that is not already normalized would be dead weight.
+    for entry in _NEVER_SUBSTRING:
+        assert normalize(entry) == entry

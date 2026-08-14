@@ -72,3 +72,65 @@ def test_chain_actives_empty_for_unmapped_slug():
     # general/unknown slugs resolve to no concern ids -> no DB call, empty result
     assert cr.chain_actives_for_concern("general") == []
     assert cr.chain_actives_for_concern("nope") == []
+
+
+# ---- routine expert block: supports chain + avoid section ------------------
+
+def _link(iid, name, effect, priority, note):
+    return {
+        "ingredient_id": iid,
+        "ingredient_tr": name,
+        "effect_status": effect,
+        "priority": priority,
+        "notes_tr": note,
+        "time_of_day": "AM/PM",
+    }
+
+
+def _stub_links(monkeypatch, supports, avoid):
+    def fake(concern_ids, limit=8, effect_statuses=None):
+        if effect_statuses == ["avoid"]:
+            return avoid[:limit]
+        if effect_statuses == ["supports"]:
+            return supports[:limit]
+        return (supports + avoid)[:limit]
+
+    monkeypatch.setattr(cr, "_fetch_links_by_concern", fake)
+    monkeypatch.setattr(
+        "knowledge.literature.format_literature_block", lambda *a, **k: "", raising=False
+    )
+
+
+def test_expert_block_lists_avoid_separately(monkeypatch):
+    _stub_links(
+        monkeypatch,
+        supports=[_link("glycerin", "Gliserin", "supports", 1, "Humektan.")],
+        avoid=[_link("olive_oil", "Zeytinyağı", "avoid", 4, "Bariyeri bozar.")],
+    )
+    text, meta = cr.format_routine_expert_block("dryness", max_chars=4000)
+    assert "Gliserin" in text
+    assert "kaçınılması gerekenler" in text.lower()
+    assert "Zeytinyağı" in text
+    assert meta["avoid_ingredient_ids"] == ["olive_oil"]
+    # avoid rows must not pollute the recommended-chain id list
+    assert "olive_oil" not in meta["ingredient_ids"]
+
+
+def test_expert_block_omits_avoid_section_when_none(monkeypatch):
+    _stub_links(
+        monkeypatch,
+        supports=[_link("glycerin", "Gliserin", "supports", 1, "Humektan.")],
+        avoid=[],
+    )
+    text, meta = cr.format_routine_expert_block("dryness", max_chars=4000)
+    assert "kaçınılması gerekenler" not in text.lower()
+    assert "avoid_ingredient_ids" not in meta
+
+
+def test_expert_block_empty_when_no_supports(monkeypatch):
+    # An avoid-only concern yields no chain, so the block stays empty rather
+    # than shipping a warning list with nothing to recommend.
+    _stub_links(monkeypatch, supports=[], avoid=[_link("olive_oil", "Zeytinyağı", "avoid", 4, "x")])
+    text, meta = cr.format_routine_expert_block("dryness")
+    assert text == ""
+    assert meta["ingredient_ids"] == []
