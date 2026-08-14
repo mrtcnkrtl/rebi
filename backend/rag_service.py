@@ -375,9 +375,28 @@ def _doc_meta(document_id: str) -> Tuple[Optional[str], Optional[str]]:
     return title, url
 
 
-def _evidence_metrics(*, entity_text: str, vector_hits: list, used_docs: int) -> dict:
+_STRONG_CABINET_STATUS = ("hit", "concern_chain", "ingredient_chain")
+
+
+def _evidence_metrics(
+    *,
+    entity_text: str,
+    vector_hits: list,
+    used_docs: int,
+    cabinet_status: str = "",
+    cabinet_link_count: int = 0,
+    literature_len: int = 0,
+    graph_len: int = 0,
+) -> dict:
     """
     Evidence heuristics.
+
+    The canonical catalog is our strongest evidence: a priority-ordered
+    ingredient chain (with concentrations and time-of-day) plus cited literature
+    passages is more reliable than a fuzzy vector hit. Scoring it explicitly
+    keeps the composer in confident mode instead of asking the user clarifying
+    questions while a full chain sits unused in the bundle.
+
     Returns: {score, max_sim, used_docs, entity_len, ok}
     """
     et = (entity_text or "").strip()
@@ -417,6 +436,20 @@ def _evidence_metrics(*, entity_text: str, vector_hits: list, used_docs: int) ->
     if used_docs >= 3:
         score += 0.05
 
+    # Structured catalog evidence (cabinet chain / graph / cited literature).
+    cab = (cabinet_status or "").strip()
+    cabinet_strong = cab in _STRONG_CABINET_STATUS and int(cabinet_link_count or 0) >= 1
+    if cabinet_strong:
+        score += 0.45 if int(cabinet_link_count or 0) >= 3 else 0.32
+    elif cab and cab != "miss":
+        score += 0.08
+    if int(literature_len or 0) >= 200:
+        score += 0.18
+    elif int(literature_len or 0) > 0:
+        score += 0.08
+    if int(graph_len or 0) >= 200:
+        score += 0.12
+
     score = max(0.0, min(score, 1.0))
     # Strict "ok" gate:
     # - Keep it strict for arbitrary queries to prevent weak-vector hallucinations.
@@ -444,6 +477,9 @@ def _evidence_metrics(*, entity_text: str, vector_hits: list, used_docs: int) ->
         or max_sim >= 0.78
         or (max_sim >= 0.72 and used_docs >= 2)
         or (guides_hits >= 1 and max_sim >= 0.62)
+        # A canonical chain (optionally backed by literature) is answerable on its own.
+        or cabinet_strong
+        or (int(literature_len or 0) >= 200 and int(graph_len or 0) >= 200)
     )
     return {"score": score, "max_sim": max_sim, "used_docs": int(used_docs), "entity_len": et_len, "ok": ok}
 
@@ -659,7 +695,15 @@ def _build_free_chat_evidence_bundle(
         if title or url:
             sources.append({"title": title or "", "url": url or ""})
 
-    metrics = _evidence_metrics(entity_text=entity_text, vector_hits=vector_hits, used_docs=len(used_doc_ids))
+    metrics = _evidence_metrics(
+        entity_text=entity_text,
+        vector_hits=vector_hits,
+        used_docs=len(used_doc_ids),
+        cabinet_status=str(cabinet_meta.get("cabinet_status") or ""),
+        cabinet_link_count=int(cabinet_meta.get("cabinet_link_count") or 0),
+        literature_len=len(literature_block or ""),
+        graph_len=len(graph_block or ""),
+    )
     score = float(metrics.get("score") or 0.0)
     ok = bool(metrics.get("ok"))
     reason = "ok" if ok else "weak"
@@ -1712,11 +1756,22 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
                         )
                         text = _gemini_response_text(response)
                         text = _strip_repetitive_greeting(text, history)
-                        return _chat_general_shape(text)
+                        if (text or "").strip():
+                            return _chat_general_shape(text)
                     except Exception:
                         pass
-                # fallback: plain abstract snippet
-                return _chat_general_shape((abstract[:480] + ("…" if len(abstract) > 480 else "")).strip())
+                # Summarizer unavailable: never surface the untranslated English
+                # abstract to the user. Prefer our curated internal entry, else
+                # say so plainly and ask one narrowing question.
+                topic = _free_chat_detect_ingredient_topic(um)
+                if topic:
+                    db_reply = _free_chat_compact_from_ingredient_db(topic, um)
+                    if db_reply:
+                        return _chat_general_shape(db_reply)
+                return _chat_general_shape(
+                    "Bu maddeyi şu an kendi kaynaklarımda net bir özetle karşılayamadım, o yüzden yanlış bir şey söylemek istemiyorum. "
+                    "Bunu yüz için mi düşünüyorsun, yoksa başka bir bölge için mi?"
+                )
 
         # Eğer PubMed'den veri çekemediysek: "tanım" döngüsüne girme.
         # Burada düşük-iddialı bir çerçeve verip sadece kullanım alanını sor.
