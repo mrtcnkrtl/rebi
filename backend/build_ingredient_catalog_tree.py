@@ -21,7 +21,12 @@ from knowledge.ingredient_folder_schema import INGREDIENT_INTERNAL_FOLDERS, INGR
 
 OUT_PATH = Path(__file__).resolve().parent / "knowledge" / "ingredient_catalog_tree.json"
 SEEDS_PATH = Path(__file__).resolve().parent / "knowledge" / "data_catalog_seeds.json"
-GRAPH_XLSX = Path.home() / "Downloads" / "rebi_skincare_graph_kb.xlsx"
+_GRAPH_XLSX_NAME = "rebi_skincare_graph_kb.xlsx"
+_GRAPH_XLSX_REPO = Path(__file__).resolve().parent / "documents" / _GRAPH_XLSX_NAME
+# The repo copy is authoritative; the Downloads path stays as a fallback only so
+# older local setups keep working. Relying on Downloads alone lost the source
+# whenever the file was cleaned up or the machine changed.
+GRAPH_XLSX = _GRAPH_XLSX_REPO if _GRAPH_XLSX_REPO.is_file() else Path.home() / "Downloads" / _GRAPH_XLSX_NAME
 
 
 def _slugify(s: str) -> str:
