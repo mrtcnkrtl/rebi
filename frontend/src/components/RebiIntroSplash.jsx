@@ -1,8 +1,9 @@
 import { useState, useLayoutEffect, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Leaf, Sparkles } from "lucide-react";
+import { introSeenOnIp, markIntroSeenOnIp } from "../lib/introSeen";
 
-/** v3: uzun süre + bilimsel kaynak vurgulu metinler */
+/** v3 metinler; kayıt localStorage + IP (oturum kapanınca tekrar çıkmasın) */
 const DONE_APP = "rebi-splash-app-v3";
 const TS_APP = "rebi-splash-app-ts";
 const DONE_CHAT = "rebi-splash-chat-v3";
@@ -20,9 +21,30 @@ function readTips(t, key) {
   return Array.isArray(raw) ? raw.filter((x) => typeof x === "string" && x.trim()) : [];
 }
 
+function storageGet(key) {
+  try {
+    return localStorage.getItem(key) || sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
- * scope=app: ilk site açılışı (oturum başına bir kez) — sinematik, büyük tip
- * scope=chat: Rebi sohbet — app şovundan hemen sonra değilse
+ * scope=app: ilk site açılışı — tarayıcı + IP başına bir kez
+ * scope=chat: Rebi sohbet — app şovundan hemen sonra değilse; tarayıcıda bir kez
  */
 export default function RebiIntroSplash({ scope = "app", accentColor = "#0d9488", primaryColor = "#0f766e" }) {
   const { t } = useTranslation();
@@ -48,10 +70,11 @@ export default function RebiIntroSplash({ scope = "app", accentColor = "#0d9488"
       progressRef.current = null;
     }
     if (scope === "app") {
-      sessionStorage.setItem(DONE_APP, "1");
-      sessionStorage.setItem(TS_APP, String(Date.now()));
+      storageSet(DONE_APP, "1");
+      storageSet(TS_APP, String(Date.now()));
+      markIntroSeenOnIp();
     } else {
-      sessionStorage.setItem(DONE_CHAT, "1");
+      storageSet(DONE_CHAT, "1");
     }
     setShow(false);
     setProgress(100);
@@ -59,26 +82,48 @@ export default function RebiIntroSplash({ scope = "app", accentColor = "#0d9488"
 
   useLayoutEffect(() => {
     const doneKey = scope === "app" ? DONE_APP : DONE_CHAT;
-    if (sessionStorage.getItem(doneKey)) {
+    if (storageGet(doneKey)) {
+      storageSet(doneKey, "1");
+      if (scope === "app") markIntroSeenOnIp();
       return;
     }
     if (scope === "chat") {
-      const ts = sessionStorage.getItem(TS_APP);
+      const ts = storageGet(TS_APP);
       if (ts && Date.now() - Number(ts) < CHAT_DEBOUNCE_AFTER_APP_MS) {
         return;
       }
     }
-    const raf = requestAnimationFrame(() => {
-      setShow(true);
+
+    let cancelled = false;
+    const start = () => {
+      if (cancelled) return;
       startedAtRef.current = Date.now();
       setProgress(0);
+      setShow(true);
       timerRef.current = window.setTimeout(() => dismiss(), totalMs);
       progressRef.current = window.setInterval(() => {
         const elapsed = Date.now() - startedAtRef.current;
         setProgress(Math.min(100, (elapsed / totalMs) * 100));
       }, 48);
+    };
+
+    const raf = requestAnimationFrame(() => {
+      if (scope !== "app") {
+        start();
+        return;
+      }
+      introSeenOnIp().then((seen) => {
+        if (cancelled) return;
+        if (seen) {
+          storageSet(DONE_APP, "1");
+          return;
+        }
+        start();
+      });
     });
+
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
       if (timerRef.current) {
         clearTimeout(timerRef.current);

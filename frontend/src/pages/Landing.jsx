@@ -868,9 +868,19 @@ export default function Landing() {
             </div>
             <span className="font-bold text-gray-900">Rebi</span>
           </div>
-          <p className="text-sm text-gray-400">
-            {t("landing.footer")}
-          </p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-sm text-gray-400">
+              {t("landing.footer")}
+            </p>
+            <p className="text-xs text-gray-400 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+              <Link to="/kvkk" className="hover:text-teal-700 underline underline-offset-2">
+                {t("legal.kvkkTitle")}
+              </Link>
+              <Link to="/riza" className="hover:text-teal-700 underline underline-offset-2">
+                {t("legal.rizaTitle")}
+              </Link>
+            </p>
+          </div>
         </div>
       </footer>
     </div>

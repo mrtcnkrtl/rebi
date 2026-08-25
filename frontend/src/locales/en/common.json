@@ -134,7 +134,20 @@
     "login": "Sign in",
     "signup": "Sign up",
     "haveNoAccount": "Don't have an account?",
-    "haveAccount": "Already have an account?"
+    "haveAccount": "Already have an account?",
+    "kvkkBefore": "I have read and understood the ",
+    "kvkkLink": "KVKK Privacy Notice",
+    "kvkkAfter": ".",
+    "rizaBefore": "I have read the ",
+    "rizaLink": "Explicit Consent Notice",
+    "rizaAfter": " and I consent to processing of my skin and health-related data.",
+    "legalRequired": "You must accept the privacy notice and explicit consent to continue."
+  },
+  "legal": {
+    "kvkkTitle": "KVKK Privacy Notice",
+    "rizaTitle": "Explicit Consent Notice",
+    "updated": "Last updated: {{date}}",
+    "backToAuth": "Back to sign in"
   },
   "lang": {
     "label": "Language",

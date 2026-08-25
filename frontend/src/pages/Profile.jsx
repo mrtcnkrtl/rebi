@@ -503,6 +503,21 @@ export default function Profile() {
           </button>
         </form>
 
+        <div className="card !p-4 space-y-2">
+          <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+            <Shield className="w-4 h-4" style={{ color: theme.primary }} />
+            {t("legal.kvkkTitle")}
+          </h2>
+          <p className="text-xs text-gray-500 flex flex-wrap gap-x-3 gap-y-1">
+            <Link to="/kvkk" className="text-teal-700 font-semibold hover:underline">
+              {t("legal.kvkkTitle")}
+            </Link>
+            <Link to="/riza" className="text-teal-700 font-semibold hover:underline">
+              {t("legal.rizaTitle")}
+            </Link>
+          </p>
+        </div>
+
         {uid && uid !== DEMO_USER_ID && (
           <form onSubmit={deleteAccount} className="card !p-4 space-y-3 border-red-200 bg-red-50/40">
             <h2 className="text-sm font-bold text-red-900 flex items-center gap-2">

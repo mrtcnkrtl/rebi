@@ -3,6 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { Leaf, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import LegalConsentFields from "../components/LegalConsentFields";
+import { hasLegalConsent, legalConsentMetadata, saveLegalConsent } from "../lib/legalConsent";
 
 export default function Auth() {
   const { t } = useTranslation();
@@ -14,6 +16,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
+  const [kvkkOk, setKvkkOk] = useState(() => hasLegalConsent());
+  const [rizaOk, setRizaOk] = useState(() => hasLegalConsent());
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,13 +29,25 @@ export default function Auth() {
     setInfoMessage("");
     setLoading(true);
 
+    if (!kvkkOk || !rizaOk) {
+      setError(t("auth.legalRequired"));
+      setLoading(false);
+      return;
+    }
+
     try {
+      saveLegalConsent();
       if (mode === "login") {
-        const { error } = await signIn(email, password);
+        const { error } = await signIn(email, password, legalConsentMetadata());
         if (error) throw error;
         navigate(next);
       } else {
-        const { error, needsEmailConfirmation } = await signUp(email, password, fullName);
+        const { error, needsEmailConfirmation } = await signUp(
+          email,
+          password,
+          fullName,
+          legalConsentMetadata()
+        );
         if (error) throw error;
         if (needsEmailConfirmation) {
           setError("");
@@ -175,9 +191,16 @@ export default function Auth() {
               </div>
             </div>
 
+            <LegalConsentFields
+              kvkk={kvkkOk}
+              riza={rizaOk}
+              onKvkk={setKvkkOk}
+              onRiza={setRizaOk}
+            />
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !kvkkOk || !rizaOk}
               className="btn-primary w-full !mt-6"
             >
               {loading ? (

@@ -24,12 +24,12 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email, password, fullName) => {
+  const signUp = async (email, password, fullName, extraMeta = {}) => {
     if (!supabase) return { error: { message: "Supabase not configured" }, needsEmailConfirmation: false };
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName } },
+      options: { data: { full_name: fullName, ...extraMeta } },
     });
     if (error) return { data, error, needsEmailConfirmation: false };
     const session = data?.session;
@@ -38,12 +38,19 @@ export function AuthProvider({ children }) {
     return { data, error: null, needsEmailConfirmation };
   };
 
-  const signIn = async (email, password) => {
+  const signIn = async (email, password, extraMeta = null) => {
     if (!supabase) return { error: { message: "Supabase not configured" } };
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    if (!error && extraMeta && data?.user) {
+      try {
+        await supabase.auth.updateUser({ data: extraMeta });
+      } catch {
+        /* consent metadata is best-effort */
+      }
+    }
     return { data, error };
   };
 

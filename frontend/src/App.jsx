@@ -14,6 +14,7 @@ import CheckIn from "./pages/CheckIn";
 import Themes from "./pages/Themes";
 import Subscribe from "./pages/Subscribe";
 import Profile from "./pages/Profile";
+import Legal from "./pages/Legal";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -45,6 +46,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={user ? <Navigate to={next} replace /> : <Auth />} />
+        <Route path="/kvkk" element={<Legal />} />
+        <Route path="/riza" element={<Legal />} />
         <Route path="/rebi" element={<Chat />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />

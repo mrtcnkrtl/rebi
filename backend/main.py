@@ -77,6 +77,8 @@ from rate_limit import (
     LIMIT_CHAT,
     LIMIT_UPLOAD_PHOTO,
     LIMIT_ACCOUNT_DELETE,
+    LIMIT_INTRO_SEEN,
+    get_client_ip,
 )
 
 log = get_logger("api")
@@ -699,6 +701,30 @@ async def knowledge_entity_search(
         for c in find_chunks_by_entity(user_id=user_id, folder_slug=folder, q=q, k=k)
     ]
     return KnowledgeEntitySearchResponse(entities=entities, chunks=chunks)
+
+
+@app.get(
+    "/intro/seen",
+    tags=["meta"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_INTRO_SEEN))],
+)
+async def intro_seen_get(request: Request):
+    """Bu istemci IP’si giriş sunumunu daha önce bitirdi mi? Ham IP saklanmaz."""
+    from intro_seen import intro_already_seen
+
+    return {"seen": intro_already_seen(get_client_ip(request))}
+
+
+@app.post(
+    "/intro/seen",
+    tags=["meta"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_INTRO_SEEN))],
+)
+async def intro_seen_post(request: Request):
+    from intro_seen import mark_intro_seen
+
+    mark_intro_seen(get_client_ip(request))
+    return {"ok": True, "seen": True}
 
 
 @app.get("/health", tags=["health"])

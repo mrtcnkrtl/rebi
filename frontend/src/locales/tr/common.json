@@ -134,7 +134,20 @@
     "login": "Giriş Yap",
     "signup": "Kayıt Ol",
     "haveNoAccount": "Hesabın yok mu?",
-    "haveAccount": "Zaten hesabın var mı?"
+    "haveAccount": "Zaten hesabın var mı?",
+    "kvkkBefore": "",
+    "kvkkLink": "KVKK Aydınlatma Metni’ni",
+    "kvkkAfter": " okudum ve anladım.",
+    "rizaBefore": "",
+    "rizaLink": "Açık Rıza Metni’ni",
+    "rizaAfter": " okudum; cilt ve sağlık verilerimin işlenmesini kabul ediyorum.",
+    "legalRequired": "Devam etmek için KVKK Aydınlatma Metni ve Açık Rıza Metnini onaylaman gerekir."
+  },
+  "legal": {
+    "kvkkTitle": "KVKK Aydınlatma Metni",
+    "rizaTitle": "Açık Rıza Metni",
+    "updated": "Son güncelleme: {{date}}",
+    "backToAuth": "Girişe dön"
   },
   "lang": {
     "label": "Dil",
