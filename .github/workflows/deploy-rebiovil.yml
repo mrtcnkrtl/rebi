@@ -74,4 +74,9 @@ jobs:
             cd /opt/rebi
             git fetch origin main
             git reset --hard origin/main
-            docker compose -f docker-compose.yml -f docker-compose.https.yml up -d --build
+            compose=(docker compose -f docker-compose.yml -f docker-compose.https.yml)
+            if ! "${compose[@]}" up -d --build; then
+              "${compose[@]}" ps
+              "${compose[@]}" logs --no-color --tail=200 api
+              exit 1
+            fi
