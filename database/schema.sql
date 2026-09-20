@@ -267,6 +267,6 @@ CREATE OR REPLACE TRIGGER on_auth_user_created
 
 -- 8. Storage Bucket for skin photos
 -- Note: Run this via Supabase Dashboard or API:
--- INSERT INTO storage.buckets (id, name, public) VALUES ('skin-photos', 'skin-photos', true);
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('skin-photos', 'skin-photos', false);
 
 -- Storage RLS: bkz. database/migrations/20260403_storage_skin_photos_rls.sql

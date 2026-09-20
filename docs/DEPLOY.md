@@ -5,10 +5,11 @@ Bu liste yeni ortam açarken veya gözden geçirirken kullanılır. Ayrıntılı
 ## 1. Supabase
 
 - [ ] Proje oluşturuldu; **URL**, **anon** ve **service_role** anahtarları kayıtlı.
-- [ ] `database/schema.sql` veya `database/migrations/` sırasıyla SQL Editor’de uygulandı (veya `scripts/apply_supabase_migration.py`).
+- [ ] Tek yetkili kaynak olan `supabase/migrations/` sırasıyla uygulandı. Backend DB bağlantısı varsa checksum’lı migration takibini otomatik yapar.
+- [ ] `database/` altındaki eski SQL dosyaları üretime uygulanmadı; yalnızca tarihsel referanstır.
 - [ ] Tablolar: `profiles`, `assessments`, `routines`, `daily_logs`, `daily_events`, `knowledge_base` (+ gerekli indeksler).
 - [ ] RLS politikaları üretim beklentisiyle uyumlu; `knowledge_base` ve `skin-photos` storage politikaları uygulandı.
-- [ ] `skin-photos` bucket oluşturuldu; public okuma / authenticated yükleme kuralları tanımlı.
+- [ ] `skin-photos` bucket private; yalnızca sahibinin klasörüne erişen RLS ve signed URL akışı etkin.
 - [ ] Şema değişikliğinden sonra gerekirse **API → Reload schema cache**.
 
 ## 2a. rebiovil.com (Docker)
@@ -20,8 +21,8 @@ Tek sunucu için hazır `docker-compose.yml` ve adım adım Türkçe rehber: **[
 - [ ] `SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (sunucuda asla istemciye sızdırılmaz).
 - [ ] `GEMINI_API_KEY`, `OPENWEATHER_API_KEY` (opsiyonel).
 - [ ] `CORS_ORIGINS`: üretim web origin’leri (virgülle).
-- [ ] **JWT (önerilir):** `SUPABASE_JWT_SECRET` (Dashboard → Settings → API). Açıkken mobil/web `Authorization: Bearer` göndermeli.
-- [ ] `API_JWT_BYPASS_USER_IDS`: üretimde genelde **boş**; sadece iç test için sınırlı id’ler.
+- [ ] **JWT (zorunlu):** `SUPABASE_JWT_SECRET` tanımlı; eksikse `/health` 503 verir.
+- [ ] `API_ALLOW_INSECURE_AUTH=0`; `API_JWT_BYPASS_USER_IDS` üretimde boş.
 - [ ] `API_DEMO_USER_IDS`: demo kullanıcıların DB yazımını atlar; üretimde boş veya kaldırılmalı.
 - [ ] **Rate limit:** çok süreç için `REDIS_URL`; yoksa bellek içi (tek worker).
 - [ ] Süreç yöneticisi: `uvicorn main:app --host 0.0.0.0 --port 8000` veya benzeri; reverse proxy arkasında TLS.

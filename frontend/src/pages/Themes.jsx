@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Check, Sparkles, Lock } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { useTranslation } from "react-i18next";
+import { userHasRebiPlus } from "../lib/subscription";
 
 const patternPreviews = {
   "": null,
@@ -148,13 +149,6 @@ const patternPreviews = {
     </div>
   ),
 };
-
-function userHasRebiPlus(user) {
-  if (!user?.user_metadata) return false;
-  const m = user.user_metadata;
-  if (m.rebi_plus === true) return true;
-  return ["plus", "pro", "premium"].includes(String(m.subscription_tier || "").toLowerCase());
-}
 
 export default function Themes() {
   const { theme, themeId, setThemeId, themes } = useTheme();

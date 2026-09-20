@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
@@ -6,6 +6,9 @@ import { supabase } from "../lib/supabase";
 import { apiAuthHeaders } from "../lib/apiAuth";
 import { API_URL } from "../lib/supabase";
 import { DEMO_USER_ID } from "../lib/demoUser";
+import { userHasRebiPlus } from "../lib/subscription";
+import { clearUserLocalData } from "../lib/privacyStorage";
+import { getPrivacyPreferences, updatePrivacyPreferences } from "../lib/privacyPreferences";
 import {
   getRoutineSnapshot,
   isRoutineTrackingAccepted,
@@ -69,30 +72,31 @@ export default function Profile() {
   const [deletePhrase, setDeletePhrase] = useState("");
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteMsg, setDeleteMsg] = useState({ type: "", text: "" });
-  const [statsTick, setStatsTick] = useState(0);
+  const [, setStatsTick] = useState(0);
+  const [locationPermission, setLocationPermission] = useState(false);
+  const [photoPermission, setPhotoPermission] = useState(false);
+  const [privacySaving, setPrivacySaving] = useState(false);
+  const [privacyMsg, setPrivacyMsg] = useState("");
 
   const uid = user?.id;
   const email = user?.email || "—";
-  const plus =
-    user?.user_metadata?.rebi_plus === true ||
-    [
-      "plus",
-      "pro",
-      "premium",
-      "plus_1000",
-      "plus_lite",
-      "plus_basic",
-      "plus_starter",
-    ].includes(String(user?.user_metadata?.subscription_tier || "").toLowerCase());
+  const plus = userHasRebiPlus(user);
 
-  const routineStats = useMemo(
-    () => (uid ? getProfileRoutineStats(uid) : null),
-    [uid, statsTick],
-  );
+  const routineStats = uid ? getProfileRoutineStats(uid) : null;
 
   useEffect(() => {
     setDisplayName(user?.user_metadata?.full_name || "");
   }, [user?.user_metadata?.full_name]);
+
+  useEffect(() => {
+    if (!uid || uid === DEMO_USER_ID) return;
+    getPrivacyPreferences(uid)
+      .then((data) => {
+        setLocationPermission(data?.location_processing_allowed === true);
+        setPhotoPermission(data?.photo_processing_allowed === true);
+      })
+      .catch(() => setPrivacyMsg("Gizlilik tercihleri yüklenemedi."));
+  }, [uid]);
 
   /** Eski kayıtlarda acceptedAt yoktu; profil açılınca bir kez tamamlanır. */
   useEffect(() => {
@@ -136,16 +140,18 @@ export default function Profile() {
           !f.name.startsWith(".") &&
           /\.(jpe?g|png|webp|gif|heic|avif)$/i.test(f.name)
       );
-      const withUrls = files.map((f) => {
+      const withUrls = await Promise.all(files.map(async (f) => {
         const path = `${uid}/${f.name}`;
-        const { data: pub } = supabase.storage.from("skin-photos").getPublicUrl(path);
+        const { data: signed, error: signedError } = await supabase.storage
+          .from("skin-photos")
+          .createSignedUrl(path, 900);
         return {
           name: f.name,
           path,
-          url: pub?.publicUrl || "",
+          url: signedError ? "" : (signed?.signedUrl || ""),
           created_at: f.created_at || null,
         };
-      });
+      }));
       withUrls.sort((a, b) => {
         const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
         const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -241,6 +247,7 @@ export default function Profile() {
         throw new Error(data?.detail || res.statusText || "İstek başarısız");
       }
       setDeletePhrase("");
+      clearUserLocalData(uid);
       await signOut();
       navigate("/", { replace: true });
     } catch (err) {
@@ -250,6 +257,23 @@ export default function Profile() {
       });
     } finally {
       setDeleteBusy(false);
+    }
+  };
+
+  const savePrivacyPreferences = async () => {
+    if (!uid) return;
+    setPrivacySaving(true);
+    setPrivacyMsg("");
+    try {
+      await updatePrivacyPreferences(uid, {
+        location: locationPermission,
+        photo: photoPermission,
+      });
+      setPrivacyMsg("Gizlilik tercihlerin kaydedildi.");
+    } catch (err) {
+      setPrivacyMsg(err?.message || "Gizlilik tercihleri kaydedilemedi.");
+    } finally {
+      setPrivacySaving(false);
     }
   };
 
@@ -517,6 +541,49 @@ export default function Profile() {
             </Link>
           </p>
         </div>
+
+        {uid && uid !== DEMO_USER_ID && (
+          <div className="card !p-4 space-y-3">
+            <h2 className="text-sm font-bold text-gray-800 flex items-center gap-2">
+              <Shield className="w-4 h-4" style={{ color: theme.primary }} />
+              Gizlilik izinleri
+            </h2>
+            <p className="text-xs text-gray-500">
+              AI işleme izni hizmet için zorunludur. Konum ve fotoğraf izinlerini istediğin zaman değiştirebilirsin.
+            </p>
+            <label className="flex items-start gap-2.5 text-sm text-gray-700">
+              <input type="checkbox" checked readOnly className="mt-0.5 w-4 h-4" />
+              <span>Google Gemini AI ile rutin ve sohbet işleme — zorunlu</span>
+            </label>
+            <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={locationPermission}
+                onChange={(e) => setLocationPermission(e.target.checked)}
+                className="mt-0.5 w-4 h-4"
+              />
+              <span>Hava/UV için kesin konum aktarımı</span>
+            </label>
+            <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={photoPermission}
+                onChange={(e) => setPhotoPermission(e.target.checked)}
+                className="mt-0.5 w-4 h-4"
+              />
+              <span>Private alanda cilt fotoğrafı saklama</span>
+            </label>
+            {privacyMsg && <p className="text-xs text-gray-600">{privacyMsg}</p>}
+            <button
+              type="button"
+              onClick={savePrivacyPreferences}
+              disabled={privacySaving}
+              className="btn-secondary w-full justify-center !py-2.5 text-sm"
+            >
+              {privacySaving ? <Loader2 className="w-4 h-4 animate-spin" /> : "İzinleri kaydet"}
+            </button>
+          </div>
+        )}
 
         {uid && uid !== DEMO_USER_ID && (
           <form onSubmit={deleteAccount} className="card !p-4 space-y-3 border-red-200 bg-red-50/40">

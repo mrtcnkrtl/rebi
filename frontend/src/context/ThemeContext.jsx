@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import { userHasRebiPlus } from "../lib/subscription";
 
 const themes = {
   teal: {
@@ -156,21 +157,6 @@ export function isPremiumThemeId(id) {
   return Boolean(themes[id]?.premium);
 }
 
-function userHasRebiPlusFromUser(user) {
-  if (!user?.user_metadata) return false;
-  const m = user.user_metadata;
-  if (m.rebi_plus === true) return true;
-  return [
-    "plus",
-    "pro",
-    "premium",
-    "plus_1000",
-    "plus_lite",
-    "plus_basic",
-    "plus_starter",
-  ].includes(String(m.subscription_tier || "").toLowerCase());
-}
-
 /** Plus olmayan kullanıcıda kayıtlı premium temayı teal’e çeker. */
 export function ThemePremiumGate() {
   const { user } = useAuth();
@@ -178,7 +164,7 @@ export function ThemePremiumGate() {
 
   useEffect(() => {
     if (!user) return;
-    if (!userHasRebiPlusFromUser(user) && isPremiumThemeId(themeId)) {
+    if (!userHasRebiPlus(user) && isPremiumThemeId(themeId)) {
       setThemeId("teal");
     }
   }, [user, themeId, setThemeId]);

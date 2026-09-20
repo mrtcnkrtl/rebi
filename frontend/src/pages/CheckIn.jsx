@@ -44,7 +44,7 @@ const STRESS_LEVELS = [
 
 /** Evet / Hayır / Atla — check-in ek soruları */
 function ExtraTristate({ title, description, value, onChange }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   return (
     <div className="card mb-3">
       <h3 className="text-sm font-bold text-gray-800 mb-1">{title}</h3>

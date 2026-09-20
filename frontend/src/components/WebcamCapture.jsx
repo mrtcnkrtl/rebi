@@ -12,8 +12,9 @@ export default function WebcamCapture({ open, onClose, onPhoto }) {
   useEffect(() => {
     if (!open) return undefined;
     let stream;
-    setErr("");
+    const videoElement = videoRef.current;
     (async () => {
+      setErr("");
       try {
         if (!navigator.mediaDevices?.getUserMedia) {
           setErr("Bu tarayıcı kamera erişimini desteklemiyor.");
@@ -23,10 +24,9 @@ export default function WebcamCapture({ open, onClose, onPhoto }) {
           video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } },
           audio: false,
         });
-        const el = videoRef.current;
-        if (el && stream) {
-          el.srcObject = stream;
-          await el.play().catch(() => {});
+        if (videoElement && stream) {
+          videoElement.srcObject = stream;
+          await videoElement.play().catch(() => {});
         }
       } catch {
         setErr("Kamera açılamadı. HTTPS kullanın ve tarayıcıda kamera iznini verin.");
@@ -34,8 +34,7 @@ export default function WebcamCapture({ open, onClose, onPhoto }) {
     })();
     return () => {
       if (stream) stream.getTracks().forEach((t) => t.stop());
-      const el = videoRef.current;
-      if (el) el.srcObject = null;
+      if (videoElement) videoElement.srcObject = null;
     };
   }, [open]);
 

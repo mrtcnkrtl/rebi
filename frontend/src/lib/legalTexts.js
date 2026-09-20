@@ -17,11 +17,11 @@ const TR_KVKK = [
   },
   {
     title: "4. Aktarım",
-    body: "Veriler, hizmeti sunmak için barındırma ve veritabanı sağlayıcılarına (ör. bulut altyapısı / Supabase), sohbet ve analiz için yapay zekâ işlemcilerine ve zorunlu hallerde yetkili kamu kurumlarına aktarılabilir. Yurt dışı aktarım varsa KVKK’daki usuller uygulanır.",
+    body: "Veriler, barındırma/veritabanı için Supabase’e; zorunlu AI izninizle rutin ve sohbet işleme için Google Gemini’a aktarılır. Konum izni verirseniz kesin koordinatlar Open-Meteo’ya (yedek olarak OpenWeather’a) iletilir. Fotoğraf izni verirseniz görüntüler private Supabase Storage alanında saklanır. Zorunlu hallerde yetkili kamu kurumlarına aktarım yapılabilir; yurt dışı aktarımlarda KVKK usulleri uygulanır.",
   },
   {
     title: "5. Saklama süresi",
-    body: "Hesabınız aktifken işleme amacı sürdüğü müddetçe saklanır. Hesabı sildiğinizde profil, rutin, check-in ve fotoğraflar silinir veya anonimleştirilir; yasal saklama zorunluluğu olan kayıtlar ilgili süre kadar tutulabilir.",
+    body: "Aktif profil ve rutin hesabınız açık olduğu sürece saklanır. Giriş sunumu IP hash’i 180 gün, günlük mikro olaylar 400 gün; günlük check-in ile kullanılmayan geçmiş rutin/değerlendirme kayıtları en fazla 730 gün tutulur. Cilt fotoğrafları siz silene veya hesabınızı kapatana kadar saklanır. Hesabı sildiğinizde profil, rutin, check-in, rıza kaydı ve fotoğraflar kaldırılır; kanunen zorunlu kayıtlar ilgili süre boyunca ayrıca tutulabilir.",
   },
   {
     title: "6. Haklarınız (KVKK m.11)",
@@ -48,11 +48,11 @@ const EN_KVKK = [
   },
   {
     title: "4. Recipients",
-    body: "Data may be shared with hosting/database providers (e.g. cloud / Supabase), AI processors used for chat and analysis, and competent authorities where required. Any transfer abroad follows KVKK procedures.",
+    body: "Data is shared with Supabase for hosting/database services and, with the required AI consent, with Google Gemini for routine and chat processing. If location permission is granted, precise coordinates are sent to Open-Meteo (or OpenWeather as fallback). If photo permission is granted, images are stored in private Supabase Storage. Transfers abroad follow applicable KVKK procedures.",
   },
   {
     title: "5. Retention",
-    body: "Kept while your account is active and the purpose continues. Deleting your account removes or anonymizes profile, routines, check-ins and photos; records we must keep by law may be retained for the required period.",
+    body: "Active profiles and routines are kept while the account remains open. Intro IP hashes are retained for 180 days, daily events for 400 days, and check-ins plus unused historical routines/assessments for up to 730 days. Skin photos remain until you delete them or close the account. Account deletion removes profile, routines, check-ins, consent evidence and photos; legally required records may be retained for the applicable period.",
   },
   {
     title: "6. Your rights (KVKK art. 11)",
@@ -71,7 +71,7 @@ const TR_RIZA = [
   },
   {
     title: "2. Amaç",
-    body: "Bu rıza; hesabımın oluşturulması, kişiselleştirilmiş bakım rutini, günlük check-in, sohbet yanıtları, isteğe bağlı fotoğraf karşılaştırması ve hava/UV notları için gereklidir. Rebi tıbbi teşhis veya tedavi sunmaz.",
+    body: "Cilt ve sağlık verilerimin işlenmesine ve rutin/sohbet hizmeti için Google Gemini AI kullanımına verdiğim izin hizmet için zorunludur. Kesin konumun hava servisine aktarılması ve cilt fotoğrafının private alanda saklanması ayrı ve isteğe bağlı izinlerdir. Rebi tıbbi teşhis veya tedavi sunmaz.",
   },
   {
     title: "3. Aktarım",
@@ -90,7 +90,7 @@ const EN_RIZA = [
   },
   {
     title: "2. Purpose",
-    body: "This consent is needed to create my account, build a personalized routine, run check-in, answer chat, optionally compare photos, and add weather/UV notes. Rebi does not provide medical diagnosis or treatment.",
+    body: "Consent to processing skin/health data and use of Google Gemini AI for routine and chat services is required for the service. Sharing precise location with a weather provider and storing skin photos privately are separate optional permissions. Rebi does not provide medical diagnosis or treatment.",
   },
   {
     title: "3. Sharing",

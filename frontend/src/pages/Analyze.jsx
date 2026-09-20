@@ -631,6 +631,7 @@ export default function Analyze() {
     setLoading(true);
     try {
       let photoUrl = null;
+      let photoPath = null;
       if (photoFile && supabase) {
         const ext = photoFile.name.split(".").pop();
         const path = `${user?.id || DEMO_USER_ID}/${Date.now()}.${ext}`;
@@ -638,8 +639,12 @@ export default function Analyze() {
         if (error) {
           setSubmitError(pack.errors.photoUploadWarn);
         } else {
-          photoUrl = supabase.storage.from("skin-photos").getPublicUrl(path)?.data?.publicUrl;
-          if (photoUrl && user?.id) {
+          photoPath = path;
+          const { data: signed, error: signedError } = await supabase.storage
+            .from("skin-photos")
+            .createSignedUrl(path, 3600);
+          if (!signedError) photoUrl = signed?.signedUrl || null;
+          if (user?.id) {
             ingestDailyTrackingEvent(user.id, "photo_meta", {
               context: photoContext,
               meanLuma: photoQuality?.meanLuma ?? null,
@@ -659,7 +664,7 @@ export default function Analyze() {
         water_intake: waterIntake, sleep_hours: sleepHours, stress_score: Math.round((stressScore * 16) / 40),
         smoking: smokingPerDay > 0, smoking_per_day: smokingPerDay, smoking_years: smokingYears,
         alcohol: alcoholFreq > 0, alcohol_frequency: alcoholFreq, alcohol_amount: alcoholAmt,
-        location_lat: lat, location_lon: lon, photo_url: photoUrl,
+        location_lat: lat, location_lon: lon, photo_url: photoPath,
         is_pregnant: hormonalStatus === "pregnant", cycle_phase: cyclePhase, acne_zones: zones,
         actives_experience: activesExperience,
         actives_tolerance: activesTolerance,

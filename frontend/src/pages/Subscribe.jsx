@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Sparkles, Crown, MessageCircle, Palette, ExternalLink, Check, Shield } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { useTranslation } from "react-i18next";
+import { userHasRebiPlus } from "../lib/subscription";
 
 const CHECKOUT_URL = import.meta.env.VITE_REBI_PLUS_CHECKOUT_URL || "";
 
@@ -11,17 +12,7 @@ export default function Subscribe() {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { t } = useTranslation();
-  const plus =
-    user?.user_metadata?.rebi_plus === true ||
-    [
-      "plus",
-      "pro",
-      "premium",
-      "plus_1000",
-      "plus_lite",
-      "plus_basic",
-      "plus_starter",
-    ].includes(String(user?.user_metadata?.subscription_tier || "").toLowerCase());
+  const plus = userHasRebiPlus(user);
 
   return (
     <div className={`min-h-screen ${theme.bg} pb-28 relative overflow-hidden`}>

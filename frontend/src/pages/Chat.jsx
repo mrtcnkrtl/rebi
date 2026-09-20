@@ -12,6 +12,22 @@ import RebiIntroSplash from "../components/RebiIntroSplash";
 import { useTranslation } from "react-i18next";
 import { getRoutineSnapshot, isRoutineTrackingAccepted } from "../lib/routineTracking";
 
+function chatHistoryKey(userId) {
+  return `rebi-chat-history_${userId || "anonymous"}`;
+}
+
+function loadChatHistory(userId) {
+  try {
+    const saved = localStorage.getItem(chatHistoryKey(userId));
+    if (!saved) return [];
+    const parsed = JSON.parse(saved);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.some((m) => m && m.role === "user") ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
 export default function Chat() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -19,19 +35,10 @@ export default function Chat() {
   const navigate = useNavigate();
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
+  const effectiveUserId = user?.id || DEMO_USER_ID;
 
-  const [history, setHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem("rebi-chat-history");
-      if (!saved) return [];
-      const parsed = JSON.parse(saved);
-      if (!Array.isArray(parsed)) return [];
-      /* Yalnızca kullanıcı mesajı olan oturumları yükle; eski “karşılama balonu” kayıtlarını at */
-      return parsed.some((m) => m && m.role === "user") ? parsed : [];
-    } catch {
-      return [];
-    }
-  });
+  const [history, setHistory] = useState(() => loadChatHistory(effectiveUserId));
+  const [historyOwnerId, setHistoryOwnerId] = useState(effectiveUserId);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   /** Sohbet kotası: free_daily | plus_monthly | plus_unlimited | none */
@@ -42,8 +49,6 @@ export default function Chat() {
   const [routineAccepted, setRoutineAccepted] = useState(false);
   const [edgeOpen, setEdgeOpen] = useState(false);
 
-  const userName = user?.user_metadata?.full_name || "Kullanıcı";
-  const effectiveUserId = user?.id || DEMO_USER_ID;
   const subscribeHref = user ? "/dashboard/subscribe" : "/auth?next=/dashboard/subscribe";
   const loginForChatHref = "/auth?next=/dashboard/chat";
 
@@ -58,18 +63,21 @@ export default function Chat() {
   }, [loading, history]);
 
   useEffect(() => {
+    if (historyOwnerId !== effectiveUserId) return;
     try {
       if (history.some((m) => m.role === "user")) {
-        localStorage.setItem("rebi-chat-history", JSON.stringify(history.slice(-30)));
+        localStorage.setItem(chatHistoryKey(effectiveUserId), JSON.stringify(history.slice(-30)));
       } else {
-        localStorage.removeItem("rebi-chat-history");
+        localStorage.removeItem(chatHistoryKey(effectiveUserId));
       }
     } catch {
       /* localStorage dolu veya erişilemez */
     }
-  }, [history]);
+  }, [history, historyOwnerId, effectiveUserId]);
 
   useEffect(() => {
+    setHistory(loadChatHistory(effectiveUserId));
+    setHistoryOwnerId(effectiveUserId);
     setUsage(null);
     setPaywallOpen(false);
     setPaywallKind("free_daily");
@@ -235,7 +243,7 @@ export default function Chat() {
     setHistory([]);
     setPaywallOpen(false);
     try {
-      localStorage.removeItem("rebi-chat-history");
+      localStorage.removeItem(chatHistoryKey(effectiveUserId));
     } catch {
       /* ignore */
     }

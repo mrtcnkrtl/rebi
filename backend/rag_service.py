@@ -659,7 +659,7 @@ def _build_free_chat_evidence_bundle(
                 if vector_hits:
                     break
             except Exception as e:
-                log.warning("Semantik RAG atlandı (user=%s): %s", uid, e)
+                log.warning("Semantik RAG atlandı: %s", type(e).__name__)
 
     vector_blocks: list[str] = []
     used_doc_ids: list[str] = []

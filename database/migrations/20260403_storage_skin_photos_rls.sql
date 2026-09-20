@@ -1,12 +1,16 @@
--- REBI: skin-photos bucket — herkes okuyabilir (public URL), yükleme/silme yalnızca kendi klasörü
+-- REBI: skin-photos bucket — yalnızca sahibi okuyabilir/yazabilir
 -- Klasör yapısı: {auth.uid()}/dosya.ext  (Analyze.jsx ile uyumlu)
 -- Backend service_role ile yapılan upload RLS'i bypass eder.
 
 DROP POLICY IF EXISTS "skin_photos_public_read" ON storage.objects;
-CREATE POLICY "skin_photos_public_read"
+DROP POLICY IF EXISTS "skin_photos_authenticated_select_own" ON storage.objects;
+CREATE POLICY "skin_photos_authenticated_select_own"
     ON storage.objects FOR SELECT
-    TO public
-    USING (bucket_id = 'skin-photos');
+    TO authenticated
+    USING (
+        bucket_id = 'skin-photos'
+        AND (storage.foldername(name))[1] = auth.uid()::text
+    );
 
 DROP POLICY IF EXISTS "skin_photos_authenticated_insert_own" ON storage.objects;
 CREATE POLICY "skin_photos_authenticated_insert_own"

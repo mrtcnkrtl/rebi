@@ -1,11 +1,9 @@
 """
 Supabase kullanıcı JWT doğrulaması (HS256).
 
-SUPABASE_JWT_SECRET tanımlıysa, korumalı uçlarda Authorization: Bearer ile
-token içindeki sub, istekteki user_id ile eşleşmeli.
-
-Geliştirme / demo: API_JWT_BYPASS_USER_IDS (virgüllü) bu user_id'ler için JWT istenmez.
-Üretimde bu listeyi boş bırakın.
+Korumalı uçlar varsayılan olarak fail-closed çalışır. SUPABASE_JWT_SECRET
+yoksa istek reddedilir. Yalnızca yerel geliştirmede açıkça
+API_ALLOW_INSECURE_AUTH=1 verilerek JWT'siz çalışmaya izin verilebilir.
 """
 
 from __future__ import annotations
@@ -19,11 +17,14 @@ def _jwt_secret() -> str:
     return os.getenv("SUPABASE_JWT_SECRET", "").strip()
 
 
+def insecure_auth_allowed() -> bool:
+    """JWT'siz geliştirme modunu yalnızca açık opt-in ile etkinleştir."""
+    value = os.getenv("API_ALLOW_INSECURE_AUTH", "").strip().lower()
+    return value in {"1", "true", "yes", "on"}
+
+
 def _bypass_user_ids() -> frozenset[str]:
-    raw = os.getenv(
-        "API_JWT_BYPASS_USER_IDS",
-        "00000000-0000-4000-8000-000000000001,demo,demo-user-id",
-    )
+    raw = os.getenv("API_JWT_BYPASS_USER_IDS", "")
     return frozenset(x.strip() for x in raw.split(",") if x.strip())
 
 
@@ -31,12 +32,22 @@ def jwt_auth_enabled() -> bool:
     return bool(_jwt_secret())
 
 
+def auth_configuration_valid() -> bool:
+    """JWT anahtarı veya açık geliştirme opt-in'i bulunmalı."""
+    return jwt_auth_enabled() or insecure_auth_allowed()
+
+
 def enforce_supabase_user(request: Request, user_id: str) -> None:
-    """JWT zorunluluğu açıksa Bearer token ve sub == user_id kontrolü."""
+    """Bearer token içindeki sub ile user_id eşleşmesini zorunlu tut."""
     if not jwt_auth_enabled():
-        return
+        if insecure_auth_allowed():
+            return
+        raise HTTPException(
+            status_code=503,
+            detail="Sunucu kimlik doğrulaması yapılandırılmamış.",
+        )
     uid = (user_id or "").strip()
-    if uid in _bypass_user_ids():
+    if insecure_auth_allowed() and uid in _bypass_user_ids():
         return
 
     auth = request.headers.get("Authorization") or request.headers.get("authorization") or ""
@@ -120,52 +131,48 @@ def decode_supabase_jwt_payload(request: Request) -> dict | None:
 
 def user_is_rebi_plus(request: Request, user_id: str) -> bool:
     """
-    Rebi Plus: JWT user_metadata / app_metadata veya REBI_PLUS_USER_IDS.
-    JWT kapalıyken (lokal geliştirme) herkes Plus sayılır — kota uygulanmaz.
+    Rebi Plus: yalnızca sunucu kontrollü JWT app_metadata veya
+    REBI_PLUS_USER_IDS. Kullanıcının değiştirebildiği user_metadata yetki
+    kaynağı olarak kabul edilmez.
     """
     if not jwt_auth_enabled():
-        return True
+        return insecure_auth_allowed()
     uid = (user_id or "").strip()
-    if uid in _bypass_user_ids():
+    if insecure_auth_allowed() and uid in _bypass_user_ids():
         return True
     if uid in _rebi_plus_user_ids_env():
         return True
     payload = decode_supabase_jwt_payload(request)
     if not payload:
         return False
-    for meta in (payload.get("user_metadata") or {}, payload.get("app_metadata") or {}):
-        if meta.get("rebi_plus") is True:
-            return True
-        if str(meta.get("subscription_tier", "")).lower() in (
-            "plus",
-            "pro",
-            "premium",
-            "plus_1000",
-            "plus_lite",
-            "plus_basic",
-            "plus_starter",
-        ):
-            return True
+    meta = payload.get("app_metadata") or {}
+    if meta.get("rebi_plus") is True:
+        return True
+    if str(meta.get("subscription_tier", "")).lower() in (
+        "plus",
+        "pro",
+        "premium",
+        "plus_1000",
+        "plus_lite",
+        "plus_basic",
+        "plus_starter",
+    ):
+        return True
     return False
 
 
-def merged_jwt_user_meta(request: Request) -> dict:
-    """user_metadata + app_metadata (app alanları aynı anahtarda user'ı geçersiz kılar)."""
+def jwt_app_metadata(request: Request) -> dict:
+    """Yalnızca sunucu tarafından yönetilen app_metadata alanını döndür."""
     payload = decode_supabase_jwt_payload(request)
     if not payload:
         return {}
-    um = dict(payload.get("user_metadata") or {})
-    am = dict(payload.get("app_metadata") or {})
-    out = {**um}
-    for k, v in am.items():
-        out[k] = v
-    return out
+    return dict(payload.get("app_metadata") or {})
 
 
 def user_plus_chat_is_monthly_capped(request: Request, user_id: str) -> bool:
     """
     Plus içinde aylık mesaj kotası olan paket (ör. 1000). Sınırsız Plus için False.
-    Supabase user_metadata / app_metadata:
+    Supabase app_metadata:
       - rebi_plus_chat_plan: "1000" | "capped" | "limited" | "1k"
       - subscription_tier: plus_1000, plus_lite, plus_basic, plus_starter
     Tanımsız plan: mevcut Plus kullanıcıları için sınırsız (False).
@@ -174,7 +181,7 @@ def user_plus_chat_is_monthly_capped(request: Request, user_id: str) -> bool:
         return False
     if not user_is_rebi_plus(request, user_id):
         return False
-    meta = merged_jwt_user_meta(request)
+    meta = jwt_app_metadata(request)
     plan = str(meta.get("rebi_plus_chat_plan") or "").strip().lower()
     if plan in ("1000", "1k", "capped", "limited"):
         return True

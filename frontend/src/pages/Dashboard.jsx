@@ -2,7 +2,8 @@ import { useMemo, useState, useEffect } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
-import { supabase } from "../lib/supabase";
+import { API_URL, supabase } from "../lib/supabase";
+import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import {
   acceptRoutineTracking,
@@ -251,7 +252,7 @@ export default function Dashboard() {
         ? st.activePlan
         : (Array.isArray(snap?.activePlan) ? snap.activePlan : []),
     };
-  }, [nav, uid, accepted, fetchedRoutine, user]);
+  }, [nav, uid, accepted, fetchedRoutine, user, t]);
 
   const routine = merged.routine;
   const weather = merged.weather;
@@ -1155,12 +1156,6 @@ function SectionHeader({ icon, title, subtitle, color, className = "" }) {
       </div>
     </div>
   );
-}
-
-function getDefaultUsage(stepOrder) {
-  const so = stepOrder ?? 50;
-  // Note: default usage text should be localized, so this helper expects a t() function.
-  return { so };
 }
 
 function ProductStep({ item, theme, step }) {

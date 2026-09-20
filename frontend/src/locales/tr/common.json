@@ -141,7 +141,11 @@
     "rizaBefore": "",
     "rizaLink": "Açık Rıza Metni’ni",
     "rizaAfter": " okudum; cilt ve sağlık verilerimin işlenmesini kabul ediyorum.",
-    "legalRequired": "Devam etmek için KVKK Aydınlatma Metni ve Açık Rıza Metnini onaylaman gerekir."
+    "legalRequired": "Devam etmek için KVKK, açık rıza ve AI işleme iznini onaylaman gerekir.",
+    "aiConsent": "Rutin ve sohbet hizmeti için sağlık/cilt verilerimin Google Gemini AI tarafından işlenmesini kabul ediyorum. (Zorunlu)",
+    "optionalPermissions": "İsteğe bağlı izinler",
+    "locationConsent": "Hava ve UV bilgisi için kesin konumumun hava servisine aktarılmasını kabul ediyorum.",
+    "photoConsent": "Cilt fotoğraflarımın özel ve erişim kontrollü alanda saklanmasını kabul ediyorum."
   },
   "legal": {
     "kvkkTitle": "KVKK Aydınlatma Metni",

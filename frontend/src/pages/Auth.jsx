@@ -4,7 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { Leaf, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Info } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LegalConsentFields from "../components/LegalConsentFields";
-import { hasLegalConsent, legalConsentMetadata, saveLegalConsent } from "../lib/legalConsent";
+import { recordLegalConsent } from "../lib/legalConsent";
 
 export default function Auth() {
   const { t } = useTranslation();
@@ -16,9 +16,12 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [infoMessage, setInfoMessage] = useState("");
-  const [kvkkOk, setKvkkOk] = useState(() => hasLegalConsent());
-  const [rizaOk, setRizaOk] = useState(() => hasLegalConsent());
-  const { signIn, signUp } = useAuth();
+  const [kvkkOk, setKvkkOk] = useState(false);
+  const [rizaOk, setRizaOk] = useState(false);
+  const [aiOk, setAiOk] = useState(false);
+  const [locationOk, setLocationOk] = useState(false);
+  const [photoOk, setPhotoOk] = useState(false);
+  const { signIn, signUp, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const next = new URLSearchParams(location.search || "").get("next") || "/dashboard";
@@ -29,24 +32,32 @@ export default function Auth() {
     setInfoMessage("");
     setLoading(true);
 
-    if (!kvkkOk || !rizaOk) {
+    if (!kvkkOk || !rizaOk || !aiOk) {
       setError(t("auth.legalRequired"));
       setLoading(false);
       return;
     }
 
     try {
-      saveLegalConsent();
       if (mode === "login") {
-        const { error } = await signIn(email, password, legalConsentMetadata());
+        const { data, error } = await signIn(email, password);
         if (error) throw error;
+        try {
+          await recordLegalConsent(data?.user?.id, {
+            ai: aiOk,
+            location: locationOk,
+            photo: photoOk,
+          });
+        } catch (consentError) {
+          await signOut();
+          throw consentError;
+        }
         navigate(next);
       } else {
-        const { error, needsEmailConfirmation } = await signUp(
+        const { data, error, needsEmailConfirmation } = await signUp(
           email,
           password,
-          fullName,
-          legalConsentMetadata()
+          fullName
         );
         if (error) throw error;
         if (needsEmailConfirmation) {
@@ -56,6 +67,16 @@ export default function Auth() {
             "Kayıt alındı. E-postandaki onay linkine tıkladıktan sonra giriş yapabilirsin. Posta gelmediyse spam klasörüne bak."
           );
           return;
+        }
+        try {
+          await recordLegalConsent(data?.user?.id, {
+            ai: aiOk,
+            location: locationOk,
+            photo: photoOk,
+          });
+        } catch (consentError) {
+          await signOut();
+          throw consentError;
         }
         navigate(next);
       }
@@ -194,13 +215,19 @@ export default function Auth() {
             <LegalConsentFields
               kvkk={kvkkOk}
               riza={rizaOk}
+              ai={aiOk}
+              location={locationOk}
+              photo={photoOk}
               onKvkk={setKvkkOk}
               onRiza={setRizaOk}
+              onAi={setAiOk}
+              onLocation={setLocationOk}
+              onPhoto={setPhotoOk}
             />
 
             <button
               type="submit"
-              disabled={loading || !kvkkOk || !rizaOk}
+              disabled={loading || !kvkkOk || !rizaOk || !aiOk}
               className="btn-primary w-full !mt-6"
             >
               {loading ? (

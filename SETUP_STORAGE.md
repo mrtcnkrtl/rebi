@@ -14,9 +14,9 @@ Bu rehber, Rebi uygulaması için Supabase Storage bucket'ını nasıl oluştura
 1. **Storage** sayfasında **"New bucket"** butonuna tıklayın
 2. Bucket bilgilerini girin:
    - **Name**: `skin-photos`
-   - **Public bucket**: ✅ İşaretleyin (fotoğrafların herkese açık olması için)
-   - **File size limit**: `5 MB` (veya istediğiniz maksimum boyut)
-   - **Allowed MIME types**: `image/jpeg,image/png,image/webp`
+   - **Public bucket**: Kapalı bırakın
+   - **File size limit**: `8 MB`
+   - **Allowed MIME types**: `image/jpeg,image/png,image/webp,image/heic,image/heif`
 3. **"Create bucket"** butonuna tıklayın
 
 ### Yöntem 2: SQL Editor Üzerinden
@@ -30,9 +30,9 @@ INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 VALUES (
   'skin-photos',
   'skin-photos',
-  true,
-  5242880,  -- 5 MB
-  ARRAY['image/jpeg', 'image/png', 'image/webp']
+  false,
+  8388608,
+  ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
 );
 ```
 
@@ -59,10 +59,14 @@ USING (
   AND auth.uid()::text = (storage.foldername(name))[1]
 );
 
--- Herkes fotoğrafları görüntüleyebilir (public bucket)
-CREATE POLICY "Anyone can view skin photos"
+-- Kullanıcılar yalnızca kendi klasörlerindeki fotoğrafları görüntüleyebilir
+CREATE POLICY "Users can view own photos"
 ON storage.objects FOR SELECT
-USING (bucket_id = 'skin-photos');
+TO authenticated
+USING (
+  bucket_id = 'skin-photos'
+  AND auth.uid()::text = (storage.foldername(name))[1]
+);
 ```
 
 ### Alternatif: Dashboard Üzerinden
@@ -105,17 +109,17 @@ curl -X POST http://localhost:8000/upload_photo?user_id=YOUR_USER_ID \
 
 ### Fotoğraf Görünmüyor
 
-- Bucket'ın **public** olarak işaretlendiğinden emin olun
-- Fotoğraf URL'sinin doğru oluşturulduğunu kontrol edin:
+- Bucket'ın private olduğundan ve SELECT politikasının kullanıcı klasörünü kapsadığından emin olun.
+- Görüntülemek için kısa süreli signed URL üretildiğini kontrol edin:
   ```javascript
-  const { data } = supabase.storage
+  const { data, error } = await supabase.storage
     .from('skin-photos')
-    .getPublicUrl(filePath)
+    .createSignedUrl(filePath, 900)
   ```
 
 ## Güvenlik Notları
 
-1. ✅ **Public bucket**: Fotoğraflar herkese açık olacak, bu yüzden hassas bilgi içermemeli
+1. ✅ **Private bucket**: Fotoğraflar yalnızca sahibi tarafından signed URL ile görüntülenir
 2. ✅ **File size limit**: Büyük dosyaları engellemek için limit koyun
 3. ✅ **MIME type kontrolü**: Sadece görsel dosyalarına izin verin
 4. ✅ **RLS politikaları**: Kullanıcılar sadece kendi klasörlerine yükleyebilmeli

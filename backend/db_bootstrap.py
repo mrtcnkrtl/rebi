@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import os
 import re
+import hashlib
 from typing import Literal
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -153,14 +154,46 @@ def ensure_daily_events_schema() -> Literal["skipped", "ok", "error"]:
     try:
         with psycopg.connect(dsn, autocommit=True) as conn:
             with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    create table if not exists public.rebi_schema_migrations (
+                      filename text primary key,
+                      checksum text not null,
+                      applied_at timestamptz not null default now()
+                    )
+                    """
+                )
+                cur.execute(
+                    "alter table public.rebi_schema_migrations enable row level security"
+                )
+                cur.execute(
+                    "select filename, checksum from public.rebi_schema_migrations"
+                )
+                applied = {str(row[0]): str(row[1]) for row in cur.fetchall()}
                 for path in files:
                     sql = path.read_text(encoding="utf-8")
+                    checksum = hashlib.sha256(sql.encode("utf-8")).hexdigest()
+                    previous = applied.get(path.name)
+                    if previous == checksum:
+                        log.info("Migration zaten uygulanmış: %s", path.name)
+                        continue
+                    if previous is not None:
+                        raise RuntimeError(
+                            f"Uygulanmış migration değiştirilmiş: {path.name}"
+                        )
                     statements = _split_sql_statements(sql)
                     if not statements:
                         log.warning("Migration atlandı (boş/yorum): %s", path.name)
                         continue
                     for stmt in statements:
                         cur.execute(stmt)
+                    cur.execute(
+                        """
+                        insert into public.rebi_schema_migrations (filename, checksum)
+                        values (%s, %s)
+                        """,
+                        (path.name, checksum),
+                    )
                     log.info("Migration uygulandı: %s", path.name)
         log.info("DB bootstrap tamam: %d migration dosyası.", len(files))
         return "ok"

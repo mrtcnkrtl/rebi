@@ -97,7 +97,7 @@ const skinTextureBase = [
 
 export default function SkinTypeVisual({ value, onChange }) {
   const pack = useAnalyzeWizardPack();
-  const sp = pack.skinPicker || {};
+  const sp = useMemo(() => pack.skinPicker || {}, [pack.skinPicker]);
   const [showGuide, setShowGuide] = useState(false);
 
   const skinTypes = useMemo(() => {

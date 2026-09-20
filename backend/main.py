@@ -8,6 +8,7 @@ Yeni: /daily_checkin endpoint, adaptif rutin sistemi, risk skoru
 import httpx
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal
 import re
@@ -42,7 +43,9 @@ from symptom_risk import (
     normalize_symptom_tags,
 )
 from auth_deps import (
+    auth_configuration_valid,
     enforce_supabase_user,
+    insecure_auth_allowed,
     jwt_auth_enabled,
     user_is_rebi_plus,
     user_plus_chat_is_monthly_capped,
@@ -650,6 +653,23 @@ class AccountDeleteRequest(BaseModel):
     confirm_text: str
 
 
+class LegalConsentAcceptRequest(BaseModel):
+    user_id: str
+    document_version: str
+    kvkk_accepted: bool
+    explicit_consent_accepted: bool
+    ai_processing_accepted: bool
+    location_processing_accepted: bool = False
+    photo_processing_accepted: bool = False
+
+
+class PrivacyPreferencesRequest(BaseModel):
+    user_id: str
+    ai_processing_allowed: bool
+    location_processing_allowed: bool = False
+    photo_processing_allowed: bool = False
+
+
 # ═══════════════════════════════════════════════════════
 # Endpoints
 # ═══════════════════════════════════════════════════════
@@ -730,13 +750,22 @@ async def intro_seen_post(request: Request):
 @app.get("/health", tags=["health"])
 async def health():
     supabase = get_supabase()
-    return {
-        "status": "ok",
+    auth_valid = auth_configuration_valid()
+    body = {
+        "status": "ok" if auth_valid else "misconfigured",
         "supabase": "connected" if supabase else "not configured",
         "concerns": list(CONCERN_KNOWLEDGE_MAP.keys()),
         "jwt_auth": "on" if jwt_auth_enabled() else "off",
+        "auth_mode": (
+            "jwt"
+            if jwt_auth_enabled()
+            else ("insecure_development" if insecure_auth_allowed() else "blocked")
+        ),
         "rate_limit_backend": rate_limit_backend_label(),
     }
+    if not auth_valid:
+        return JSONResponse(status_code=503, content=body)
+    return body
 
 
 @app.post(
@@ -882,6 +911,9 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     5. Kesinlik kuralları tekrar (AI sonrası zorunlu) + detay sanitize
     """
     enforce_supabase_user(request, req.user_id)
+    _require_privacy_permission(req.user_id, "ai")
+    if req.location_lat is not None or req.location_lon is not None:
+        _require_privacy_permission(req.user_id, "location")
     log.info("Rutin isteği: concern=%s, age=%d, severity=%d", req.concern, req.age, req.severity_score)
 
     # ADIM 1: Hava Durumu
@@ -1084,7 +1116,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
         except Exception as e:
             log.error("DB kayıt hatası: %s", e)
     elif supabase and is_demo_user_id(req.user_id):
-        log.info("Demo kullanıcı: profil/assessment/rutin DB yazımı atlandı (user_id=%s)", req.user_id)
+        log.info("Demo kullanıcı: profil/assessment/rutin DB yazımı atlandı")
 
     holistic_insights = [
         item for item in polished_routine
@@ -1147,7 +1179,8 @@ async def chat(request: Request, req: ChatRequest):
     Token: ~200-400/mesaj
     """
     enforce_supabase_user(request, req.user_id)
-    log.info("Chat isteği: concern=%s, mesaj='%s'", req.concern, req.message[:60])
+    _require_privacy_permission(req.user_id, "ai")
+    log.info("Chat isteği: concern=%s message_chars=%d", req.concern, len(req.message or ""))
 
     concern = req.concern or "acne"
     knowledge_map = CONCERN_KNOWLEDGE_MAP.get(concern, CONCERN_KNOWLEDGE_MAP["acne"])
@@ -1194,7 +1227,8 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
     AI birkaç soru sorar, yeterli bilgi topladığında is_complete=True döndürür.
     """
     enforce_supabase_user(request, req.user_id)
-    log.info("Assessment chat: user=%s, msg='%s'", req.user_id, req.message[:80])
+    _require_privacy_permission(req.user_id, "ai")
+    log.info("Assessment chat isteği: message_chars=%d", len(req.message or ""))
 
     profile = req.user_profile or {}
     is_free = profile.get("mode") == "free_chat"
@@ -1297,6 +1331,7 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
     Kota/Plus mantığı chat_assessment ile aynıdır.
     """
     enforce_supabase_user(request, req.user_id)
+    _require_privacy_permission(req.user_id, "ai")
     lim = free_chat_limit()
     plus = user_is_rebi_plus(request, req.user_id)
     plus_chat_capped = plus and user_plus_chat_is_monthly_capped(request, req.user_id)
@@ -1486,6 +1521,7 @@ async def translate_routine_items_endpoint(request: Request, req: TranslateRouti
     This endpoint adds `action_localized` and `detail_localized` for the selected UI language.
     """
     enforce_supabase_user(request, req.user_id)
+    _require_privacy_permission(req.user_id, "ai")
     from rag_service import translate_routine_items, _primary_lang_from_header
 
     target_lang = _primary_lang_from_header(request.headers.get("accept-language", "") or "")
@@ -1537,7 +1573,10 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
     Akış: Check-in → daily_logs kaydet → hava durumu → risk skoru → AI adaptasyon → rutin güncelle
     """
     enforce_supabase_user(request, req.user_id)
-    log.info("Daily checkin: user=%s, feeling=%s, stress=%d", req.user_id, req.skin_feeling, req.stress_today)
+    _require_privacy_permission(req.user_id, "ai")
+    if req.location_lat is not None or req.location_lon is not None:
+        _require_privacy_permission(req.user_id, "location")
+    log.info("Daily checkin isteği alındı")
 
     supabase = get_supabase()
     today_str = str(date.today())
@@ -1896,13 +1935,12 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
                     "active_routine": adaptation["adapted_items"],
                 }).eq("user_id", req.user_id).eq("is_active", True).execute()
 
-            log.info("Daily log kaydedildi: user=%s, risk=%s, changes=%d",
-                     req.user_id, risk_info["level"], len(adaptation["changes"]))
+            log.info("Daily log kaydedildi: changes=%d", len(adaptation["changes"]))
         except Exception as e:
             log.error("Daily log kayıt hatası: %s", e)
     elif is_demo_user_id(req.user_id):
         demo_checkin_mark(req.user_id, today_str)
-        log.info("Demo check-in: DB atlandı, bellekte bugün işaretlendi (user_id=%s)", req.user_id)
+        log.info("Demo check-in: DB atlandı, bellekte bugün işaretlendi")
 
     is_pregnant = bool(user_profile.get("is_pregnant"))
 
@@ -1938,18 +1976,78 @@ def _generate_fallback_note(risk_level: str, skin_feeling: str) -> str:
 
 _MAX_PHOTO_BYTES = 8 * 1024 * 1024
 _ALLOWED_PHOTO_EXT = frozenset({"jpg", "jpeg", "png", "webp", "heic", "heif"})
+_LEGAL_CONSENT_VERSION = "v2"
+
+
+def _photo_content_matches_extension(contents: bytes, ext: str) -> bool:
+    """Basit magic-byte kontrolü; istemcinin MIME/uzantı beyanına güvenme."""
+    if ext in {"jpg", "jpeg"}:
+        return contents.startswith(b"\xff\xd8\xff")
+    if ext == "png":
+        return contents.startswith(b"\x89PNG\r\n\x1a\n")
+    if ext == "webp":
+        return (
+            len(contents) >= 12
+            and contents[:4] == b"RIFF"
+            and contents[8:12] == b"WEBP"
+        )
+    if ext in {"heic", "heif"}:
+        return len(contents) >= 12 and contents[4:8] == b"ftyp"
+    return False
+
+
+def _require_privacy_permission(user_id: str, permission: str) -> None:
+    """Enforce immutable v2 consent before external/sensitive processing."""
+    if insecure_auth_allowed() and is_demo_user_id(user_id):
+        return
+    fields = {
+        "ai": "ai_processing_allowed",
+        "location": "location_processing_allowed",
+        "photo": "photo_processing_allowed",
+    }
+    field = fields.get(permission)
+    if not field:
+        raise RuntimeError(f"Unknown privacy permission: {permission}")
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=503, detail="Rıza doğrulama servisi kullanılamıyor.")
+    try:
+        result = (
+            supabase.table("privacy_preferences")
+            .select(field)
+            .eq("user_id", user_id)
+            .eq(field, True)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Rıza izni doğrulanamadı: permission=%s error=%s", permission, type(e).__name__)
+        raise HTTPException(status_code=503, detail="Rıza izni doğrulanamadı.")
+    if not result.data:
+        labels = {
+            "ai": "AI işleme",
+            "location": "konum işleme",
+            "photo": "cilt fotoğrafı işleme",
+        }
+        raise HTTPException(
+            status_code=403,
+            detail=f"{labels[permission]} izni gerekli.",
+        )
 
 
 def _delete_skin_photos_for_user(supabase, user_id: str) -> None:
     """skin-photos bucket içinde {user_id}/ altındaki dosyaları siler (CASCADE storage’da yok)."""
     prefix = (user_id or "").strip()
     if not prefix or ".." in prefix or any(c in prefix for c in "/\\"):
-        return
+        raise HTTPException(status_code=400, detail="Geçersiz kullanıcı kimliği")
     try:
         items = supabase.storage.from_("skin-photos").list(prefix)
     except Exception as e:
-        log.warning("skin-photos list atlanıyor (%s): %s", prefix, e)
-        return
+        log.error("skin-photos list başarısız: %s", type(e).__name__)
+        raise HTTPException(
+            status_code=502,
+            detail="Cilt fotoğrafları doğrulanamadığı için hesap silme durduruldu.",
+        )
     if not items:
         return
     paths: list[str] = []
@@ -1963,9 +2061,35 @@ def _delete_skin_photos_for_user(supabase, user_id: str) -> None:
         return
     try:
         supabase.storage.from_("skin-photos").remove(paths)
-        log.info("skin-photos silindi: user=%s count=%d", prefix, len(paths))
+        log.info("skin-photos silindi: count=%d", len(paths))
     except Exception as e:
-        log.warning("skin-photos remove kısmen başarısız (%s): %s", prefix, e)
+        log.error("skin-photos remove başarısız: %s", type(e).__name__)
+        raise HTTPException(
+            status_code=502,
+            detail="Cilt fotoğrafları silinemediği için hesap silme durduruldu.",
+        )
+
+
+def _delete_user_application_data(supabase, user_id: str) -> None:
+    """Cascade yapılandırmasından bağımsız olarak kişisel veri satırlarını sil."""
+    targets = (
+        ("privacy_preferences", "user_id"),
+        ("legal_consents", "user_id"),
+        ("daily_events", "user_id"),
+        ("daily_logs", "user_id"),
+        ("routines", "user_id"),
+        ("assessments", "user_id"),
+        ("profiles", "id"),
+    )
+    for table, column in targets:
+        try:
+            supabase.table(table).delete().eq(column, user_id).execute()
+        except Exception as e:
+            log.error("Hesap veri silme başarısız: table=%s error=%s", table, type(e).__name__)
+            raise HTTPException(
+                status_code=502,
+                detail="Uygulama verilerinin tamamı silinemedi; hesap silme durduruldu.",
+            )
 
 
 async def _auth_admin_delete_user(user_id: str) -> None:
@@ -1981,11 +2105,159 @@ async def _auth_admin_delete_user(user_id: str) -> None:
     async with httpx.AsyncClient(timeout=45.0) as client:
         r = await client.delete(url, headers=headers)
     if r.status_code not in (200, 204):
-        log.error("GoTrue admin delete_user: %s %s", r.status_code, r.text[:500])
+        log.error("GoTrue admin delete_user başarısız: status=%s", r.status_code)
         raise HTTPException(
             status_code=502,
             detail="Kimlik sağlayıcı hesabı silinemedi. Daha sonra tekrar deneyin veya destek ile iletişime geçin.",
         )
+
+
+@app.get("/legal-consent/status", tags=["account"])
+async def legal_consent_status(
+    request: Request,
+    user_id: str,
+    document_version: str = _LEGAL_CONSENT_VERSION,
+):
+    enforce_supabase_user(request, user_id)
+    if document_version != _LEGAL_CONSENT_VERSION:
+        return {"accepted": False, "document_version": _LEGAL_CONSENT_VERSION}
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    try:
+        result = (
+            supabase.table("legal_consents")
+            .select(
+                "accepted_at,ai_processing_accepted,"
+                "location_processing_accepted,photo_processing_accepted"
+            )
+            .eq("user_id", user_id)
+            .eq("document_version", document_version)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Rıza durumu okunamadı: error=%s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Rıza kaydı doğrulanamadı.")
+    row = result.data[0] if result.data else None
+    return {
+        "accepted": bool(row),
+        "document_version": document_version,
+        "accepted_at": row.get("accepted_at") if row else None,
+        "ai_processing_accepted": bool(row and row.get("ai_processing_accepted")),
+        "location_processing_accepted": bool(row and row.get("location_processing_accepted")),
+        "photo_processing_accepted": bool(row and row.get("photo_processing_accepted")),
+    }
+
+
+@app.post("/legal-consent/accept", tags=["account"])
+async def accept_legal_consent(request: Request, req: LegalConsentAcceptRequest):
+    enforce_supabase_user(request, req.user_id)
+    if (
+        req.document_version != _LEGAL_CONSENT_VERSION
+        or not req.kvkk_accepted
+        or not req.explicit_consent_accepted
+        or not req.ai_processing_accepted
+    ):
+        raise HTTPException(status_code=400, detail="Geçerli KVKK ve açık rıza onayı gerekli.")
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    try:
+        existing = (
+            supabase.table("legal_consents")
+            .select("accepted_at")
+            .eq("user_id", req.user_id)
+            .eq("document_version", req.document_version)
+            .limit(1)
+            .execute()
+        )
+        already_recorded = bool(existing.data)
+        if already_recorded:
+            accepted_at = existing.data[0].get("accepted_at")
+        else:
+            inserted = supabase.table("legal_consents").insert({
+                "user_id": req.user_id,
+                "document_version": req.document_version,
+                "kvkk_accepted": True,
+                "explicit_consent_accepted": True,
+                "ai_processing_accepted": True,
+                "location_processing_accepted": bool(req.location_processing_accepted),
+                "photo_processing_accepted": bool(req.photo_processing_accepted),
+            }).execute()
+            row = inserted.data[0] if inserted.data else {}
+            accepted_at = row.get("accepted_at")
+        supabase.table("privacy_preferences").upsert({
+            "user_id": req.user_id,
+            "ai_processing_allowed": True,
+            "location_processing_allowed": bool(req.location_processing_accepted),
+            "photo_processing_allowed": bool(req.photo_processing_accepted),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
+    except Exception as e:
+        log.error("Rıza kaydı yazılamadı: error=%s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Rıza kaydı güvenli biçimde oluşturulamadı.")
+    return {
+        "ok": True,
+        "document_version": req.document_version,
+        "accepted_at": accepted_at,
+        "already_recorded": already_recorded,
+    }
+
+
+@app.get("/privacy-preferences", tags=["account"])
+async def privacy_preferences_get(request: Request, user_id: str):
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    try:
+        result = (
+            supabase.table("privacy_preferences")
+            .select(
+                "ai_processing_allowed,location_processing_allowed,"
+                "photo_processing_allowed,updated_at"
+            )
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Gizlilik tercihleri okunamadı: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Gizlilik tercihleri okunamadı.")
+    row = result.data[0] if result.data else {}
+    return {
+        "ai_processing_allowed": row.get("ai_processing_allowed") is True,
+        "location_processing_allowed": row.get("location_processing_allowed") is True,
+        "photo_processing_allowed": row.get("photo_processing_allowed") is True,
+        "updated_at": row.get("updated_at"),
+    }
+
+
+@app.post("/privacy-preferences", tags=["account"])
+async def privacy_preferences_update(request: Request, req: PrivacyPreferencesRequest):
+    enforce_supabase_user(request, req.user_id)
+    if not req.ai_processing_allowed:
+        raise HTTPException(
+            status_code=400,
+            detail="AI izni bu hizmet modeli için zorunludur; geri çekmek için hesabınızı silebilirsiniz.",
+        )
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    payload = {
+        "user_id": req.user_id,
+        "ai_processing_allowed": True,
+        "location_processing_allowed": bool(req.location_processing_allowed),
+        "photo_processing_allowed": bool(req.photo_processing_allowed),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        result = supabase.table("privacy_preferences").upsert(payload).execute()
+    except Exception as e:
+        log.error("Gizlilik tercihleri kaydedilemedi: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Gizlilik tercihleri kaydedilemedi.")
+    return {"ok": True, **(result.data[0] if result.data else payload)}
 
 
 @app.post(
@@ -2020,8 +2292,9 @@ async def account_delete(request: Request, req: AccountDeleteRequest):
         raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
 
     _delete_skin_photos_for_user(supabase, uid)
+    _delete_user_application_data(supabase, uid)
     await _auth_admin_delete_user(uid)
-    log.info("Hesap kalıcı silindi: user_id=%s", uid)
+    log.info("Hesap ve ilişkili kişisel veriler kalıcı silindi")
     return {"ok": True}
 
 
@@ -2033,6 +2306,7 @@ async def account_delete(request: Request, req: AccountDeleteRequest):
 async def upload_photo(request: Request, user_id: str, file: UploadFile = File(...)):
     """Fotoğraf yükleme endpoint'i."""
     enforce_supabase_user(request, user_id)
+    _require_privacy_permission(user_id, "photo")
     if not user_id or ".." in user_id or any(c in user_id for c in "/\\"):
         raise HTTPException(status_code=400, detail="Geçersiz kullanıcı kimliği")
     supabase = get_supabase()
@@ -2052,16 +2326,38 @@ async def upload_photo(request: Request, user_id: str, file: UploadFile = File(.
                 status_code=400,
                 detail="Dosya çok büyük (en fazla 8 MB)",
             )
+        if not contents or not _photo_content_matches_extension(contents, file_ext):
+            raise HTTPException(
+                status_code=400,
+                detail="Dosya içeriği izin verilen görsel formatıyla eşleşmiyor.",
+            )
         file_path = f"{user_id}/{uuid.uuid4()}.{file_ext}"
-        supabase.storage.from_("skin-photos").upload(file_path, contents)
-        public_url = supabase.storage.from_("skin-photos").get_public_url(file_path)
+        mime = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "webp": "image/webp",
+            "heic": "image/heic",
+            "heif": "image/heif",
+        }[file_ext]
+        bucket = supabase.storage.from_("skin-photos")
+        bucket.upload(file_path, contents, file_options={"content-type": mime})
+        signed = bucket.create_signed_url(file_path, 3600)
+        signed_url = (
+            (signed or {}).get("signedURL")
+            or (signed or {}).get("signedUrl")
+            or (signed or {}).get("signed_url")
+        )
+        if not signed_url:
+            bucket.remove([file_path])
+            raise HTTPException(status_code=502, detail="Fotoğraf erişim bağlantısı oluşturulamadı.")
         log.info("Fotoğraf yüklendi: %s", file_path)
-        return {"url": public_url, "path": file_path}
+        return {"url": signed_url, "path": file_path, "expires_in": 3600}
     except HTTPException:
         raise
     except Exception as e:
         log.error("Fotoğraf yükleme hatası: %s", e)
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail="Fotoğraf yüklenemedi.")
 
 
 if __name__ == "__main__":

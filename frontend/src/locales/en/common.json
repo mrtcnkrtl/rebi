@@ -141,7 +141,11 @@
     "rizaBefore": "I have read the ",
     "rizaLink": "Explicit Consent Notice",
     "rizaAfter": " and I consent to processing of my skin and health-related data.",
-    "legalRequired": "You must accept the privacy notice and explicit consent to continue."
+    "legalRequired": "You must accept the privacy notice, explicit consent, and AI processing consent to continue.",
+    "aiConsent": "I consent to Google Gemini AI processing my skin and health data for routine and chat services. (Required)",
+    "optionalPermissions": "Optional permissions",
+    "locationConsent": "I consent to sharing my precise location with the weather provider for weather and UV information.",
+    "photoConsent": "I consent to storing my skin photos in private, access-controlled storage."
   },
   "legal": {
     "kvkkTitle": "KVKK Privacy Notice",

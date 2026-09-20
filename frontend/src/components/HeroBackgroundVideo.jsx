@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 function prefersReducedMotion() {
   try {
@@ -22,12 +22,8 @@ export default function HeroBackgroundVideo({
   videoEnabled = true,
 }) {
   const reduce = useMemo(() => prefersReducedMotion(), []);
-  const [videoOk, setVideoOk] = useState(Boolean(videoEnabled) && !reduce);
-
-  useEffect(() => {
-    if (reduce || !videoEnabled) setVideoOk(false);
-    else setVideoOk(true);
-  }, [reduce, videoEnabled]);
+  const [videoFailed, setVideoFailed] = useState(false);
+  const videoOk = Boolean(videoEnabled) && !reduce && !videoFailed;
 
   return (
     <div
@@ -44,7 +40,7 @@ export default function HeroBackgroundVideo({
             loop
             preload="metadata"
             style={{ opacity: videoOpacity }}
-            onError={() => setVideoOk(false)}
+            onError={() => setVideoFailed(true)}
           >
             <source src={webmSrc} type="video/webm" />
             <source src={mp4Src} type="video/mp4" />
