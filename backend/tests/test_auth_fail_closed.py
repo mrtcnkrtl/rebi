@@ -19,6 +19,7 @@ def _request(token: str | None = None) -> Request:
 
 def test_missing_jwt_secret_blocks_protected_request(monkeypatch):
     monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("API_ALLOW_INSECURE_AUTH", raising=False)
 
     with pytest.raises(HTTPException) as exc:
@@ -27,8 +28,20 @@ def test_missing_jwt_secret_blocks_protected_request(monkeypatch):
     assert exc.value.status_code == 503
 
 
+def test_supabase_url_enables_jwks_auth_without_shared_secret(monkeypatch):
+    monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
+    monkeypatch.delenv("API_ALLOW_INSECURE_AUTH", raising=False)
+    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
+
+    with pytest.raises(HTTPException) as exc:
+        enforce_supabase_user(_request(), USER_ID)
+
+    assert exc.value.status_code == 401
+
+
 def test_explicit_development_opt_in_allows_jwtless_request(monkeypatch):
     monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.setenv("API_ALLOW_INSECURE_AUTH", "1")
 
     enforce_supabase_user(_request(), USER_ID)
@@ -96,6 +109,7 @@ def test_plus_entitlement_ignores_user_metadata(monkeypatch):
 
 def test_health_reports_misconfiguration(monkeypatch, client):
     monkeypatch.delenv("SUPABASE_JWT_SECRET", raising=False)
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
     monkeypatch.delenv("API_ALLOW_INSECURE_AUTH", raising=False)
 
     response = client.get("/health")

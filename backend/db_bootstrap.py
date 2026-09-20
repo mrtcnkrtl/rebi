@@ -21,7 +21,19 @@ from urllib.parse import urlparse
 
 log = logging.getLogger("db_bootstrap")
 
-_MIGRATIONS_DIR = Path(__file__).resolve().parent.parent / "supabase" / "migrations"
+def _migrations_dir() -> Path:
+    candidates = (
+        Path(__file__).resolve().parent.parent / "supabase" / "migrations",
+        Path("/supabase/migrations"),
+        Path("/app/supabase/migrations"),
+    )
+    for path in candidates:
+        if path.is_dir():
+            return path
+    return candidates[0]
+
+
+_MIGRATIONS_DIR = _migrations_dir()
 
 # Load backend/.env so SUPABASE_URL, SUPABASE_DB_PASSWORD etc. work
 try:

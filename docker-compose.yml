@@ -8,6 +8,8 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./deploy/.env.api
+    volumes:
+      - ./supabase/migrations:/supabase/migrations:ro
     expose:
       - "8000"
     restart: unless-stopped
