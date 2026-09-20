@@ -10,8 +10,8 @@ def test_concern_slug_maps_primary_first():
     assert concern_ids_for_slug("pores") == ["enlarged_pores"]
 
 
-def test_concern_slug_unknown_and_general_empty():
-    assert concern_ids_for_slug("general") == []
+def test_concern_slug_unknown_empty_and_general_is_barrier():
+    assert concern_ids_for_slug("general") == ["dry_skin_xerosis"]
     assert concern_ids_for_slug("does_not_exist") == []
     # case-insensitive
     assert concern_ids_for_slug("ACNE") == concern_ids_for_slug("acne")
@@ -76,17 +76,17 @@ def test_tag_items_empty_is_noop(monkeypatch):
 
 
 def test_chain_actives_empty_for_unmapped_slug():
-    # general/unknown slugs resolve to no concern ids -> no DB call, empty result
-    assert cr.chain_actives_for_concern("general") == []
+    # unknown slugs resolve to no concern ids -> no DB call, empty result
     assert cr.chain_actives_for_concern("nope") == []
 
 
 # ---- routine expert block: supports chain + avoid section ------------------
 
-def _link(iid, name, effect, priority, note):
+def _link(iid, name, effect, priority, note, kind="active"):
     return {
         "ingredient_id": iid,
         "ingredient_tr": name,
+        "ingredient_kind": kind,
         "effect_status": effect,
         "priority": priority,
         "notes_tr": note,
@@ -284,6 +284,98 @@ def test_enrich_folds_iron_oxides_into_spf(monkeypatch):
     assert "Demir Oksitler" not in items[1]["action"]
 
 
+def test_enrich_does_not_append_zinc_oxide_onto_existing_spf(monkeypatch):
+    _stub_links(
+        monkeypatch,
+        supports=[_link("zinc_oxide", "Çinko Oksit", "supports", 1, "Mineral filtre.")],
+        avoid=[],
+    )
+    monkeypatch.setattr(cr, "tag_items_with_canonical_ids", lambda items: 0)
+    items = [
+        {
+            "time": "Sabah",
+            "category": "Koruma",
+            "action": "SPF 50 (geniş spektrumlu SPF)",
+            "detail": "Son adım.",
+            "step_order": 40,
+            "canonical_ingredient_ids": ["mineral_spf"],
+        },
+        {
+            "time": "Akşam",
+            "category": "Bakım",
+            "action": "Gece krem",
+            "detail": "",
+            "step_order": 30,
+        },
+    ]
+    report = cr.enrich_routine_from_cabinet(items, "acne")
+    assert "zinc_oxide" not in [f["ingredient_id"] for f in report["folded"]]
+    assert "Çinko Oksit" not in items[0]["action"]
+
+
+def test_enrich_balances_humectants_with_one_barrier_lipid(monkeypatch):
+    _stub_links(
+        monkeypatch,
+        supports=[
+            _link("glycerin", "Gliserin", "supports", 1, "Nem."),
+            _link("urea", "Üre", "supports", 1, "Nem."),
+            _link("hyaluronik_asit", "Hyaluronik Asit", "supports", 1, "Nem."),
+            _link("mineral_oil", "Mineral Yağ", "supports", 2, "Kapatıcı.", kind="oil"),
+        ],
+        avoid=[],
+    )
+    monkeypatch.setattr(cr, "tag_items_with_canonical_ids", lambda items: 0)
+    items = [
+        {
+            "time": "Akşam",
+            "category": "Bakım",
+            "action": "Gece krem",
+            "detail": "",
+            "step_order": 30,
+        }
+    ]
+    report = cr.enrich_routine_from_cabinet(items, "dryness")
+    folded = [f["ingredient_id"] for f in report["folded"]]
+    assert folded == ["glycerin", "urea", "mineral_oil"]
+    assert [f["group"] for f in report["folded"]] == [
+        "humectant",
+        "humectant",
+        "barrier_lipid",
+    ]
+
+
+def test_enrich_never_folds_body_only_coconut_oil_into_face(monkeypatch):
+    _stub_links(
+        monkeypatch,
+        supports=[
+            _link(
+                "coconut_oil",
+                "Hindistan Cevizi Yağı",
+                "supports",
+                2,
+                "Gövde için.",
+                kind="oil",
+            ),
+            _link("mineral_oil", "Mineral Yağ", "supports", 2, "Yüz için.", kind="oil"),
+        ],
+        avoid=[],
+    )
+    monkeypatch.setattr(cr, "tag_items_with_canonical_ids", lambda items: 0)
+    items = [
+        {
+            "time": "Akşam",
+            "category": "Bakım",
+            "action": "Gece krem",
+            "detail": "",
+            "step_order": 30,
+        }
+    ]
+    report = cr.enrich_routine_from_cabinet(items, "sensitivity")
+    folded = [f["ingredient_id"] for f in report["folded"]]
+    assert folded == ["mineral_oil"]
+    assert "Hindistan Cevizi Yağı" not in items[0]["action"]
+
+
 def test_enrich_flags_avoid_mention(monkeypatch):
     _stub_links(
         monkeypatch,
@@ -303,8 +395,55 @@ def test_enrich_flags_avoid_mention(monkeypatch):
     ]
     report = cr.enrich_routine_from_cabinet(items, "sensitivity")
     assert "olive_oil" in report["avoid_stripped"]
+    assert items == []
+
+
+def test_enrich_removes_avoid_part_but_keeps_safe_moisturizer(monkeypatch):
+    _stub_links(
+        monkeypatch,
+        supports=[],
+        avoid=[_link("olive_oil", "Zeytinyağı", "avoid", 3, "Bariyeri bozar.")],
+    )
+    monkeypatch.setattr(cr, "tag_items_with_canonical_ids", lambda items: 0)
+    items = [
+        {
+            "time": "Akşam",
+            "category": "Bakım",
+            "action": "Gece: Seramid krem + Zeytinyağı",
+            "detail": "Bariyer katmanı.",
+            "step_order": 30,
+            "canonical_ingredient_ids": ["seramidler", "olive_oil"],
+        }
+    ]
+    report = cr.enrich_routine_from_cabinet(items, "sensitivity")
+    assert report["avoid_stripped"] == ["olive_oil"]
+    assert len(items) == 1
+    assert "Seramid" in items[0]["action"]
+    assert "Zeytinyağı" not in items[0]["action"]
+    assert items[0]["canonical_ingredient_ids"] == ["seramidler"]
     assert "kaçın" in items[0]["detail"].lower()
-    assert "olive_oil" not in (items[0].get("canonical_ingredient_ids") or [])
+
+
+def test_enrich_does_not_treat_detail_warning_as_instruction(monkeypatch):
+    _stub_links(
+        monkeypatch,
+        supports=[],
+        avoid=[_link("olive_oil", "Zeytinyağı", "avoid", 3, "Bariyeri bozar.")],
+    )
+    monkeypatch.setattr(cr, "tag_items_with_canonical_ids", lambda items: 0)
+    items = [
+        {
+            "time": "Akşam",
+            "category": "Bakım",
+            "action": "Gece: Seramid krem",
+            "detail": "Zeytinyağından kaçın.",
+            "step_order": 30,
+            "canonical_ingredient_ids": ["seramidler"],
+        }
+    ]
+    report = cr.enrich_routine_from_cabinet(items, "sensitivity")
+    assert report["avoid_stripped"] == []
+    assert len(items) == 1
 
 
 def test_align_active_plan_drops_actives_not_in_routine(monkeypatch):

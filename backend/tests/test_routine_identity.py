@@ -116,6 +116,55 @@ def test_cabinet_plan_respects_bha_tolerance(monkeypatch):
     assert "niacinamid" in actives
 
 
+def test_cabinet_plan_keeps_single_spf_not_chemical_and_mineral(monkeypatch):
+    monkeypatch.setattr(
+        cr,
+        "chain_actives_for_concern",
+        lambda *a, **k: [
+            {"ingredient_id": "chemical_spf", "name_tr": "Kimyasal SPF", "priority": 1, "effect_status": "supports", "time_of_day": "AM", "notes_tr": ""},
+            {"ingredient_id": "mineral_spf", "name_tr": "Mineral SPF", "priority": 1, "effect_status": "supports", "time_of_day": "AM", "notes_tr": ""},
+            {"ingredient_id": "zinc_oxide", "name_tr": "Çinko Oksit", "priority": 1, "effect_status": "supports", "time_of_day": "AM", "notes_tr": ""},
+            {"ingredient_id": "niacinamid", "name_tr": "Niasinamid", "priority": 1, "effect_status": "supports", "time_of_day": "AM/PM", "notes_tr": ""},
+        ],
+    )
+    monkeypatch.setattr(cr, "tag_items_with_canonical_ids", lambda items: 0)
+    items = [
+        {"category": "Bakım", "action": "Niasinamid %10 serum (INCI: Niacinamide)", "step_order": 20},
+        {"category": "Koruma", "action": "SPF 50 (geniş spektrumlu SPF)", "step_order": 40},
+    ]
+    plan = build_cabinet_active_plan("pigmentation", items)
+    actives = [p["active"] for p in plan]
+    assert "chemical_spf" not in actives
+    assert "zinc_oxide" not in actives
+    assert "mineral_spf" in actives
+    assert sum(1 for p in plan if p.get("role") == "spf") == 1
+
+
+def test_iron_oxides_is_pigment_support_not_second_spf(monkeypatch):
+    monkeypatch.setattr(
+        cr,
+        "chain_actives_for_concern",
+        lambda *a, **k: [
+            {"ingredient_id": "mineral_spf", "name_tr": "Mineral SPF", "priority": 1, "effect_status": "supports", "time_of_day": "AM", "notes_tr": ""},
+            {"ingredient_id": "iron_oxides", "name_tr": "Demir Oksit", "priority": 2, "effect_status": "supports", "time_of_day": "AM", "notes_tr": ""},
+        ],
+    )
+    monkeypatch.setattr(cr, "tag_items_with_canonical_ids", lambda items: 0)
+    items = [
+        {
+            "category": "Koruma",
+            "action": "SPF 50 + Demir Oksitler",
+            "step_order": 40,
+            "canonical_ingredient_ids": ["mineral_spf", "iron_oxides"],
+        }
+    ]
+    plan = build_cabinet_active_plan("pigmentation", items)
+    roles = {p["active"]: p["role"] for p in plan}
+    assert roles["mineral_spf"] == "spf"
+    assert roles["iron_oxides"] == "pigment"
+    assert sum(1 for p in plan if p.get("role") == "spf") == 1
+
+
 def test_adapt_pauses_retinol_but_increases_urea_in_barrier_cream():
     from flow_engine import adapt_existing_routine
 

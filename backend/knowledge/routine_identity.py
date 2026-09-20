@@ -139,6 +139,7 @@ PREGNANCY_UNSAFE_IDS = frozenset(
 )
 
 SPF_IDS = frozenset({"mineral_spf", "chemical_spf", "zinc_oxide", "titanium_dioxide", "iron_oxides"})
+PRIMARY_SPF_IDS = frozenset({"mineral_spf", "chemical_spf", "zinc_oxide", "titanium_dioxide"})
 
 _TRIGGERS = {
     "pause": {
@@ -256,8 +257,10 @@ def build_cabinet_active_plan(
         a = normalize(it.get("action") or "")
         if "spf" in a or "gunes koruyucu" in a:
             has_spf = True
-            present.update(SPF_IDS & present)
-            present.add("mineral_spf")
+    # An SPF step is mineral unless the action actually names a chemical filter.
+    # Do not treat every SPF_ID as present — that listed mineral + chemical together.
+    if has_spf and "mineral_spf" not in present and "chemical_spf" not in present:
+        present.add("mineral_spf")
 
     avoided = {str(x).lower() for x in (avoided_families or set())}
     out: list[dict] = []
@@ -279,7 +282,11 @@ def build_cabinet_active_plan(
         fam = TOLERANCE_FAMILY.get(iid)
         if fam and fam in avoided:
             continue
-        in_routine = iid in present or (iid in SPF_IDS and has_spf)
+        if iid == "chemical_spf" and (
+            "mineral_spf" in present or "zinc_oxide" in present or "titanium_dioxide" in present
+        ):
+            continue
+        in_routine = iid in present
         if not in_routine:
             continue
         seen.add(iid)
@@ -288,7 +295,7 @@ def build_cabinet_active_plan(
                 "active": iid,
                 "name_tr": link.get("name_tr") or iid,
                 "family": fam,
-                "role": "spf" if iid in SPF_IDS else "active",
+                "role": "spf" if iid in PRIMARY_SPF_IDS else ("pigment" if iid == "iron_oxides" else "active"),
                 "recommended": True,
                 "when": _when_from_tod(str(link.get("time_of_day") or ""), iid),
                 "priority": pr,
@@ -300,7 +307,7 @@ def build_cabinet_active_plan(
                 "in_routine": True,
             }
         )
-    if has_spf and not any(r["active"] in SPF_IDS for r in out):
+    if has_spf and not any(r["active"] in PRIMARY_SPF_IDS for r in out):
         out.insert(
             0,
             {

@@ -387,7 +387,8 @@ CONCERN_SLUG_TO_CANONICAL: dict[str, list[str]] = {
     "sensitivity": ["rosacea", "atopic_dermatitis"],
     "pores": ["enlarged_pores"],
     "oiliness": ["oily_skin_seborrhea"],
-    "general": [],
+    # No specific complaint → barrier maintenance, not a treatment serum stack.
+    "general": ["dry_skin_xerosis"],
 }
 
 
@@ -578,7 +579,57 @@ _FOLD_INTO_MOISTURIZER = frozenset(
         "silk_protein",
     }
 )
-_FOLD_INTO_SPF = frozenset({"iron_oxides", "zinc_oxide"})
+# Zinc oxide is already the mineral SPF step the engine writes; folding it
+# onto every morning sunscreen produced "SPF 50 + Çinko Oksit" on acne/aging.
+# Iron oxides stay: tinted SPF is a pigmentation-specific add-on.
+_FOLD_INTO_SPF = frozenset({"iron_oxides"})
+_MINERAL_SPF_FAMILY = frozenset({"mineral_spf", "zinc_oxide", "titanium_dioxide"})
+
+# The flow is a facial routine. Some catalog links are valid for body/scalp
+# care but must not be turned into a facial moisturizer ingredient.
+_FACE_ROUTINE_EXCLUDED = frozenset({"coconut_oil"})
+
+_FOLD_GROUPS: dict[str, frozenset[str]] = {
+    "humectant": frozenset(
+        {"glycerin", "urea", "hyaluronik_asit", "sorbitol", "amino_acids_nmf"}
+    ),
+    "barrier_lipid": frozenset(
+        {
+            "cholesterol",
+            "squalane",
+            "mineral_oil",
+            "shea_butter",
+            "beeswax",
+            "petrolatum",
+            "lanolin",
+            "stearic_acid",
+            "cetyl_alcohol",
+            "lecithin",
+            "gamma_linolenic_acid",
+            "linoleic_acid",
+            "dimethicone",
+        }
+    ),
+    "soothing": frozenset({"colloidal_oatmeal", "aloe_vera", "allantoin"}),
+    "antioxidant": frozenset({"vitamin_e"}),
+    "structural": frozenset({"chitin", "silk_protein"}),
+    "pigment": _FOLD_INTO_SPF,
+}
+_FOLD_GROUP_CAPS = {
+    "humectant": 2,
+    "barrier_lipid": 1,
+    "soothing": 1,
+    "antioxidant": 1,
+    "structural": 1,
+    "pigment": 1,
+}
+
+
+def _fold_group(iid: str, kind: str = "") -> str:
+    for group, ids in _FOLD_GROUPS.items():
+        if iid in ids:
+            return group
+    return "barrier_lipid" if kind == "oil" else "other"
 
 ACTIVE_KEY_TO_CANONICAL: dict[str, list[str]] = {
     "sunscreen": ["mineral_spf", "chemical_spf", "zinc_oxide", "titanium_dioxide", "iron_oxides"],
@@ -658,6 +709,21 @@ def _append_fold(item: dict, label: str, iid: str, note: str) -> None:
     item["cabinet_enriched"] = True
 
 
+def _strip_avoid_parts(action: str, names: list[str]) -> tuple[str, bool]:
+    """Remove plus-separated action parts that name a canonical avoid item."""
+    raw = (action or "").strip()
+    if not raw:
+        return raw, False
+    needles = [_norm(n) for n in names if n and len(_norm(n)) >= 4]
+    if not needles:
+        return raw, False
+    parts = [p.strip() for p in re.split(r"\s*\+\s*", raw) if p.strip()]
+    hit = lambda p: any(n in _norm(p) for n in needles)
+    kept = [p for p in parts if not hit(p)]
+    changed = len(kept) != len(parts)
+    return " + ".join(kept).strip(), changed
+
+
 def enrich_routine_from_cabinet(
     items: list[dict],
     concern_slug: str,
@@ -687,32 +753,53 @@ def enrich_routine_from_cabinet(
         for a in avoid
         if a.get("ingredient_tr")
     }
+    kept_items: list[dict] = []
     for it in items:
         if it.get("category") not in ("Bakım", "Koruma"):
+            kept_items.append(it)
             continue
-        text = _norm(f"{it.get('action', '')} {it.get('detail', '')}")
+        # `detail` explains alternatives and may legitimately say “avoid X”;
+        # only action/usage are user instructions.
+        text = _norm(f"{it.get('action', '')} {it.get('usage', '')}")
         leaked = [iid for name, iid in avoid_names.items() if name and len(name) >= 4 and name in text]
         leaked += [iid for iid in (it.get("canonical_ingredient_ids") or []) if iid in avoid_ids]
         leaked = list(dict.fromkeys(leaked))
         if not leaked:
+            kept_items.append(it)
             continue
         ids = [x for x in (it.get("canonical_ingredient_ids") or []) if str(x) not in avoid_ids]
         it["canonical_ingredient_ids"] = ids
         names = [a.get("ingredient_tr") for a in avoid if str(a.get("ingredient_id")) in leaked]
+        clean_action, action_changed = _strip_avoid_parts(it.get("action") or "", names)
+        if action_changed and not clean_action:
+            report["avoid_stripped"].extend(leaked)
+            continue
+        if action_changed:
+            it["action"] = clean_action
         note = "Bu şikâyette kaçın: " + ", ".join(n for n in names if n)
         detail = (it.get("detail") or "").strip()
         if note not in detail:
             it["detail"] = (detail + (" " if detail else "") + note).strip()
         report["avoid_stripped"].extend(leaked)
+        kept_items.append(it)
+    items[:] = kept_items
 
     supports = _fetch_links_by_concern(cnd_ids, limit=12, effect_statuses=["supports"])
     present = _routine_ids(items)
+    if present & _MINERAL_SPF_FAMILY:
+        present.update(_MINERAL_SPF_FAMILY)
     folded = 0
+    folded_by_group: dict[str, int] = {}
     for link in supports:
         if folded >= max_folds:
             break
         iid = str(link.get("ingredient_id") or "").strip()
-        if not iid or iid in present or iid in avoid_ids:
+        if (
+            not iid
+            or iid in present
+            or iid in avoid_ids
+            or iid in _FACE_ROUTINE_EXCLUDED
+        ):
             continue
         pr = link.get("priority")
         try:
@@ -722,6 +809,9 @@ def enrich_routine_from_cabinet(
         if pr_n > 2:
             continue
         kind = (link.get("ingredient_kind") or "").strip().lower()
+        group = _fold_group(iid, kind)
+        if folded_by_group.get(group, 0) >= _FOLD_GROUP_CAPS.get(group, 1):
+            continue
         tod = (link.get("time_of_day") or "AM/PM").upper()
         label = _short_fold_label(link)
         note = (link.get("notes_tr") or "").strip()
@@ -743,7 +833,15 @@ def enrich_routine_from_cabinet(
         _append_fold(target, label, iid, note)
         present.add(iid)
         folded += 1
-        report["folded"].append({"ingredient_id": iid, "name_tr": label, "time": target.get("time")})
+        folded_by_group[group] = folded_by_group.get(group, 0) + 1
+        report["folded"].append(
+            {
+                "ingredient_id": iid,
+                "name_tr": label,
+                "time": target.get("time"),
+                "group": group,
+            }
+        )
 
     report["tagged"] = sum(1 for it in items if it.get("canonical_ingredient_ids"))
     return report
