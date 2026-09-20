@@ -9,6 +9,7 @@ import { DEMO_USER_ID } from "../lib/demoUser";
 import { userHasRebiPlus } from "../lib/subscription";
 import { clearUserLocalData } from "../lib/privacyStorage";
 import { getPrivacyPreferences, updatePrivacyPreferences } from "../lib/privacyPreferences";
+import AiDisclaimer from "../components/AiDisclaimer";
 import {
   getRoutineSnapshot,
   isRoutineTrackingAccepted,
@@ -549,12 +550,9 @@ export default function Profile() {
               Gizlilik izinleri
             </h2>
             <p className="text-xs text-gray-500">
-              AI işleme izni hizmet için zorunludur. Konum ve fotoğraf izinlerini istediğin zaman değiştirebilirsin.
+              Rutin ve sohbet için yapay zekâ işlemesi A3 Biyoteknoloji tarafından yapılır; ayrıntı KVKK ve açık rıza metinlerindedir. Konum ve fotoğraf izinlerini istediğin zaman değiştirebilirsin.
             </p>
-            <label className="flex items-start gap-2.5 text-sm text-gray-700">
-              <input type="checkbox" checked readOnly className="mt-0.5 w-4 h-4" />
-              <span>Google Gemini AI ile rutin ve sohbet işleme — zorunlu</span>
-            </label>
+            <AiDisclaimer />
             <label className="flex items-start gap-2.5 text-sm text-gray-700 cursor-pointer">
               <input
                 type="checkbox"

@@ -36,7 +36,7 @@
     "theme": "Themes"
   },
   "landing": {
-    "heroBadge": "AI-powered dermocosmetic care assistant",
+    "heroBadge": "Dermocosmetic AI",
     "heroTitle1": "The",
     "heroTitleAccent": "Science-backed",
     "heroTitle2": "routine your skin (and mind) needs.",
@@ -56,7 +56,7 @@
     "plusCta": "Explore Plus",
     "featuresTitle": "A new generation of skincare",
     "featuresSubtitle": "Not just products—Rebi connects sleep, stress, water, and nutrition signals to your routine.",
-    "disclaimer": "Rebi is not a medical diagnosis or prescription. It guides you with safety layers like cautious frequency for strong actives and barrier-first logic. When in doubt, consult a healthcare professional.",
+    "disclaimer": "Rebi is an AI assistant; its suggestions have a margin of error and are not a medical diagnosis or treatment. When in doubt, consult a healthcare professional.",
     "howItWorksTitle": "Your routine in 3 steps",
     "ctaStartNow": "Start now",
     "footer": "© 2026 Rebi. Holistic skincare platform.",
@@ -141,8 +141,7 @@
     "rizaBefore": "I have read the ",
     "rizaLink": "Explicit Consent Notice",
     "rizaAfter": " and I consent to processing of my skin and health-related data.",
-    "legalRequired": "You must accept the privacy notice, explicit consent, and AI processing consent to continue.",
-    "aiConsent": "I consent to Google Gemini AI processing my skin and health data for routine and chat services. (Required)",
+    "legalRequired": "You must accept the privacy notice and explicit consent to continue.",
     "optionalPermissions": "Optional permissions",
     "locationConsent": "I consent to sharing my precise location with the weather provider for weather and UV information.",
     "photoConsent": "I consent to storing my skin photos in private, access-controlled storage."
@@ -173,7 +172,8 @@
     "no": "No",
     "skip": "Skip",
     "hide": "Hide",
-    "details": "Details"
+    "details": "Details",
+    "aiDisclaimer": "Rebi is an AI assistant; its suggestions have a margin of error and are not a medical diagnosis or treatment."
   },
   "subscribe": {
     "title": "Rebi Plus",
@@ -266,7 +266,7 @@
     "edgeQuickAnalyze": "Start new analysis",
     "edgeRecentTitle": "Recent messages",
     "edgeRecentPick": "Reuse:",
-    "disclaimerShort": "This chat is not medical diagnosis or treatment."
+    "disclaimerShort": "Rebi is an AI assistant; suggestions have a margin of error and are not medical diagnosis or treatment."
   },
   "dashboard": {
     "noAnalyzeTitle": "Hi, {{name}}!",

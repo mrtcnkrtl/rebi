@@ -13,6 +13,7 @@ import {
 } from "../lib/routineTracking";
 import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
+import AiDisclaimer from "../components/AiDisclaimer";
 import { useTranslation } from "react-i18next";
 import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import {
@@ -462,6 +463,7 @@ export default function Dashboard() {
               {new Date().toLocaleDateString(uiLocale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
             <p className="text-sm text-gray-600 mt-2">{t("dashboard.helloToday", { name: userName })}</p>
+            <AiDisclaimer className="mt-2" />
           </div>
 
           <Link
@@ -680,6 +682,7 @@ export default function Dashboard() {
           <p className="text-gray-500 mt-1 text-sm">
             {new Date().toLocaleDateString(uiLocale, { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
           </p>
+          <AiDisclaimer className="mt-2" />
           {accepted && showPlanExpanded && (
             <button
               type="button"

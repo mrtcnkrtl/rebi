@@ -106,7 +106,7 @@
     "severity": "Şiddet",
     "concerns": "Sorunlar",
     "createRoutineCta": "Optimal Rutini Oluştur",
-    "noPhotoNote": "Fotoğraf eklemeden de devam edebilirsin; son adımda süreç takibi için kısa bir uyarı gösterilir."
+    "noPhotoNote": "Fotoğraf eklemeden de devam edebilirsin."
   },
   "modal": {
     "routineBeforeTitle": "Rutin öncesi bilgilendirme",

@@ -18,7 +18,6 @@ export default function Auth() {
   const [infoMessage, setInfoMessage] = useState("");
   const [kvkkOk, setKvkkOk] = useState(false);
   const [rizaOk, setRizaOk] = useState(false);
-  const [aiOk, setAiOk] = useState(false);
   const [locationOk, setLocationOk] = useState(false);
   const [photoOk, setPhotoOk] = useState(false);
   const { signIn, signUp, signOut } = useAuth();
@@ -32,7 +31,7 @@ export default function Auth() {
     setInfoMessage("");
     setLoading(true);
 
-    if (!kvkkOk || !rizaOk || !aiOk) {
+    if (!kvkkOk || !rizaOk) {
       setError(t("auth.legalRequired"));
       setLoading(false);
       return;
@@ -44,7 +43,7 @@ export default function Auth() {
         if (error) throw error;
         try {
           await recordLegalConsent(data?.user?.id, {
-            ai: aiOk,
+            ai: true,
             location: locationOk,
             photo: photoOk,
           });
@@ -70,7 +69,7 @@ export default function Auth() {
         }
         try {
           await recordLegalConsent(data?.user?.id, {
-            ai: aiOk,
+            ai: true,
             location: locationOk,
             photo: photoOk,
           });
@@ -215,19 +214,17 @@ export default function Auth() {
             <LegalConsentFields
               kvkk={kvkkOk}
               riza={rizaOk}
-              ai={aiOk}
               location={locationOk}
               photo={photoOk}
               onKvkk={setKvkkOk}
               onRiza={setRizaOk}
-              onAi={setAiOk}
               onLocation={setLocationOk}
               onPhoto={setPhotoOk}
             />
 
             <button
               type="submit"
-              disabled={loading || !kvkkOk || !rizaOk || !aiOk}
+              disabled={loading || !kvkkOk || !rizaOk}
               className="btn-primary w-full !mt-6"
             >
               {loading ? (

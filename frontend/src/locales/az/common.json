@@ -15,7 +15,7 @@
     "theme": "Tema"
   },
   "landing": {
-    "heroBadge": "AI dəstəkli dəri baxımı",
+    "heroBadge": "Dermokosmetik süni intellekt",
     "heroTitle1": "Dərinizin və ruhunuzun",
     "heroTitleAccent": "ehtiyacı olan",
     "heroTitle2": "elmi rutin.",
@@ -35,7 +35,7 @@
     "plusCta": "Plus-u kəşf et",
     "featuresTitle": "Dəri baxımında yeni nəsil",
     "featuresSubtitle": "Təkcə krem yox — yuxu, stress, su və qidalanma siqnallarını rutinlə bağlayır.",
-    "disclaimer": "Rebi tibbi diaqnoz və ya resept deyil. Güclü aktivlərdə ehtiyatlı tezlik və baryer-prioritet kimi təhlükəsizlik qatları ilə istiqamətləndirir. Şübhəli halda mütəxəssisə müraciət et.",
+    "disclaimer": "Rebi süni intellekt köməkçisidir; tövsiyələr xəta payı daşıyır və tibbi diaqnoz və ya müalicə əvəzi deyil. Şübhəli halda mütəxəssisə müraciət et.",
     "howItWorksTitle": "3 addımda şəxsi rutin",
     "ctaStartNow": "İndi başla",
     "footer": "© 2026 Rebi. Bütöv dəri baxımı platforması.",
@@ -110,7 +110,8 @@
     "no": "Xeyr",
     "skip": "Keç",
     "hide": "Gizlə",
-    "details": "Detallar"
+    "details": "Detallar",
+    "aiDisclaimer": "Rebi süni intellekt köməkçisidir; tövsiyələr xəta payı daşıyır və tibbi diaqnoz və ya müalicə əvəzi deyil."
   },
   "subscribe": {
     "title": "Rebi Plus",

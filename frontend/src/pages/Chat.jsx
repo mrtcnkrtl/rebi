@@ -8,7 +8,7 @@ import { DEMO_USER_ID } from "../lib/demoUser";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { Bot, Send, Loader2, Sparkles, Crown, Lock, ArrowRight, X } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
-import RebiIntroSplash from "../components/RebiIntroSplash";
+import AiDisclaimer from "../components/AiDisclaimer";
 import { useTranslation } from "react-i18next";
 import { getRoutineSnapshot, isRoutineTrackingAccepted } from "../lib/routineTracking";
 
@@ -283,7 +283,6 @@ export default function Chat() {
 
   return (
     <div className={`min-h-screen ${theme.bg} relative`}>
-      <RebiIntroSplash scope="chat" accentColor={theme.accent} primaryColor={theme.primary} />
       <ThemePatternOverlay pattern={theme.pattern} />
 
       {/* Köşe sayaç (özellikle web) */}
@@ -552,9 +551,7 @@ export default function Chat() {
               <Sparkles className="w-3 h-3 inline" /> {t("chat.footerHint")}
             </p>
           )}
-          <p className="text-[10px] text-gray-400 text-center mt-1 leading-snug">
-            {t("chat.disclaimerShort")}
-          </p>
+          <AiDisclaimer className="text-center mt-1.5" />
         </div>
       </div>
 

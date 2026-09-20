@@ -1,11 +1,11 @@
 /** KVKK aydınlatma ve açık rıza gövdeleri. Dil: tr | en */
 
-export const LEGAL_UPDATED = "25.08.2026";
+export const LEGAL_UPDATED = "20.09.2026";
 
 const TR_KVKK = [
   {
     title: "1. Veri sorumlusu",
-    body: "Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında Rebi cilt bakımı platformunun (“Rebi”) kullanıcılarına yöneliktir. Veri sorumlusu, Rebi’yi işleten gerçek veya tüzel kişidir. Başvurularınızı uygulama içi Profil ekranı ve hesap e-postanız üzerinden iletebilirsiniz.",
+    body: "Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında Rebi cilt bakımı platformunun (“Rebi”) kullanıcılarına yöneliktir. Veri sorumlusu, Rebi’yi işleten A3 Biyoteknoloji’dir. Başvurularınızı uygulama içi Profil ekranı ve hesap e-postanız üzerinden iletebilirsiniz.",
   },
   {
     title: "2. İşlenen kişisel veriler",
@@ -17,7 +17,7 @@ const TR_KVKK = [
   },
   {
     title: "4. Aktarım",
-    body: "Veriler, barındırma/veritabanı için Supabase’e; zorunlu AI izninizle rutin ve sohbet işleme için Google Gemini’a aktarılır. Konum izni verirseniz kesin koordinatlar Open-Meteo’ya (yedek olarak OpenWeather’a) iletilir. Fotoğraf izni verirseniz görüntüler private Supabase Storage alanında saklanır. Zorunlu hallerde yetkili kamu kurumlarına aktarım yapılabilir; yurt dışı aktarımlarda KVKK usulleri uygulanır.",
+    body: "Rutin ve sohbet için yapay zekâ işlemesi A3 Biyoteknoloji tarafından, Google Gemini AI altyapısı kullanılarak gerçekleştirilir. Barındırma ve veritabanı için veriler Supabase’e aktarılabilir. Konum izni verirseniz kesin koordinatlar Open-Meteo’ya (yedek olarak OpenWeather’a) iletilir. Fotoğraf izni verirseniz görüntüler private Supabase Storage alanında saklanır. Zorunlu hallerde yetkili kamu kurumlarına aktarım yapılabilir; yurt dışı aktarımlarda KVKK usulleri uygulanır.",
   },
   {
     title: "5. Saklama süresi",
@@ -36,7 +36,7 @@ const TR_KVKK = [
 const EN_KVKK = [
   {
     title: "1. Data controller",
-    body: "This notice is provided under Türkiye’s Personal Data Protection Law No. 6698 (KVKK) for the Rebi skincare platform. The controller is the person or entity operating Rebi. You can reach us via the in-app Profile screen and your account email.",
+    body: "This notice is provided under Türkiye’s Personal Data Protection Law No. 6698 (KVKK) for the Rebi skincare platform. The controller is A3 Biyoteknoloji, which operates Rebi. You can reach us via the in-app Profile screen and your account email.",
   },
   {
     title: "2. Data we process",
@@ -48,7 +48,7 @@ const EN_KVKK = [
   },
   {
     title: "4. Recipients",
-    body: "Data is shared with Supabase for hosting/database services and, with the required AI consent, with Google Gemini for routine and chat processing. If location permission is granted, precise coordinates are sent to Open-Meteo (or OpenWeather as fallback). If photo permission is granted, images are stored in private Supabase Storage. Transfers abroad follow applicable KVKK procedures.",
+    body: "AI processing for routines and chat is performed by A3 Biyoteknoloji using Google Gemini AI infrastructure. Data may also be shared with Supabase for hosting and database services. If location permission is granted, precise coordinates are sent to Open-Meteo (or OpenWeather as fallback). If photo permission is granted, images are stored in private Supabase Storage. Transfers abroad follow applicable KVKK procedures.",
   },
   {
     title: "5. Retention",
@@ -67,15 +67,15 @@ const EN_KVKK = [
 const TR_RIZA = [
   {
     title: "1. Konu",
-    body: "6698 sayılı KVKK’nın 6. maddesi uyarınca, özel nitelikli kişisel verilerimin (cilt görüntüsü; cilt tipi ve şikâyetler; hamilelik/döngü; yaşam tarzı ve aktif madde toleransı gibi sağlıkla ilgili bilgiler) Rebi tarafından işlenmesine açık rıza veriyorum.",
+    body: "6698 sayılı KVKK’nın 6. maddesi uyarınca, özel nitelikli kişisel verilerimin (cilt görüntüsü; cilt tipi ve şikâyetler; hamilelik/döngü; yaşam tarzı ve aktif madde toleransı gibi sağlıkla ilgili bilgiler) A3 Biyoteknoloji tarafından Rebi platformu kapsamında işlenmesine açık rıza veriyorum.",
   },
   {
     title: "2. Amaç",
-    body: "Cilt ve sağlık verilerimin işlenmesine ve rutin/sohbet hizmeti için Google Gemini AI kullanımına verdiğim izin hizmet için zorunludur. Kesin konumun hava servisine aktarılması ve cilt fotoğrafının private alanda saklanması ayrı ve isteğe bağlı izinlerdir. Rebi tıbbi teşhis veya tedavi sunmaz.",
+    body: "Cilt ve sağlık verilerimin A3 Biyoteknoloji tarafından işlenmesine ve rutin/sohbet hizmeti için Google Gemini AI altyapısının kullanılmasına açık rıza veriyorum. Bu, hizmetin sunulması için gereklidir. Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez. Kesin konumun hava servisine aktarılması ve cilt fotoğrafının private alanda saklanması ayrı ve isteğe bağlı izinlerdir.",
   },
   {
     title: "3. Aktarım",
-    body: "Yukarıdaki amaçlarla sınırlı olmak üzere verilerimin barındırma, veritabanı ve yapay zekâ hizmet sağlayıcılarına aktarılmasına rıza gösteriyorum.",
+    body: "Yukarıdaki amaçlarla sınırlı olmak üzere verilerimin A3 Biyoteknoloji tarafından işlenmesine ve barındırma, veritabanı ile yapay zekâ altyapı sağlayıcılarına aktarılmasına rıza gösteriyorum.",
   },
   {
     title: "4. Gönüllülük ve geri alma",
@@ -86,15 +86,15 @@ const TR_RIZA = [
 const EN_RIZA = [
   {
     title: "1. Subject",
-    body: "Under KVKK article 6, I give explicit consent to Rebi processing my special-category data (skin photos; skin type and concerns; pregnancy/cycle; lifestyle and active-ingredient tolerance and similar health-related information).",
+    body: "Under KVKK article 6, I give explicit consent to A3 Biyoteknoloji processing my special-category data on the Rebi platform (skin photos; skin type and concerns; pregnancy/cycle; lifestyle and active-ingredient tolerance and similar health-related information).",
   },
   {
     title: "2. Purpose",
-    body: "Consent to processing skin/health data and use of Google Gemini AI for routine and chat services is required for the service. Sharing precise location with a weather provider and storing skin photos privately are separate optional permissions. Rebi does not provide medical diagnosis or treatment.",
+    body: "I give explicit consent to A3 Biyoteknoloji processing my skin and health data and using Google Gemini AI infrastructure for routine and chat services. This is required to provide the service. Rebi is an AI assistant; its suggestions have a margin of error and are not medical diagnosis or treatment. Sharing precise location with a weather provider and storing skin photos privately are separate optional permissions.",
   },
   {
     title: "3. Sharing",
-    body: "I consent to transfers to hosting, database and AI providers, limited to the purposes above.",
+    body: "I consent to processing by A3 Biyoteknoloji and to transfers to hosting, database and AI infrastructure providers, limited to the purposes above.",
   },
   {
     title: "4. Voluntary and withdrawal",

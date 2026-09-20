@@ -15,7 +15,7 @@
     "theme": "Themen"
   },
   "landing": {
-    "heroBadge": "KI-gestützte Hautpflege",
+    "heroBadge": "Dermokosmetische KI",
     "heroTitle1": "The",
     "heroTitleAccent": "Science-backed",
     "heroTitle2": "routine your skin (and mind) needs.",
@@ -35,7 +35,7 @@
     "plusCta": "Plus entdecken",
     "featuresTitle": "A new generation of skincare",
     "featuresSubtitle": "Not just products—Rebi connects sleep, stress, water, and nutrition signals to your routine.",
-    "disclaimer": "Rebi is not a medical diagnosis or prescription. It guides you with safety layers like cautious frequency for strong actives and barrier-first logic. When in doubt, consult a healthcare professional.",
+    "disclaimer": "Rebi is an AI assistant; its suggestions have a margin of error and are not a medical diagnosis or treatment. When in doubt, consult a healthcare professional.",
     "howItWorksTitle": "Your routine in 3 steps",
     "ctaStartNow": "Start now",
     "footer": "© 2026 Rebi. Holistic skincare platform.",
@@ -110,7 +110,8 @@
     "no": "No",
     "skip": "Skip",
     "hide": "Hide",
-    "details": "Details"
+    "details": "Details",
+    "aiDisclaimer": "Rebi is an AI assistant; its suggestions have a margin of error and are not a medical diagnosis or treatment."
   },
   "subscribe": {
     "title": "Rebi Plus",

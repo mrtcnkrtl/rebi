@@ -1,15 +1,14 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import AiDisclaimer from "./AiDisclaimer";
 
 export default function LegalConsentFields({
   kvkk,
   riza,
-  ai,
   location,
   photo,
   onKvkk,
   onRiza,
-  onAi,
   onLocation,
   onPhoto,
 }) {
@@ -55,16 +54,6 @@ export default function LegalConsentFields({
           >{t("auth.rizaLink")}</Link>{t("auth.rizaAfter")}
         </span>
       </label>
-      <label className="flex items-start gap-2.5 cursor-pointer text-sm text-gray-700 leading-relaxed">
-        <input
-          type="checkbox"
-          className="mt-1 w-4 h-4 shrink-0 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
-          checked={ai}
-          onChange={(e) => onAi(e.target.checked)}
-          required
-        />
-        <span>{t("auth.aiConsent")}</span>
-      </label>
       <div className="border-t border-teal-100 pt-2">
         <p className="text-xs font-semibold text-gray-600 mb-2">{t("auth.optionalPermissions")}</p>
         <div className="space-y-2">
@@ -88,6 +77,7 @@ export default function LegalConsentFields({
           </label>
         </div>
       </div>
+      <AiDisclaimer />
     </div>
   );
 }

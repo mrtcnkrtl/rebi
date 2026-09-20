@@ -1,9 +1,22 @@
 from __future__ import annotations
 
+import jwt
 import main
 
 
 USER_ID = "11111111-1111-4111-8111-111111111111"
+SECRET = "test-secret-at-least-32-bytes-long"
+
+
+def _auth_headers(monkeypatch):
+    monkeypatch.setenv("SUPABASE_JWT_SECRET", SECRET)
+    monkeypatch.delenv("API_ALLOW_INSECURE_AUTH", raising=False)
+    token = jwt.encode(
+        {"sub": USER_ID, "aud": "authenticated"},
+        SECRET,
+        algorithm="HS256",
+    )
+    return {"Authorization": f"Bearer {token}"}
 
 
 class _Result:
@@ -64,9 +77,11 @@ class _Supabase:
 def test_legal_consent_is_recorded_by_backend(monkeypatch, client):
     db = _Supabase()
     monkeypatch.setattr(main, "get_supabase", lambda: db)
+    headers = _auth_headers(monkeypatch)
 
     response = client.post(
         "/legal-consent/accept",
+        headers=headers,
         json={
             "user_id": USER_ID,
             "document_version": "v2",
@@ -93,9 +108,11 @@ def test_legal_consent_is_recorded_by_backend(monkeypatch, client):
 
 def test_legal_consent_rejects_partial_acceptance(monkeypatch, client):
     monkeypatch.setattr(main, "get_supabase", _Supabase)
+    headers = _auth_headers(monkeypatch)
 
     response = client.post(
         "/legal-consent/accept",
+        headers=headers,
         json={
             "user_id": USER_ID,
             "document_version": "v2",

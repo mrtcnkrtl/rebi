@@ -106,7 +106,7 @@
     "severity": "Severity",
     "concerns": "Concerns",
     "createRoutineCta": "Build my optimal routine",
-    "noPhotoNote": "You can continue without a photo; you will see a short note about progress tracking at the end."
+    "noPhotoNote": "You can continue without a photo."
   },
   "modal": {
     "routineBeforeTitle": "Before we generate your routine",

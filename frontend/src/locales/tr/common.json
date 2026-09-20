@@ -36,7 +36,7 @@
     "theme": "Tema"
   },
   "landing": {
-    "heroBadge": "Yapay zeka destekli dermokozmetik bakım asistanı",
+    "heroBadge": "Dermokozmetik yapay zekası",
     "heroTitle1": "Cildinin ve Ruhunun",
     "heroTitleAccent": "İhtiyacı Olan",
     "heroTitle2": "Bilimsel Rutin.",
@@ -56,7 +56,7 @@
     "plusCta": "Plus'ı keşfet",
     "featuresTitle": "Cilt Bakımında Yeni Nesil",
     "featuresSubtitle": "Sadece krem önermekle kalmaz, uyku, stres, su ve beslenme gibi yaşam tarzı sinyallerini de rutinine bağlar.",
-    "disclaimer": "Rebi tıbbi teşhis veya reçete yerine geçmez; güçlü aktiflerde dikkatli sıklık ve bariyer önceliği gibi güvenlik katmanlarıyla yönlendirir. Şüpheli durumda her zaman bir sağlık uzmanına danışmalısın.",
+    "disclaimer": "Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez. Şüphede bir sağlık uzmanına danış.",
     "howItWorksTitle": "3 Adımda Kişisel Rutinin",
     "ctaStartNow": "Hemen Başla",
     "footer": "© 2026 Rebi. Bütüncül cilt bakımı platformu.",
@@ -141,8 +141,7 @@
     "rizaBefore": "",
     "rizaLink": "Açık Rıza Metni’ni",
     "rizaAfter": " okudum; cilt ve sağlık verilerimin işlenmesini kabul ediyorum.",
-    "legalRequired": "Devam etmek için KVKK, açık rıza ve AI işleme iznini onaylaman gerekir.",
-    "aiConsent": "Rutin ve sohbet hizmeti için sağlık/cilt verilerimin Google Gemini AI tarafından işlenmesini kabul ediyorum. (Zorunlu)",
+    "legalRequired": "Devam etmek için KVKK aydınlatma metnini ve açık rızayı onaylaman gerekir.",
     "optionalPermissions": "İsteğe bağlı izinler",
     "locationConsent": "Hava ve UV bilgisi için kesin konumumun hava servisine aktarılmasını kabul ediyorum.",
     "photoConsent": "Cilt fotoğraflarımın özel ve erişim kontrollü alanda saklanmasını kabul ediyorum."
@@ -173,7 +172,8 @@
     "no": "Hayır",
     "skip": "Atla",
     "hide": "Gizle",
-    "details": "Detay"
+    "details": "Detay",
+    "aiDisclaimer": "Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez."
   },
   "subscribe": {
     "title": "Rebi Plus",
@@ -266,7 +266,7 @@
     "edgeQuickAnalyze": "Yeni analiz başlat",
     "edgeRecentTitle": "Son konuşmalar",
     "edgeRecentPick": "Yeniden:",
-    "disclaimerShort": "Bu sohbet tıbbi tanı veya tedavi değildir."
+    "disclaimerShort": "Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez."
   },
   "dashboard": {
     "noAnalyzeTitle": "Merhaba, {{name}}!",

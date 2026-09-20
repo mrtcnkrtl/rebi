@@ -14,6 +14,7 @@ import LoadingScreen from "../components/LoadingScreen";
 import SkinTypeVisual from "../components/SkinTypeVisual";
 import SeverityTest from "../components/SeverityTest";
 import WebcamCapture from "../components/WebcamCapture";
+import AiDisclaimer from "../components/AiDisclaimer";
 import { useTranslation } from "react-i18next";
 import { interpolate } from "../lib/interpolate";
 import { useAnalyzeWizardPack } from "../lib/localePacks";
@@ -21,7 +22,7 @@ import {
   MapPin, ArrowRight, ArrowLeft, Camera, ImagePlus, Monitor,
   Droplets, Moon, Cigarette, Wine, AlertCircle, CheckCircle,
   User, Sparkles, Heart, Send, Bot, Loader2,
-  UtensilsCrossed, Palette, AlertTriangle,
+  UtensilsCrossed, Palette,
 } from "lucide-react";
 
 const STRONG_ACTIVE_FAMILY_IDS = [
@@ -415,11 +416,7 @@ export default function Analyze() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [photoContext, setPhotoContext] = useState("unsure");
   const [photoQuality, setPhotoQuality] = useState(null);
-  const [showRoutineModal, setShowRoutineModal] = useState(false);
-  const [showSkipPhotoModal, setShowSkipPhotoModal] = useState(false);
   const [showWebcam, setShowWebcam] = useState(false);
-  /** Fotoğrafsız rutin için kullanıcı bir kez onayladı (aynı oturumda tekrar sorma). */
-  const allowRoutineWithoutPhotoRef = useRef(false);
   /** Her güçlü aktif ailesi: never | good | mild | bad */
   const [activesTolerance, setActivesTolerance] = useState(() =>
     Object.fromEntries(STRONG_ACTIVE_FAMILY_IDS.map((id) => [id, "good"]))
@@ -595,7 +592,6 @@ export default function Analyze() {
   /* ─── Foto: galeri / mobil kamera / webcam ─── */
   const applyPhotoFile = async (file) => {
     if (!file) return;
-    allowRoutineWithoutPhotoRef.current = false;
     if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
     setPhotoFile(file);
     const url = URL.createObjectURL(file);
@@ -607,7 +603,6 @@ export default function Analyze() {
   };
 
   const clearPhoto = () => {
-    allowRoutineWithoutPhotoRef.current = false;
     if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
     previewUrlRef.current = null;
     setPhotoFile(null);
@@ -1308,13 +1303,41 @@ export default function Analyze() {
                 <div className="bg-white rounded-lg p-2 col-span-3"><span className="text-gray-400 block">{pack.step4.concerns}</span><span className="font-medium">{concerns.map((c) => concernOptions.find((o) => o.id === c)?.label).join(", ")}</span></div>
               </div>
             </div>
+            <div className="card space-y-3">
+              <p className="text-sm font-semibold text-gray-900">{pack.modal.toleranceExplTitle}</p>
+              <p className="text-[11px] text-gray-500 leading-relaxed">{pack.modal.toleranceExplBody}</p>
+              <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1">
+                {strongActiveFamilies.map((fam) => (
+                  <div key={fam.id} className="rounded-xl border border-gray-200 p-2.5 bg-gray-50/50">
+                    <p className="text-xs font-medium text-gray-800 mb-1.5">{fam.label}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {toleranceLevels.map((lv) => (
+                        <button
+                          key={lv.id}
+                          type="button"
+                          onClick={() => setFamilyTolerance(fam.id, lv.id)}
+                          className={`px-2 py-1 rounded-lg text-[10px] font-medium border-2 transition-all ${
+                            activesTolerance[fam.id] === lv.id
+                              ? "border-teal-500 bg-teal-50 text-teal-900"
+                              : "border-gray-200 text-gray-600 bg-white"
+                          }`}
+                        >
+                          {lv.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <AiDisclaimer />
             <div className="flex gap-3">
               <button type="button" onClick={() => setStep(3)} className="btn-secondary flex-1"><ArrowLeft className="w-5 h-5" />{t("common.back")}</button>
               <button
                 type="button"
                 onClick={() => {
                   setSubmitError("");
-                  setShowRoutineModal(true);
+                  handleSubmit();
                 }}
                 className="btn-primary flex-1"
               >
@@ -1326,155 +1349,6 @@ export default function Analyze() {
                 {pack.step4.noPhotoNote}
               </p>
             )}
-          </div>
-        )}
-
-        {showRoutineModal && (
-          <div
-            className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/55"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="routine-modal-title"
-            onClick={() => setShowRoutineModal(false)}
-          >
-            <div
-              className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-4 sm:p-5 space-y-4 border border-gray-100"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <h3 id="routine-modal-title" className="font-bold text-gray-900 text-lg leading-tight">
-                    {pack.modal.routineBeforeTitle}
-                  </h3>
-                  <p className="text-xs text-gray-600 mt-1.5 leading-relaxed">
-                    {pack.modal.routineBeforeBody}
-                  </p>
-                </div>
-              </div>
-              {!photoFile && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/90 p-3 text-[11px] text-amber-950 leading-relaxed">
-                  <p className="font-semibold text-amber-950 mb-1">{pack.modal.noPhotoTitle}</p>
-                  <p>{pack.modal.noPhotoBody}</p>
-                </div>
-              )}
-              <div className="rounded-xl bg-teal-50/80 border border-teal-100 p-3 space-y-2 text-xs text-gray-700 leading-relaxed">
-                <p className="font-semibold text-teal-900">{pack.modal.productTruthTitle}</p>
-                <ul className="list-disc list-inside space-y-1.5 text-gray-600">
-                  <li>{pack.modal.productTruth1}</li>
-                  <li>{pack.modal.productTruth2}</li>
-                </ul>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">{pack.modal.toleranceExplTitle}</p>
-                  <p className="text-[11px] text-gray-500 leading-relaxed mt-1">{pack.modal.toleranceExplBody}</p>
-                </div>
-                <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1">
-                  {strongActiveFamilies.map((fam) => (
-                    <div key={fam.id} className="rounded-xl border border-gray-200 p-2.5 bg-gray-50/50">
-                      <p className="text-xs font-medium text-gray-800 mb-1.5">{fam.label}</p>
-                      <div className="flex flex-wrap gap-1">
-                        {toleranceLevels.map((lv) => (
-                          <button
-                            key={lv.id}
-                            type="button"
-                            onClick={() => setFamilyTolerance(fam.id, lv.id)}
-                            className={`px-2 py-1 rounded-lg text-[10px] font-medium border-2 transition-all ${
-                              activesTolerance[fam.id] === lv.id
-                                ? "border-teal-500 bg-teal-50 text-teal-900"
-                                : "border-gray-200 text-gray-600 bg-white"
-                            }`}
-                          >
-                            {lv.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
-                <button
-                  type="button"
-                  className="btn-secondary flex-1"
-                  onClick={() => setShowRoutineModal(false)}
-                >
-                  {pack.modal.back}
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary flex-1"
-                  onClick={() => {
-                    if (!photoFile && !allowRoutineWithoutPhotoRef.current) {
-                      setShowSkipPhotoModal(true);
-                      return;
-                    }
-                    setShowRoutineModal(false);
-                    handleSubmit();
-                  }}
-                >
-                  {pack.modal.understandCreate}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showSkipPhotoModal && (
-          <div
-            className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="skip-photo-title"
-            onClick={() => setShowSkipPhotoModal(false)}
-          >
-            <div
-              className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5 space-y-4 border border-amber-100"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-amber-700" />
-                </div>
-                <div>
-                  <h3 id="skip-photo-title" className="font-bold text-gray-900 text-base leading-tight">
-                    {pack.skipPhoto.title}
-                  </h3>
-                  <p className="text-xs text-gray-600 mt-2 leading-relaxed">
-                    {pack.skipPhoto.body1}
-                  </p>
-                  <p className="text-xs text-gray-600 mt-2 leading-relaxed">
-                    {pack.skipPhoto.body2}
-                  </p>
-                </div>
-              </div>
-              <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1">
-                <button
-                  type="button"
-                  className="btn-secondary flex-1"
-                  onClick={() => {
-                    setShowSkipPhotoModal(false);
-                  }}
-                >
-                  {pack.skipPhoto.addPhoto}
-                </button>
-                <button
-                  type="button"
-                  className="btn-primary flex-1"
-                  onClick={() => {
-                    allowRoutineWithoutPhotoRef.current = true;
-                    setShowSkipPhotoModal(false);
-                    setShowRoutineModal(false);
-                    handleSubmit();
-                  }}
-                >
-                  {pack.skipPhoto.createAnyway}
-                </button>
-              </div>
-            </div>
           </div>
         )}
 
