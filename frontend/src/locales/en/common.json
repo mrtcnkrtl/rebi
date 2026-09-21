@@ -173,7 +173,9 @@
     "skip": "Skip",
     "hide": "Hide",
     "details": "Details",
-    "aiDisclaimer": "Rebi is an AI assistant; its suggestions have a margin of error and are not a medical diagnosis or treatment."
+    "aiDisclaimer": "Rebi is an AI assistant; its suggestions have a margin of error and are not a medical diagnosis or treatment.",
+    "aiDisclaimerTitle": "Rebi is an AI",
+    "aiDisclaimerAck": "Got it"
   },
   "subscribe": {
     "title": "Rebi Plus",

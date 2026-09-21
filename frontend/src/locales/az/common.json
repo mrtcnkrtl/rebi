@@ -111,7 +111,9 @@
     "skip": "Keç",
     "hide": "Gizlə",
     "details": "Detallar",
-    "aiDisclaimer": "Rebi süni intellekt köməkçisidir; tövsiyələr xəta payı daşıyır və tibbi diaqnoz və ya müalicə əvəzi deyil."
+    "aiDisclaimer": "Rebi süni intellekt köməkçisidir; tövsiyələr xəta payı daşıyır və tibbi diaqnoz və ya müalicə əvəzi deyil.",
+    "aiDisclaimerTitle": "Rebi süni intellektdir",
+    "aiDisclaimerAck": "Anladım"
   },
   "subscribe": {
     "title": "Rebi Plus",

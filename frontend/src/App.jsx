@@ -4,6 +4,7 @@ import { ThemeProvider, ThemePremiumGate } from "./context/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
+import AiDisclaimerModal from "./components/AiDisclaimerModal";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -36,6 +37,7 @@ function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
+  const isAiSurface = isDashboard || location.pathname.startsWith("/rebi");
   const nextParam = new URLSearchParams(location.search || "").get("next");
   const next = nextParam ? String(nextParam) : "/dashboard";
 
@@ -58,6 +60,7 @@ function AppRoutes() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       {user && isDashboard && <BottomNav />}
+      {isAiSurface && <AiDisclaimerModal />}
     </>
   );
 }

@@ -173,7 +173,9 @@
     "skip": "Atla",
     "hide": "Gizle",
     "details": "Detay",
-    "aiDisclaimer": "Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez."
+    "aiDisclaimer": "Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez.",
+    "aiDisclaimerTitle": "Rebi bir yapay zekâdır",
+    "aiDisclaimerAck": "Anladım"
   },
   "subscribe": {
     "title": "Rebi Plus",
