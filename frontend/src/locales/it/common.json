@@ -113,7 +113,10 @@
     "details": "Details",
     "aiDisclaimer": "Rebi is an AI assistant; its suggestions have a margin of error and are not a medical diagnosis or treatment.",
     "aiDisclaimerTitle": "Rebi is an AI",
-    "aiDisclaimerAck": "Got it"
+    "aiDisclaimerAck": "Got it",
+    "consentRecoveryTitle": "Serve di nuovo il tuo consenso",
+    "consentRecoveryBody": "Per continuare a usare Rebi dobbiamo registrare l'accettazione dell'informativa privacy e il consenso esplicito. Poi invia di nuovo il tuo messaggio.",
+    "consentRecoveryCta": "Accetta e continua"
   },
   "subscribe": {
     "title": "Rebi Plus",

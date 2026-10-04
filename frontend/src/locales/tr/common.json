@@ -175,7 +175,10 @@
     "details": "Detay",
     "aiDisclaimer": "Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez.",
     "aiDisclaimerTitle": "Rebi bir yapay zekâdır",
-    "aiDisclaimerAck": "Anladım"
+    "aiDisclaimerAck": "Anladım",
+    "consentRecoveryTitle": "Onayların yenilenmesi gerekiyor",
+    "consentRecoveryBody": "Rebi'yi kullanmaya devam etmek için KVKK aydınlatma metni ve açık rıza onayını kaydetmemiz gerekiyor. Onayladıktan sonra mesajını tekrar gönderebilirsin.",
+    "consentRecoveryCta": "Onayla ve devam et"
   },
   "subscribe": {
     "title": "Rebi Plus",

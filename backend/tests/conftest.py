@@ -10,6 +10,8 @@ os.environ.setdefault(
     "API_JWT_BYPASS_USER_IDS",
     "00000000-0000-4000-8000-000000000001,demo,demo-user-id",
 )
+# Şema testleri /openapi.json okur; üretimde dokümantasyon kapalıdır.
+os.environ.setdefault("API_DOCS_ENABLED", "1")
 
 from main import app
 

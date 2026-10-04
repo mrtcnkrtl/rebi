@@ -5,6 +5,7 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import Navbar from "./components/Navbar";
 import BottomNav from "./components/BottomNav";
 import AiDisclaimerModal from "./components/AiDisclaimerModal";
+import ConsentRecoveryModal from "./components/ConsentRecoveryModal";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -61,6 +62,7 @@ function AppRoutes() {
       </Routes>
       {user && isDashboard && <BottomNav />}
       {isAiSurface && <AiDisclaimerModal />}
+      {user && <ConsentRecoveryModal />}
     </>
   );
 }

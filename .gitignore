@@ -17,3 +17,6 @@ backend/venv/
 # Large local backups / archives (GitHub 100MB limit)
 backups/
 *.tar.gz
+
+# Supabase CLI çalışma dosyaları (her komutta değişir)
+supabase/.temp/

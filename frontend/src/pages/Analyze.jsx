@@ -8,6 +8,7 @@ import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import { hasCompletedOnboarding } from "../lib/routineTracking";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
+import { isConsentError, requestConsentRecovery } from "../lib/consentRecovery";
 import { analyzeSkinPhotoQuality } from "../lib/imageQuality";
 import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import LoadingScreen from "../components/LoadingScreen";
@@ -675,6 +676,11 @@ export default function Analyze() {
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
+        if (isConsentError(response.status, data)) {
+          requestConsentRecovery();
+          setSubmitError(t("common.consentRecoveryBody"));
+          return;
+        }
         const msg = formatApiErrorDetail(data);
         setSubmitError(msg + (response.status ? ` (${response.status})` : ""));
         return;

@@ -1,21 +1,21 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Sparkles } from "lucide-react";
 
 /** Yapay zekâ beyanı: cihaz başına bir kez onaylanan açılır kutu. */
 const ACK_KEY = "rebi-ai-disclaimer-ack-v1";
 
+function alreadyAcknowledged() {
+  try {
+    return localStorage.getItem(ACK_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function AiDisclaimerModal() {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    try {
-      setOpen(localStorage.getItem(ACK_KEY) !== "1");
-    } catch {
-      setOpen(true);
-    }
-  }, []);
+  const [open, setOpen] = useState(() => !alreadyAcknowledged());
 
   if (!open) return null;
 

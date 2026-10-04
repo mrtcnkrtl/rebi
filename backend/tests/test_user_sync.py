@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import jwt
 import pytest
 
@@ -277,6 +279,125 @@ def test_snapshot_reports_missing_consent(monkeypatch, client, headers):
     assert body["consent"]["legal_accepted"] is False
     assert body["consent"]["ai_processing_allowed"] is False
     assert body["has_routine"] is False
+
+
+def test_local_history_is_imported_once(monkeypatch, client, headers):
+    db = _db(monkeypatch, chat_history=[])
+    payload = {
+        "user_id": USER_ID,
+        "messages": [
+            {"role": "user", "content": "eski soru"},
+            {"role": "assistant", "content": "eski yanıt"},
+        ],
+    }
+
+    first = client.post("/chat/history/import", json=payload, headers=headers)
+    second = client.post("/chat/history/import", json=payload, headers=headers)
+
+    assert first.json()["imported"] == 2
+    assert first.json()["skipped"] is False
+    # Sunucuda geçmiş varsa ikinci aktarma kopya üretmez.
+    assert second.json() == {"imported": 0, "skipped": True, "cursor": None}
+    assert len(db.tables["chat_history"].rows) == 2
+
+
+def test_import_drops_empty_messages_and_caps_count(monkeypatch, client, headers):
+    db = _db(monkeypatch, chat_history=[])
+    messages = [{"role": "user", "content": f"mesaj {i}"} for i in range(80)]
+    messages.append({"role": "assistant", "content": "   "})
+
+    r = client.post(
+        "/chat/history/import",
+        json={"user_id": USER_ID, "messages": messages},
+        headers=headers,
+    )
+
+    assert r.json()["imported"] == 59
+    assert len(db.tables["chat_history"].rows) == 59
+
+
+def test_location_event_requires_location_consent(monkeypatch, client, headers):
+    _db(monkeypatch, privacy_preferences=[{
+        "user_id": USER_ID,
+        "ai_processing_allowed": True,
+        "location_processing_allowed": False,
+    }])
+
+    r = client.post(
+        "/daily_tracking/ingest",
+        json={"user_id": USER_ID, "type": "location", "payload": {"lat": 41.0, "lon": 29.0}},
+        headers=headers,
+    )
+
+    assert r.status_code == 403
+    assert "konum" in r.json()["detail"].lower()
+
+
+def test_non_location_event_needs_no_consent(monkeypatch, client, headers):
+    _db(monkeypatch)
+
+    r = client.post(
+        "/daily_tracking/ingest",
+        json={"user_id": USER_ID, "type": "water_intake", "payload": {"ml": 200}},
+        headers=headers,
+    )
+
+    assert r.status_code == 200
+
+
+def test_plan_uses_profile_location_when_client_sends_none(monkeypatch, client, headers):
+    _db(
+        monkeypatch,
+        profiles=[{"id": USER_ID, "location_lat": 41.0, "location_lon": 29.0}],
+        privacy_preferences=[{"user_id": USER_ID, "location_processing_allowed": True}],
+    )
+
+    async def _weather(lat, lon):
+        assert (lat, lon) == (41.0, 29.0)
+        return {"uv_index": 8, "humidity": 40, "temperature": 28}
+
+    monkeypatch.setattr(main, "fetch_weather", _weather)
+    main._WEATHER_CACHE.clear()
+
+    body = client.get("/today/plan", params={"user_id": USER_ID}, headers=headers).json()
+
+    assert body["weather_source"] == "profile"
+    assert body["weather"]["uv_index"] == 8
+    assert "spf_refresh" in {r["id"] for r in body["reminders"]}
+
+
+def test_plan_falls_back_to_defaults_without_location_consent(monkeypatch, client, headers):
+    _db(
+        monkeypatch,
+        profiles=[{"id": USER_ID, "location_lat": 41.0, "location_lon": 29.0}],
+        privacy_preferences=[{"user_id": USER_ID, "location_processing_allowed": False}],
+    )
+
+    async def _never_called(lat, lon):
+        raise AssertionError("Konum izni yokken hava durumu çekilmemeli")
+
+    monkeypatch.setattr(main, "fetch_weather", _never_called)
+
+    body = client.get("/today/plan", params={"user_id": USER_ID}, headers=headers).json()
+
+    assert body["weather_source"] == "default"
+
+
+def test_weather_is_cached_per_region_and_time_block(monkeypatch):
+    calls = []
+
+    async def _weather(lat, lon):
+        calls.append((lat, lon))
+        return {"uv_index": 5, "humidity": 50, "temperature": 20}
+
+    monkeypatch.setattr(main, "fetch_weather", _weather)
+    main._WEATHER_CACHE.clear()
+
+    first = asyncio.run(main._weather_for_coords(41.0150, 28.9790))
+    second = asyncio.run(main._weather_for_coords(41.0210, 28.9755))
+
+    assert first == second
+    assert len(calls) == 1
 
 
 def test_repeated_offline_event_is_written_once(monkeypatch, client, headers):

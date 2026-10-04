@@ -30,9 +30,14 @@ hâlihazırda kullanılan Supabase SDK'sı ile aynı projeye bağlanır.
 ### `GET /today/plan?user_id=...&lat=&lon=`
 
 `lat`/`lon` verilirse canlı hava durumu kullanılır ve **konum izni** gerekir
-(`consent.location_processing_allowed`). Verilmezse bugün kaydedilmiş hava olayı,
-o da yoksa varsayılan değerler kullanılır; hangisi olduğu `weather_source`
-alanındadır (`live` | `tracking` | `default`).
+(`consent.location_processing_allowed`). Verilmezse sırayla bugün kaydedilmiş hava
+olayı, profildeki son bilinen koordinat (konum izni varsa) ve varsayılan değerler
+denenir; hangisinin kullanıldığı `weather_source` alanındadır
+(`live` | `tracking` | `profile` | `default`).
+
+Varsayılan değerlerde UV 3 kabul edilir ve güneş kremi tazeleme hatırlatıcısı
+oluşmaz. Hava durumuna bağlı hatırlatıcıların çalışması için uygulama ya `lat`/`lon`
+göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
 
 ```json
 {
@@ -119,7 +124,7 @@ Olay tipleri ve yükleri:
 | `routine_step` | `{ "done": true, "step_order": 20 }` | adım adım işaretleme |
 | `spf_refresh` | `{}` | güneş kremi tazelendi |
 | `stress` / `sleep` | `{ "value": 3 }` / `{ "hours": 7 }` | |
-| `location` | `{ "lat": 41.0, "lon": 29.0 }` | sunucu hava durumu anlık görüntüsü ekler; konum izni gerekir |
+| `location` | `{ "lat": 41.0, "lon": 29.0 }` | sunucu hava durumu anlık görüntüsü ekler; **konum izni yoksa 403** |
 | `photo_meta` | serbest | fotoğraf üst verisi |
 | `checkin_feedback` | serbest | |
 
@@ -155,6 +160,9 @@ Sohbet geçmişi sunucuda tutulur; web ve mobil aynı konuşmayı görür.
   mesajlar ve `cursor`. `after_seq` verilirse yalnızca o imleçten sonrakiler gelir;
   cihaz `cursor` değerini saklayıp her açılışta tüm geçmişi indirmemelidir.
 - `DELETE /chat/history?user_id=...` — sohbeti her iki platformdan siler.
+- `POST /chat/history/import` — `{ user_id, messages: [{ role, content }], surface }`.
+  Sunucu öncesi dönemden kalan yerel geçmişi bir kez yukarı taşır; sunucuda kayıt
+  varsa `skipped: true` döner ve kopya oluşmaz (en fazla 60 mesaj).
 - `GET /chat_usage?user_id=...` — üst sayaç için kota özeti.
 
 ## Bildirimler
@@ -233,4 +241,14 @@ olmadan konumlu istekler, fotoğraf izni olmadan fotoğraf yükleme reddedilir.
 | 502 | veritabanı veya sağlayıcı geçici hatası |
 | 503 | sunucu yapılandırması eksik (ör. push anahtarı yok) |
 
-Uçların tam şeması: `https://rebiovil.com/api/openapi.json`
+## Şema dosyası
+
+Üretimde `/docs`, `/redoc` ve `/openapi.json` kapalıdır (uç listesini dışarıya
+açmamak için). Şemayı üretmek gerektiğinde:
+
+```bash
+cd backend
+API_DOCS_ENABLED=1 python -c "import json, main; print(json.dumps(main.app.openapi(), ensure_ascii=False))" > openapi.json
+```
+
+Geliştirme ortamında `API_DOCS_ENABLED=1` ile `/docs` arayüzü açılır.

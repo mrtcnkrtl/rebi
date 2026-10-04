@@ -86,6 +86,7 @@ from rate_limit import (
     LIMIT_CHAT,
     LIMIT_CHAT_HISTORY,
     LIMIT_CHAT_HISTORY_CLEAR,
+    LIMIT_CHAT_HISTORY_IMPORT,
     LIMIT_USER_DATA,
     LIMIT_USER_PROFILE_WRITE,
     LIMIT_DEVICE_REGISTER,
@@ -138,6 +139,13 @@ _OPENAPI_TAGS = [
     },
 ]
 
+def docs_enabled() -> bool:
+    """Üretimde uç listesi ve şema dışarıya kapalıdır; API_DOCS_ENABLED=1 açar."""
+    return (os.getenv("API_DOCS_ENABLED") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+_DOCS_ON = docs_enabled()
+
 app = FastAPI(
     title="Rebi API",
     version="3.0.0",
@@ -145,13 +153,12 @@ app = FastAPI(
         "Rebi holistik cilt bakım API’si. "
         "Mobil ve web istemcileri `POST` gövdelerinde `user_id` (Supabase `auth.users` UUID) kullanır. "
         "`SUPABASE_JWT_SECRET` tanımlıysa isteklere `Authorization: Bearer <access_token>` ekleyin; "
-        "`sub` ile `user_id` eşleşmeli. "
-        "Şema: [/openapi.json](/openapi.json), interaktif: [/docs](/docs)."
+        "`sub` ile `user_id` eşleşmeli."
     ),
     openapi_tags=_OPENAPI_TAGS,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
+    docs_url="/docs" if _DOCS_ON else None,
+    redoc_url="/redoc" if _DOCS_ON else None,
+    openapi_url="/openapi.json" if _DOCS_ON else None,
 )
 
 app.add_middleware(
@@ -163,17 +170,25 @@ app.add_middleware(
 )
 
 
+# Açılışta uygulanan şema durumu /health üzerinden görünür: sessiz şema
+# kayması deploy sonrası kontrolde yakalanır.
+_DB_SCHEMA_STATUS = "unknown"
+
+
 @app.on_event("startup")
 def _bootstrap_database_schema() -> None:
     """Supabase Postgres şifresi/URI varsa supabase/migrations/*.sql dosyalarını uygular."""
+    global _DB_SCHEMA_STATUS
     try:
         from db_bootstrap import ensure_daily_events_schema
 
-        if ensure_daily_events_schema() == "error":
+        _DB_SCHEMA_STATUS = ensure_daily_events_schema()
+        if _DB_SCHEMA_STATUS == "error":
             log.warning(
                 "daily_events şeması uygulanamadı; API çalışmaya devam ediyor."
             )
     except Exception as e:
+        _DB_SCHEMA_STATUS = "error"
         log.warning("DB bootstrap çalıştırılamadı (yok sayılıyor): %s", e)
 
 
@@ -468,6 +483,77 @@ def _consent_state(supabase, user_id: str) -> dict:
     return state
 
 
+def _privacy_permission_granted(supabase, user_id: str, permission: str) -> bool:
+    """
+    İzin var mı? `_require_privacy_permission` isteği keser; bu sürüm yalnızca
+    sorar ve hata durumunda izin yok sayar (sessizce atlanır).
+    """
+    field = {
+        "ai": "ai_processing_allowed",
+        "location": "location_processing_allowed",
+        "photo": "photo_processing_allowed",
+    }[permission]
+    if not should_use_supabase_db(supabase, user_id):
+        return False
+    try:
+        r = (
+            supabase.table("privacy_preferences")
+            .select(field)
+            .eq("user_id", user_id)
+            .eq(field, True)
+            .limit(1)
+            .execute()
+        )
+        return bool(r.data)
+    except Exception as e:
+        log.error("İzin sorgusu başarısız: %s", type(e).__name__)
+        return False
+
+
+# Aynı bölge ve 3 saatlik dilim için hava durumu bir kez çekilir; dağıtıcı
+# yüzlerce kullanıcı için sağlayıcıyı tekrar tekrar çağırmaz.
+_WEATHER_CACHE: dict[tuple, dict] = {}
+_WEATHER_CACHE_MAX = 500
+
+
+async def _weather_for_coords(lat: float, lon: float) -> dict:
+    now = datetime.now(timezone.utc)
+    key = (round(float(lat), 1), round(float(lon), 1), now.strftime("%Y-%m-%d"), now.hour // 3)
+    cached = _WEATHER_CACHE.get(key)
+    if cached is not None:
+        return dict(cached)
+    data = await fetch_weather(lat, lon)
+    if len(_WEATHER_CACHE) >= _WEATHER_CACHE_MAX:
+        _WEATHER_CACHE.clear()
+    _WEATHER_CACHE[key] = data
+    return dict(data)
+
+
+async def _weather_from_profile(supabase, user_id: str) -> Optional[dict]:
+    """
+    İstemci konum göndermediğinde profildeki son bilinen koordinatı kullan.
+    Konum izni yoksa hava durumu çekilmez.
+    """
+    if not _privacy_permission_granted(supabase, user_id, "location"):
+        return None
+    try:
+        r = (
+            supabase.table("profiles")
+            .select("location_lat,location_lon")
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Profil konumu okunamadı: %s", type(e).__name__)
+        return None
+    row = (r.data or [{}])[0] or {}
+    lat, lon = row.get("location_lat"), row.get("location_lon")
+    if lat is None or lon is None:
+        return None
+    return await _weather_for_coords(lat, lon)
+
+
 def _profile_skin_type(supabase, user_id: str) -> str:
     if not should_use_supabase_db(supabase, user_id):
         return "normal"
@@ -719,6 +805,28 @@ class ChatHistoryMessage(BaseModel):
     content: str
     surface: str
     created_at: Optional[str] = None
+
+
+class ChatHistoryImportMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class ChatHistoryImportRequest(BaseModel):
+    user_id: str
+    messages: list[ChatHistoryImportMessage]
+    surface: Literal["general", "concern"] = "general"
+
+    @model_validator(mode="after")
+    def _cap_messages(self):
+        self.messages = self.messages[-_CHAT_IMPORT_MAX_MESSAGES:]
+        return self
+
+
+class ChatHistoryImportResponse(BaseModel):
+    imported: int
+    skipped: bool
+    cursor: Optional[int] = None
 
 
 class ChatHistoryResponse(BaseModel):
@@ -991,7 +1099,7 @@ class TodayPlanResponse(BaseModel):
     has_routine: bool
     routine: list[dict] = []
     weather: dict
-    weather_source: Literal["live", "tracking", "default"]
+    weather_source: Literal["live", "tracking", "profile", "default"]
     environment_advice: list[dict] = []
     reminders: list[dict] = []
     progress: dict
@@ -1123,6 +1231,7 @@ async def health():
         ),
         "rate_limit_backend": rate_limit_backend_label(),
         "push": "configured" if push_configured() else "off",
+        "db_schema": _DB_SCHEMA_STATUS,
     }
     if not auth_valid:
         return JSONResponse(status_code=503, content=body)
@@ -1141,6 +1250,10 @@ async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestReques
     Supabase varsa daily_events tablosuna yazar; yoksa bellek içi saklar.
     """
     enforce_supabase_user(request, req.user_id)
+    payload_has_coords = (req.payload or {}).get("lat") is not None
+    if req.type == "location" or payload_has_coords:
+        # Koordinat hem saklanıyor hem hava durumu sağlayıcısına gidiyor.
+        _require_privacy_permission(req.user_id, "location")
     ts = req.timestamp or _utc_now_iso()
     log_date = _safe_date_from_timestamp(ts)
     event = {
@@ -1297,11 +1410,16 @@ async def today_plan_endpoint(
     weather_source = "default"
     if lat is not None and lon is not None:
         _require_privacy_permission(user_id, "location")
-        weather = await fetch_weather(lat, lon)
+        weather = await _weather_for_coords(lat, lon)
         weather_source = "live"
     elif aggregated.get("weather"):
         weather = dict(aggregated["weather"])
         weather_source = "tracking"
+    else:
+        from_profile = await _weather_from_profile(supabase, user_id)
+        if from_profile:
+            weather = from_profile
+            weather_source = "profile"
 
     row = _load_active_routine(supabase, user_id)
     routine = row.get("active_routine") or []
@@ -1518,6 +1636,7 @@ async def me_snapshot(request: Request, user_id: str = Query(..., min_length=1))
 
 _PUSH_DISPATCH_TOLERANCE_MINUTES = 10
 _PUSH_MAX_TOKENS_PER_USER = 5
+_PUSH_WEATHER_HOURS = (10, 17)
 
 
 def _require_push_dispatch_secret(request: Request) -> None:
@@ -1677,9 +1796,15 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
         local_now = datetime.now(timezone.utc) + timedelta(minutes=entry["offset"])
         log_date = local_now.date().isoformat()
         aggregated = _aggregate_daily_events(_load_daily_events(supabase, uid, log_date))
-        weather = aggregated.get("weather") or dict(WEATHER_FALLBACK)
+        weather = aggregated.get("weather")
+        # Havaya bağlı tek hatırlatıcılar SPF (11–16) ve balsam (12–13) olduğu
+        # için sağlayıcıya yalnızca gün ortası penceresinde başvurulur.
+        if not weather and _PUSH_WEATHER_HOURS[0] <= local_now.hour <= _PUSH_WEATHER_HOURS[1]:
+            weather = await _weather_from_profile(supabase, uid)
         plan = build_reminders(
-            weather, aggregated, _checkin_done_today(supabase, uid, log_date)
+            weather or dict(WEATHER_FALLBACK),
+            aggregated,
+            _checkin_done_today(supabase, uid, log_date),
         )
         for reminder in due_reminders(
             plan, local_now.strftime("%H:%M"), _PUSH_DISPATCH_TOLERANCE_MINUTES
@@ -1986,6 +2111,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
 
 _CHAT_CONTENT_MAX_CHARS = 8000
 _CHAT_HISTORY_MAX_ROWS = 200
+_CHAT_IMPORT_MAX_MESSAGES = 60
 
 
 def _persist_chat_turn(
@@ -2073,6 +2199,61 @@ async def chat_history_get(
         messages=messages,
         cursor=(messages[-1].seq if messages else after_seq),
         synced=True,
+    )
+
+
+@app.post(
+    "/chat/history/import",
+    response_model=ChatHistoryImportResponse,
+    tags=["chat"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_HISTORY_IMPORT))],
+)
+async def chat_history_import(request: Request, req: ChatHistoryImportRequest):
+    """
+    Sunucu öncesi dönemden kalan yerel sohbeti bir kez yukarı taşır. Sunucuda
+    bu yüzey için kayıt varsa içe aktarma atlanır; kopya geçmiş oluşmaz.
+    """
+    enforce_supabase_user(request, req.user_id)
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, req.user_id):
+        return ChatHistoryImportResponse(imported=0, skipped=True)
+
+    try:
+        existing = (
+            supabase.table("chat_history")
+            .select("seq")
+            .eq("user_id", req.user_id)
+            .eq("surface", req.surface)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Sohbet geçmişi kontrol edilemedi: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Sohbet geçmişi şu an okunamadı.")
+    if existing.data:
+        return ChatHistoryImportResponse(
+            imported=0, skipped=True, cursor=_chat_last_seq(supabase, req.user_id)
+        )
+
+    rows = [
+        {
+            "user_id": req.user_id,
+            "surface": req.surface,
+            "role": m.role,
+            "content": m.content.strip()[:_CHAT_CONTENT_MAX_CHARS],
+        }
+        for m in req.messages
+        if m.content.strip()
+    ]
+    if not rows:
+        return ChatHistoryImportResponse(imported=0, skipped=True)
+    try:
+        supabase.table("chat_history").insert(rows).execute()
+    except Exception as e:
+        log.error("Sohbet geçmişi aktarılamadı: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Sohbet geçmişi şu an aktarılamadı.")
+    return ChatHistoryImportResponse(
+        imported=len(rows), skipped=False, cursor=_chat_last_seq(supabase, req.user_id)
     )
 
 

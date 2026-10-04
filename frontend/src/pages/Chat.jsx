@@ -6,6 +6,7 @@ import { API_URL } from "../lib/supabase";
 import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
+import { isConsentError, requestConsentRecovery } from "../lib/consentRecovery";
 import { Bot, Send, Loader2, Sparkles, Crown, Lock, ArrowRight, X } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import AiDisclaimer from "../components/AiDisclaimer";
@@ -14,6 +15,10 @@ import { getRoutineSnapshot, isRoutineTrackingAccepted } from "../lib/routineTra
 
 function chatHistoryKey(userId) {
   return `rebi-chat-history_${userId || "anonymous"}`;
+}
+
+function chatImportedKey(userId) {
+  return `rebi-chat-imported-v1_${userId || "anonymous"}`;
 }
 
 function loadChatHistory(userId) {
@@ -25,6 +30,34 @@ function loadChatHistory(userId) {
     return parsed.some((m) => m && m.role === "user") ? parsed : [];
   } catch {
     return [];
+  }
+}
+
+async function importLocalHistory(userId, auth) {
+  let alreadyTried = true;
+  try {
+    alreadyTried = localStorage.getItem(chatImportedKey(userId)) === "1";
+  } catch {
+    /* localStorage kapalıysa aktarmayı denemeyelim */
+  }
+  if (alreadyTried) return;
+  const local = loadChatHistory(userId)
+    .filter((m) => m && (m.role === "user" || m.role === "assistant") && String(m.content || "").trim())
+    .map((m) => ({ role: m.role, content: String(m.content) }));
+  try {
+    localStorage.setItem(chatImportedKey(userId), "1");
+  } catch {
+    /* ignore */
+  }
+  if (!local.length) return;
+  try {
+    await fetch(`${API_URL}/chat/history/import`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...auth },
+      body: JSON.stringify({ user_id: userId, messages: local, surface: "general" }),
+    });
+  } catch {
+    /* çevrimdışı: yerel geçmiş yerinde kalır */
   }
 }
 
@@ -103,8 +136,12 @@ export default function Chat() {
         if (!r.ok || cancelled) return;
         const data = await r.json().catch(() => ({}));
         const messages = Array.isArray(data?.messages) ? data.messages : [];
-        // Sunucuda geçmiş yoksa yerel kopya korunur (eski sohbetler kaybolmasın).
-        if (!messages.length || sentThisSessionRef.current) return;
+        if (!messages.length) {
+          // Sunucu öncesi dönemden kalan yerel sohbeti bir kez yukarı taşı.
+          await importLocalHistory(user.id, auth);
+          return;
+        }
+        if (sentThisSessionRef.current) return;
         setHistory(messages.map((m) => ({ role: m.role, content: m.content })));
         setHistoryOwnerId(user.id);
       } catch {
@@ -232,6 +269,12 @@ export default function Chat() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (isConsentError(res.status, data)) {
+          // Rıza kaydı yok: kullanıcıyı çıkışa zorlamadan onay kutusunu aç.
+          requestConsentRecovery();
+          setHistory([...newHist, { role: "assistant", content: t("common.consentRecoveryBody") }]);
+          return;
+        }
         let errText = formatApiErrorDetail(data) + (res.status ? ` (${res.status})` : "");
         if (res.status === 401) {
           errText =

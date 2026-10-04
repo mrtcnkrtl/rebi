@@ -2,6 +2,8 @@
 
 import pytest
 
+import main
+
 DEMO_UUID = "00000000-0000-4000-8000-000000000001"
 
 
@@ -20,6 +22,17 @@ def test_health(client):
     assert body.get("status") == "ok"
     assert "jwt_auth" in body
     assert "rate_limit_backend" in body
+    # Şema uygulaması sessizce başarısız olabiliyordu; durumu health söylüyor.
+    assert body.get("db_schema") in {"ok", "skipped", "error", "unknown"}
+    assert body.get("push") in {"configured", "off"}
+
+
+def test_docs_are_disabled_unless_explicitly_enabled(monkeypatch):
+    monkeypatch.delenv("API_DOCS_ENABLED", raising=False)
+    assert main.docs_enabled() is False
+
+    monkeypatch.setenv("API_DOCS_ENABLED", "1")
+    assert main.docs_enabled() is True
 
 
 def test_openapi_json(client):
