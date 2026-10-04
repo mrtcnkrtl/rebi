@@ -39,6 +39,8 @@ export default function Chat() {
 
   const [history, setHistory] = useState(() => loadChatHistory(effectiveUserId));
   const [historyOwnerId, setHistoryOwnerId] = useState(effectiveUserId);
+  // Bu oturumda mesaj gönderildiyse sunucu geçmişi üzerine yazmaz.
+  const sentThisSessionRef = useRef(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   /** Sohbet kotası: free_daily | plus_monthly | plus_unlimited | none */
@@ -76,6 +78,7 @@ export default function Chat() {
   }, [history, historyOwnerId, effectiveUserId]);
 
   useEffect(() => {
+    sentThisSessionRef.current = false;
     setHistory(loadChatHistory(effectiveUserId));
     setHistoryOwnerId(effectiveUserId);
     setUsage(null);
@@ -85,6 +88,33 @@ export default function Chat() {
     setRoutineAccepted(false);
     setEdgeOpen(false);
   }, [effectiveUserId]);
+
+  // Sunucudaki geçmiş: web ve mobil aynı konuşmayı görür.
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const auth = await apiAuthHeaders();
+        const r = await fetch(
+          `${API_URL}/chat/history?user_id=${encodeURIComponent(user.id)}&surface=general&limit=50`,
+          { headers: { ...auth } },
+        );
+        if (!r.ok || cancelled) return;
+        const data = await r.json().catch(() => ({}));
+        const messages = Array.isArray(data?.messages) ? data.messages : [];
+        // Sunucuda geçmiş yoksa yerel kopya korunur (eski sohbetler kaybolmasın).
+        if (!messages.length || sentThisSessionRef.current) return;
+        setHistory(messages.map((m) => ({ role: m.role, content: m.content })));
+        setHistoryOwnerId(user.id);
+      } catch {
+        /* çevrimdışı: yerel geçmişle devam */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id]);
 
   useEffect(() => {
     let cancelled = false;
@@ -184,6 +214,7 @@ export default function Chat() {
     if (!input.trim() || loading || paywallOpen) return;
     const msg = input.trim();
     setInput("");
+    sentThisSessionRef.current = true;
     const newHist = [...history, { role: "user", content: msg }];
     setHistory(newHist);
     setLoading(true);
@@ -239,13 +270,24 @@ export default function Chat() {
     }
   };
 
-  const clearChat = () => {
+  const clearChat = async () => {
     setHistory([]);
     setPaywallOpen(false);
     try {
       localStorage.removeItem(chatHistoryKey(effectiveUserId));
     } catch {
       /* ignore */
+    }
+    if (!user?.id) return;
+    // Sunucudan da sil; aksi halde mobilde veya yeniden girişte geri gelir.
+    try {
+      const auth = await apiAuthHeaders();
+      await fetch(`${API_URL}/chat/history?user_id=${encodeURIComponent(user.id)}`, {
+        method: "DELETE",
+        headers: { ...auth },
+      });
+    } catch {
+      /* çevrimdışı: sonraki temizlemede silinir */
     }
   };
 

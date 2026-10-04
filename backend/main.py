@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal
 import re
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
 from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather
@@ -81,6 +81,10 @@ from rate_limit import (
     LIMIT_DAILY_CHECKIN_STATUS,
     LIMIT_GENERATE_ROUTINE,
     LIMIT_CHAT,
+    LIMIT_CHAT_HISTORY,
+    LIMIT_CHAT_HISTORY_CLEAR,
+    LIMIT_USER_DATA,
+    LIMIT_USER_PROFILE_WRITE,
     LIMIT_UPLOAD_PHOTO,
     LIMIT_ACCOUNT_DELETE,
     LIMIT_INTRO_SEEN,
@@ -199,7 +203,11 @@ _MEM_DAILY_EVENTS: dict[tuple[str, str], list[dict]] = {}
 
 def _mem_append_event(user_id: str, log_date: str, event: dict) -> None:
     key = (user_id, log_date)
-    _MEM_DAILY_EVENTS.setdefault(key, []).append(event)
+    bucket = _MEM_DAILY_EVENTS.setdefault(key, [])
+    cid = event.get("client_event_id")
+    if cid and any(e.get("client_event_id") == cid for e in bucket):
+        return
+    bucket.append(event)
 
 
 _MAX_PRODUCTS_FINISHED = 20
@@ -380,6 +388,79 @@ def _checkin_done_today(supabase, user_id: str, log_date: str) -> bool:
     except Exception as e:
         log.error("Check-in durumu okunamadı: %s", e)
         return False
+
+
+_PROFILE_FIELDS = "full_name,skin_type,age,gender,city,updated_at"
+
+
+def _load_profile_row(supabase, user_id: str) -> dict:
+    if not should_use_supabase_db(supabase, user_id):
+        return {}
+    try:
+        r = supabase.table("profiles").select(_PROFILE_FIELDS).eq("id", user_id).limit(1).execute()
+        return (r.data or [{}])[0] or {}
+    except Exception as e:
+        log.error("Profil okunamadı: %s", type(e).__name__)
+        return {}
+
+
+def _chat_last_seq(supabase, user_id: str) -> Optional[int]:
+    """Sohbet geçmişinin son imleci; mobil bunu artımlı okuma için kullanır."""
+    if not should_use_supabase_db(supabase, user_id):
+        return None
+    try:
+        r = (
+            supabase.table("chat_history")
+            .select("seq")
+            .eq("user_id", user_id)
+            .order("seq", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return int(r.data[0]["seq"]) if r.data else None
+    except Exception as e:
+        log.error("Sohbet imleci okunamadı: %s", type(e).__name__)
+        return None
+
+
+def _consent_state(supabase, user_id: str) -> dict:
+    """
+    Rıza ve gizlilik izinleri. Mobil istemci bunu açılışta okur; aksi halde
+    yapay zekâ uçları 403 döner ve sebebi istemcide görünmez.
+    """
+    state = {
+        "legal_version": _LEGAL_CONSENT_VERSION,
+        "legal_accepted": False,
+        "ai_processing_allowed": False,
+        "location_processing_allowed": False,
+        "photo_processing_allowed": False,
+    }
+    if not should_use_supabase_db(supabase, user_id):
+        return state
+    try:
+        c = (
+            supabase.table("legal_consents")
+            .select("accepted_at")
+            .eq("user_id", user_id)
+            .eq("document_version", _LEGAL_CONSENT_VERSION)
+            .limit(1)
+            .execute()
+        )
+        state["legal_accepted"] = bool(c.data)
+        p = (
+            supabase.table("privacy_preferences")
+            .select("ai_processing_allowed,location_processing_allowed,photo_processing_allowed")
+            .eq("user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        row = (p.data or [{}])[0] or {}
+        state["ai_processing_allowed"] = row.get("ai_processing_allowed") is True
+        state["location_processing_allowed"] = row.get("location_processing_allowed") is True
+        state["photo_processing_allowed"] = row.get("photo_processing_allowed") is True
+    except Exception as e:
+        log.error("Rıza durumu okunamadı: %s", type(e).__name__)
+    return state
 
 
 def _profile_skin_type(supabase, user_id: str) -> str:
@@ -627,6 +708,22 @@ class ChatGeneralResponse(BaseModel):
     evidence_sources: Optional[list[dict]] = None
 
 
+class ChatHistoryMessage(BaseModel):
+    seq: int
+    role: Literal["user", "assistant"]
+    content: str
+    surface: str
+    created_at: Optional[str] = None
+
+
+class ChatHistoryResponse(BaseModel):
+    user_id: str
+    messages: list[ChatHistoryMessage] = []
+    # Mobil istemci bu imleci saklar ve sonraki açılışta yalnızca yenileri çeker.
+    cursor: Optional[int] = None
+    synced: bool
+
+
 class ChatUsageResponse(BaseModel):
     """Rebi AI sohbet kotası özeti (üst sayaç)."""
 
@@ -742,9 +839,13 @@ class DailyTrackingIngestRequest(BaseModel):
     type: DailyTrackingClientEventType
     payload: dict = Field(default_factory=dict)
     source: str = "mobile"
+    # Çevrimdışı kuyruk aynı olayı tekrar gönderirse ikinci yazım atlanır.
+    client_event_id: Optional[str] = None
 
     @model_validator(mode="after")
     def _cap_payload(self):
+        if self.client_event_id is not None:
+            self.client_event_id = self.client_event_id.strip()[:64] or None
         if self.payload is None:
             self.payload = {}
         if not isinstance(self.payload, dict):
@@ -774,6 +875,72 @@ class RoutineActiveResponse(BaseModel):
     routine: list[dict] = []
     assessment_id: Optional[str] = None
     created_at: Optional[str] = None
+
+
+SkinTypeName = Literal["normal", "dry", "oily", "combination", "sensitive"]
+
+
+class UserProfileResponse(BaseModel):
+    user_id: str
+    full_name: Optional[str] = None
+    skin_type: Optional[str] = None
+    age: Optional[int] = None
+    gender: Optional[str] = None
+    city: Optional[str] = None
+    updated_at: Optional[str] = None
+    synced: bool
+
+
+class UserProfileUpdateRequest(BaseModel):
+    user_id: str
+    full_name: Optional[str] = None
+    skin_type: Optional[SkinTypeName] = None
+    age: Optional[int] = None
+    gender: Optional[Literal["female", "male", "other"]] = None
+    city: Optional[str] = None
+
+    @model_validator(mode="after")
+    def _normalize_profile(self):
+        if self.full_name is not None:
+            self.full_name = self.full_name.strip()[:120]
+        if self.city is not None:
+            self.city = self.city.strip()[:80]
+        if self.age is not None:
+            self.age = max(13, min(100, int(self.age)))
+        return self
+
+
+class UserHistoryDay(BaseModel):
+    log_date: str
+    tracking: dict
+    checkin: Optional[dict] = None
+
+
+class UserHistoryResponse(BaseModel):
+    user_id: str
+    from_date: str
+    to_date: str
+    days: list[UserHistoryDay] = []
+    assessments: list[dict] = []
+    synced: bool
+
+
+class UserSnapshotResponse(BaseModel):
+    """Mobil açılışında tek çağrıyla senkron olunacak durum."""
+
+    user_id: str
+    server_time: str
+    log_date: str
+    profile: dict
+    has_routine: bool
+    routine: list[dict] = []
+    routine_created_at: Optional[str] = None
+    progress: dict
+    checkin_done: bool
+    chat_cursor: Optional[int] = None
+    consent: dict
+    plus: bool
+    synced: bool
 
 
 class TodayPlanResponse(BaseModel):
@@ -825,12 +992,18 @@ async def root():
         "version": "3.0.0",
         "endpoints": [
             "/generate_routine",
+            "/routine/active",
+            "/today/plan",
             "/chat",
             "/chat_assessment",
+            "/chat/history",
             "/daily_tracking/ingest",
             "/daily_tracking/today",
             "/daily_checkin",
             "/daily_checkin/status",
+            "/me/snapshot",
+            "/me/profile",
+            "/me/history",
             "/upload_photo",
             "/account/delete",
             "/health",
@@ -934,12 +1107,22 @@ async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestReques
         "payload": req.payload or {},
         "source": req.source or "mobile",
     }
+    if req.client_event_id:
+        event["client_event_id"] = req.client_event_id
 
     supabase = get_supabase()
     wrote_remote = False
     if should_use_supabase_db(supabase, req.user_id):
         try:
-            supabase.table("daily_events").insert(event).execute()
+            table = supabase.table("daily_events")
+            if req.client_event_id:
+                table.upsert(
+                    event,
+                    on_conflict="user_id,client_event_id",
+                    ignore_duplicates=True,
+                ).execute()
+            else:
+                table.insert(event).execute()
             wrote_remote = True
         except Exception as e:
             log.error("daily_events insert hatası (fallback to memory): %s", e)
@@ -1091,6 +1274,201 @@ async def today_plan_endpoint(
         reminders=build_reminders(weather, aggregated, checkin_done),
         progress=aggregated,
         checkin_done=checkin_done,
+    )
+
+
+_MAX_HISTORY_DAYS = 90
+
+
+@app.get(
+    "/me/profile",
+    response_model=UserProfileResponse,
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
+)
+async def me_profile_get(request: Request, user_id: str = Query(..., min_length=1)):
+    """Kullanıcı profili: web ve mobil aynı kaydı okur."""
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, user_id):
+        return UserProfileResponse(user_id=user_id, synced=False)
+    row = _load_profile_row(supabase, user_id)
+    return UserProfileResponse(
+        user_id=user_id,
+        full_name=row.get("full_name"),
+        skin_type=row.get("skin_type"),
+        age=row.get("age"),
+        gender=row.get("gender"),
+        city=row.get("city"),
+        updated_at=(str(row["updated_at"]) if row.get("updated_at") else None),
+        synced=True,
+    )
+
+
+@app.patch(
+    "/me/profile",
+    response_model=UserProfileResponse,
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_USER_PROFILE_WRITE))],
+)
+async def me_profile_update(request: Request, req: UserProfileUpdateRequest):
+    """Profili güncelle; yalnızca gönderilen alanlar değişir."""
+    enforce_supabase_user(request, req.user_id)
+    fields = {
+        k: v for k, v in req.model_dump(exclude={"user_id"}).items() if v is not None
+    }
+    if not fields:
+        raise HTTPException(status_code=400, detail="Güncellenecek alan gönderilmedi.")
+
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, req.user_id):
+        return UserProfileResponse(user_id=req.user_id, synced=False, **fields)
+
+    try:
+        supabase.table("profiles").upsert({
+            "id": req.user_id,
+            **fields,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).execute()
+    except Exception as e:
+        log.error("Profil güncellenemedi: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Profil şu an güncellenemedi.")
+
+    row = _load_profile_row(supabase, req.user_id)
+    return UserProfileResponse(
+        user_id=req.user_id,
+        full_name=row.get("full_name"),
+        skin_type=row.get("skin_type"),
+        age=row.get("age"),
+        gender=row.get("gender"),
+        city=row.get("city"),
+        updated_at=(str(row["updated_at"]) if row.get("updated_at") else None),
+        synced=True,
+    )
+
+
+@app.get(
+    "/me/history",
+    response_model=UserHistoryResponse,
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
+)
+async def me_history(
+    request: Request,
+    user_id: str = Query(..., min_length=1),
+    days: int = Query(30, ge=1, le=_MAX_HISTORY_DAYS),
+):
+    """Geçmiş günler: her gün için takip özeti ve o günün check-in'i."""
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    to_date = date.today()
+    from_date = to_date - timedelta(days=days - 1)
+    date_keys = [str(from_date + timedelta(days=i)) for i in range(days)]
+
+    if not should_use_supabase_db(supabase, user_id):
+        days_out = [
+            UserHistoryDay(
+                log_date=d,
+                tracking=_aggregate_daily_events(_MEM_DAILY_EVENTS.get((user_id, d), [])),
+            )
+            for d in date_keys
+            if _MEM_DAILY_EVENTS.get((user_id, d))
+        ]
+        return UserHistoryResponse(
+            user_id=user_id,
+            from_date=str(from_date),
+            to_date=str(to_date),
+            days=days_out,
+            synced=False,
+        )
+
+    try:
+        events = (
+            supabase.table("daily_events")
+            .select("event_time,type,payload,log_date")
+            .eq("user_id", user_id)
+            .gte("log_date", str(from_date))
+            .lte("log_date", str(to_date))
+            .order("event_time", desc=False)
+            .execute()
+        ).data or []
+        logs = (
+            supabase.table("daily_logs")
+            .select("log_date,applied_routine,skin_feeling,sleep_hours,stress_level,risk_score")
+            .eq("user_id", user_id)
+            .gte("log_date", str(from_date))
+            .lte("log_date", str(to_date))
+            .order("log_date", desc=False)
+            .execute()
+        ).data or []
+        assessments = (
+            supabase.table("assessments")
+            .select("id,concern,severity_score,created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(10)
+            .execute()
+        ).data or []
+    except Exception as e:
+        log.error("Geçmiş okunamadı: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Geçmiş veriler şu an okunamadı.")
+
+    by_date: dict[str, list[dict]] = {}
+    for ev in events:
+        by_date.setdefault(str(ev.get("log_date")), []).append(ev)
+    checkin_by_date = {str(row.get("log_date")): row for row in logs}
+
+    days_out = [
+        UserHistoryDay(
+            log_date=d,
+            tracking=_aggregate_daily_events(by_date.get(d, [])),
+            checkin=checkin_by_date.get(d),
+        )
+        for d in date_keys
+        if d in by_date or d in checkin_by_date
+    ]
+    return UserHistoryResponse(
+        user_id=user_id,
+        from_date=str(from_date),
+        to_date=str(to_date),
+        days=days_out,
+        assessments=assessments,
+        synced=True,
+    )
+
+
+@app.get(
+    "/me/snapshot",
+    response_model=UserSnapshotResponse,
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
+)
+async def me_snapshot(request: Request, user_id: str = Query(..., min_length=1)):
+    """
+    Mobil açılış paketi: profil, yürürlükteki rutin, bugünün ilerlemesi,
+    rıza durumu ve sohbet imleci tek çağrıda döner.
+    """
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    today = str(date.today())
+    row = _load_active_routine(supabase, user_id)
+    routine = row.get("active_routine") or []
+    synced = should_use_supabase_db(supabase, user_id)
+
+    return UserSnapshotResponse(
+        user_id=user_id,
+        server_time=_utc_now_iso(),
+        log_date=today,
+        profile=_load_profile_row(supabase, user_id),
+        has_routine=bool(routine),
+        routine=routine,
+        routine_created_at=(str(row["created_at"]) if row.get("created_at") else None),
+        progress=_aggregate_daily_events(_load_daily_events(supabase, user_id, today)),
+        checkin_done=_checkin_done_today(supabase, user_id, today),
+        chat_cursor=_chat_last_seq(supabase, user_id),
+        consent=_consent_state(supabase, user_id),
+        plus=user_is_rebi_plus(request, user_id),
+        synced=synced,
     )
 
 
@@ -1365,6 +1743,117 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     )
 
 
+_CHAT_CONTENT_MAX_CHARS = 8000
+_CHAT_HISTORY_MAX_ROWS = 200
+
+
+def _persist_chat_turn(
+    user_id: str,
+    surface: str,
+    user_message: str,
+    reply: str,
+    concern: Optional[str] = None,
+) -> None:
+    """Sohbet turunu sunucuda sakla; web ve mobil aynı geçmişi görür."""
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, user_id):
+        return
+    rows = []
+    for role, content in (("user", user_message), ("assistant", reply)):
+        text = str(content or "").strip()
+        if text:
+            rows.append({
+                "user_id": user_id,
+                "surface": surface,
+                "role": role,
+                "content": text[:_CHAT_CONTENT_MAX_CHARS],
+                "concern": concern,
+            })
+    if len(rows) < 2:
+        # Yarım tur (boş mesaj veya boş yanıt) geçmişe yazılmaz.
+        return
+    try:
+        supabase.table("chat_history").insert(rows).execute()
+    except Exception as e:
+        log.error("Sohbet geçmişi yazılamadı: %s", type(e).__name__)
+
+
+@app.get(
+    "/chat/history",
+    response_model=ChatHistoryResponse,
+    tags=["chat"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_HISTORY))],
+)
+async def chat_history_get(
+    request: Request,
+    user_id: str = Query(..., min_length=1),
+    limit: int = Query(50, ge=1, le=_CHAT_HISTORY_MAX_ROWS),
+    after_seq: Optional[int] = Query(None, ge=0),
+    surface: Optional[Literal["general", "concern", "assessment"]] = None,
+):
+    """
+    Sunucudaki sohbet geçmişi (eskiden yeniye). `after_seq` verilirse yalnızca
+    o imleçten sonraki mesajlar döner; mobil açılışta tüm geçmişi tekrar çekmez.
+    """
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, user_id):
+        return ChatHistoryResponse(user_id=user_id, messages=[], cursor=None, synced=False)
+
+    try:
+        q = (
+            supabase.table("chat_history")
+            .select("seq,role,content,surface,created_at")
+            .eq("user_id", user_id)
+        )
+        if surface:
+            q = q.eq("surface", surface)
+        if after_seq is not None:
+            rows = q.gt("seq", after_seq).order("seq", desc=False).limit(limit).execute().data or []
+        else:
+            # Son N mesajı al, sonra kronolojik sıraya çevir.
+            rows = list(reversed(q.order("seq", desc=True).limit(limit).execute().data or []))
+    except Exception as e:
+        log.error("Sohbet geçmişi okunamadı: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Sohbet geçmişi şu an okunamadı.")
+
+    messages = [
+        ChatHistoryMessage(
+            seq=int(r.get("seq") or 0),
+            role=r.get("role") or "assistant",
+            content=r.get("content") or "",
+            surface=r.get("surface") or "general",
+            created_at=(str(r["created_at"]) if r.get("created_at") else None),
+        )
+        for r in rows
+    ]
+    return ChatHistoryResponse(
+        user_id=user_id,
+        messages=messages,
+        cursor=(messages[-1].seq if messages else after_seq),
+        synced=True,
+    )
+
+
+@app.delete(
+    "/chat/history",
+    tags=["chat"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_HISTORY_CLEAR))],
+)
+async def chat_history_clear(request: Request, user_id: str = Query(..., min_length=1)):
+    """Sohbeti temizle: geçmiş her iki platformdan da silinir."""
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, user_id):
+        return {"ok": True, "synced": False}
+    try:
+        supabase.table("chat_history").delete().eq("user_id", user_id).execute()
+    except Exception as e:
+        log.error("Sohbet geçmişi silinemedi: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Sohbet geçmişi şu an silinemedi.")
+    return {"ok": True, "synced": True}
+
+
 @app.post(
     "/chat",
     response_model=ChatResponse,
@@ -1406,6 +1895,8 @@ async def chat(request: Request, req: ChatRequest):
         folder_slug="data-pdfs",
         accept_lang=_primary_lang_from_header(request.headers.get("accept-language") or "tr"),
     )
+
+    _persist_chat_turn(req.user_id, "concern", req.message, reply, concern=concern)
 
     return ChatResponse(
         reply=reply,
@@ -1664,22 +2155,26 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
     except Exception:
         evidence_used, evidence_score, evidence_sources = None, None, None
 
+    r = (reply or "").strip()
+    err_like = (
+        not r
+        or r.startswith("Bir hata oluştu")
+        or r.startswith("Bağlantı kurulamadı")
+        or r.startswith("Şu an çok yoğunuz")
+        or r.startswith("İşlem tamamlanamadı")
+    )
+
     if jwt_auth_enabled():
         # Başarılı tur sayımı (free / plus capped)
-        r = (reply or "").strip()
-        err_like = (
-            not r
-            or r.startswith("Bir hata oluştu")
-            or r.startswith("Bağlantı kurulamadı")
-            or r.startswith("Şu an çok yoğunuz")
-            or r.startswith("İşlem tamamlanamadı")
-        )
         if not plus:
             if not err_like:
                 free_chat_record_successful_turn(req.user_id)
         elif plus_chat_capped:
             if not err_like:
                 plus_chat_record_successful_turn(req.user_id)
+
+    if not err_like:
+        _persist_chat_turn(req.user_id, "general", req.message, r)
 
     uk, ur, ul, _ = _chat_usage_row(request, req.user_id) if jwt_auth_enabled() else ("plus_unlimited", None, None, None)
     return ChatGeneralResponse(
@@ -2274,6 +2769,7 @@ def _delete_user_application_data(supabase, user_id: str) -> None:
     targets = (
         ("privacy_preferences", "user_id"),
         ("legal_consents", "user_id"),
+        ("chat_history", "user_id"),
         ("daily_events", "user_id"),
         ("daily_logs", "user_id"),
         ("routines", "user_id"),

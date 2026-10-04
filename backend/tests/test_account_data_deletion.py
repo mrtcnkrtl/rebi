@@ -74,6 +74,7 @@ def test_account_deletion_explicitly_covers_personal_data_tables():
     assert db.calls == [
         ("privacy_preferences", "user_id", USER_ID),
         ("legal_consents", "user_id", USER_ID),
+        ("chat_history", "user_id", USER_ID),
         ("daily_events", "user_id", USER_ID),
         ("daily_logs", "user_id", USER_ID),
         ("routines", "user_id", USER_ID),
