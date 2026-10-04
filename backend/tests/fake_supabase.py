@@ -15,6 +15,8 @@ class Result:
 class FakeTable:
     def __init__(self, rows: list[dict] | None = None):
         self.rows: list[dict] = list(rows or [])
+        # Postgres unique kısıtını taklit eder: çakışan insert hata yükseltir.
+        self.unique_on: tuple[str, ...] = ()
         self.inserted: list[dict] = []
         self.upserted: list[dict] = []
         self.deleted_count = 0
@@ -107,6 +109,11 @@ class FakeTable:
 
             new_rows = payload if isinstance(payload, list) else [payload]
             if op == "insert":
+                for row in new_rows:
+                    if self.unique_on and any(
+                        all(r.get(c) == row.get(c) for c in self.unique_on) for r in self.rows
+                    ):
+                        raise RuntimeError("duplicate key value violates unique constraint")
                 self.inserted.extend(new_rows)
                 self.rows.extend(dict(r) for r in new_rows)
                 return Result([dict(r) for r in new_rows])

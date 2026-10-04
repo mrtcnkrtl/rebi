@@ -11,13 +11,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal
+import os
 import re
+import secrets
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
 from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather
-from today_plan import build_environment_advice, build_reminders
+from today_plan import build_environment_advice, build_reminders, due_reminders
+from push_service import push_configured, send_push
 from flow_engine import (
     run_flow,
     adapt_existing_routine,
@@ -85,6 +88,8 @@ from rate_limit import (
     LIMIT_CHAT_HISTORY_CLEAR,
     LIMIT_USER_DATA,
     LIMIT_USER_PROFILE_WRITE,
+    LIMIT_DEVICE_REGISTER,
+    LIMIT_PUSH_DISPATCH,
     LIMIT_UPLOAD_PHOTO,
     LIMIT_ACCOUNT_DELETE,
     LIMIT_INTRO_SEEN,
@@ -925,6 +930,43 @@ class UserHistoryResponse(BaseModel):
     synced: bool
 
 
+class DeviceRegisterRequest(BaseModel):
+    user_id: str
+    token: str
+    platform: Literal["ios", "android", "web"]
+    # Hatırlatıcı saatleri yerel olduğundan cihazın UTC farkı gerekir.
+    utc_offset_minutes: int = 0
+    locale: Optional[str] = None
+    app_version: Optional[str] = None
+    push_enabled: bool = True
+
+    @model_validator(mode="after")
+    def _normalize_device(self):
+        self.token = self.token.strip()[:4096]
+        if not self.token:
+            raise ValueError("Cihaz anahtarı boş olamaz.")
+        self.utc_offset_minutes = max(-840, min(840, int(self.utc_offset_minutes)))
+        if self.locale:
+            self.locale = self.locale.strip()[:10]
+        if self.app_version:
+            self.app_version = self.app_version.strip()[:30]
+        return self
+
+
+class DeviceRegisterResponse(BaseModel):
+    ok: bool = True
+    push_configured: bool
+    synced: bool
+
+
+class PushDispatchResponse(BaseModel):
+    users_considered: int
+    reminders_sent: int
+    notifications_sent: int
+    invalid_tokens_removed: int
+    push_configured: bool
+
+
 class UserSnapshotResponse(BaseModel):
     """Mobil açılışında tek çağrıyla senkron olunacak durum."""
 
@@ -1004,6 +1046,7 @@ async def root():
             "/me/snapshot",
             "/me/profile",
             "/me/history",
+            "/devices/register",
             "/upload_photo",
             "/account/delete",
             "/health",
@@ -1079,6 +1122,7 @@ async def health():
             else ("insecure_development" if insecure_auth_allowed() else "blocked")
         ),
         "rate_limit_backend": rate_limit_backend_label(),
+        "push": "configured" if push_configured() else "off",
     }
     if not auth_valid:
         return JSONResponse(status_code=503, content=body)
@@ -1469,6 +1513,203 @@ async def me_snapshot(request: Request, user_id: str = Query(..., min_length=1))
         consent=_consent_state(supabase, user_id),
         plus=user_is_rebi_plus(request, user_id),
         synced=synced,
+    )
+
+
+_PUSH_DISPATCH_TOLERANCE_MINUTES = 10
+_PUSH_MAX_TOKENS_PER_USER = 5
+
+
+def _require_push_dispatch_secret(request: Request) -> None:
+    """Dağıtım yalnızca sunucu cron'una açıktır; anahtar yoksa kapalıdır."""
+    secret = (os.getenv("PUSH_DISPATCH_SECRET") or "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail="Push dağıtımı yapılandırılmamış.")
+    provided = (request.headers.get("x-push-dispatch-token") or "").strip()
+    if not provided or not secrets.compare_digest(provided, secret):
+        raise HTTPException(status_code=401, detail="Geçersiz dağıtım anahtarı.")
+
+
+def _claim_push_slot(supabase, user_id: str, reminder_id: str, log_date: str, slot: str) -> bool:
+    """
+    Gönderim defterine yaz. Satır zaten varsa bu hatırlatıcı bugün bu pencerede
+    gönderilmiş demektir ve tekrar gönderilmez.
+    """
+    try:
+        supabase.table("push_sends").insert({
+            "user_id": user_id,
+            "reminder_id": reminder_id,
+            "log_date": log_date,
+            "slot": slot,
+        }).execute()
+        return True
+    except Exception:
+        log.info("Hatırlatıcı atlandı (zaten gönderilmiş): %s %s", reminder_id, slot)
+        return False
+
+
+def _remove_invalid_device_tokens(supabase, tokens: list[str]) -> int:
+    removed = 0
+    for token in tokens:
+        try:
+            supabase.table("device_tokens").delete().eq("token", token).execute()
+            removed += 1
+        except Exception as e:
+            log.error("Geçersiz cihaz kaydı silinemedi: %s", type(e).__name__)
+    return removed
+
+
+@app.post(
+    "/devices/register",
+    response_model=DeviceRegisterResponse,
+    tags=["push"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_DEVICE_REGISTER))],
+)
+async def device_register(request: Request, req: DeviceRegisterRequest):
+    """Cihazı bildirimler için kaydeder; her açılışta çağrılabilir."""
+    enforce_supabase_user(request, req.user_id)
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, req.user_id):
+        return DeviceRegisterResponse(push_configured=push_configured(), synced=False)
+    try:
+        supabase.table("device_tokens").upsert({
+            "user_id": req.user_id,
+            "token": req.token,
+            "platform": req.platform,
+            "utc_offset_minutes": req.utc_offset_minutes,
+            "locale": req.locale,
+            "app_version": req.app_version,
+            "push_enabled": req.push_enabled,
+            "last_seen_at": _utc_now_iso(),
+        }, on_conflict="token").execute()
+    except Exception as e:
+        log.error("Cihaz kaydı yazılamadı: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Cihaz kaydı şu an yapılamadı.")
+    return DeviceRegisterResponse(push_configured=push_configured(), synced=True)
+
+
+@app.delete(
+    "/devices/register",
+    tags=["push"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_DEVICE_REGISTER))],
+)
+async def device_unregister(
+    request: Request,
+    user_id: str = Query(..., min_length=1),
+    token: str = Query(..., min_length=1),
+):
+    """Çıkışta veya bildirim kapatıldığında cihaz kaydını kaldırır."""
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, user_id):
+        return {"ok": True, "synced": False}
+    try:
+        (
+            supabase.table("device_tokens")
+            .delete()
+            .eq("user_id", user_id)
+            .eq("token", token.strip()[:4096])
+            .execute()
+        )
+    except Exception as e:
+        log.error("Cihaz kaydı silinemedi: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Cihaz kaydı şu an silinemedi.")
+    return {"ok": True, "synced": True}
+
+
+@app.post(
+    "/push/dispatch",
+    response_model=PushDispatchResponse,
+    tags=["push"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_PUSH_DISPATCH))],
+)
+async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1000)):
+    """
+    Zamanı gelen hatırlatıcıları kayıtlı cihazlara gönderir. Sunucu cron'u
+    tarafından 10 dakikada bir çağrılmak üzere tasarlandı; her hatırlatıcı
+    gün içinde tek kez gider (`push_sends` defteri).
+    """
+    _require_push_dispatch_secret(request)
+    if not push_configured():
+        return PushDispatchResponse(
+            users_considered=0,
+            reminders_sent=0,
+            notifications_sent=0,
+            invalid_tokens_removed=0,
+            push_configured=False,
+        )
+
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=503, detail="Supabase bağlantısı yok")
+    try:
+        rows = (
+            supabase.table("device_tokens")
+            .select("user_id,token,utc_offset_minutes")
+            .eq("push_enabled", True)
+            .order("last_seen_at", desc=True)
+            .limit(max_users * _PUSH_MAX_TOKENS_PER_USER)
+            .execute()
+        ).data or []
+    except Exception as e:
+        log.error("Cihaz listesi okunamadı: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Cihaz listesi okunamadı.")
+
+    by_user: dict[str, dict] = {}
+    for row in rows:
+        uid = str(row.get("user_id") or "")
+        token = str(row.get("token") or "")
+        if not uid or not token:
+            continue
+        # İlk satır en son görülen cihaz olduğu için saat farkı ondan alınır.
+        entry = by_user.setdefault(
+            uid, {"tokens": [], "offset": int(row.get("utc_offset_minutes") or 0)}
+        )
+        if len(entry["tokens"]) < _PUSH_MAX_TOKENS_PER_USER:
+            entry["tokens"].append(token)
+
+    reminders_sent = 0
+    notifications_sent = 0
+    invalid_removed = 0
+    users = list(by_user.items())[:max_users]
+
+    for uid, entry in users:
+        local_now = datetime.now(timezone.utc) + timedelta(minutes=entry["offset"])
+        log_date = local_now.date().isoformat()
+        aggregated = _aggregate_daily_events(_load_daily_events(supabase, uid, log_date))
+        weather = aggregated.get("weather") or dict(WEATHER_FALLBACK)
+        plan = build_reminders(
+            weather, aggregated, _checkin_done_today(supabase, uid, log_date)
+        )
+        for reminder in due_reminders(
+            plan, local_now.strftime("%H:%M"), _PUSH_DISPATCH_TOLERANCE_MINUTES
+        ):
+            if not _claim_push_slot(supabase, uid, reminder["id"], log_date, reminder["slot"]):
+                continue
+            result = await send_push(
+                entry["tokens"],
+                reminder["title"],
+                reminder["body"],
+                {
+                    "reminder_id": reminder["id"],
+                    "log_event": reminder.get("log_event") or "",
+                    "log_date": log_date,
+                },
+            )
+            sent = int(result.get("sent") or 0)
+            notifications_sent += sent
+            if sent:
+                reminders_sent += 1
+            invalid_removed += _remove_invalid_device_tokens(
+                supabase, result.get("invalid_tokens") or []
+            )
+
+    return PushDispatchResponse(
+        users_considered=len(users),
+        reminders_sent=reminders_sent,
+        notifications_sent=notifications_sent,
+        invalid_tokens_removed=invalid_removed,
+        push_configured=True,
     )
 
 
@@ -2769,6 +3010,8 @@ def _delete_user_application_data(supabase, user_id: str) -> None:
     targets = (
         ("privacy_preferences", "user_id"),
         ("legal_consents", "user_id"),
+        ("device_tokens", "user_id"),
+        ("push_sends", "user_id"),
         ("chat_history", "user_id"),
         ("daily_events", "user_id"),
         ("daily_logs", "user_id"),

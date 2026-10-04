@@ -172,3 +172,37 @@ def build_reminders(weather: dict, aggregated: dict, checkin_done: bool = False)
 
     reminders.sort(key=lambda r: r["start"])
     return reminders
+
+
+def _to_minutes(hhmm: str) -> int:
+    hours, _, minutes = str(hhmm).partition(":")
+    return int(hours) * 60 + int(minutes)
+
+
+def _slots(reminder: dict) -> list[int]:
+    """Hatırlatıcının pencere içindeki gönderim dakikaları."""
+    start = _to_minutes(reminder["start"])
+    end = _to_minutes(reminder["end"])
+    every = reminder.get("every_minutes")
+    if not every:
+        return [start]
+    return list(range(start, end + 1, int(every)))
+
+
+def due_reminders(reminders: list[dict], local_time: str, tolerance_minutes: int = 10) -> list[dict]:
+    """
+    Verilen yerel saatte gönderilmesi gereken hatırlatıcılar.
+
+    `tolerance_minutes` dağıtıcının çalışma aralığıdır: cron 10 dakikada bir
+    çalışıyorsa saatini kaçırmış hatırlatıcı da bu pencerede yakalanır.
+    `slot` alanı aynı hatırlatıcının aynı pencerede tekrar gönderilmemesi için
+    defter anahtarı olarak kullanılır.
+    """
+    now = _to_minutes(local_time)
+    due = []
+    for reminder in reminders or []:
+        for slot in _slots(reminder):
+            if 0 <= now - slot < tolerance_minutes:
+                due.append({**reminder, "slot": f"{slot // 60:02d}:{slot % 60:02d}"})
+                break
+    return due
