@@ -94,6 +94,8 @@ def rate_limit_dependency(limiter: SupportsRateLimit):
 
 LIMIT_DAILY_TRACKING_INGEST = _make_limiter(120, 60.0, "daily_ingest")
 LIMIT_DAILY_TRACKING_TODAY = _make_limiter(90, 60.0, "daily_today")
+LIMIT_ROUTINE_ACTIVE = _make_limiter(90, 60.0, "routine_active")
+LIMIT_TODAY_PLAN = _make_limiter(60, 60.0, "today_plan")
 LIMIT_CHAT_ASSESSMENT = _make_limiter(35, 60.0, "chat_assessment")
 LIMIT_DAILY_CHECKIN = _make_limiter(12, 3600.0, "daily_checkin")
 LIMIT_DAILY_CHECKIN_STATUS = _make_limiter(90, 60.0, "daily_checkin_status")

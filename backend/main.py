@@ -16,7 +16,8 @@ import uuid
 from datetime import date, datetime, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
-from weather_service import fetch_weather
+from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather
+from today_plan import build_environment_advice, build_reminders
 from flow_engine import (
     run_flow,
     adapt_existing_routine,
@@ -73,6 +74,8 @@ from rate_limit import (
     rate_limit_backend_label,
     LIMIT_DAILY_TRACKING_INGEST,
     LIMIT_DAILY_TRACKING_TODAY,
+    LIMIT_ROUTINE_ACTIVE,
+    LIMIT_TODAY_PLAN,
     LIMIT_CHAT_ASSESSMENT,
     LIMIT_DAILY_CHECKIN,
     LIMIT_DAILY_CHECKIN_STATUS,
@@ -199,17 +202,31 @@ def _mem_append_event(user_id: str, log_date: str, event: dict) -> None:
     _MEM_DAILY_EVENTS.setdefault(key, []).append(event)
 
 
+_MAX_PRODUCTS_FINISHED = 20
+
+# Kabul edilen makyaj temizleme yöntemleri; bilinmeyen değer None olur.
+_MAKEUP_REMOVAL_METHODS = frozenset({"double", "cleanser", "water", "wipe", "none"})
+
+
 def _aggregate_daily_events(events: list[dict]) -> dict:
     water_ml_total = 0
     nutrition = {}
+    nutrition_logged = False
     stress_vals = []
     sleep_hours = None
     last_location = None
     last_weather = None
     routine_steps_done = 0
+    routine_morning_done = False
+    routine_evening_done = False
     spf_refreshes = 0
     last_photo_meta = None
     checkin_feedback_events = 0
+    makeup_logged = False
+    makeup_used = False
+    makeup_removed = False
+    makeup_removal_method = None
+    products_finished: list[dict] = []
 
     for ev in events or []:
         t = (ev.get("type") or "").lower()
@@ -222,6 +239,7 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         elif t == "nutrition":
             if isinstance(payload, dict):
                 nutrition = {**nutrition, **payload}
+                nutrition_logged = True
         elif t == "stress":
             try:
                 stress_vals.append(int(payload.get("value")))
@@ -244,8 +262,10 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         elif t == "routine_completed_block":
             if bool(payload.get("morning")):
                 routine_steps_done += 1
+                routine_morning_done = True
             if bool(payload.get("evening")):
                 routine_steps_done += 1
+                routine_evening_done = True
         elif t == "spf_refresh":
             spf_refreshes += 1
         elif t == "photo_meta":
@@ -253,6 +273,26 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
                 last_photo_meta = payload
         elif t == "checkin_feedback":
             checkin_feedback_events += 1
+        elif t == "makeup":
+            makeup_logged = True
+            if payload.get("used") is not None:
+                makeup_used = bool(payload.get("used"))
+            if bool(payload.get("removed")):
+                makeup_used = True
+                makeup_removed = True
+            method = str(payload.get("method") or "").strip().lower()
+            if method in _MAKEUP_REMOVAL_METHODS:
+                makeup_removal_method = method
+                if method != "none":
+                    makeup_used = True
+                    makeup_removed = True
+        elif t == "product_finished":
+            if len(products_finished) < _MAX_PRODUCTS_FINISHED:
+                products_finished.append({
+                    "product": str(payload.get("product") or "").strip()[:120] or None,
+                    "step_order": payload.get("step_order"),
+                    "at": ev.get("event_time"),
+                })
 
     avg_stress = None
     if stress_vals:
@@ -261,16 +301,97 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
     return {
         "water_ml_total": water_ml_total,
         "nutrition": nutrition,
+        "nutrition_logged": nutrition_logged,
         "avg_stress": avg_stress,
         "sleep_hours": sleep_hours,
         "last_location": last_location,
         "weather": last_weather,
         "events_count": len(events or []),
         "routine_steps_done": routine_steps_done,
+        "routine_morning_done": routine_morning_done,
+        "routine_evening_done": routine_evening_done,
         "spf_refreshes": spf_refreshes,
         "last_photo_meta": last_photo_meta,
         "checkin_feedback_events": checkin_feedback_events,
+        "makeup": {
+            "logged": makeup_logged,
+            "used": makeup_used,
+            "removed": makeup_removed,
+            "removal_method": makeup_removal_method,
+        },
+        "products_finished": products_finished,
     }
+
+
+def _load_daily_events(supabase, user_id: str, log_date: str) -> list[dict]:
+    """Günün olayları: Supabase varsa oradan, yoksa bellekten."""
+    if should_use_supabase_db(supabase, user_id):
+        try:
+            r = (
+                supabase.table("daily_events")
+                .select("event_time,type,payload,source")
+                .eq("user_id", user_id)
+                .eq("log_date", log_date)
+                .order("event_time", desc=False)
+                .execute()
+            )
+            return r.data or []
+        except Exception as e:
+            log.error("daily_events okuma hatası (fallback memory): %s", e)
+    return _MEM_DAILY_EVENTS.get((user_id, log_date), [])
+
+
+def _load_active_routine(supabase, user_id: str) -> dict:
+    """Yürürlükteki rutin satırı; yoksa boş sözlük."""
+    if not should_use_supabase_db(supabase, user_id):
+        return {}
+    try:
+        r = (
+            supabase.table("routines")
+            .select("active_routine,assessment_id,created_at")
+            .eq("user_id", user_id)
+            .eq("is_active", True)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = r.data or []
+        return rows[0] or {} if rows else {}
+    except Exception as e:
+        log.error("Aktif rutin okuma hatası: %s", e)
+        return {}
+
+
+def _checkin_done_today(supabase, user_id: str, log_date: str) -> bool:
+    if is_demo_user_id(user_id):
+        return demo_checkin_already_today(user_id, log_date)
+    if not supabase:
+        return False
+    try:
+        r = (
+            supabase.table("daily_logs")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("log_date", log_date)
+            .limit(1)
+            .execute()
+        )
+        return bool(r.data)
+    except Exception as e:
+        log.error("Check-in durumu okunamadı: %s", e)
+        return False
+
+
+def _profile_skin_type(supabase, user_id: str) -> str:
+    if not should_use_supabase_db(supabase, user_id):
+        return "normal"
+    try:
+        r = supabase.table("profiles").select("skin_type").eq("id", user_id).limit(1).execute()
+        if r.data:
+            return str(r.data[0].get("skin_type") or "normal")
+    except Exception as e:
+        log.error("Profil cilt tipi okunamadı: %s", e)
+    return "normal"
 
 
 # Marka/ürün adı veya belirsiz ifade → etken madde + konsantrasyon (ürün önerisi yasak)
@@ -610,6 +731,8 @@ DailyTrackingClientEventType = Literal[
     "photo_meta",
     "routine_completed_block",
     "checkin_feedback",
+    "makeup",
+    "product_finished",
 ]
 
 
@@ -643,6 +766,27 @@ class DailyTrackingTodayResponse(BaseModel):
     log_date: str
     aggregated: dict
     events: list[dict] = []
+
+
+class RoutineActiveResponse(BaseModel):
+    user_id: str
+    has_routine: bool
+    routine: list[dict] = []
+    assessment_id: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+class TodayPlanResponse(BaseModel):
+    user_id: str
+    log_date: str
+    has_routine: bool
+    routine: list[dict] = []
+    weather: dict
+    weather_source: Literal["live", "tracking", "default"]
+    environment_advice: list[dict] = []
+    reminders: list[dict] = []
+    progress: dict
+    checkin_done: bool
 
 
 _ACCOUNT_DELETE_CONFIRM = "HESABIMI_SIL"
@@ -868,30 +1012,85 @@ async def daily_tracking_today(
     """
     enforce_supabase_user(request, user_id)
     d = log_date or str(date.today())
-    supabase = get_supabase()
-    events = []
-    if should_use_supabase_db(supabase, user_id):
-        try:
-            r = (
-                supabase.table("daily_events")
-                .select("event_time,type,payload,source")
-                .eq("user_id", user_id)
-                .eq("log_date", d)
-                .order("event_time", desc=False)
-                .execute()
-            )
-            events = r.data or []
-        except Exception as e:
-            log.error("daily_tracking/today read hatası (fallback memory): %s", e)
-            events = _MEM_DAILY_EVENTS.get((user_id, d), [])
-    else:
-        events = _MEM_DAILY_EVENTS.get((user_id, d), [])
+    events = _load_daily_events(get_supabase(), user_id, d)
 
     return DailyTrackingTodayResponse(
         user_id=user_id,
         log_date=d,
         aggregated=_aggregate_daily_events(events),
         events=(events if include_events else []),
+    )
+
+
+@app.get(
+    "/routine/active",
+    response_model=RoutineActiveResponse,
+    tags=["routine"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_ROUTINE_ACTIVE))],
+)
+async def routine_active(request: Request, user_id: str = Query(..., min_length=1)):
+    """Mobil ana ekran: yürürlükteki rutin (üretmez, yalnızca okur)."""
+    enforce_supabase_user(request, user_id)
+    row = _load_active_routine(get_supabase(), user_id)
+    routine = row.get("active_routine") or []
+    return RoutineActiveResponse(
+        user_id=user_id,
+        has_routine=bool(routine),
+        routine=routine,
+        assessment_id=(str(row["assessment_id"]) if row.get("assessment_id") else None),
+        created_at=(str(row["created_at"]) if row.get("created_at") else None),
+    )
+
+
+@app.get(
+    "/today/plan",
+    response_model=TodayPlanResponse,
+    tags=["routine"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_TODAY_PLAN))],
+)
+async def today_plan_endpoint(
+    request: Request,
+    user_id: str = Query(..., min_length=1),
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+):
+    """
+    Mobil ana ekran paketi: günün rutini, havaya göre ürün önerileri
+    (SPF / nemlendirici / balsam), saat aralıklı hatırlatıcılar ve bugün
+    ne yapıldığı. Yapay zekâ çağrısı yoktur; hava için konum izni gerekir.
+    """
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    today = str(date.today())
+
+    events = _load_daily_events(supabase, user_id, today)
+    aggregated = _aggregate_daily_events(events)
+
+    weather = dict(WEATHER_FALLBACK)
+    weather_source = "default"
+    if lat is not None and lon is not None:
+        _require_privacy_permission(user_id, "location")
+        weather = await fetch_weather(lat, lon)
+        weather_source = "live"
+    elif aggregated.get("weather"):
+        weather = dict(aggregated["weather"])
+        weather_source = "tracking"
+
+    row = _load_active_routine(supabase, user_id)
+    routine = row.get("active_routine") or []
+    checkin_done = _checkin_done_today(supabase, user_id, today)
+
+    return TodayPlanResponse(
+        user_id=user_id,
+        log_date=today,
+        has_routine=bool(routine),
+        routine=routine,
+        weather=weather,
+        weather_source=weather_source,
+        environment_advice=build_environment_advice(weather, _profile_skin_type(supabase, user_id)),
+        reminders=build_reminders(weather, aggregated, checkin_done),
+        progress=aggregated,
+        checkin_done=checkin_done,
     )
 
 

@@ -31,6 +31,8 @@ def test_openapi_json(client):
     assert "/generate_routine" in paths
     assert "/daily_checkin" in paths
     assert "/daily_tracking/ingest" in paths
+    assert "/routine/active" in paths
+    assert "/today/plan" in paths
     tags = {t["name"] for t in spec.get("tags", [])}
     assert "routine" in tags
     assert "tracking" in tags
@@ -42,6 +44,40 @@ def test_daily_checkin_status_demo(client):
     j = r.json()
     assert "already_checked_in" in j
     assert "log_date" in j
+
+
+def test_routine_active_demo_has_no_routine(client):
+    r = client.get("/routine/active", params={"user_id": DEMO_UUID})
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["has_routine"] is False
+    assert j["routine"] == []
+
+
+def test_today_plan_demo_returns_advice_and_reminders(client):
+    r = client.get("/today/plan", params={"user_id": DEMO_UUID})
+    assert r.status_code == 200, r.text
+    j = r.json()
+    assert j["weather_source"] == "default"
+    assert any("SPF" in item["action"] for item in j["environment_advice"])
+    assert {"routine_morning", "water_intake"} <= {x["id"] for x in j["reminders"]}
+    assert j["progress"]["makeup"]["logged"] is False
+
+
+def test_makeup_and_product_events_are_accepted(client):
+    for event_type, payload in (
+        ("makeup", {"used": True}),
+        ("product_finished", {"product": "SPF 50", "step_order": 40}),
+    ):
+        r = client.post(
+            "/daily_tracking/ingest",
+            json={"user_id": DEMO_UUID, "type": event_type, "payload": payload},
+        )
+        assert r.status_code == 200, r.text
+
+    agg = r.json()["aggregated"]
+    assert agg["makeup"]["used"] is True
+    assert agg["products_finished"][0]["product"] == "SPF 50"
 
 
 @pytest.mark.slow
