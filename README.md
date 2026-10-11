@@ -5,12 +5,15 @@ Rebi, AI destekli kişiselleştirilmiş cilt bakım rutinleri sunan bir platform
 ## 🏗️ Mimari
 
 ```
-Frontend (React/Vite) → Backend (FastAPI) → Supabase → Gemini AI
+Web (React/Vite)  ─┐
+                   ├→ Backend (FastAPI) → Supabase → Gemini AI
+Mobil (Flutter)  ──┘
 ```
 
 ### Bileşenler
 
-- **Frontend**: React + Vite + TailwindCSS
+- **Frontend (web)**: React + Vite + TailwindCSS
+- **Mobil (iOS/Android)**: Flutter — kurulum ve yapı için [mobile/README.md](mobile/README.md)
 - **Backend**: FastAPI + Python
 - **Database**: Supabase (PostgreSQL + pgvector)
 - **AI**: Google Gemini 2.0 Flash + Embedding
@@ -129,8 +132,13 @@ rebi/
 │   ├── src/
 │   │   ├── pages/           # Sayfa bileşenleri
 │   │   ├── context/         # React context'ler
+│   │   ├── locales/         # Çeviriler (web + mobil ortak kaynak)
 │   │   └── App.jsx          # Ana uygulama
 │   └── package.json
+├── mobile/                  # Flutter uygulaması (iOS + Android)
+│   ├── lib/                 # screens/, core/, state/, ui/
+│   ├── test/                # mantık, akış ve web senkron testleri
+│   └── tool/sync_locales.sh # web çevirilerini mobile kopyalar
 ├── database/
 │   └── schema.sql           # Veritabanı şeması
 ├── docker-compose.yml       # Docker Compose yapılandırması

@@ -1,0 +1,424 @@
+{
+ "routine": [
+  {
+   "time": "Sabah",
+   "category": "Bakım",
+   "icon": "🧴",
+   "action": "Temizleme: Yüzey aktif (SLES-free) köpük temizleyici",
+   "detail": "",
+   "usage": "Yüzü ıslat, köpürt, 30 sn masaj yap, ılık su ile durula, kurula.",
+   "step_order": 10
+  },
+  {
+   "time": "Sabah",
+   "category": "Bakım",
+   "icon": "🧊",
+   "action": "Nemlendirici: Niasinamid %4 + Hyaluronik asit (hafif jel)",
+   "detail": "Sabah rutininde niasinamid: bariyer, sebum ve ton için çok yönlü B3. sivilce, gözenek ve yağ dengesi ile örtüşür; Orta düzey bir tablo gösterdiğin için ile doz/sıklık ayarlı. Aynı işi gören birkaç ayrı ürün almak zorunda değilsin: mümkünse tek nemlendiricide bu hedef içerikleri topla; olmazsa bu adımdaki içeriklerden birini seçerek rutine devam et.",
+   "usage": "Temiz cilde, serumdan sonra. Tüm yüze ince katman (göz çevresi ince).",
+   "step_order": 30,
+   "ramp_stage": "starter",
+   "canonical_ingredient_ids": [
+    "hyaluronik_asit",
+    "niacinamid"
+   ],
+   "identity_stamped": true,
+   "active_families": [
+    "niacinamide"
+   ],
+   "strength_pct": "4"
+  },
+  {
+   "time": "Sabah",
+   "category": "Koruma",
+   "icon": "🌤️",
+   "action": "SPF 30+ (mat bitişli, yağsız SPF)",
+   "detail": "Sabah rutininde SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli. Tek geniş spektrumlu güneş koruyucu yeter; istersen nem + SPF’yi tek üründe birleştirebilirsin.",
+   "step_order": 40,
+   "canonical_ingredient_ids": [
+    "mineral_spf"
+   ],
+   "identity_stamped": true,
+   "usage": "Önerilen sırada, temiz cilde uygula."
+  },
+  {
+   "time": "Akşam",
+   "category": "Bakım",
+   "icon": "🫧",
+   "action": "Çift aşama temizlik: yağ/balm bazlı temizleyici + nazik temizleyici",
+   "detail": "",
+   "usage": "1) Yağ/balm bazlı temizleyiciyi kuru cilde masajla uygula, emülsiye et, durula. 2) Nazik temizleyici ile yıka, durula.",
+   "step_order": 10
+  },
+  {
+   "time": "Akşam",
+   "category": "Bakım",
+   "icon": "🎯",
+   "action": "⏸️ Salisilik asit %1 tonik (BHA, INCI: Salicylic Acid) — alın & T-bölge hedefli — şimdilik kullanma",
+   "detail": "Şu an bu adım güvenlik için duraklatıldı; önce bariyer ve sakinleşme.",
+   "step_order": 18,
+   "ramp_stage": "starter",
+   "canonical_ingredient_ids": [
+    "salisilik_asit"
+   ],
+   "identity_stamped": true,
+   "usage": "Yaşam verilerine göre bu adım geçici duraklatıldı; bariyer öne alındı. Sıklık check-in ile yeniden planlanır. (Ara ver, nazik temizlik yeterli)",
+   "weekly_days": [
+    0,
+    6
+   ],
+   "active_families": [
+    "bha"
+   ],
+   "strength_pct": "1",
+   "frequency_per_week": 2
+  },
+  {
+   "time": "Akşam",
+   "category": "Bakım",
+   "icon": "🎯",
+   "action": "Niasinamid %10 serum (INCI: Niacinamide; niasin ile karıştırma) + Azelaik asit %10-15 (INCI: Azelaic Acid; dikarboksilli asit) (sırayla veya tek formül)",
+   "detail": "Akşam rutininde azelaik asit: akne ve kızarıklık/leke dengesinde orta güçlü seçenek. sivilce, gözenek ve yağ dengesi ve Orta düzey bir tablo gösterdiğin için.",
+   "step_order": 20,
+   "ramp_stage": "starter",
+   "canonical_ingredient_ids": [
+    "azelaik_asit",
+    "niacinamid"
+   ],
+   "identity_stamped": true,
+   "usage": "Kişisel puan: katman sayısını azalt. Önce niasinamid, kuruduktan sonra azelaik ince katman; mümkünse tek üründe ikisi. Haftada 3 gece azelaik ile başla. Tempo yumuşatıldı: Haftada 1x sadece. Bariyer öncelikli.",
+   "active_families": [
+    "azelaic",
+    "niacinamide"
+   ],
+   "strength_pct": "10"
+  },
+  {
+   "time": "Akşam",
+   "category": "Bakım",
+   "icon": "🌙",
+   "action": "Gece: Niasinamid %4 + HA (hafif jel, gece)",
+   "detail": "Akşam rutininde niasinamid: bariyer, sebum ve ton için çok yönlü B3. sivilce, gözenek ve yağ dengesi ile örtüşür; Orta düzey bir tablo gösterdiğin için ile doz/sıklık ayarlı. Aynı işi gören birkaç ayrı ürün almak zorunda değilsin: mümkünse tek nemlendiricide bu hedef içerikleri topla; olmazsa bu adımdaki içeriklerden birini seçerek rutine devam et.",
+   "usage": "Aktif tedaviden sonra. Tüm yüze ince katman, gece bırak.",
+   "step_order": 30,
+   "ramp_stage": "starter",
+   "canonical_ingredient_ids": [
+    "niacinamid"
+   ],
+   "identity_stamped": true,
+   "active_families": [
+    "niacinamide"
+   ],
+   "strength_pct": "4"
+  },
+  {
+   "time": "Akşam",
+   "category": "Zihin",
+   "icon": "🌿",
+   "action": "5 Dakika Nefes Egzersizi",
+   "detail": "Stres puanın orta (9/16). Parasempatik sistemi güçlendirmek yenilenmeyi destekler.",
+   "usage": "4-7-8: burnundan 4 sn nefes al, 7 sn tut, ağızdan 8 sn ver; 4–6 tur, yaklaşık 5 dakika. Rahat otur, omuzları gevşet."
+  },
+  {
+   "time": "Akşam",
+   "category": "Yaşam",
+   "icon": "🌙",
+   "action": "Uyku öncesi protokol",
+   "detail": "Düzenli, yeterli uyku gece onarımı ve rutindeki nem/onarım adımlarını destekler. Uyku süreni kademeli olarak 7 saat civarına yaklaştırmayı hedefle.",
+   "usage": "Yatmadan 60–90 dk önce ekran ve parlak ışığı azalt; odayı serin ve karanlık tut. Yatış/kalkış saatlerini hafta içi birbirine yakın tut.",
+   "step_order": 80
+  },
+  {
+   "time": "Günlük",
+   "category": "Yaşam",
+   "icon": "📍",
+   "action": "Günlük denge: Kriz",
+   "detail": "Stres puanın oldukça yüksek; bu dönemde cilt daha kolay tepki verebilir. Su tüketimin hedefin biraz altında kalabilir; gün içine birkaç bardak eklemek iyi olur. Ortam nemi orta; rutindeki nem adımlarını sürdürmek yeterli olabilir. Uyku süren idealin biraz altında; düzenli yatış-kalkış saatleri bariyer onarımına yardım eder. İşaretler yüksek yük gösteriyor; şimdilik en güvenli ve sade çekirdek rutin öneriliyor. Bu özet rutini kişiselleştirmek içindir; tıbbi tanı veya tedavi yerine geçmez.",
+   "step_order": 0
+  },
+  {
+   "time": "Sabah ve Akşam",
+   "category": "Bakım",
+   "icon": "🛡️",
+   "action": "Seramid + niasinamid içeren bariyer nemlendirici (öncelik)",
+   "detail": "Önce bariyeri desteklemek için bu katman öne alındı; diğer güçlü adımlar hafifletildi veya durduruldu.",
+   "usage": "Günde iki kez veya tahrişe göre sabah-akşam ince katman. Eczane veya güvendiğin kanalda seramid/niasinamid içeren tek ürün yeterli olabilir.",
+   "step_order": 15,
+   "active_families": [
+    "niacinamide"
+   ],
+   "canonical_ingredient_ids": [
+    "niacinamid",
+    "seramidler"
+   ],
+   "identity_stamped": true
+  },
+  {
+   "time": "Günlük",
+   "category": "Bitkisel",
+   "icon": "🌿",
+   "action": "Opsiyonel — bitkisel alternatif (istersen)",
+   "detail": "Bu madde tamamen opsiyonel: rutinini kurmak için şart değil. İstersen 'bitkisel' içeriklerden örnek fikirler aşağıda; etkinlik kişiden kişiye değişebilir.",
+   "usage": "Bitkisel/topikal örnekler (isteğe bağlı): çay ağacı yağı yalnızca noktasal ve çok seyreltik (taşıyıcı yağ ile). Lavanta gibi uçucu yağlar bazı kişilerde irrite edebilir; kullanacaksan yine çok seyreltik ve önce küçük alanda dene. Oral destek örnekleri (isteğe bağlı): çinko, omega-3 gibi takviyeler bazı kişilerde destekleyici olabilir; doz/uygunluk için eczacı veya hekim. Bu satır ana rutin adımlarının yerine geçmez. Uçucu yağlar hassas cildi irrite edebilir. Hamilelik, emzirme, kronik hastalık veya ilaç kullanımında oral takviyeleri mutlaka hekim/eczacı ile değerlendir.",
+   "step_order": 95,
+   "natural_alternative": true,
+   "natural_examples_only": true
+  }
+ ],
+ "weather": {
+  "humidity": 50,
+  "uv_index": 3,
+  "temperature": 20,
+  "description": "N/A"
+ },
+ "assessment_id": "76827990-aa4c-4d09-81bc-1bd18a8659df",
+ "holistic_insights": [
+  {
+   "time": "Akşam",
+   "category": "Zihin",
+   "icon": "🌿",
+   "action": "5 Dakika Nefes Egzersizi",
+   "detail": "Stres puanın orta (9/16). Parasempatik sistemi güçlendirmek yenilenmeyi destekler.",
+   "usage": "4-7-8: burnundan 4 sn nefes al, 7 sn tut, ağızdan 8 sn ver; 4–6 tur, yaklaşık 5 dakika. Rahat otur, omuzları gevşet."
+  },
+  {
+   "time": "Akşam",
+   "category": "Yaşam",
+   "icon": "🌙",
+   "action": "Uyku öncesi protokol",
+   "detail": "Düzenli, yeterli uyku gece onarımı ve rutindeki nem/onarım adımlarını destekler. Uyku süreni kademeli olarak 7 saat civarına yaklaştırmayı hedefle.",
+   "usage": "Yatmadan 60–90 dk önce ekran ve parlak ışığı azalt; odayı serin ve karanlık tut. Yatış/kalkış saatlerini hafta içi birbirine yakın tut.",
+   "step_order": 80
+  },
+  {
+   "time": "Günlük",
+   "category": "Yaşam",
+   "icon": "📍",
+   "action": "Günlük denge: Kriz",
+   "detail": "Stres puanın oldukça yüksek; bu dönemde cilt daha kolay tepki verebilir. Su tüketimin hedefin biraz altında kalabilir; gün içine birkaç bardak eklemek iyi olur. Ortam nemi orta; rutindeki nem adımlarını sürdürmek yeterli olabilir. Uyku süren idealin biraz altında; düzenli yatış-kalkış saatleri bariyer onarımına yardım eder. İşaretler yüksek yük gösteriyor; şimdilik en güvenli ve sade çekirdek rutin öneriliyor. Bu özet rutini kişiselleştirmek içindir; tıbbi tanı veya tedavi yerine geçmez.",
+   "step_order": 0
+  }
+ ],
+ "active_plan": [
+  {
+   "active": "mineral_spf",
+   "name_tr": "Güneş filtresi",
+   "family": null,
+   "role": "spf",
+   "recommended": true,
+   "when": "morning",
+   "priority": 1,
+   "why_tr": "Her sabah rutininin son adımı; leke ve yaşlanma yönetiminin temeli.",
+   "why_en": "",
+   "notes_tr": "",
+   "notes_en": "",
+   "in_routine": true,
+   "why": "Her sabah rutininin son adımı; leke ve yaşlanma yönetiminin temeli.",
+   "notes": ""
+  }
+ ],
+ "flow_debug": {
+  "severity": "Orta",
+  "age_group": "Genç Yetişkin (20-29)",
+  "skin_type": "Yağlı",
+  "hormonal_info": {},
+  "acne_zones": [
+   {
+    "zone": "forehead",
+    "label": "Alın"
+   },
+   {
+    "zone": "chin",
+    "label": "Çene / Alt Çene"
+   }
+  ],
+  "risk_info": {
+   "score": 14,
+   "level": "crisis",
+   "label": "KRİZ MODU",
+   "detail": "Stres puanın oldukça yüksek; bu dönemde cilt daha kolay tepki verebilir. Su tüketimin hedefin biraz altında kalabilir; gün içine birkaç bardak eklemek iyi olur. Ortam nemi orta; rutindeki nem adımlarını sürdürmek yeterli olabilir. Uyku süren idealin biraz altında; düzenli yatış-kalkış saatleri bariyer onarımına yardım eder. İşaretler yüksek yük gösteriyor; şimdilik en güvenli ve sade çekirdek rutin öneriliyor. Bu özet rutini kişiselleştirmek içindir; tıbbi tanı veya tedavi yerine geçmez.",
+   "detail_formula": "Stres:9 + Su:1.5L + Nem:50% + Uyku:6.5s + makyaj:3/cleanser + döngü:- = 14"
+  },
+  "is_pregnant": false,
+  "actives_experience": "occasional",
+  "actives_unused": [],
+  "actives_tolerance": {
+   "retinol": "good",
+   "bha": "good"
+  },
+  "personalization": {
+   "tier": 0,
+   "label_tr": "Bariyer öncelikli",
+   "composite_score": 59,
+   "merge_barrier_layers": true,
+   "risk_level": "crisis",
+   "risk_score": 14,
+   "inputs_summary": {
+    "bad_reactions": 0,
+    "never_used_actives": 0,
+    "severity_score": 6,
+    "skin_type_key": "oily"
+   }
+  },
+  "special_flags": {},
+  "absolute_enforcement_prefinal": {
+   "kesinlik": true,
+   "sabah_kaldirilan": [],
+   "doz_sinirlanan": [],
+   "birlikte_cozulen": []
+  },
+  "knowledge_retrieved": 0,
+  "sources": [],
+  "chain_coverage": null,
+  "cabinet_enrichment": {
+   "folded": [],
+   "avoid_stripped": [],
+   "tagged": 0
+  },
+  "token_estimate": "~400 (sadece AI polish)"
+ },
+ "care_guide": {
+  "title": "Uygulama sırası ve haftalık plan",
+  "usage_notes": [
+   "Kesinlik kuralları: sabah kullanılmayacak etkenler, üst doz sınırları ve birlikte kullanılmaz çiftler motor tarafından zorunlu uygulanır; liste ve rapor API’de `absolute_rules_catalog` / `rule_enforcement_report` ile döner.",
+   "Uygulama sırası: temizlik → serum/aktif → nemlendirici; sabahda en son geniş spektrumlu güneş koruyucu.",
+   "Kişiselleştirme katmanı: stres/su/uyku/nem risk skoru + şiddet puanı + cilt tipi + aktif tolerans anketi tek bir “tier” üretir; akne, yaşlanma, leke ve kurulukta akşam aktifleri ve gerektiğinde kurulukta sabah HA bu tipe göre sıkıştırılır veya tek satırda birleştirilir.",
+   "Bir rutin satırındaki maddeler tek üründe olmak zorunda değil; aynı adımda hedeflenen etkenler ayrı serum + krem gibi ürünlerle de sağlanır (sıra: sulu/aktif önce, krem/yağ sonra).",
+   "Konsantrasyon etikette birebir olmayabilir; yakın ve daha düşük % ile başlamak çoğu zaman uygundur, güçlü formüle geçmeden tolere kontrolü yap.",
+   "İnce/küvöz kıvamlı ürünler önce, daha koyu krem veya yağ bazlı nemlendirici sonra gelir.",
+   "Sabah genelde hafif (temizlik, gerekirse tek hafif serum, nem, SPF); güçlü ve yoğun serumlar akşama planlanır.",
+   "Haftalık planda işaretli günler sistem tarafından atanır; güçlü gece adımlarını sadece o günlere yay.",
+   "Yeni konsantrasyon veya ürün öncesi 24–48 saat yama testi; kızarıklıkta o adımı durdur.",
+   "Hamilelik veya emzirmede yeni aktif eklemeden önce sağlık uzmanına danış."
+  ],
+  "weekly_routine_explanation": "Haftalık kullanım kartındaki günler, güçlü gece adımlarının hangi akşamlarda uygulanacağını gösterir. Gün gün rutinde sabah ve akşam adımları bu takvime göre listelenir; aynı günde iki güçlü adım önerilmez. Check-in ile sıklık güncellenebilir."
+ },
+ "safety_absolute_rules": {
+  "kesinlik_aciklama_tr": "Kesinlik kuralları (kırmızı çizgi): motor rutin oluştururken ve güncellerken ihlalleri otomatik düzeltir veya adımı çıkarır. Özet `rule_enforcement_report` alanında döner; kullanıcı eğitimi için değil, denetim/iç API içindir.",
+  "sabah_kullanilmaz": [
+   {
+    "id": "am_retinoid",
+    "etken_grubu_tr": "Retinol, retinal, tretinoin, adapalen ve benzeri retinoidler",
+    "aciklama_tr": "Fotosensitizasyon ve UV hasarı riski nedeniyle sabah kullanılmaz; yalnızca akşam.",
+    "kesinlik": true
+   },
+   {
+    "id": "am_bha",
+    "etken_grubu_tr": "Salisilik asit (BHA)",
+    "aciklama_tr": "Güneşe duyarlılığı ve tahriş birikimi riski; akşam veya haftalık planda.",
+    "kesinlik": true
+   },
+   {
+    "id": "am_benzoyl",
+    "etken_grubu_tr": "Benzoil peroksit",
+    "aciklama_tr": "Beyazlatma/ kuruluk ve fotosensitizasyon; sabah rutinde yer almaz.",
+    "kesinlik": true
+   },
+   {
+    "id": "am_aha",
+    "etken_grubu_tr": "AHA (glikolik, laktik, mandelik asit vb.)",
+    "aciklama_tr": "Yüzey yenileme asitleri sabahda önerilmez; akşam ve takvimde.",
+    "kesinlik": true
+   },
+   {
+    "id": "am_arbutin_txa_kojic",
+    "etken_grubu_tr": "Alfa-arbutin, arbutin, traneksamik asit, kojik asit, hidrokinon",
+    "aciklama_tr": "Leke aktifleri tipik olarak akşam; sabahda C vitamini + SPF önceliklidir.",
+    "kesinlik": true
+   },
+   {
+    "id": "am_azelaic_high_context",
+    "etken_grubu_tr": "Azelaik asit (tedavi konsantrasyonu)",
+    "aciklama_tr": "Motor varsayılanında akşam adımıdır; sabah satırına düşerse kaldırılır.",
+    "kesinlik": true
+   }
+  ],
+  "doz_ust_sinir": [
+   {
+    "id": "dose_niacinamide_am",
+    "etken_tr": "Niasinamid",
+    "ust_yuzde": 10,
+    "zaman_tr": "Sabah",
+    "aciklama_tr": "Sabah rutininde %10 üzeri önerilmez; üstü sınırda %10’a indirilir.",
+    "kesinlik": true
+   },
+   {
+    "id": "dose_laa_serum",
+    "etken_tr": "L-Askorbik asit (C vitamini serumu)",
+    "ust_yuzde": 20,
+    "zaman_tr": "Her zaman",
+    "aciklama_tr": "Ev kullanımında %20 üzeri anlatılmaz; metin üst sınıra çekilir.",
+    "kesinlik": true
+   },
+   {
+    "id": "dose_glycolic_face",
+    "etken_tr": "Glikolik asit (yüz, ev kullanımı)",
+    "ust_yuzde": 10,
+    "zaman_tr": "Akşam",
+    "aciklama_tr": "Yüz için ev kullanımında %10 üzeri önerilmez.",
+    "kesinlik": true
+   },
+   {
+    "id": "dose_salicylic_leaveon",
+    "etken_tr": "Salisilik asit (BHA leave-on)",
+    "ust_yuzde": 2,
+    "zaman_tr": "Akşam",
+    "aciklama_tr": "Tipik güvenli tavan %2; üzeri metinde düşürülür.",
+    "kesinlik": true
+   },
+   {
+    "id": "dose_retinol_otc",
+    "etken_tr": "Serbest retinol",
+    "ust_yuzde": 1,
+    "zaman_tr": "Akşam",
+    "aciklama_tr": "Genel ev kullanımı anlatımında retinol %1 üstü sınırlanır (reçete/doktor ayrı).",
+    "kesinlik": true
+   }
+  ],
+  "birlikte_kullanilmaz": [
+   {
+    "id": "pair_retinoid_aha",
+    "a_tr": "Retinoid (retinol, retinal, adapalen, tretinoin)",
+    "b_tr": "AHA (glikolik, laktik vb.)",
+    "kapsam_tr": "Aynı gece, örtüşen haftalık günler",
+    "cozum_tr": "Retinoid kalır; AHA içeren satır kaldırılır.",
+    "aciklama_tr": "Aynı uygulamada bariyer tahrişi ve yanma riski çok yüksek.",
+    "kesinlik": true
+   },
+   {
+    "id": "pair_retinoid_bha",
+    "a_tr": "Retinoid",
+    "b_tr": "BHA (salisilik asit)",
+    "kapsam_tr": "Aynı gece, örtüşen haftalık günler",
+    "cozum_tr": "Retinoid kalır; BHA satırı kaldırılır.",
+    "aciklama_tr": "İki güçlü keratolitik üst üste önerilmez.",
+    "kesinlik": true
+   },
+   {
+    "id": "pair_retinoid_benzoyl",
+    "a_tr": "Retinoid",
+    "b_tr": "Benzoil peroksit",
+    "kapsam_tr": "Aynı gece, örtüşen haftalık günler",
+    "cozum_tr": "Retinoid kalır; benzoil satırı kaldırılır.",
+    "aciklama_tr": "BP retinoid stabilitesini bozabilir; aynı seansta birlikte önerilmez.",
+    "kesinlik": true
+   },
+   {
+    "id": "pair_aha_cvit_same_session",
+    "a_tr": "AHA / BHA (yüzey asidi)",
+    "b_tr": "L-Askorbik asit (düşük pH C)",
+    "kapsam_tr": "Aynı zaman dilimi (aynı sabah veya aynı akşam üst üste)",
+    "cozum_tr": "Aynı gün diliminde asit içeren satır kaldırılır; C vitamini öncelikli sabahda tutulur.",
+    "aciklama_tr": "pH çakışması ve tahriş; pratikte ayrı zaman veya gün.",
+    "kesinlik": true
+   }
+  ]
+ },
+ "rule_enforcement_report": {
+  "kesinlik": true,
+  "sabah_kaldirilan": [],
+  "doz_sinirlanan": [],
+  "birlikte_cozulen": []
+ },
+ "ai_polish_note": null
+}

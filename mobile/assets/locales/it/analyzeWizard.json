@@ -1,0 +1,340 @@
+{
+  "errors": {
+    "pickPhotoFirst": "Choose or take a photo first.",
+    "storageNotConfigured": "Storage is not configured; photo cannot be uploaded.",
+    "uploadSuccess": "Photo uploaded to secure storage. You can see it under Profile → Skin photos.",
+    "uploadFailed": "Upload failed. Check your connection or storage permissions.",
+    "supabaseAnalyzeMissing": "Supabase is not configured; photo cannot be uploaded.",
+    "photoOnlyIntro1": "Without the full analysis form you can still save the image for progress tracking or an archive.",
+    "photoOnlyIntro2": "",
+    "locationFailed": "Could not get location.",
+    "photoUploadWarn": "Photo could not be uploaded right now; your routine will still be generated. You can upload later for progress tracking.",
+    "storageOffWarn": "Storage (Supabase) is off; the photo cannot reach the server. Routine is still generated; check settings for photos later.",
+    "networkError": "Could not reach the server. Check VITE_API_URL and your connection; in development ensure the backend is running.",
+    "unexpectedError": "Something went wrong.",
+    "sessionRequired": "Session required."
+  },
+  "photoOnly": {
+    "fullFormLink": "Full new analysis (long form)",
+    "savePhoto": "Save photo",
+    "goProfilePhotos": "Go to profile photos",
+    "change": "Change",
+    "cameraFront": "Front camera",
+    "cameraBack": "Back camera",
+    "webcam": "Webcam"
+  },
+  "compactHub": {
+    "description": "You finished your first analysis; you do not need the long form every day. Use the shortcut below to add a skin photo, or open the full form if something big changed.",
+    "backToDashboard": "Back to dashboard"
+  },
+  "step1": {
+    "title": "Let’s get to know you",
+    "subtitle": "Basics about you.",
+    "nameLabel": "Your name",
+    "namePlaceholder": "Your name",
+    "ageLabel": "Age",
+    "genderLabel": "Gender",
+    "hormonalTitle": "Hormonal status",
+    "hormonal_regular": "Regular cycle",
+    "hormonal_irregular": "Irregular",
+    "hormonal_pregnant": "Pregnant",
+    "hormonal_menopause": "Menopause",
+    "periodHint": "Pick your last period date to continue."
+  },
+  "step2": {
+    "title": "Your skin & lifestyle",
+    "subtitle": "Gather details; Rebi will evaluate next.",
+    "zonesHint": "Affected areas for {{concern}}",
+    "clarifyTitle": "Quick clarification",
+    "agingIntro": "If you chose wrinkles/aging, which lines show up most for you?",
+    "aging_frown": "Frown lines between brows / forehead",
+    "aging_crow": "Crow’s feet when smiling",
+    "aging_smile": "Smile lines (nose–mouth)",
+    "sensitivityIntro": "If you chose sensitivity/redness, this is about general redness and reactivity.",
+    "sensitivityNote": "If you mean post-acne red marks, the Acne option may fit better.",
+    "redness_diffuse": "General / diffuse redness",
+    "redness_acne_marks": "Redness after breakouts",
+    "cold_sensitive": "Worse in the cold",
+    "stings_products": "Stings when applying products",
+    "sensitivityFootnote": "These signs are not the same as skin type (oily/dry/combination/normal); normal skin can still react to cold.",
+    "pssTitle": "PSS-10 stress check",
+    "pssSubtitle": "Stress affects many skin concerns.",
+    "scaleNever": "Never",
+    "scaleOften": "Very often",
+    "smokingTitle": "Smoking",
+    "smokingYears": "For how many years?",
+    "packYears": "Pack-years: {{n}}",
+    "alcoholTitle": "Alcohol",
+    "alcoholSession": "How much per session?",
+    "alcoholWeekly": "Weekly: ~{{n}} drinks",
+    "nutritionTitle": "Nutrition",
+    "makeupTitle": "Makeup",
+    "makeupFreqQ": "How often do you wear makeup?",
+    "makeupRemovalQ": "How do you remove makeup?",
+    "waterLabel": "Water: {{n}} L",
+    "sleepLabel": "Sleep: {{n}} h"
+  },
+  "step3": {
+    "activesTitle": "Active-ingredient products",
+    "activesSubtitle": "How often have you used retinol, AHA/BHA, high-% vitamin C, etc.? This is your overall experience; you will mark each ingredient and skin response before generating the routine.",
+    "experienceLabel": "Your experience",
+    "severityTitle": "Severity per concern",
+    "severitySubtitle": "Answer for each selected concern.",
+    "durationLabel": "How long has this been going on?",
+    "triggersTitle": "Triggers",
+    "triggersSubtitle": "When do issues flare? (multi-select)",
+    "pastTitle": "Past treatments",
+    "pastSubtitle": "What have you tried before? (multi-select)",
+    "expectationsTitle": "Your goals",
+    "expectationsSubtitle": "What do you want? (multi-select)"
+  },
+  "step4": {
+    "finalLead": "You can generate your routine now. For {{tracking}} (comparing progress), a clear face photo is {{recommended}} — gallery, camera, or webcam.",
+    "final_tracking": "For progress tracking",
+    "final_recommended": "highly recommended",
+    "changePhoto": "Change",
+    "tipTitle": "Tip:",
+    "tipBody": "Add a clear face photo to make progress tracking easier. Mobile: front/back camera or gallery; desktop: webcam or file.",
+    "modeHint": "Choose a mode: front/back camera on phone; gallery/file or live webcam on desktop.",
+    "galleryFile": "Gallery / file",
+    "cameraFront": "Front camera",
+    "cameraRear": "Back camera",
+    "webcam": "Webcam",
+    "summaryTitle": "Summary",
+    "age": "Age",
+    "skin": "Skin",
+    "severity": "Severity",
+    "concerns": "Concerns",
+    "createRoutineCta": "Build my optimal routine",
+    "noPhotoNote": "You can continue without a photo; you will see a short note about progress tracking at the end."
+  },
+  "modal": {
+    "routineBeforeTitle": "Before we generate your routine",
+    "routineBeforeBody": "Rebi guides with actives and concentrations; it is not a medical diagnosis or prescription. If unsure, pregnant/breastfeeding, or on medication, talk to a clinician.",
+    "noPhotoTitle": "No photo added",
+    "noPhotoBody": "Your routine can still be created; comparing progress with photos gets harder. You can go back and add from camera or gallery. Uploaded images are stored in secure cloud storage; this web app does not create a separate Rebi folder on your phone.",
+    "productTruthTitle": "Products and formulas",
+    "productTruth1": "If several actives appear on one line, they do not have to be in a single bottle; you can use separate serums and moisturizers in the same order.",
+    "productTruth2": "Label percentages may not match exactly; starting near or slightly below is often sensible.",
+    "toleranceExplTitle": "Prior use and skin response",
+    "toleranceExplBody": "Ingredients you mark as severe reaction are omitted from the routine. Never used → gentle ramp-up. Mild reaction → sparser use notes. No issues → standard suggestion based on your overall experience.",
+    "back": "Back",
+    "understandCreate": "Got it, create routine"
+  },
+  "skipPhoto": {
+    "title": "A photo helps track progress",
+    "body1": "You can continue without one; the routine is still generated. Face photos help compare changes over time.",
+    "body2": "Your image is kept in the app’s secure server-side storage. As a web app, photos are usually not saved into a separate Rebi folder on your phone (your gallery copy may remain).",
+    "addPhoto": "I’ll add a photo",
+    "createAnyway": "Create routine anyway"
+  },
+  "skinPicker": {
+    "oily": {
+      "label": "Oily",
+      "desc": "Shine in T-zone, larger pores"
+    },
+    "dry": {
+      "label": "Dry",
+      "desc": "Tightness, flaking, matte look"
+    },
+    "combination": {
+      "label": "Combination",
+      "desc": "Oily T-zone, dry or normal cheeks"
+    },
+    "normal": {
+      "label": "Normal",
+      "desc": "Balanced moisture, even texture"
+    },
+    "sensitive": {
+      "label": "Sensitive",
+      "desc": "Flushes easily, stinging, irritation"
+    },
+    "guideOpen": "How do I know my skin type?",
+    "guideClose": "Close guide",
+    "guideTitle": "How to tell your skin type",
+    "morningTitle": "Morning check",
+    "morningDesc": "Before washing, look in the mirror:",
+    "tissueTitle": "Blotting test",
+    "tissueDesc": "Press clean tissue on your face and wait ~30 seconds:",
+    "morningSign": {
+      "oily": "Shiny all over, especially forehead and nose",
+      "dry": "Feels tight, slight flaking possible",
+      "combination": "Only nose/forehead shiny, cheeks matte or tight",
+      "normal": "Comfortable—not oily or dry",
+      "sensitive": "Flushes/warms easily; quicker reactions to products or temperature"
+    },
+    "tissueSign": {
+      "oily": "Oil marks across the tissue",
+      "dry": "No oil on tissue",
+      "combination": "Oil mainly on nose/forehead area",
+      "normal": "Very light, even moisture marks",
+      "sensitive": "Redness/mark lasts longer after pressing; friction irritates easily"
+    },
+    "tipLine": "Tip: If unsure, choose \"Normal\". Rebi will refine needs from your other answers."
+  },
+  "gender": {
+    "female": "Female",
+    "male": "Male",
+    "other": "Other"
+  },
+  "concern": {
+    "acne": "Acne / breakouts",
+    "aging": "Wrinkles / aging",
+    "dryness": "Dryness",
+    "pigmentation": "Pigmentation / spots",
+    "sensitivity": "Sensitivity / redness"
+  },
+  "zone": {
+    "forehead": "Forehead",
+    "nose": "Nose",
+    "cheeks": "Cheeks",
+    "chin": "Chin",
+    "undereye": "Under eyes",
+    "lips": "Around lips",
+    "temples": "Temples"
+  },
+  "duration": {
+    "1-3": "1–3 months",
+    "3-6": "3–6 months",
+    "6-12": "6–12 months",
+    "1y+": "More than a year"
+  },
+  "trigger": {
+    "stress": "Stress",
+    "period": "Menstrual cycle",
+    "sun": "Sun",
+    "food": "Diet",
+    "season": "Season",
+    "cold": "Cold",
+    "heat": "Heat",
+    "other": "Other"
+  },
+  "pastTreatment": {
+    "none": "Nothing yet",
+    "cleanser": "Cleanser",
+    "moisturizer": "Moisturizer",
+    "rx": "Prescription cream/medicine",
+    "derm": "Dermatologist",
+    "otc": "OTC pharmacy products"
+  },
+  "activesExperience": {
+    "none": "Rarely / never",
+    "occasional": "Tried occasionally",
+    "regular": "Use regularly"
+  },
+  "strongFamily": {
+    "retinol": "Retinol / retinal",
+    "bha": "Salicylic acid (BHA)",
+    "aha": "AHA (glycolic, lactic)",
+    "benzoyl": "Benzoyl peroxide",
+    "azelaic": "Azelaic acid",
+    "vitamin_c": "Vitamin C (ascorbic) serum",
+    "bakuchiol": "Bakuchiol",
+    "pigment": "Arbutin / tranexamic acid",
+    "niacinamide": "Niacinamide"
+  },
+  "tolerance": {
+    "never": "Never used",
+    "good": "Used, no issues",
+    "mild": "Mild dryness / mild reaction",
+    "bad": "Severe reaction — do not add to routine"
+  },
+  "expectation": {
+    "acne_less": "Fewer breakouts",
+    "spots_less": "Fading spots",
+    "clean_skin": "Clearer, calmer skin",
+    "hydration": "Better hydration",
+    "aging_slow": "Slower visible aging",
+    "comfort": "Less sensitivity / more comfort"
+  },
+  "pss10": [
+    "In the last month, how often have you been upset because of something that happened unexpectedly?",
+    "In the last month, how often have you felt that you were unable to control the important things in your life?",
+    "In the last month, how often have you felt nervous and stressed?",
+    "In the last month, how often have you felt confident about your ability to handle personal problems?",
+    "In the last month, how often have you felt that things were going your way?",
+    "In the last month, how often have you found that you could not cope with all the things you had to do?",
+    "In the last month, how often have you been able to control irritations in your life?",
+    "In the last month, how often have you felt that you were on top of things?",
+    "In the last month, how often have you been angered because of things outside your control?",
+    "In the last month, how often have you felt difficulties were piling up so high you could not overcome them?"
+  ],
+  "smokingAmount": {
+    "0": "I don’t smoke",
+    "1": "Quit",
+    "5": "1–10/day",
+    "15": "10–20/day",
+    "25": "20+/day"
+  },
+  "smokingYears": {
+    "0": "New / quit",
+    "2": "1–3 years",
+    "5": "3–5 years",
+    "10": "5–10 years",
+    "20": "10+ years"
+  },
+  "alcoholFreq": {
+    "0": "I don’t drink",
+    "1": "1–2/month",
+    "3": "1–2/week",
+    "5": "3–5/week",
+    "7": "Daily"
+  },
+  "alcoholAmt": {
+    "1": "1 drink",
+    "2": "2–3 drinks",
+    "4": "4–5 drinks",
+    "6": "6+ drinks"
+  },
+  "nutrition": {
+    "fastfood": {
+      "label": "Fast food / ultra-processed",
+      "opts": {
+        "0": "Rarely",
+        "1": "1–2/week",
+        "3": "3+/week",
+        "5": "Daily"
+      }
+    },
+    "sugar": {
+      "label": "Sugary foods / desserts",
+      "opts": {
+        "0": "Rarely",
+        "1": "1–2/week",
+        "3": "3+/week",
+        "5": "Daily"
+      }
+    },
+    "dairy": {
+      "label": "Dairy",
+      "opts": {
+        "0": "None",
+        "1": "1–2/week",
+        "3": "Daily"
+      }
+    },
+    "veggies": {
+      "label": "Vegetables & fruit",
+      "opts": {
+        "0": "Rarely",
+        "1": "1–2/week",
+        "3": "Daily light",
+        "5": "Daily plenty"
+      }
+    }
+  },
+  "makeup": {
+    "frequency": {
+      "0": "I don’t wear makeup",
+      "1": "Special occasions",
+      "3": "A few times a week",
+      "5": "Daily"
+    },
+    "removal": {
+      "none": "I don’t cleanse it off",
+      "water": "Water only",
+      "cleanser": "With cleanser",
+      "double": "Double cleanse"
+    }
+  }
+}
