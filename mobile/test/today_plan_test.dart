@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rebi/core/day_log.dart';
 import 'package:rebi/core/today_plan.dart';
 import 'package:rebi/core/user_snapshot.dart';
 
@@ -161,15 +162,16 @@ void main() {
         {'used': true},
         {'used': false},
       ]);
-      expect(reminderActions(reminder('makeup_removal', '21:00', '23:00')).single.payload, {'removed': true, 'method': 'double'});
+      final removal = reminderActions(reminder('makeup_removal', '21:00', '23:00')).single;
+      expect(removal.sheet, DaySheet.cleansing, reason: 'nasıl temizlendiği sorulur, yöntem varsayılmaz');
+      expect(removal.type, isNull);
       expect(reminderActions(reminder('water_intake', '09:00', '21:00')).map((a) => a.payload), [
         {'ml': 250},
         {'ml': 500},
       ]);
-      expect(reminderActions(reminder('nutrition_log', '20:00', '20:30')).map((a) => a.payload), [
-        {'junk_food': true},
-        {'junk_food': false},
-      ]);
+      final nutrition = reminderActions(reminder('nutrition_log', '20:00', '20:30'));
+      expect(nutrition.first.sheet, DaySheet.nutrition, reason: '"yedim" ne yendiğini sorar');
+      expect(nutrition.last.payload, {'junk_food': false});
       expect(reminderActions(reminder('spf_refresh', '11:00', '16:00')).single.type, 'spf_refresh');
     });
 
@@ -191,9 +193,160 @@ void main() {
         'nutrition_log',
       ]) {
         for (final a in reminderActions(reminder(id, '00:00', '23:59'))) {
+          if (a.sheet != null) continue;
           expect(known, contains(a.type), reason: id);
         }
       }
+    });
+  });
+
+  group('DayProgress: adım, düzeltme ve yeni alanlar', () {
+    test('sözleşmedeki yeni alanlar ayrıştırılır', () {
+      final p = DayProgress.fromJson({
+        'routine_steps': {
+          'morning': [10, 20.0],
+          'evening': ['x', 30],
+        },
+        'nutrition': {'snacks': true, 'junk_food': true},
+        'nutrition_logged': true,
+        'makeup': {'logged': true, 'used': true, 'removed': true, 'removal_method': 'Wipe'},
+        'products_finished': [
+          {'product': 'Niasinamid serum', 'step_order': 20},
+          {'product': '  '},
+          'bozuk',
+        ],
+      });
+      expect(p.stepsOf('morning'), {10, 20});
+      expect(p.stepsOf('evening'), {30});
+      expect(p.stepsOf('bilinmeyen'), isEmpty);
+      expect(p.nutrition['snacks'], isTrue);
+      expect(p.removalMethod, 'wipe');
+      expect(p.finishedProducts, ['Niasinamid serum']);
+    });
+
+    test('bilinmeyen temizleme yöntemi yok sayılır', () {
+      final p = DayProgress.fromJson({
+        'makeup': {'removal_method': 'serviette'},
+      });
+      expect(p.removalMethod, isNull);
+    });
+
+    test('negatif su kaydı düzeltir, toplam sıfırın altına inmez, tek kayıt sınırlanır', () {
+      var p = const DayProgress(waterMl: 500).withEvent('water_intake', {'ml': -250});
+      expect(p.waterMl, 250);
+      p = p.withEvent('water_intake', {'ml': -1000});
+      expect(p.waterMl, 0);
+      p = p.withEvent('water_intake', {'ml': 9999999});
+      expect(p.waterMl, maxWaterEntryMl);
+    });
+
+    test('rutin adımı işaretlenir ve kaldırılır; bloklar ayrı tutulur', () {
+      var p = const DayProgress();
+      p = p.withEvent('routine_step', {'done': true, 'block': 'morning', 'step_order': 10});
+      p = p.withEvent('routine_step', {'done': true, 'block': 'evening', 'step_order': 10});
+      p = p.withEvent('routine_step', {'done': true, 'block': 'morning', 'step_order': 20});
+      expect(p.stepsOf('morning'), {10, 20});
+      expect(p.stepsOf('evening'), {10});
+      p = p.withEvent('routine_step', {'done': false, 'block': 'morning', 'step_order': 10});
+      expect(p.stepsOf('morning'), {20});
+    });
+
+    test('bloksuz ya da bozuk adım olayı yok sayılır', () {
+      const p = DayProgress();
+      expect(p.withEvent('routine_step', {'done': true, 'step_order': 10}), same(p));
+      expect(p.withEvent('routine_step', {'done': true, 'block': 'night', 'step_order': 10}), same(p));
+      expect(p.withEvent('routine_step', {'done': true, 'block': 'morning'}), same(p));
+    });
+
+    test('rutin bloğu son olaya göre yeniden açılır', () {
+      var p = const DayProgress().withEvent('routine_completed_block', {'morning': true});
+      expect(p.morningDone, isTrue);
+      p = p.withEvent('routine_completed_block', {'morning': false});
+      expect(p.morningDone, isFalse);
+      p = p.withEvent('routine_completed_block', {'evening': true});
+      expect(p.eveningDone, isTrue);
+      expect(p.morningDone, isFalse, reason: 'verilmeyen blok değişmez');
+    });
+
+    test('beslenme alanları birleşir, ürün bitti listelenir', () {
+      var p = const DayProgress().withEvent('nutrition', {'snacks': true, 'sweets': true});
+      p = p.withEvent('nutrition', {'sweets': false, 'dairy': true});
+      expect(p.nutrition, {'snacks': true, 'sweets': false, 'dairy': true});
+      expect(p.nutritionLogged, isTrue);
+
+      p = p.withEvent('product_finished', {'product': 'SPF 50', 'step_order': 40});
+      expect(p.finishedProducts, ['SPF 50']);
+      expect(p.withEvent('product_finished', {'product': ' '}), same(p));
+    });
+
+    test('temizleme yöntemi saklanır; "none" makyajı temizlenmedi bırakır', () {
+      var p = const DayProgress().withEvent('makeup', cleansingPayload('wipe'));
+      expect((p.makeupUsed, p.makeupRemoved, p.removalMethod), (true, true, 'wipe'));
+      p = const DayProgress().withEvent('makeup', {'used': true}).withEvent('makeup', cleansingPayload('none'));
+      expect((p.makeupUsed, p.makeupRemoved, p.removalMethod), (true, false, 'none'));
+    });
+  });
+
+  group('day_log', () {
+    test('beslenme yükü her seçeneği ve özet junk_food alanını taşır', () {
+      expect(nutritionPayload({'sweets', 'dairy'}), {
+        'snacks': false,
+        'sweets': true,
+        'fried_food': false,
+        'dairy': true,
+        'balanced': false,
+        'junk_food': true,
+      });
+      expect(nutritionPayload({'dairy'})['junk_food'], isFalse, reason: 'süt ürünü abur cubur sayılmaz');
+      expect(nutritionPayload({'balanced'})['junk_food'], isFalse);
+    });
+
+    test('kayıtlı beslenme seçimi geri okunur; eski kayıt abur cubur sayılır', () {
+      expect(nutritionSelection(nutritionPayload({'snacks', 'dairy'})), {'snacks', 'dairy'});
+      expect(nutritionSelection({'junk_food': true}), {'snacks'});
+      expect(nutritionSelection({'junk_food': false}), isEmpty);
+    });
+
+    test('temizleme yükü yönteme göre', () {
+      expect(cleansingPayload('double'), {'removed': true, 'method': 'double'});
+      expect(cleansingPayload('none'), {'removed': false, 'method': 'none'});
+    });
+
+    test('saat 16den önce sabah, sonra akşam öne çıkar', () {
+      expect(blockForTime(DateTime(2026, 10, 10, 6)), 'morning');
+      expect(blockForTime(DateTime(2026, 10, 10, 15, 59)), 'morning');
+      expect(blockForTime(DateTime(2026, 10, 10, 16)), 'evening');
+      expect(blockForTime(DateTime(2026, 10, 10, 23, 30)), 'evening');
+    });
+  });
+
+  group('nextReminderSlot', () {
+    const water = Reminder(
+      id: 'water_intake',
+      title: '',
+      body: '',
+      start: '09:00',
+      end: '21:00',
+      everyMinutes: 120,
+    );
+
+    test('aralıklı hatırlatıcıda sıradaki saat', () {
+      expect(nextReminderSlot(water, DateTime(2026, 10, 10, 8)), '09:00');
+      expect(nextReminderSlot(water, DateTime(2026, 10, 10, 9)), '11:00', reason: 'şu anki saat sayılmaz');
+      expect(nextReminderSlot(water, DateTime(2026, 10, 10, 12, 30)), '13:00');
+      expect(nextReminderSlot(water, DateTime(2026, 10, 10, 20, 59)), '21:00');
+    });
+
+    test('günün son saatinden sonra yok', () {
+      expect(nextReminderSlot(water, DateTime(2026, 10, 10, 21)), isNull);
+      expect(nextReminderSlot(water, DateTime(2026, 10, 10, 23)), isNull);
+    });
+
+    test('tek seferlik ve bozuk pencere', () {
+      final once = reminder('lip_balm', '12:00', '13:00');
+      expect(nextReminderSlot(once, DateTime(2026, 10, 10, 9)), '12:00');
+      expect(nextReminderSlot(once, DateTime(2026, 10, 10, 12)), isNull);
+      expect(nextReminderSlot(reminder('x', '7.30', '09:30'), DateTime(2026, 10, 10, 6)), isNull);
     });
   });
 

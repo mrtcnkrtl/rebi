@@ -50,8 +50,9 @@ flutter test
   ve öneri kartı / profil anahtarı. Gerçek bildirim eklentisi yerine sahteleri kullanır.
 - `test/profile_history_core_test.dart`, `test/profile_history_screens_test.dart` — profil / geçmiş yanıtlarının
   ayrıştırılması, özet hesabı, profil formu (yalnızca değişen alanlar, doğrulama, hata durumları) ve geçmiş ekranı.
-- `test/today_screens_test.dart` — panelin "bugün" bölümü: hatırlatıcılar, su, hızlı kayıt, ürün bitti,
-  konum izni, hata durumu, küçük ekran.
+- `test/today_screens_test.dart` — "Bugün" ekranı: şimdi kartı, rutin kontrol listesi (adım, blok, geri al),
+  yaptım / ürün bitti çubuğu, makyaj (temizleme yöntemi), beslenme, su ve ürün bitti sayfaları, çevrimdışı
+  kuyruk, konum izni, hata durumu, küçük ekran.
 
 ## Web ile ortak içerik
 
@@ -91,13 +92,31 @@ hepsini temizler.
 | --- | --- | --- |
 | `GET /me/snapshot` — açılış paketi (rutin, rıza, ilerleme) | var | `state/home_sync_controller.dart`; panel her açıldığında tazeler |
 | Rıza eksikse onay kutusu | var | snapshot `consent` → `core/consent_recovery.dart` |
-| `GET /today/plan` — rutin, havaya göre öneri, hatırlatıcı, ilerleme | var | `state/today_plan_controller.dart`, `screens/dashboard_today.dart` |
+| `GET /today/plan` — rutin, havaya göre öneri, hatırlatıcı, ilerleme | var | `state/today_plan_controller.dart`, `screens/today/` |
 | Canlı hava için `lat`/`lon` | var, izin sorulmaz | `core/device_location.dart` (yalnızca konum izni ve rıza varsa) |
 | `POST /daily_tracking/ingest` — su, makyaj, SPF, beslenme, rutin, ürün bitti | var | `core/daily_tracking.dart` |
 | Çevrimdışı kuyruk (tekrar deneme) | var | `core/event_outbox.dart` (kalıcı kuyruk), `state/outbox_sync_controller.dart` (ne zaman gönderileceği) |
 | `POST /devices/register`, push / yerel bildirim | var; push için Firebase dosyaları gerekir | `state/notifications_controller.dart`, `core/local_notifications.dart`, `core/firebase_push.dart` |
 | `GET/PATCH /me/profile` — cilt tipi, yaş, cinsiyet, şehir | var | `core/user_profile.dart`, `ui/components/profile_details_card.dart` (Profil ekranı) |
 | `GET /me/history` — geçmiş günler, check-in'ler, son analizler | var | `core/user_history.dart`, `screens/history_screen.dart` (`/dashboard/history`; Profil ve panelden açılır) |
+
+### Bugün ekranı
+
+Kabul edilmiş rutinle açılan panel (`screens/today/`, kayıt mantığı `state/today_actions.dart`) yukarıdan aşağı:
+
+1. **Selamlama + hava şeridi**: günün saatine göre karşılama, canlı hava ve havaya göre öneriler (SPF, nemlendirici,
+   dudak balsamı).
+2. **Şimdi**: saat penceresi açık hatırlatıcılar, tek dokunuşla eylem. Su kendi kartında gösterilir.
+3. **Günün rutini**: sabah / akşam sekmeleri (saat 16'dan sonra akşam öne çıkar), adım adım işaretleme
+   (`routine_step`). Son adım işaretlenince blok kendiliğinden tamamlanır (`routine_completed_block`).
+4. **Takip kartları**: su (halka, +250 / +500 / başka miktar, yanlışı düzeltme, sonraki hatırlatma saati),
+   makyaj (yaptı mı → akşam **nasıl temizlendi**: çift temizlik, temizleyici, su, mendil, temizlemedi),
+   beslenme (abur cubur, şekerli, kızartma, süt ürünü, dengeli) ve güneş kremi yenileme.
+5. **Sabit alt çubuk**: öne çıkan rutini "yaptım" ve "ürün bitti" (rutindeki bakım ürünlerinden seçilir).
+
+Her kayıt çevrimdışı kuyruktan geçer. Kayıttan sonra ekranın altında onay mesajı çıkar; su, rutin bloğu için
+**Geri al** vardır. Adım işaretlerinin sunucuda kalması için backend'de `progress.routine_steps` desteği
+(`docs/MOBIL-API.md`) dağıtılmış olmalıdır; eski sunucuda işaretler ekran yenilenince sıfırlanır.
 
 ### Çevrimdışı kuyruk
 

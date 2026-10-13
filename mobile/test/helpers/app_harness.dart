@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -139,6 +140,70 @@ class FakeBackend {
   /// Sunucuya yazılan olayların `client_event_id` değerleri (tekrar gelenler yazılmaz).
   final Set<String> storedEventIds = {};
 
+  /// Sunucuya yazılan olaylar (tip + yük); ilerleme bunlardan hesaplanır.
+  final List<Map<String, dynamic>> storedEvents = [];
+
+  /// Sunucudaki `_aggregate_daily_events` özeti: `todayPlan['progress']` başlangıç durumudur,
+  /// yazılan olaylar üstüne işlenir.
+  Map<String, dynamic> get progress {
+    final base = (todayPlan['progress'] as Map).cast<String, dynamic>();
+    final out = <String, dynamic>{...base, 'water_ml_total': waterMl};
+    final steps = <String, Set<int>>{
+      'morning': {...?(((base['routine_steps'] as Map?)?['morning']) as List?)?.cast<int>()},
+      'evening': {...?(((base['routine_steps'] as Map?)?['evening']) as List?)?.cast<int>()},
+    };
+    var nutrition = <String, dynamic>{...?(base['nutrition'] as Map?)?.cast<String, dynamic>()};
+    var nutritionLogged = base['nutrition_logged'] == true;
+    var spf = (base['spf_refreshes'] as num?)?.toInt() ?? 0;
+    final makeup = <String, dynamic>{...?(base['makeup'] as Map?)?.cast<String, dynamic>()};
+    final finished = <Map<String, dynamic>>[...?(base['products_finished'] as List?)?.cast<Map<String, dynamic>>()];
+    for (final e in storedEvents) {
+      final p = (e['payload'] as Map).cast<String, dynamic>();
+      switch (e['type']) {
+        case 'routine_step':
+          final block = '${p['block']}';
+          if (steps.containsKey(block) && p['step_order'] is num) {
+            final step = (p['step_order'] as num).toInt();
+            p['done'] == true ? steps[block]!.add(step) : steps[block]!.remove(step);
+          }
+        case 'routine_completed_block':
+          if (p.containsKey('morning')) out['routine_morning_done'] = p['morning'] == true;
+          if (p.containsKey('evening')) out['routine_evening_done'] = p['evening'] == true;
+        case 'spf_refresh':
+          spf++;
+        case 'nutrition':
+          nutritionLogged = true;
+          nutrition = {...nutrition, ...p};
+        case 'makeup':
+          makeup['logged'] = true;
+          if (p['used'] != null) makeup['used'] = p['used'] == true;
+          if (p['removed'] == true) {
+            makeup['used'] = true;
+            makeup['removed'] = true;
+          }
+          final method = '${p['method'] ?? ''}';
+          if (const {'double', 'cleanser', 'water', 'wipe', 'none'}.contains(method)) {
+            makeup['removal_method'] = method;
+            if (method != 'none') {
+              makeup['used'] = true;
+              makeup['removed'] = true;
+            }
+          }
+        case 'product_finished':
+          finished.add({'product': p['product'], 'step_order': p['step_order']});
+      }
+    }
+    return {
+      ...out,
+      'routine_steps': {for (final b in steps.keys) b: (steps[b]!.toList()..sort())},
+      'nutrition': nutrition,
+      'nutrition_logged': nutritionLogged,
+      'spf_refreshes': spf,
+      if (makeup.isNotEmpty) 'makeup': makeup,
+      'products_finished': finished,
+    };
+  }
+
   /// API tabanındaki `/api` öneki atılır (varsayılan taban canlı adres: `…/api`).
   static String pathOf(http.BaseRequest r) => r.url.path.replaceFirst(RegExp('^/api'), '');
 
@@ -179,10 +244,7 @@ class FakeBackend {
             return ok(snapshot);
           case 'GET /today/plan':
             if (planFails) return http.Response('{"detail":"hata"}', 502);
-            return ok({
-              ...todayPlan,
-              'progress': {...(todayPlan['progress'] as Map).cast<String, dynamic>(), 'water_ml_total': waterMl},
-            });
+            return ok({...todayPlan, 'progress': progress});
           case 'GET /chat_usage':
             return ok({'kind': 'free_daily', 'remaining': 4, 'limit': 5, 'period': 'day'});
           case 'GET /chat/history':
@@ -229,12 +291,12 @@ class FakeBackend {
             final sent = (jsonDecode(req.body) as Map).cast<String, dynamic>();
             // Sunucu aynı client_event_id'yi ikinci kez yazmaz (docs/MOBIL-API.md).
             final fresh = storedEventIds.add('${sent['client_event_id']}');
-            if (fresh && sent['type'] == 'water_intake') waterMl += ((sent['payload'] as Map)['ml'] as num).toInt();
-            return ok({
-              'ok': true,
-              'log_date': '2026-10-10',
-              'aggregated': {'water_ml_total': waterMl},
-            });
+            if (fresh) {
+              final payload = (sent['payload'] as Map).cast<String, dynamic>();
+              if (sent['type'] == 'water_intake') waterMl = math.max(0, waterMl + (payload['ml'] as num).toInt());
+              storedEvents.add({'type': sent['type'], 'payload': payload});
+            }
+            return ok({'ok': true, 'log_date': '2026-10-10', 'aggregated': progress});
           case 'POST /legal-consent/accept':
             consentMissing = false;
             return ok({'ok': true, 'accepted_at': '2026-10-10T10:00:00Z'});

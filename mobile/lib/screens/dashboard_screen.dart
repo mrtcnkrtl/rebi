@@ -7,22 +7,31 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api.dart';
+import '../core/day_log.dart';
 import '../core/demo_user.dart';
 import '../core/i18n.dart';
 import '../core/routine_logic.dart';
 import '../core/routine_tracking.dart';
+import '../core/routine_usage.dart';
 import '../core/today_plan.dart';
 import '../state/auth_controller.dart';
 import '../state/home_sync_controller.dart';
 import '../state/notifications_controller.dart';
 import '../state/outbox_sync_controller.dart';
 import '../state/theme_controller.dart';
+import '../state/today_actions.dart';
 import '../state/today_plan_controller.dart';
 import '../ui/components/notification_widgets.dart';
 import '../ui/components/photo_picker.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
-import 'dashboard_today.dart';
+import 'today/now_card.dart';
+import 'today/routine_checklist.dart';
+import 'today/today_action_bar.dart';
+import 'today/today_header.dart';
+import 'today/today_sheets.dart';
+import 'today/tracking_tiles.dart';
+import 'today/weather_advice_card.dart';
 
 /// Ana panel (web: `pages/Dashboard.jsx`).
 /// `nav`: webdeki `location.state` — analiz / check-in sonrası taşınan rutin ve meta.
@@ -40,14 +49,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<RoutineItem>? _fetchedRoutine;
   bool _fetchingDbRoutine = false;
   bool _showPlanExpanded = false;
-  String _quickLogMsg = '';
-  Timer? _quickLogTimer;
   bool _translating = false;
   List<RoutineItem>? _translatedFor;
   late final AuthController _auth = context.read<AuthController>();
   late final HomeSyncController _sync = context.read<HomeSyncController>();
   late final NotificationsController _notifications = context.read<NotificationsController>();
   TodayPlanController? _today;
+  TodayActions? _actions;
   String? _uid;
 
   @override
@@ -71,7 +79,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void dispose() {
     _auth.removeListener(_onAuth);
-    _quickLogTimer?.cancel();
+    _actions?.dispose();
     _today?.dispose();
     super.dispose();
   }
@@ -81,6 +89,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (next == _uid) return;
     _uid = next;
     _fetchedRoutine = null;
+    _actions?.dispose();
+    _actions = null;
     _today?.dispose();
     _today = null;
     _fetchDbRoutine();
@@ -93,8 +103,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final uid = _uid;
     if (uid == null || uid == demoUserId) return;
     final today = TodayPlanController(userId: uid);
+    _actions?.dispose();
     _today?.dispose();
     _today = today;
+    _actions = TodayActions(today);
     // Plan değiştikçe (yüklenince, bir iş kaydedilince) hatırlatma bildirimleri yeniden kurulur.
     today.addListener(() => _notifications.syncReminders(today.plan));
     setState(() => _fetchingDbRoutine = true);
@@ -232,54 +244,45 @@ class _DashboardScreenState extends State<DashboardScreen> {
     });
   }
 
-  Future<void> _quickLog(String kind, I18n i18n) async {
-    if (_uid == null) return;
-    final (String type, Map<String, dynamic> payload) = switch (kind) {
-      'spf' => ('spf_refresh', {'n': 1}),
-      'morning' => ('routine_completed_block', {'morning': true}),
-      'makeup' => ('makeup', {'used': true}),
-      'makeupRemoved' => ('makeup', {'removed': true, 'method': 'double'}),
-      'junk' => ('nutrition', {'junk_food': true}),
-      _ => ('routine_completed_block', {'evening': true}),
-    };
-    final outcome = await _logToday(type, payload);
-    if (outcome.saved) _flashLogged(i18n, queued: outcome == LogOutcome.queued);
-  }
-
-  /// Olayı sunucuya yazar ve "bugün" planını tazeler; ulaşılamazsa cihazda bekletir. Demo kullanıcıda yazılmaz.
-  Future<LogOutcome> _logToday(String type, Map<String, dynamic> payload) async =>
-      await _today?.log(type, payload) ?? LogOutcome.failed;
-
-  void _flashLogged(I18n i18n, {bool queued = false}) {
-    if (!mounted) return;
-    setState(() => _quickLogMsg = i18n.t(queued ? 'mobileToday.queuedHint' : 'dashboard.quickLogged'));
-    _quickLogTimer?.cancel();
-    _quickLogTimer = Timer(const Duration(milliseconds: 2200), () {
-      if (mounted) setState(() => _quickLogMsg = '');
-    });
-  }
-
-  /// Hatırlatıcı kartındaki eylem: ekrana git ya da olayı kaydet.
+  /// Hatırlatıcı kartındaki eylem: ekrana git, seçim ekranını aç ya da olayı kaydet.
   Future<void> _runReminderAction(ReminderAction action) async {
     final route = action.route;
     if (route != null) {
       context.go(route);
       return;
     }
+    final sheet = action.sheet;
+    if (sheet != null) {
+      _openSheet(sheet);
+      return;
+    }
     final type = action.type;
     if (type == null) return;
-    final outcome = await _logToday(type, action.payload);
-    if (outcome.saved) _flashLogged(I18n.instance, queued: outcome == LogOutcome.queued);
+    await _actions?.record(type, action.payload);
   }
 
-  /// "Ürün bitti": `product_finished` olayı (günde en fazla 20 kayıt, sunucu sınırlar).
-  Future<bool> _logProductFinished(RoutineItem item) async {
-    final name = str(item['action']).trim();
-    final outcome = await _logToday('product_finished', {
-      'product': name.length > 120 ? name.substring(0, 120) : name,
-      'step_order': stepOrder(item).round(),
-    });
-    return outcome.saved;
+  void _openSheet(DaySheet sheet) {
+    final actions = _actions;
+    if (actions == null) return;
+    showTodaySheet(
+      context,
+      sheet,
+      actions: actions,
+      theme: context.read<ThemeController>().theme,
+      products: _finishableProducts(),
+    );
+  }
+
+  /// "Ürün bitti" sayfasında listelenecek bakım ürünleri (sabah + akşam, tekrarsız).
+  List<RoutineItem> _finishableProducts() {
+    final uid = _uid;
+    final merged = _merged(I18n.instance, uid != null && isRoutineTrackingAccepted(uid));
+    final view = RoutineView(merged['routine'] as List<RoutineItem>);
+    final seen = <String>{};
+    return [
+      for (final item in [...view.morningProducts, ...view.eveningProducts])
+        if (isSkincareStep(item) && seen.add(str(item['action']).trim().toLowerCase())) item,
+    ];
   }
 
   /// "Bugün" planı değişince yeniden çizilir; denetleyici yoksa (demo) plansız çizer.
@@ -462,7 +465,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _Ctx c, {
     required bool numbered,
     required String keyPrefix,
-    Future<bool> Function(RoutineItem item)? onFinished,
   }) {
     final space = label.indexOf(' ');
     return Column(
@@ -483,7 +485,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             item: items[i],
             ctx: c,
             step: numbered ? i + 1 : null,
-            onFinished: onFinished,
           ),
         ],
       ],
@@ -519,117 +520,79 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final today = v.routineByDay[todayIdx] ?? const DayPlan([], []);
     final checkinResult = merged['checkinResult'];
     final weather = merged['weather'];
-    final morning = i18n.t('dashboard.morning');
-    final evening = i18n.t('dashboard.evening');
-    final lifestyle = i18n.t('dashboard.lifestyleSuffix');
+    final actions = _actions;
 
-    final blocks = <Widget>[
-      if (today.morning.isNotEmpty)
-        _block('☀️ $morning', today.morning, c, numbered: true, keyPrefix: 't-m', onFinished: _logProductFinished),
-      if (v.wellnessMorningItems.isNotEmpty)
-        _block('☀️ $morning — $lifestyle', v.wellnessMorningItems, c, numbered: false, keyPrefix: 't-wm'),
-      if (today.evening.isNotEmpty)
-        _block('🌙 $evening', today.evening, c, numbered: true, keyPrefix: 't-e', onFinished: _logProductFinished),
-      if (v.wellnessEveningItems.isNotEmpty)
-        _block('🌙 $evening — $lifestyle', v.wellnessEveningItems, c, numbered: false, keyPrefix: 't-we'),
-      if (v.dailyLifestyleItems.isNotEmpty)
-        _block('📌 ${i18n.t('dashboard.allDay')}', v.dailyLifestyleItems, c, numbered: false, keyPrefix: 't-d'),
+    // Demo oturumunda gün içi kayıt yoktur: rutin yalnızca okunur gösterilir.
+    final readOnlyBlocks = <Widget>[
+      if (today.morning.isNotEmpty) _block('☀️ ${i18n.t('dashboard.morning')}', today.morning, c, numbered: true, keyPrefix: 't-m'),
+      if (today.evening.isNotEmpty) _block('🌙 ${i18n.t('dashboard.evening')}', today.evening, c, numbered: true, keyPrefix: 't-e'),
     ];
 
-    Widget quickBtn(String label, Color border, Color bg, Color fg, String kind, {IconData? icon}) => Material(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () => _quickLog(kind, i18n),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (icon != null) ...[Icon(icon, size: 14, color: fg), const SizedBox(width: 4)],
-                  Flexible(child: Text(label, style: tx(11, w: 6, c: fg))),
-                ],
-              ),
-            ),
-          ),
-        );
-
-    return ThemedPage(
+    final page = ThemedPage(
       theme: theme,
       maxWidth: 672,
+      padding: EdgeInsets.fromLTRB(16, 24, 16, actions != null ? 132 : 32),
       children: [
-        Text(i18n.t('dashboard.trackingTitle'), style: tx(24, w: 7)),
-        const SizedBox(height: 4),
-        Text(dateLine, style: tx(14, c: Tw.gray500)),
-        const SizedBox(height: 8),
-        Text(i18n.t('dashboard.helloToday', {'name': userName}), style: tx(14, c: Tw.gray600)),
+        TodayHeader(name: userName, dateLine: dateLine),
         const AiDisclaimer(padding: EdgeInsets.only(top: 8)),
-        const SizedBox(height: 24),
-        _withPlan((plan) => _checkinCard(c, big: true, done: plan?.checkinDone == true)),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         NotificationPromptCard(theme: theme),
-        if (_today case final today?) ...[
-          TodayPanel(
-            controller: today,
+        if (actions != null) ...[
+          NowCard(
+            controller: actions.plan,
             theme: theme,
             onAction: _runReminderAction,
             onRetryPending: () => context.read<OutboxSyncController>().flushNow(),
           ),
-          const SizedBox(height: 16),
-        ],
-        RCard(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(i18n.t('dashboard.quickLogTitle'), style: tx(12, w: 7, c: Tw.gray800)),
-              const SizedBox(height: 2),
-              Text(i18n.t('dashboard.quickLogHint'), style: tx(10, c: Tw.gray500, h: relaxed)),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  quickBtn(i18n.t('dashboard.quickSpf'), Tw.amber200, Tw.amber50, Tw.amber900, 'spf', icon: LucideIcons.sun),
-                  quickBtn(i18n.t('dashboard.quickMorning'), Tw.gray200, Colors.white, Tw.gray700, 'morning'),
-                  quickBtn(i18n.t('dashboard.quickEvening'), Tw.gray200, Colors.white, Tw.gray700, 'evening'),
-                  quickBtn(i18n.t('mobileToday.quick.makeup'), Tw.gray200, Colors.white, Tw.gray700, 'makeup'),
-                  quickBtn(i18n.t('mobileToday.quick.makeupRemoved'), Tw.gray200, Colors.white, Tw.gray700, 'makeupRemoved'),
-                  quickBtn(i18n.t('mobileToday.quick.junk'), Tw.gray200, Colors.white, Tw.gray700, 'junk'),
-                ],
-              ),
-              if (_quickLogMsg.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text(_quickLogMsg, style: tx(10, w: 5, c: Tw.emerald700)),
-              ],
-            ],
+          const SizedBox(height: 12),
+          RoutineChecklistCard(
+            actions: actions,
+            theme: theme,
+            dayLabel: c.weekDays[todayIdx],
+            localized: c.localized,
+            morning: today.morning,
+            evening: today.evening,
+            morningNotes: [...v.wellnessMorningItems, ...v.dailyLifestyleItems],
+            eveningNotes: [...v.wellnessEveningItems, ...v.dailyLifestyleItems],
           ),
-        ),
-        const SizedBox(height: 16),
+          const SizedBox(height: 12),
+          TrackingTiles(actions: actions, theme: theme, onOpenSheet: _openSheet),
+          const SizedBox(height: 12),
+        ] else if (readOnlyBlocks.isNotEmpty) ...[
+          RCard(
+            padding: EdgeInsets.zero,
+            clip: true,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _dayHeader(theme, '${i18n.t('dashboard.todayTitle')} — ${c.weekDays[todayIdx]}'),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(readOnlyBlocks, 16)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        _withPlan((plan) {
+          if (plan != null) {
+            return Padding(padding: const EdgeInsets.only(bottom: 12), child: EnvironmentAdviceCard(plan: plan, theme: theme));
+          }
+          if (weather is Map && truthy(weather['temperature'])) {
+            return Padding(padding: const EdgeInsets.only(bottom: 12), child: _weatherMini(c, weather));
+          }
+          return const SizedBox.shrink();
+        }),
+        _withPlan((plan) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _checkinCard(c, big: true, done: plan?.checkinDone == true),
+            )),
         if (checkinResult is Map && truthy(checkinResult['ai_note'])) ...[
           _aiNoteCard(c, checkinResult),
           const SizedBox(height: 20),
         ],
         _DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: merged['flowDebug'], ctx: c),
-        RCard(
-          padding: EdgeInsets.zero,
-          clip: true,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _dayHeader(theme, '${i18n.t('dashboard.todayTitle')} — ${c.weekDays[todayIdx]}'),
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: blocks.isEmpty
-                    ? Text(i18n.t('dashboard.noPlannedSteps'), style: tx(14, c: Tw.gray500))
-                    : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(blocks, 16)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
         if (v.weeklyItems.isNotEmpty) ...[
           RCard(
             padding: const EdgeInsets.all(12),
@@ -659,20 +622,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           const SizedBox(height: 20),
         ],
-        _withPlan((plan) {
-          if (plan != null) {
-            return Padding(padding: const EdgeInsets.only(bottom: 20), child: EnvironmentAdviceCard(plan: plan, theme: theme));
-          }
-          if (weather is Map && truthy(weather['temperature'])) {
-            return Padding(padding: const EdgeInsets.only(bottom: 20), child: _weatherMini(c, weather));
-          }
-          return const SizedBox.shrink();
-        }),
         SecondaryButton(
           onPressed: () => setState(() => _showPlanExpanded = true),
           borderColor: theme.primaryLight,
           textColor: theme.primary,
-          label: 'Tüm haftayı, detayları ve yaşam önerilerini göster',
+          label: i18n.t('mobileToday.showFullPlan'),
         ),
         const SizedBox(height: 12),
         SecondaryButton(
@@ -690,7 +644,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           textColor: theme.primary,
           icon: LucideIcons.circlePlus,
           fontSize: 14,
-          label: 'Fotoğraf yükle (hızlı)',
+          label: i18n.t('mobileToday.quickPhoto'),
         ),
         const SizedBox(height: 8),
         SecondaryButton(
@@ -698,7 +652,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderColor: theme.primaryLight,
           textColor: theme.primary,
           icon: LucideIcons.circlePlus,
-          label: 'Yeni analiz',
+          fontSize: 14,
+          label: i18n.t('mobileToday.newAnalysis'),
+        ),
+      ],
+    );
+
+    if (actions == null) return page;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        page,
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: TodayActionBar(
+            actions: actions,
+            theme: theme,
+            onProductFinished: () => _openSheet(DaySheet.products),
+          ),
         ),
       ],
     );
@@ -1420,14 +1393,11 @@ class _DailyBalanceCard extends StatelessWidget {
 
 /// Rutin adımı: numara / ikon, başlık, rozetler, "neden?" açılır detayı.
 class _ProductStep extends StatefulWidget {
-  const _ProductStep({super.key, required this.item, required this.ctx, this.step, this.onFinished});
+  const _ProductStep({super.key, required this.item, required this.ctx, this.step});
 
   final RoutineItem item;
   final _Ctx ctx;
   final int? step;
-
-  /// Verilirse bakım adımında "Ürün bitti" düğmesi çıkar; dönüş: sunucuya yazıldı mı.
-  final Future<bool> Function(RoutineItem item)? onFinished;
 
   @override
   State<_ProductStep> createState() => _ProductStepState();
@@ -1435,21 +1405,6 @@ class _ProductStep extends StatefulWidget {
 
 class _ProductStepState extends State<_ProductStep> {
   bool _showDetail = false;
-  bool _finishing = false;
-  bool _finishedLogged = false;
-
-  Future<void> _markFinished() async {
-    final onFinished = widget.onFinished;
-    if (onFinished == null || _finishing) return;
-    setState(() => _finishing = true);
-    final ok = await onFinished(widget.item);
-    if (mounted) {
-      setState(() {
-        _finishing = false;
-        _finishedLogged = ok;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1457,22 +1412,8 @@ class _ProductStepState extends State<_ProductStep> {
     final c = widget.ctx;
     final i18n = c.i18n;
     final theme = c.theme;
-    final isSkincare = item['category'] == 'Bakım' || item['category'] == 'Koruma';
-    final usageRaw = item['usage'] != null ? str(item['usage']).trim() : '';
-    final so = stepOrder(item);
-    final usage = usageRaw.isNotEmpty
-        ? usageRaw
-        : isSkincare
-            ? (so <= 15
-                ? i18n.t('dashboard.defaultUsage.cleanser')
-                : so <= 25
-                    ? i18n.t('dashboard.defaultUsage.serum')
-                    : so <= 35
-                        ? i18n.t('dashboard.defaultUsage.moisturizer')
-                        : so >= 40
-                            ? i18n.t('dashboard.defaultUsage.sunscreen')
-                            : i18n.t('dashboard.defaultUsage.generic'))
-            : '';
+    final isSkincare = isSkincareStep(item);
+    final usage = routineStepUsage(item, i18n);
     final hasContent = truthy(item['detail']) || truthy(item['detail_localized']) || usage.isNotEmpty;
     final actionLower = str(item['action']).toLowerCase();
     final hasPlusCombo = isSkincare && str(item['action']).contains('+');
@@ -1592,25 +1533,6 @@ class _ProductStepState extends State<_ProductStep> {
                       ),
                     ],
                   ],
-                ],
-                if (widget.onFinished != null && isSkincare) ...[
-                  const SizedBox(height: 8),
-                  if (_finishedLogged)
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(LucideIcons.check, size: 14, color: Tw.emerald700),
-                      const SizedBox(width: 4),
-                      Flexible(child: Text(i18n.t('mobileToday.productFinishedLogged'), style: tx(11, w: 5, c: Tw.emerald700))),
-                    ])
-                  else
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextLink(
-                        i18n.t('mobileToday.productFinished'),
-                        onTap: _finishing ? () {} : _markFinished,
-                        style: tx(11, w: 5, c: Tw.gray500),
-                        underline: true,
-                      ),
-                    ),
                 ],
               ],
             ),

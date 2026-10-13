@@ -1,4 +1,5 @@
 import 'api.dart';
+import 'day_log.dart';
 import 'routine_logic.dart';
 
 /// Günlük su hedefi (ml). Sunucudaki `WATER_TARGET_ML` ile aynıdır; hedef dolunca
@@ -10,59 +11,99 @@ class DayProgress {
   const DayProgress({
     this.waterMl = 0,
     this.nutritionLogged = false,
+    this.nutrition = const {},
     this.morningDone = false,
     this.eveningDone = false,
+    this.stepsDone = const {},
     this.spfRefreshes = 0,
     this.makeupLogged = false,
     this.makeupUsed = false,
     this.makeupRemoved = false,
+    this.removalMethod,
+    this.finishedProducts = const [],
   });
 
   factory DayProgress.fromJson(Object? json) {
     final j = json is Map ? json.cast<String, dynamic>() : const <String, dynamic>{};
     final makeup = j['makeup'] is Map ? (j['makeup'] as Map).cast<String, dynamic>() : const <String, dynamic>{};
+    final steps = j['routine_steps'] is Map ? (j['routine_steps'] as Map) : const {};
+    final method = '${makeup['removal_method'] ?? ''}'.trim().toLowerCase();
     return DayProgress(
       waterMl: _int(j['water_ml_total']),
       nutritionLogged: j['nutrition_logged'] == true,
+      nutrition: j['nutrition'] is Map ? (j['nutrition'] as Map).cast<String, dynamic>() : const {},
       morningDone: j['routine_morning_done'] == true,
       eveningDone: j['routine_evening_done'] == true,
+      stepsDone: {
+        for (final block in routineBlocks)
+          if (steps[block] is List) block: {for (final v in steps[block] as List) if (v is num) v.toInt()},
+      },
       spfRefreshes: _int(j['spf_refreshes']),
       makeupLogged: makeup['logged'] == true,
       makeupUsed: makeup['used'] == true,
       makeupRemoved: makeup['removed'] == true,
+      removalMethod: cleansingMethods.contains(method) ? method : null,
+      finishedProducts: [
+        for (final p in (j['products_finished'] is List ? j['products_finished'] as List : const []))
+          if (p is Map && '${p['product'] ?? ''}'.trim().isNotEmpty) '${p['product']}'.trim(),
+      ],
     );
   }
 
   final int waterMl;
   final bool nutritionLogged;
+
+  /// Beslenme seçimleri (`snacks`, `sweets`, `junk_food`…); gün içinde birleştirilir.
+  final Map<String, dynamic> nutrition;
   final bool morningDone;
   final bool eveningDone;
+
+  /// İşaretli rutin adımları: blok (`morning` / `evening`) → `step_order` değerleri.
+  final Map<String, Set<int>> stepsDone;
   final int spfRefreshes;
   final bool makeupLogged;
   final bool makeupUsed;
   final bool makeupRemoved;
 
+  /// Makyajın nasıl temizlendiği (`double`, `cleanser`, `water`, `wipe`, `none`).
+  final String? removalMethod;
+
+  /// Bugün "bitti" olarak işaretlenen ürünlerin adları.
+  final List<String> finishedProducts;
+
   double get waterFraction => (waterMl / waterTargetMl).clamp(0.0, 1.0);
+
+  bool blockDone(String block) => block == 'morning' ? morningDone : eveningDone;
+
+  Set<int> stepsOf(String block) => stepsDone[block] ?? const {};
 
   DayProgress copyWith({
     int? waterMl,
     bool? nutritionLogged,
+    Map<String, dynamic>? nutrition,
     bool? morningDone,
     bool? eveningDone,
+    Map<String, Set<int>>? stepsDone,
     int? spfRefreshes,
     bool? makeupLogged,
     bool? makeupUsed,
     bool? makeupRemoved,
+    String? removalMethod,
+    List<String>? finishedProducts,
   }) =>
       DayProgress(
         waterMl: waterMl ?? this.waterMl,
         nutritionLogged: nutritionLogged ?? this.nutritionLogged,
+        nutrition: nutrition ?? this.nutrition,
         morningDone: morningDone ?? this.morningDone,
         eveningDone: eveningDone ?? this.eveningDone,
+        stepsDone: stepsDone ?? this.stepsDone,
         spfRefreshes: spfRefreshes ?? this.spfRefreshes,
         makeupLogged: makeupLogged ?? this.makeupLogged,
         makeupUsed: makeupUsed ?? this.makeupUsed,
         makeupRemoved: makeupRemoved ?? this.makeupRemoved,
+        removalMethod: removalMethod ?? this.removalMethod,
+        finishedProducts: finishedProducts ?? this.finishedProducts,
       );
 
   /// Henüz sunucuya ulaşmamış bir olayın etkisini ekler. Kuralları sunucudaki toplama
@@ -70,16 +111,33 @@ class DayProgress {
   DayProgress withEvent(String type, Map<String, dynamic> payload) {
     switch (type) {
       case 'water_intake':
-        return copyWith(waterMl: waterMl + _int(payload['ml']));
+        final ml = _int(payload['ml']).clamp(-maxWaterEntryMl, maxWaterEntryMl);
+        return copyWith(waterMl: (waterMl + ml).clamp(0, 1 << 30));
       case 'routine_completed_block':
+        // Son olay geçerlidir: `false` bloğu yeniden açar.
         return copyWith(
-          morningDone: morningDone || payload['morning'] == true,
-          eveningDone: eveningDone || payload['evening'] == true,
+          morningDone: payload.containsKey('morning') ? payload['morning'] == true : morningDone,
+          eveningDone: payload.containsKey('evening') ? payload['evening'] == true : eveningDone,
         );
+      case 'routine_step':
+        final block = '${payload['block'] ?? ''}'.trim().toLowerCase();
+        final step = payload['step_order'];
+        if (!routineBlocks.contains(block) || step is! num) return this;
+        final next = {...stepsOf(block)};
+        if (payload['done'] == true) {
+          next.add(step.toInt());
+        } else {
+          next.remove(step.toInt());
+        }
+        return copyWith(stepsDone: {...stepsDone, block: next});
       case 'spf_refresh':
         return copyWith(spfRefreshes: spfRefreshes + 1);
       case 'nutrition':
-        return copyWith(nutritionLogged: true);
+        return copyWith(nutritionLogged: true, nutrition: {...nutrition, ...payload});
+      case 'product_finished':
+        final name = '${payload['product'] ?? ''}'.trim();
+        if (name.isEmpty || finishedProducts.length >= maxFinishedProductsPerDay) return this;
+        return copyWith(finishedProducts: [...finishedProducts, name]);
       case 'makeup':
         var used = makeupUsed;
         var removed = makeupRemoved;
@@ -88,12 +146,17 @@ class DayProgress {
           used = true;
           removed = true;
         }
-        const removalMethods = {'double', 'cleanser', 'water', 'wipe'};
-        if (removalMethods.contains('${payload['method'] ?? ''}'.trim().toLowerCase())) {
+        final method = '${payload['method'] ?? ''}'.trim().toLowerCase();
+        if (cleansingMethods.contains(method) && method != 'none') {
           used = true;
           removed = true;
         }
-        return copyWith(makeupLogged: true, makeupUsed: used, makeupRemoved: removed);
+        return copyWith(
+          makeupLogged: true,
+          makeupUsed: used,
+          makeupRemoved: removed,
+          removalMethod: cleansingMethods.contains(method) ? method : removalMethod,
+        );
       default:
         return this;
     }
@@ -158,15 +221,36 @@ ReminderPhase reminderPhase(Reminder r, DateTime now) {
   return ReminderPhase.now;
 }
 
-/// Hatırlatıcıya dokunulunca yapılacak iş: bir gün içi olay kaydı ya da bir ekrana gitme.
+/// Hatırlatıcının `now` anından sonraki ilk saati (`"13:00"`); bugün için kalmadıysa null.
+/// `every_minutes` doluysa pencere boyunca o aralıkla tekrarlanır (sunucudaki `_slots` ile aynı).
+String? nextReminderSlot(Reminder r, DateTime now) {
+  final start = Reminder.minutesOf(r.start);
+  final end = Reminder.minutesOf(r.end);
+  if (start == null || end == null) return null;
+  final minute = now.hour * 60 + now.minute;
+  final every = r.everyMinutes;
+  final slots = every == null || every <= 0 ? [start] : [for (var m = start; m <= end; m += every) m];
+  for (final m in slots) {
+    if (m > minute) {
+      return '${(m ~/ 60).toString().padLeft(2, '0')}:${(m % 60).toString().padLeft(2, '0')}';
+    }
+  }
+  return null;
+}
+
+/// Hatırlatıcıya dokunulunca yapılacak iş: bir gün içi olay kaydı, bir ekrana gitme ya da
+/// bir seçim ekranı açma.
 class ReminderAction {
-  const ReminderAction(this.labelKey, {this.type, this.payload = const {}, this.route});
+  const ReminderAction(this.labelKey, {this.type, this.payload = const {}, this.route, this.sheet});
 
   /// `mobileToday.actions.*` çeviri anahtarı.
   final String labelKey;
   final String? type;
   final Map<String, dynamic> payload;
   final String? route;
+
+  /// Bir seçim ekranı açar (ör. makyaj nasıl temizlendi); kayıt oradan gönderilir.
+  final DaySheet? sheet;
 }
 
 /// Hatırlatıcı kimliğine göre sunulan eylemler (`docs/MOBIL-API.md` olay tipleri).
@@ -182,16 +266,14 @@ List<ReminderAction> reminderActions(Reminder r) => switch (r.id) {
           ReminderAction('yes', type: 'makeup', payload: {'used': true}),
           ReminderAction('no', type: 'makeup', payload: {'used': false}),
         ],
-      'makeup_removal' => const [
-          ReminderAction('removed', type: 'makeup', payload: {'removed': true, 'method': 'double'}),
-        ],
+      'makeup_removal' => const [ReminderAction('removed', sheet: DaySheet.cleansing)],
       'water_intake' => const [
           ReminderAction('water250', type: 'water_intake', payload: {'ml': 250}),
           ReminderAction('water500', type: 'water_intake', payload: {'ml': 500}),
         ],
       'spf_refresh' => const [ReminderAction('done', type: 'spf_refresh')],
       'nutrition_log' => const [
-          ReminderAction('junkYes', type: 'nutrition', payload: {'junk_food': true}),
+          ReminderAction('junkYes', sheet: DaySheet.nutrition),
           ReminderAction('junkNo', type: 'nutrition', payload: {'junk_food': false}),
         ],
       'daily_checkin' => const [ReminderAction('open', route: '/dashboard/checkin')],

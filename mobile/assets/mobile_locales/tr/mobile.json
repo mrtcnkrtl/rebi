@@ -27,7 +27,10 @@
       "water500": "+500 ml",
       "junkYes": "Evet, yedim",
       "junkNo": "Hayır",
-      "open": "Check-in'e git"
+      "open": "Check-in'e git",
+      "waterMore": "Diğer…",
+      "change": "Değiştir",
+      "edit": "Düzenle"
     },
     "advice": {
       "title": "Bugünün havasına göre",
@@ -84,7 +87,150 @@
         "title": "Günlük check-in",
         "body": "Cildin bugün nasıldı? Rutin buna göre uyarlanır."
       }
-    }
+    },
+    "greet": {
+      "morning": "Günaydın, {{name}}",
+      "afternoon": "İyi günler, {{name}}",
+      "evening": "İyi akşamlar, {{name}}",
+      "night": "İyi geceler, {{name}}"
+    },
+    "checklist": {
+      "title": "Günün rutini",
+      "morning": "Sabah",
+      "evening": "Akşam",
+      "notes": "Bugünün notları"
+    },
+    "water": {
+      "next": "Sonraki hatırlatma {{time}}"
+    },
+    "makeup": {
+      "title": "Makyaj",
+      "ask": "Bugün makyaj yaptın mı?",
+      "usedPending": "Makyajlı gün. Akşam temizlemeyi unutma.",
+      "notCleaned": "Bu akşam temizlenmedi olarak işaretli.",
+      "cleaned": "Makyaj temizlendi",
+      "cleanedWith": "Temizlendi · {{method}}",
+      "none": "Bugün makyaj yok",
+      "changeToUsed": "Makyaj yaptım"
+    },
+    "cleansing": {
+      "double": {
+        "title": "Çift temizlik",
+        "desc": "Yağ bazlı temizleyici, ardından jel"
+      },
+      "cleanser": {
+        "title": "Temizleyici",
+        "desc": "Jel ya da köpükle tek adım"
+      },
+      "water": {
+        "title": "Sadece su",
+        "desc": "Suyla durulama"
+      },
+      "wipe": {
+        "title": "Misel su / mendil",
+        "desc": "Pamuk ya da temizleme mendili"
+      },
+      "none": {
+        "title": "Temizlemedim",
+        "desc": "Bu akşam temizleyemedim"
+      }
+    },
+    "nutrition": {
+      "title": "Beslenme",
+      "ask": "Bugün abur cubur yedin mi?",
+      "clean": "Abur cubur yok",
+      "balanced": "Dengeli beslendin",
+      "choices": {
+        "snacks": {
+          "title": "Abur cubur",
+          "desc": "Cips, bisküvi, paketli atıştırmalık"
+        },
+        "sweets": {
+          "title": "Şekerli / tatlı",
+          "desc": "Tatlı, çikolata, şekerli içecek"
+        },
+        "fried_food": {
+          "title": "Kızartma / fast food",
+          "desc": "Yağlı ve kızartılmış yiyecekler"
+        },
+        "dairy": {
+          "title": "Süt ürünleri",
+          "desc": "Süt, yoğurt, peynir, dondurma"
+        },
+        "balanced": {
+          "title": "Dengeli beslendim",
+          "desc": "Sebze, protein, az işlenmiş gıda"
+        }
+      }
+    },
+    "spf": {
+      "title": "Güneş kremi",
+      "hint": "Dışarıdaysan 2 saatte bir yenile.",
+      "hintHigh": "UV yüksek. Dışarıdaysan 2 saatte bir yenile.",
+      "done": "Yeniledim"
+    },
+    "bar": {
+      "mark": {
+        "morning": "Sabah rutinini yaptım",
+        "evening": "Akşam rutinini yaptım"
+      },
+      "done": {
+        "morning": "Sabah rutini tamam",
+        "evening": "Akşam rutini tamam"
+      }
+    },
+    "toast": {
+      "water": "+{{ml}} ml su eklendi",
+      "waterFixed": "−{{ml}} ml düzeltildi",
+      "undo": "Geri al",
+      "undone": "Geri alındı",
+      "failed": "Kaydedilemedi. Tekrar dene.",
+      "blockDone": {
+        "morning": "Sabah rutini tamamlandı",
+        "evening": "Akşam rutini tamamlandı"
+      },
+      "blockAlreadyDone": "Bu rutin zaten tamamlandı.",
+      "reopen": "Yeniden aç",
+      "makeupUsed": "Makyaj yapıldı olarak kaydedildi",
+      "makeupNone": "Bugün makyaj yok olarak kaydedildi",
+      "cleaned": "Makyaj temizliği kaydedildi",
+      "notCleaned": "Temizlenmedi olarak kaydedildi",
+      "nutrition": "Beslenme kaydedildi",
+      "nutritionClean": "Abur cubur yok olarak kaydedildi",
+      "spf": "Güneş kremi yenilendi",
+      "productsFinished": "{{n}} ürün bitti olarak kaydedildi"
+    },
+    "sheets": {
+      "cleansing": {
+        "title": "Makyajı nasıl temizledin?",
+        "subtitle": "Cildinin bu geceki ihtiyacına göre rutinini uyarlarız."
+      },
+      "nutrition": {
+        "title": "Neler yedin?",
+        "subtitle": "Bugün yediklerini seç, birden fazla işaretleyebilirsin."
+      },
+      "water": {
+        "title": "Su kaydı",
+        "add": "Hızlı ekle",
+        "fix": "Yanlış girdiysen düzelt",
+        "customHint": "Başka miktar",
+        "addButton": "Ekle",
+        "invalid": "1 ile {{max}} ml arasında bir miktar yaz."
+      },
+      "products": {
+        "title": "Hangi ürün bitti?",
+        "subtitle": "Bitirdiğin ürünleri işaretle.",
+        "empty": "Rutininde işaretlenecek bir bakım ürünü yok.",
+        "already": "Bugün bitti olarak işaretlendi",
+        "save": "Bitti olarak kaydet",
+        "saveCount": "Bitti olarak kaydet ({{n}})"
+      },
+      "save": "Kaydet",
+      "done": "Tamam"
+    },
+    "showFullPlan": "Tüm haftayı, detayları ve yaşam önerilerini göster",
+    "quickPhoto": "Fotoğraf yükle (hızlı)",
+    "newAnalysis": "Yeni analiz"
   },
   "mobileNotifications": {
     "promptTitle": "Hatırlatıcıları bildirim olarak al",

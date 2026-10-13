@@ -25,9 +25,12 @@
       "removed": "Removed it",
       "water250": "+250 ml",
       "water500": "+500 ml",
-      "junkYes": "Yes, I did",
+      "junkYes": "Yes, I ate some",
       "junkNo": "No",
-      "open": "Go to check-in"
+      "open": "Go to check-in",
+      "waterMore": "More…",
+      "change": "Change",
+      "edit": "Edit"
     },
     "advice": {
       "title": "For today's weather",
@@ -84,7 +87,150 @@
         "title": "Daily check-in",
         "body": "How was your skin today? Your routine adapts to it."
       }
-    }
+    },
+    "greet": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}",
+      "night": "Good night, {{name}}"
+    },
+    "checklist": {
+      "title": "Today's routine",
+      "morning": "Morning",
+      "evening": "Evening",
+      "notes": "Notes for today"
+    },
+    "water": {
+      "next": "Next reminder {{time}}"
+    },
+    "makeup": {
+      "title": "Makeup",
+      "ask": "Did you wear makeup today?",
+      "usedPending": "Makeup day. Don't forget to remove it tonight.",
+      "notCleaned": "Marked as not removed tonight.",
+      "cleaned": "Makeup removed",
+      "cleanedWith": "Removed · {{method}}",
+      "none": "No makeup today",
+      "changeToUsed": "I wore makeup"
+    },
+    "cleansing": {
+      "double": {
+        "title": "Double cleanse",
+        "desc": "Oil-based cleanser, then a gel"
+      },
+      "cleanser": {
+        "title": "Cleanser",
+        "desc": "One step with a gel or foam"
+      },
+      "water": {
+        "title": "Water only",
+        "desc": "Rinsed with water"
+      },
+      "wipe": {
+        "title": "Micellar water / wipes",
+        "desc": "Cotton pad or cleansing wipe"
+      },
+      "none": {
+        "title": "Didn't remove it",
+        "desc": "I couldn't remove it tonight"
+      }
+    },
+    "nutrition": {
+      "title": "Nutrition",
+      "ask": "Did you eat junk food today?",
+      "clean": "No junk food",
+      "balanced": "You ate a balanced diet",
+      "choices": {
+        "snacks": {
+          "title": "Junk food",
+          "desc": "Chips, biscuits, packaged snacks"
+        },
+        "sweets": {
+          "title": "Sugary / sweets",
+          "desc": "Dessert, chocolate, sugary drinks"
+        },
+        "fried_food": {
+          "title": "Fried / fast food",
+          "desc": "Oily and deep-fried food"
+        },
+        "dairy": {
+          "title": "Dairy",
+          "desc": "Milk, yogurt, cheese, ice cream"
+        },
+        "balanced": {
+          "title": "I ate balanced",
+          "desc": "Vegetables, protein, minimally processed food"
+        }
+      }
+    },
+    "spf": {
+      "title": "Sunscreen",
+      "hint": "Reapply every 2 hours if you're outside.",
+      "hintHigh": "UV is high. Reapply every 2 hours if you're outside.",
+      "done": "Reapplied"
+    },
+    "bar": {
+      "mark": {
+        "morning": "Morning routine done",
+        "evening": "Evening routine done"
+      },
+      "done": {
+        "morning": "Morning routine complete",
+        "evening": "Evening routine complete"
+      }
+    },
+    "toast": {
+      "water": "+{{ml}} ml water added",
+      "waterFixed": "−{{ml}} ml corrected",
+      "undo": "Undo",
+      "undone": "Undone",
+      "failed": "Couldn't save. Try again.",
+      "blockDone": {
+        "morning": "Morning routine complete",
+        "evening": "Evening routine complete"
+      },
+      "blockAlreadyDone": "This routine is already complete.",
+      "reopen": "Reopen",
+      "makeupUsed": "Saved: makeup worn",
+      "makeupNone": "Saved: no makeup today",
+      "cleaned": "Makeup removal saved",
+      "notCleaned": "Saved as not removed",
+      "nutrition": "Nutrition saved",
+      "nutritionClean": "Saved: no junk food",
+      "spf": "Sunscreen reapplied",
+      "productsFinished": "{{n}} product(s) marked as finished"
+    },
+    "sheets": {
+      "cleansing": {
+        "title": "How did you remove your makeup?",
+        "subtitle": "We adapt your routine to what your skin needs tonight."
+      },
+      "nutrition": {
+        "title": "What did you eat?",
+        "subtitle": "Pick what you had today. You can choose more than one."
+      },
+      "water": {
+        "title": "Water log",
+        "add": "Quick add",
+        "fix": "Correct a wrong entry",
+        "customHint": "Other amount",
+        "addButton": "Add",
+        "invalid": "Enter an amount between 1 and {{max}} ml."
+      },
+      "products": {
+        "title": "Which product ran out?",
+        "subtitle": "Mark the products you finished.",
+        "empty": "There are no skincare products in your routine to mark.",
+        "already": "Already marked as finished today",
+        "save": "Save as finished",
+        "saveCount": "Save as finished ({{n}})"
+      },
+      "save": "Save",
+      "done": "Done"
+    },
+    "showFullPlan": "Show the whole week, details and lifestyle tips",
+    "quickPhoto": "Upload a photo (quick)",
+    "newAnalysis": "New analysis"
   },
   "mobileNotifications": {
     "promptTitle": "Get reminders as notifications",

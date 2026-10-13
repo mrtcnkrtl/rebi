@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:rebi/core/local_store.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/analyze/analyze_screen.dart';
+import 'package:rebi/screens/today/today_header.dart';
 import 'package:rebi/ui/components/severity_test.dart';
 
 import 'helpers/app_harness.dart';
@@ -110,24 +111,24 @@ void main() {
 
     testWidgets('kabul edilmiş rutin: takip modu, günün planı ve hızlı kayıt', (tester) async {
       final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
-      expect(find.text(tr('dashboard.trackingTitle')), findsOneWidget);
+      expect(find.byType(TodayHeader), findsOneWidget);
       expect(find.text(tr('dashboard.dailyCheckinTitle')), findsOneWidget);
       expect(find.text(tr('dashboard.dailyBalanceTitle')), findsOneWidget);
 
-      await tapText(tester, tr('dashboard.quickSpf'));
+      await tapText(tester, tr('mobileToday.spf.done'));
       final body = h.backend.bodyOf('/daily_tracking/ingest');
       expect(body['type'], 'spf_refresh');
-      expect(body['payload'], {'n': 1});
+      expect(body['payload'], isEmpty);
       expect(body['user_id'], testUserId);
       expect(body['source'], 'mobile');
       expect(body['client_event_id'], isNotEmpty);
-      expect(find.text(tr('dashboard.quickLogged')), findsOneWidget);
+      expect(find.text(tr('mobileToday.toast.spf')), findsOneWidget);
 
-      await tapText(tester, 'Tüm haftayı, detayları ve yaşam önerilerini göster');
+      await tapText(tester, tr('mobileToday.showFullPlan'));
       expect(find.text(tr('dashboard.routineByDayTitle')), findsOneWidget);
       expect(find.text(tr('dashboard.backToTracking')), findsOneWidget);
       await tapText(tester, tr('dashboard.backToTracking'));
-      expect(find.text(tr('dashboard.trackingTitle')), findsOneWidget);
+      expect(find.byType(TodayHeader), findsOneWidget);
     });
 
     testWidgets('tam plan: adım detayı açılır, sabah uyarısı görünür', (tester) async {
@@ -144,8 +145,11 @@ void main() {
 
     testWidgets('İngilizce arayüz: tarih ve başlıklar İngilizce', (tester) async {
       await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), lang: 'en');
-      expect(find.text(tr('dashboard.trackingTitle')), findsOneWidget);
-      expect(tr('dashboard.trackingTitle'), isNot(contains('ğ')));
+      final greeting = find.byWidgetPredicate(
+        (w) => w is Text && RegExp(r'^Good (morning|afternoon|evening|night), Ayşe$').hasMatch(w.data ?? ''),
+      );
+      expect(greeting, findsOneWidget);
+      expect(find.text(tr('mobileToday.bar.mark.morning')).evaluate().length + find.text(tr('mobileToday.bar.mark.evening')).evaluate().length, 1);
     });
   });
 
@@ -231,7 +235,7 @@ void main() {
     expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
     expect(find.text(tr('dashboard.acceptBanner')), findsOneWidget);
     await tapText(tester, tr('dashboard.acceptCta'));
-    expect(find.text(tr('dashboard.trackingTitle')), findsOneWidget);
+    expect(find.byType(TodayHeader), findsOneWidget);
     expect(isRoutineTrackingAccepted(testUserId), isTrue);
     expect(getRoutineSnapshot(testUserId)?['acceptedAt'], isA<int>());
     expect((getRoutineSnapshot(testUserId)?['routine'] as List).length, routine.length);
