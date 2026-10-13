@@ -501,7 +501,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(999),
                 color: s < _step ? Tw.teal500 : (s == _step ? null : Tw.gray200),
-                gradient: s == _step ? const LinearGradient(colors: [Tw.teal400, Tw.teal600]) : null,
+                gradient: s == _step ? LinearGradient(colors: [Tw.teal400, Tw.teal600]) : null,
               ),
             ),
           ),
@@ -523,7 +523,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.circleAlert, size: 20, color: Tw.red600)),
+          Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.circleAlert, size: 20, color: Tw.red600)),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -621,7 +621,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                 decoration: BoxDecoration(color: Tw.teal50, borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   children: [
-                    const Icon(LucideIcons.circleCheck, size: 16, color: Tw.teal700),
+                    Icon(LucideIcons.circleCheck, size: 16, color: Tw.teal700),
                     const SizedBox(width: 8),
                     Expanded(child: Text(i18n.t('analyze.locationSet'), style: tx(12, c: Tw.teal700))),
                   ],
@@ -646,7 +646,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         const SizedBox(height: 20),
         RCard(
           borderColor: Tw.pink100,
-          color: Color.alphaBlend(Tw.pink50.withValues(alpha: .2), Colors.white),
+          color: Color.alphaBlend(Tw.pink50.withValues(alpha: .2), Tw.surface),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -687,7 +687,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                   onTap: _pickLastPeriodDate,
                   borderRadius: BorderRadius.circular(16),
                   child: InputDecorator(
-                    decoration: inputDecoration(suffix: const Icon(LucideIcons.calendar, size: 18, color: Tw.gray400)),
+                    decoration: inputDecoration(suffix: Icon(LucideIcons.calendar, size: 18, color: Tw.gray400)),
                     child: Text(
                       _lastPeriodDate.isEmpty
                           ? (i18n.lang == 'en' ? 'mm/dd/yyyy' : 'gg.aa.yyyy')
@@ -803,7 +803,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         const SizedBox(height: 20),
         RCard(
           borderColor: Tw.slate100,
-          color: Color.alphaBlend(Tw.slate50.withValues(alpha: .6), Colors.white),
+          color: Color.alphaBlend(Tw.slate50.withValues(alpha: .6), Tw.surface),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -893,7 +893,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       const SizedBox(height: 20),
       RCard(
         borderColor: Tw.purple100,
-        color: Color.alphaBlend(Tw.purple50.withValues(alpha: .2), Colors.white),
+        color: Color.alphaBlend(Tw.purple50.withValues(alpha: .2), Tw.surface),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -944,7 +944,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       const SizedBox(height: 20),
       RCard(
         borderColor: Tw.amber100,
-        color: Color.alphaBlend(Tw.amber50.withValues(alpha: .1), Colors.white),
+        color: Color.alphaBlend(Tw.amber50.withValues(alpha: .1), Tw.surface),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -977,7 +977,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       const SizedBox(height: 20),
       RCard(
         borderColor: Tw.purple100,
-        color: Color.alphaBlend(Tw.purple50.withValues(alpha: .1), Colors.white),
+        color: Color.alphaBlend(Tw.purple50.withValues(alpha: .1), Tw.surface),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1009,7 +1009,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       const SizedBox(height: 20),
       RCard(
         borderColor: Tw.green100,
-        color: Color.alphaBlend(Tw.green50.withValues(alpha: .1), Colors.white),
+        color: Color.alphaBlend(Tw.green50.withValues(alpha: .1), Tw.surface),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1035,7 +1035,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       const SizedBox(height: 20),
       RCard(
         borderColor: Tw.pink100,
-        color: Color.alphaBlend(Tw.pink50.withValues(alpha: .1), Colors.white),
+        color: Color.alphaBlend(Tw.pink50.withValues(alpha: .1), Tw.surface),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -1100,7 +1100,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               Text(icon, style: const TextStyle(fontSize: 18)),
               const SizedBox(width: 10),
               Expanded(child: Text(label, style: tx(14, w: active ? 5 : 4, c: active ? Tw.teal800 : Tw.gray600))),
-              if (active) const Icon(LucideIcons.circleCheck, size: 16, color: Tw.teal500),
+              if (active) Icon(LucideIcons.circleCheck, size: 16, color: Tw.teal500),
             ],
           ),
         ),
@@ -1231,7 +1231,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     final concernLabels = _concerns.map((c) => pack.or('concern.$c', c)).join(', ');
     Widget summaryCell(String label, String value) => Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: Tw.surface, borderRadius: BorderRadius.circular(8)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1283,13 +1283,13 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       const SizedBox(height: 20),
       RCard(
         borderColor: Tw.teal100,
-        color: Color.alphaBlend(Tw.teal50.withValues(alpha: .5), Colors.white),
+        color: Color.alphaBlend(Tw.teal50.withValues(alpha: .5), Tw.surface),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
-                const Icon(LucideIcons.sparkles, size: 12, color: Tw.teal800),
+                Icon(LucideIcons.sparkles, size: 12, color: Tw.teal800),
                 const SizedBox(width: 4),
                 Expanded(child: Text(pack.s('step4.summaryTitle'), style: tx(12, w: 7, c: Tw.teal800))),
               ],
@@ -1344,7 +1344,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             activeText: Tw.teal900,
                             inactiveText: Tw.gray600,
-                            inactiveBg: Colors.white,
+                            inactiveBg: Tw.surface,
                             onTap: () => setState(() => _activesTolerance[fam] = lv),
                           ),
                       ],

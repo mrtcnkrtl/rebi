@@ -5,7 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../tw.dart';
 
-const _steps = [
+List<(IconData, String, Color)> get _steps => [
   (LucideIcons.cloudSun, 'Hava durumu inceleniyor...', Tw.blue500),
   (LucideIcons.bookOpen, 'Bilimsel literatür taranıyor...', Tw.purple500),
   (LucideIcons.brain, 'Yapay zeka analiz ediyor...', Tw.teal500),
@@ -47,8 +47,8 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Tw.teal50, Colors.white]),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Tw.teal50, Tw.surface]),
       ),
       child: Center(
         child: SingleChildScrollView(
@@ -65,7 +65,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                     height: 80,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
-                      gradient: const LinearGradient(
+                      gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                         colors: [Tw.teal500, Tw.teal600],
@@ -96,7 +96,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                       curve: Curves.easeOut,
                       widthFactor: (_current + 1) / _steps.length,
                       child: Container(
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           gradient: LinearGradient(colors: [Tw.teal400, Tw.teal600]),
                         ),
                       ),
@@ -147,7 +147,7 @@ class _StepRow extends StatelessWidget {
           duration: const Duration(milliseconds: 500),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: active ? Colors.white : (done ? Tw.teal50.withValues(alpha: .5) : Colors.transparent),
+            color: active ? Tw.surface : (done ? Tw.teal50.withValues(alpha: .5) : Colors.transparent),
             borderRadius: BorderRadius.circular(16),
             boxShadow: active ? [BoxShadow(color: Tw.gray200.withValues(alpha: .5), blurRadius: 15, offset: const Offset(0, 8))] : null,
           ),

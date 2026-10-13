@@ -71,8 +71,8 @@ class _SheetFrame extends StatelessWidget {
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: 672, maxHeight: media.size.height * .88),
           child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: Tw.surface,
               borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: SafeArea(
@@ -109,7 +109,7 @@ class _SheetFrame extends StatelessWidget {
                         IconButton(
                           tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
                           onPressed: () => Navigator.of(context).pop(),
-                          icon: const Icon(LucideIcons.x, size: 22, color: Tw.gray500),
+                          icon: Icon(LucideIcons.x, size: 22, color: Tw.gray500),
                         ),
                       ],
                     ),
@@ -182,7 +182,7 @@ class _OptionTile extends StatelessWidget {
                     width: 40,
                     height: 40,
                     alignment: Alignment.center,
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(color: Tw.surface, borderRadius: BorderRadius.circular(12)),
                     child: emojiText(emoji, 20),
                   ),
                   const SizedBox(width: 12),
@@ -395,7 +395,7 @@ class _WaterBodyState extends State<_WaterBody> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(i18n.t('mobileToday.waterProgress', {'ml': total, 'target': waterTargetMl}), style: tx(18, w: 8, c: Tw.blue500)),
+                    Text(i18n.t('mobileToday.waterProgress', {'ml': total, 'target': waterTargetMl}), style: tx(18, w: 8, c: Tw.blueText)),
                     if (total >= waterTargetMl)
                       Text(i18n.t('mobileToday.waterGoalReached'), style: tx(12, w: 5, c: Tw.emerald700)),
                   ],
@@ -407,7 +407,7 @@ class _WaterBodyState extends State<_WaterBody> {
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [
               for (final ml in waterQuickAmounts)
-                TodayPill(label: '+$ml ml', color: Tw.blue500, filled: ml == 250, onTap: () => _add(ml)),
+                TodayPill(label: '+$ml ml', color: ml == 250 ? Tw.blue600 : Tw.blueText, filled: ml == 250, onTap: () => _add(ml)),
             ]),
             const SizedBox(height: 14),
             Row(
@@ -432,7 +432,7 @@ class _WaterBodyState extends State<_WaterBody> {
                 const SizedBox(width: 10),
                 SizedBox(
                   height: 48,
-                  child: TodayPill(label: i18n.t('mobileToday.sheets.water.addButton'), color: Tw.blue500, filled: true, onTap: _addCustom),
+                  child: TodayPill(label: i18n.t('mobileToday.sheets.water.addButton'), color: Tw.blue600, filled: true, onTap: _addCustom),
                 ),
               ],
             ),

@@ -43,7 +43,7 @@ class _NotificationPromptCardState extends State<NotificationPromptCard> {
       child: RCard(
         padding: const EdgeInsets.all(12),
         borderColor: theme.primaryLight,
-        color: Color.alphaBlend(theme.primary.withValues(alpha: .05), Colors.white),
+        color: Color.alphaBlend(theme.primary.withValues(alpha: .05), Tw.surface),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -121,7 +121,7 @@ class ReminderSettingsLink extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(LucideIcons.chevronRight, size: 18, color: Tw.gray400),
+            Icon(LucideIcons.chevronRight, size: 18, color: Tw.gray400),
           ],
         ),
       ),

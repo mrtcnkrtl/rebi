@@ -67,7 +67,7 @@ class _AppShellState extends State<AppShell> {
       child: Stack(
         children: [
           Scaffold(
-            backgroundColor: Colors.white,
+            backgroundColor: Tw.surface,
             appBar: _Navbar(
               menuOpen: _menuOpen,
               onToggleMenu: () => setState(() => _menuOpen = !_menuOpen),
@@ -111,7 +111,7 @@ class _Navbar extends StatelessWidget implements PreferredSizeWidget {
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .8),
+            color: Tw.surface.withValues(alpha: .8),
             border: Border(bottom: BorderSide(color: Tw.gray100.withValues(alpha: .5))),
           ),
           child: SafeArea(
@@ -132,7 +132,7 @@ class _Navbar extends StatelessWidget implements PreferredSizeWidget {
                             height: 36,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
-                              gradient: const LinearGradient(
+                              gradient: LinearGradient(
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                                 colors: [Tw.teal500, Tw.teal600],
@@ -190,10 +190,10 @@ class _MobileMenu extends StatelessWidget {
         );
 
     return Material(
-      color: Colors.white,
+      color: Tw.surface,
       elevation: 2,
       child: Container(
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: Tw.gray100))),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: Tw.gray100))),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,7 +243,7 @@ class LanguageSelect extends StatelessWidget {
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 8),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Tw.surface,
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Tw.gray200),
           ),
@@ -252,7 +252,7 @@ class LanguageSelect extends StatelessWidget {
               value: i18n.lang,
               isDense: true,
               style: tx(11, w: 6, c: Tw.gray700),
-              icon: const Icon(LucideIcons.chevronDown, size: 14, color: Tw.gray500),
+              icon: Icon(LucideIcons.chevronDown, size: 14, color: Tw.gray500),
               items: [
                 for (final lng in supportedLangs)
                   DropdownMenuItem(value: lng, child: Text(_langLabels[lng] ?? lng)),
@@ -304,7 +304,7 @@ class _BottomNav extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .95),
+            color: Tw.surface.withValues(alpha: .95),
             border: Border(top: BorderSide(color: Tw.gray200.withValues(alpha: .6))),
           ),
           child: SafeArea(

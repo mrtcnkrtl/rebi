@@ -37,7 +37,7 @@ class SubscribeScreen extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Tw.slate950, Tw.violet950.withValues(alpha: .95), Tw.slate900],
+                colors: [Tw.fixedSlate950, Tw.fixedViolet950.withValues(alpha: .95), Tw.fixedSlate900],
               ),
             ),
           ),
@@ -71,7 +71,7 @@ class SubscribeScreen extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(LucideIcons.sparkles, size: 16, color: Tw.amber300),
+                        Icon(LucideIcons.sparkles, size: 16, color: Tw.amber300),
                         const SizedBox(width: 8),
                         Text('Rebi Plus', style: tx(14, w: 6, c: Tw.amber200)),
                       ],
@@ -96,7 +96,7 @@ class SubscribeScreen extends StatelessWidget {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 2),
                           child: Icon(LucideIcons.check, size: 16, color: Tw.emerald300),
                         ),
@@ -123,7 +123,7 @@ class SubscribeScreen extends StatelessWidget {
                     children: [
                       Text('Neler dahil?', style: tx(20, w: 9, c: Colors.white, ls: -.3)),
                       const SizedBox(height: 20),
-                      const _Benefit(
+                      _Benefit(
                         icon: LucideIcons.messageCircle,
                         iconColor: Tw.amber200,
                         glow: Tw.amber400,
@@ -132,7 +132,7 @@ class SubscribeScreen extends StatelessWidget {
                         body: 'Günlük ücretsiz mesaj limiti kalkar; sohbet kesilmez.',
                       ),
                       const SizedBox(height: 16),
-                      const _Benefit(
+                      _Benefit(
                         icon: LucideIcons.palette,
                         iconColor: Tw.cyan200,
                         glow: Color(0xFF22D3EE),
@@ -141,7 +141,7 @@ class SubscribeScreen extends StatelessWidget {
                         body: 'Ayırt edici renkler, desenler ve daha “premium” his.',
                       ),
                       const SizedBox(height: 16),
-                      const _Benefit(
+                      _Benefit(
                         icon: LucideIcons.sparkles,
                         iconColor: Tw.fuchsia200,
                         glow: Tw.fuchsia400,
@@ -150,7 +150,7 @@ class SubscribeScreen extends StatelessWidget {
                         body: 'Yeni özellikler önce Plus’a gelir; ilk sen denersin.',
                       ),
                       const SizedBox(height: 16),
-                      const _Benefit(
+                      _Benefit(
                         icon: LucideIcons.shield,
                         iconColor: Tw.emerald200,
                         glow: Color(0xFF34D399),
@@ -184,9 +184,9 @@ class SubscribeScreen extends StatelessWidget {
                               child: Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Flexible(child: Text('Plus’ı aç', style: tx(16, w: 8, c: Tw.violet950))),
+                                  Flexible(child: Text('Plus’ı aç', style: tx(16, w: 8, c: Tw.fixedViolet950))),
                                   const SizedBox(width: 8),
-                                  const Icon(LucideIcons.externalLink, size: 16, color: Tw.violet950),
+                                  Icon(LucideIcons.externalLink, size: 16, color: Tw.fixedViolet950),
                                 ],
                               ),
                             ),

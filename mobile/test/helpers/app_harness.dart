@@ -16,7 +16,9 @@ import 'package:rebi/core/event_outbox.dart';
 import 'package:rebi/core/notification_ports.dart';
 import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/local_store.dart';
+import 'package:rebi/app.dart';
 import 'package:rebi/router.dart';
+import 'package:rebi/ui/tw.dart';
 import 'package:rebi/state/auth_controller.dart';
 import 'package:rebi/state/home_sync_controller.dart';
 import 'package:rebi/state/notifications_controller.dart';
@@ -493,7 +495,7 @@ Future<Harness> pumpApp(
         locale: Locale(i18n.lang),
         supportedLocales: [for (final l in supportedLangs) Locale(l)],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        theme: ThemeData(useMaterial3: true),
+        theme: buildRebiTheme(Tw.dark ? Brightness.dark : Brightness.light, fonts: false),
       ),
     ),
   ));

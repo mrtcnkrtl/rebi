@@ -130,7 +130,7 @@ class _AnalyzePhotoOnlyState extends State<AnalyzePhotoOnly> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(LucideIcons.arrowLeft, size: 16, color: Tw.gray500),
+                  Icon(LucideIcons.arrowLeft, size: 16, color: Tw.gray500),
                   const SizedBox(width: 4),
                   Text(i18n.t('analyze.photoOnlyBack'), style: tx(12, w: 5, c: Tw.gray500)),
                 ],

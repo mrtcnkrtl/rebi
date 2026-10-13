@@ -375,5 +375,12 @@
     "errors": {
       "span": "Uyanma ile uyku saati arası en az 9 saat olmalı. Uyanma en erken 04:00, uyku en geç 23:59 olabilir."
     }
+  },
+  "mobileAppearance": {
+    "title": "Görünüm",
+    "hint": "Karanlık mod gözünü yormaz, pil de tasarruf eder.",
+    "system": "Sistem",
+    "light": "Açık",
+    "dark": "Koyu"
   }
 }

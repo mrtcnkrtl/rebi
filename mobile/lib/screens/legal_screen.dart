@@ -36,8 +36,8 @@ class LegalScreen extends StatelessWidget {
 
     return Scaffold(
       body: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Tw.teal50, Colors.white]),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Tw.teal50, Tw.surface]),
         ),
         child: SafeArea(
           child: SingleChildScrollView(
@@ -56,7 +56,7 @@ class LegalScreen extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(LucideIcons.arrowLeft, size: 16, color: Tw.teal700),
+                            Icon(LucideIcons.arrowLeft, size: 16, color: Tw.teal700),
                             const SizedBox(width: 6),
                             Text(i18n.t('legal.backToAuth'), style: tx(14, w: 5, c: Tw.teal700)),
                           ],

@@ -226,9 +226,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
   Widget _failedCard(I18n i18n, RebiTheme theme) => RCard(
         padding: const EdgeInsets.all(12),
         borderColor: Tw.amber200,
-        color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Colors.white),
+        color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Tw.surface),
         child: Row(children: [
-          const Icon(LucideIcons.wifiOff, size: 18, color: Tw.amber600),
+          Icon(LucideIcons.wifiOff, size: 18, color: Tw.amber600),
           const SizedBox(width: 10),
           Expanded(child: Text(i18n.t('mobileReminders.loadFailed'), style: tx(12, c: Tw.amber900))),
           TextLink(i18n.t('mobileReminders.retry'), onTap: _load, style: tx(12, w: 6, c: theme.primary)),

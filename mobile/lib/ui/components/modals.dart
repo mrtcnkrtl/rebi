@@ -29,7 +29,7 @@ class _ModalFrame extends StatelessWidget {
       constraints: BoxConstraints(maxWidth: maxWidth, maxHeight: mq.size.height * .85),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Tw.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Tw.teal100),
         boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 50, offset: Offset(0, 25))],
@@ -40,7 +40,7 @@ class _ModalFrame extends StatelessWidget {
       type: MaterialType.transparency,
       child: Stack(
         children: [
-          Positioned.fill(child: ColoredBox(color: Tw.slate950.withValues(alpha: .6))),
+          Positioned.fill(child: ColoredBox(color: Tw.fixedSlate950.withValues(alpha: .6))),
           Positioned.fill(
             child: Padding(
               padding: EdgeInsets.fromLTRB(16, 32 + mq.padding.top, 16, bottomPad + mq.viewInsets.bottom),

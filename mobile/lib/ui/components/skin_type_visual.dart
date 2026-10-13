@@ -8,15 +8,15 @@ import '../tw.dart';
 
 const _skinOrder = ['oily', 'dry', 'combination', 'normal', 'sensitive'];
 
-const _activeBorder = {
+Map<String, Color> get _activeBorder => {
   'oily': Tw.amber400,
-  'dry': Color(0xFFFB923C),
+  'dry': const Color(0xFFFB923C),
   'combination': Tw.violet400,
-  'normal': Color(0xFF34D399),
+  'normal': const Color(0xFF34D399),
   'sensitive': Tw.pink400,
 };
 
-const _activeRing = {
+Map<String, Color> get _activeRing => {
   'oily': Tw.amber100,
   'dry': Tw.orange100,
   'combination': Tw.violet100,
@@ -69,7 +69,7 @@ class _SkinTypeVisualState extends State<SkinTypeVisual> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(LucideIcons.circleHelp, size: 14, color: Tw.teal600),
+                Icon(LucideIcons.circleHelp, size: 14, color: Tw.teal600),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(_showGuide ? sp.s('skinPicker.guideClose') : sp.s('skinPicker.guideOpen'),
@@ -79,7 +79,7 @@ class _SkinTypeVisualState extends State<SkinTypeVisual> {
                 AnimatedRotation(
                   turns: _showGuide ? .5 : 0,
                   duration: const Duration(milliseconds: 150),
-                  child: const Icon(LucideIcons.chevronDown, size: 12, color: Tw.teal600),
+                  child: Icon(LucideIcons.chevronDown, size: 12, color: Tw.teal600),
                 ),
               ],
             ),
@@ -99,7 +99,7 @@ class _SkinTypeVisualState extends State<SkinTypeVisual> {
               children: [
                 Row(
                   children: [
-                    const Icon(LucideIcons.circleHelp, size: 16, color: Tw.teal600),
+                    Icon(LucideIcons.circleHelp, size: 16, color: Tw.teal600),
                     const SizedBox(width: 8),
                     Expanded(child: Text(sp.s('skinPicker.guideTitle'), style: tx(14, w: 7))),
                   ],
@@ -112,7 +112,7 @@ class _SkinTypeVisualState extends State<SkinTypeVisual> {
                         width: 20,
                         height: 20,
                         alignment: Alignment.center,
-                        decoration: const BoxDecoration(color: Tw.teal500, shape: BoxShape.circle),
+                        decoration: BoxDecoration(color: Tw.teal500, shape: BoxShape.circle),
                         child: Text('${si + 1}', style: tx(10, w: 7, c: Colors.white)),
                       ),
                       const SizedBox(width: 8),
@@ -148,7 +148,7 @@ class _SkinTypeVisualState extends State<SkinTypeVisual> {
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                  decoration: BoxDecoration(color: Tw.surface, borderRadius: BorderRadius.circular(12)),
                   child: Text(sp.s('skinPicker.tipLine'), style: tx(11, c: Tw.gray500)),
                 ),
               ],
@@ -176,7 +176,7 @@ class _SkinCard extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Tw.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: active ? _activeBorder[id]! : Tw.gray200, width: 2),
           boxShadow: active ? [BoxShadow(color: _activeRing[id]!, spreadRadius: 2)] : null,
@@ -197,7 +197,7 @@ class _SkinCard extends StatelessWidget {
                       Flexible(child: Text(label, style: tx(14, w: 6, c: active ? Tw.gray900 : Tw.gray700))),
                       if (active) ...[
                         const SizedBox(width: 6),
-                        const Icon(LucideIcons.check, size: 16, color: Tw.teal500),
+                        Icon(LucideIcons.check, size: 16, color: Tw.teal500),
                       ],
                     ],
                   ),

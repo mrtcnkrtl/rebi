@@ -322,7 +322,7 @@ class _CheckCircle extends StatelessWidget {
         height: 26,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: checked ? color : Colors.white,
+          color: checked ? color : Tw.surface,
           border: Border.all(color: checked ? color : Tw.gray300, width: 2),
         ),
         child: checked ? const Icon(LucideIcons.check, size: 15, color: Colors.white) : null,

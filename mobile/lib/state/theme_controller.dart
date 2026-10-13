@@ -36,6 +36,23 @@ class RebiTheme {
   final String pattern;
   final String shape;
   final bool premium;
+
+  /// Koyu mod için: açık tint ve koyu metin tonları uyarlanır; `primary` / `accent` aynı kalır.
+  /// (`cardBorder` ve `bg` zaten koyu moda duyarlı renklerden kuruludur.)
+  RebiTheme adaptedForDark() => RebiTheme(
+        id: id,
+        label: label,
+        emoji: emoji,
+        primary: primary,
+        primaryLight: Tw.adapt(primaryLight),
+        primaryDark: Tw.adaptText(primaryDark),
+        accent: accent,
+        cardBorder: cardBorder,
+        bg: bg,
+        pattern: pattern,
+        shape: shape,
+        premium: premium,
+      );
 }
 
 Color _a(Color c, double opacity) => c.withValues(alpha: opacity);
@@ -46,7 +63,7 @@ LinearGradient _toB(List<Color> colors) =>
 LinearGradient _toBr(List<Color> colors) =>
     LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors);
 
-final Map<String, RebiTheme> rebiThemes = {
+Map<String, RebiTheme> _buildThemes() => {
   'teal': RebiTheme(
     id: 'teal',
     label: 'Klasik Teal',
@@ -56,7 +73,7 @@ final Map<String, RebiTheme> rebiThemes = {
     primaryDark: const Color(0xFF115E59),
     accent: const Color(0xFF14B8A6),
     cardBorder: Tw.gray100,
-    bg: _toB([_a(Tw.teal50, .5), Colors.white]),
+    bg: _toB([_a(Tw.teal50, .5), Tw.background]),
   ),
   'pink': RebiTheme(
     id: 'pink',
@@ -163,22 +180,50 @@ final Map<String, RebiTheme> rebiThemes = {
   ),
 };
 
+final _themeCache = <bool, Map<String, RebiTheme>>{};
+
+/// Kullanıcının seçebileceği temalar. Renkler açık / koyu moda göre ayrı hesaplanır ve saklanır
+/// (tint ve koyu tonlar koyu zeminde uyarlanır; ana ve vurgu renkleri değişmez).
+Map<String, RebiTheme> get rebiThemes => _themeCache[Tw.dark] ??= {
+      for (final e in _buildThemes().entries) e.key: Tw.dark ? e.value.adaptedForDark() : e.value,
+    };
+
 bool isPremiumThemeId(String id) => rebiThemes[id]?.premium ?? false;
 
 const _themeKey = 'rebi-theme';
+const _modeKey = 'rebi-theme-mode';
+
+/// Kayıtlı görünüm modu: `light`, `dark`; başka değer ya da kayıt yoksa sistemi izler.
+ThemeMode themeModeFromName(String? name) => switch (name) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
 
 /// Web `ThemeProvider` + `ThemePremiumGate`.
 class ThemeController extends ChangeNotifier {
   ThemeController(this._auth) {
     _themeId = LocalStore.instance.getString(_themeKey) ?? 'teal';
+    _mode = themeModeFromName(LocalStore.instance.getString(_modeKey));
     _auth.addListener(_premiumGate);
     _premiumGate();
   }
 
   final AuthController _auth;
   late String _themeId;
+  late ThemeMode _mode;
 
   String get themeId => _themeId;
+
+  /// Açık / koyu / sistem. Renk temasından (`theme`) bağımsızdır.
+  ThemeMode get mode => _mode;
+
+  void setMode(ThemeMode next) {
+    if (next == _mode) return;
+    _mode = next;
+    LocalStore.instance.setString(_modeKey, next.name);
+    notifyListeners();
+  }
 
   RebiTheme get theme => rebiThemes[_themeId] ?? rebiThemes['teal']!;
 

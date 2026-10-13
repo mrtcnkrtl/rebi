@@ -375,5 +375,12 @@
     "errors": {
       "span": "There must be at least 9 hours between waking up and going to sleep. Wake-up can be 04:00 at the earliest and sleep 23:59 at the latest."
     }
+  },
+  "mobileAppearance": {
+    "title": "Appearance",
+    "hint": "Dark mode is easier on the eyes and saves battery.",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
   }
 }

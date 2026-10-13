@@ -142,9 +142,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _failedCard(I18n i18n, RebiTheme theme) => RCard(
         padding: const EdgeInsets.all(12),
         borderColor: Tw.amber200,
-        color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Colors.white),
+        color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Tw.surface),
         child: Row(children: [
-          const Icon(LucideIcons.wifiOff, size: 18, color: Tw.amber600),
+          Icon(LucideIcons.wifiOff, size: 18, color: Tw.amber600),
           const SizedBox(width: 10),
           Expanded(child: Text(i18n.t('mobileHistory.loadFailed'), style: tx(12, c: Tw.amber900))),
           TextLink(i18n.t('mobileHistory.retry'), onTap: _load, style: tx(12, w: 6, c: theme.primary)),
@@ -154,7 +154,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _emptyCard(I18n i18n) => RCard(
         padding: const EdgeInsets.all(20),
         child: Column(children: [
-          const Icon(LucideIcons.calendarDays, size: 28, color: Tw.gray300),
+          Icon(LucideIcons.calendarDays, size: 28, color: Tw.gray300),
           const SizedBox(height: 8),
           Text(i18n.t('mobileHistory.empty'), textAlign: TextAlign.center, style: tx(13, c: Tw.gray500, h: relaxed)),
         ]),
@@ -172,7 +172,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return RCard(
       padding: const EdgeInsets.all(12),
       borderColor: theme.primaryLight,
-      color: Color.alphaBlend(theme.primary.withValues(alpha: .05), Colors.white),
+      color: Color.alphaBlend(theme.primary.withValues(alpha: .05), Tw.surface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -188,12 +188,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _chip(String text, {Color bg = Tw.gray100, Color fg = Tw.gray700, IconData? icon}) => Container(
+  Widget _chip(String text, {Color? bg, Color? fg, IconData? icon}) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
+        decoration: BoxDecoration(color: bg ?? Tw.gray100, borderRadius: BorderRadius.circular(999)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (icon != null) ...[Icon(icon, size: 12, color: fg), const SizedBox(width: 4)],
-          Flexible(child: Text(text, style: tx(10, w: 5, c: fg))),
+          if (icon != null) ...[Icon(icon, size: 12, color: fg ?? Tw.gray700), const SizedBox(width: 4)],
+          Flexible(child: Text(text, style: tx(10, w: 5, c: fg ?? Tw.gray700))),
         ]),
       );
 

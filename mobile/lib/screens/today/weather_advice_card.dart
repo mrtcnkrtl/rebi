@@ -26,12 +26,12 @@ class EnvironmentAdviceCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       radius: 20,
       borderColor: Tw.blue100,
-      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Tw.blue50, Tw.cyan50]),
+      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Tw.blue50, Tw.cyan50]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(children: [
-            const Icon(LucideIcons.cloudSun, size: 18, color: Tw.blue500),
+            Icon(LucideIcons.cloudSun, size: 18, color: Tw.blue500),
             const SizedBox(width: 8),
             Expanded(child: Text(i18n.t('mobileToday.advice.title'), style: tx(13, w: 7, c: Tw.gray800))),
           ]),
@@ -48,7 +48,7 @@ class EnvironmentAdviceCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Container(
                   padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: .75), borderRadius: BorderRadius.circular(14)),
+                  decoration: BoxDecoration(color: Tw.surface.withValues(alpha: .75), borderRadius: BorderRadius.circular(14)),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

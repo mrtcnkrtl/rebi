@@ -328,7 +328,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: RCard(
           padding: const EdgeInsets.all(12),
           borderColor: Tw.amber200,
-          color: Color.alphaBlend(Tw.amber50.withValues(alpha: .8), Colors.white),
+          color: Color.alphaBlend(Tw.amber50.withValues(alpha: .8), Tw.surface),
           child: Text(i18n.t('dashboard.acceptHint'), style: tx(14, c: Tw.amber900)),
         ),
       );
@@ -374,7 +374,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [theme.primaryLight.withValues(alpha: .25), Colors.white],
+        colors: [theme.primaryLight.withValues(alpha: .25), Tw.surface],
       ),
       child: Row(
         children: [
@@ -400,7 +400,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          const Icon(LucideIcons.arrowRight, size: 20, color: Tw.gray400),
+          Icon(LucideIcons.arrowRight, size: 20, color: Tw.gray400),
         ],
       ),
     );
@@ -426,7 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      const Icon(LucideIcons.info, size: 14, color: Tw.amber600),
+                      Icon(LucideIcons.info, size: 14, color: Tw.amber600),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(c.i18n.t('checkin.changesCount', {'count': changes.length}), style: tx(12, c: Tw.amber600)),
@@ -448,7 +448,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: theme.primary.withValues(alpha: alpha),
-          border: const Border(bottom: BorderSide(color: Tw.gray100)),
+          border: Border(bottom: BorderSide(color: Tw.gray100)),
         ),
         child: Row(
           children: [
@@ -498,10 +498,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _weatherMini(_Ctx c, Map weather) => RCard(
         padding: const EdgeInsets.all(12),
         borderColor: Tw.blue100,
-        gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Tw.blue50, Tw.cyan50]),
+        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Tw.blue50, Tw.cyan50]),
         child: Row(
           children: [
-            const Icon(LucideIcons.cloudSun, size: 16, color: Tw.blue500),
+            Icon(LucideIcons.cloudSun, size: 16, color: Tw.blue500),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -742,7 +742,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.all(16),
             borderColor: theme.primaryLight,
             borderWidth: 2,
-            color: Color.alphaBlend(theme.primaryLight.withValues(alpha: .09), Colors.white),
+            color: Color.alphaBlend(theme.primaryLight.withValues(alpha: .09), Tw.surface),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -791,11 +791,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (v.eveningMorningHints.isNotEmpty) ...[
         RCard(
           borderColor: Tw.amber200,
-          color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Colors.white),
+          color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Tw.surface),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.triangleAlert, size: 20, color: Tw.amber600)),
+              Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.triangleAlert, size: 20, color: Tw.amber600)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -882,7 +882,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _SectionHeader(icon: '🌿', title: i18n.t('dashboard.lifestyleSupportsTitle'), subtitle: i18n.t('dashboard.lifestyleSupportsSubtitle'), color: Tw.green600),
       if (v.nutritionItems.isNotEmpty) ...[
         Row(children: [
-          const Icon(LucideIcons.apple, size: 16, color: Tw.green600),
+          Icon(LucideIcons.apple, size: 16, color: Tw.green600),
           const SizedBox(width: 8),
           Expanded(child: Text(i18n.t('dashboard.nutritionTitle'), style: tx(14, w: 7, c: Tw.gray700))),
         ]),
@@ -909,7 +909,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const SizedBox(height: 16),
       if (v.wellnessItems.isNotEmpty) ...[
         Row(children: [
-          const Icon(LucideIcons.heart, size: 16, color: Tw.purple600),
+          Icon(LucideIcons.heart, size: 16, color: Tw.purple600),
           const SizedBox(width: 8),
           Expanded(child: Text(i18n.t('dashboard.mindMovementTitle'), style: tx(14, w: 7, c: Tw.gray700))),
         ]),
@@ -934,7 +934,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _tipCard(IconData icon, Color iconColor, Color border, Color bg, String title, String body) => RCard(
         padding: const EdgeInsets.all(16),
         borderColor: border,
-        color: Color.alphaBlend(bg.withValues(alpha: .3), Colors.white),
+        color: Color.alphaBlend(bg.withValues(alpha: .3), Tw.surface),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -951,7 +951,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Widget cell(IconData icon, Color color, String value, [String? sub]) => Expanded(
           child: Container(
             padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: .7), borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: Tw.surface.withValues(alpha: .7), borderRadius: BorderRadius.circular(12)),
             child: Column(
               children: [
                 Icon(icon, size: 16, color: color),
@@ -964,12 +964,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
     return RCard(
       borderColor: Tw.blue100,
-      gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Tw.blue50, Tw.cyan50]),
+      gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Tw.blue50, Tw.cyan50]),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(children: [
-            const Icon(LucideIcons.cloudSun, size: 16, color: Tw.blue500),
+            Icon(LucideIcons.cloudSun, size: 16, color: Tw.blue500),
             const SizedBox(width: 8),
             Expanded(child: Text(i18n.t('dashboard.weatherTitle'), style: tx(12, w: 7))),
           ]),
@@ -1064,7 +1064,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ]);
     return RCard(
       borderColor: Tw.teal100,
-      color: Color.alphaBlend(Tw.teal50.withValues(alpha: .3), Colors.white),
+      color: Color.alphaBlend(Tw.teal50.withValues(alpha: .3), Tw.surface),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1352,7 +1352,7 @@ class _DailyBalanceCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         borderColor: border,
         borderWidth: 2,
-        color: Color.alphaBlend(bg, Colors.white),
+        color: Color.alphaBlend(bg, Tw.surface),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1566,7 +1566,7 @@ class _LifestyleCardState extends State<_LifestyleCard> {
     return RCard(
       padding: const EdgeInsets.all(12),
       borderColor: Tw.green100,
-      color: Color.alphaBlend(Tw.green50.withValues(alpha: .2), Colors.white),
+      color: Color.alphaBlend(Tw.green50.withValues(alpha: .2), Tw.surface),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

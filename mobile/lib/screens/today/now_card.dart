@@ -99,10 +99,10 @@ class _NowCardState extends State<NowCard> {
         padding: const EdgeInsets.all(12),
         radius: 20,
         borderColor: Tw.amber200,
-        color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Colors.white),
+        color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Tw.surface),
         child: Row(
           children: [
-            const Icon(LucideIcons.wifiOff, size: 18, color: Tw.amber600),
+            Icon(LucideIcons.wifiOff, size: 18, color: Tw.amber600),
             const SizedBox(width: 10),
             Expanded(child: Text(i18n.t('mobileToday.loadFailed'), style: tx(12, c: Tw.amber900))),
             TextLink(i18n.t('mobileToday.retry'), onTap: c.reload, style: tx(12, w: 6, c: widget.theme.primary)),
@@ -134,7 +134,7 @@ class _NowCardState extends State<NowCard> {
                 constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                 padding: EdgeInsets.zero,
                 onPressed: widget.onOpenSettings,
-                icon: const Icon(LucideIcons.settings2, size: 20, color: Tw.gray500),
+                icon: Icon(LucideIcons.settings2, size: 20, color: Tw.gray500),
               ),
           ]),
           if (widget.controller.pendingCount > 0) ...[
@@ -164,16 +164,16 @@ class _NowCardState extends State<NowCard> {
   Widget _pendingRow(I18n i18n, int count) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Color.alphaBlend(Tw.amber50.withValues(alpha: .8), Colors.white),
+          color: Color.alphaBlend(Tw.amber50.withValues(alpha: .8), Tw.surface),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Tw.amber200),
         ),
         child: Row(children: [
-          const Icon(LucideIcons.cloudOff, size: 14, color: Tw.amber600),
+          Icon(LucideIcons.cloudOff, size: 14, color: Tw.amber600),
           const SizedBox(width: 8),
           Expanded(child: Text(i18n.t('mobileToday.pending', {'count': count}), style: tx(11, c: Tw.amber900))),
           if (_retrying)
-            const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Tw.amber600))
+            SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Tw.amber600))
           else
             TextLink(i18n.t('mobileToday.pendingRetry'), onTap: _retryPending, style: tx(11, w: 6, c: widget.theme.primary)),
         ]),

@@ -62,7 +62,7 @@ class _ErrorCard extends StatelessWidget {
           child: Container(
             constraints: const BoxConstraints(maxWidth: 448),
             padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+            decoration: BoxDecoration(color: Tw.surface, borderRadius: BorderRadius.circular(24)),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [

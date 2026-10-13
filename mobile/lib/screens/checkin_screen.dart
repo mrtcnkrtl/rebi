@@ -290,7 +290,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     if (_statusLoading) {
       return ThemedBackground(
         theme: theme,
-        child: const Center(child: SizedBox(width: 32, height: 32, child: CircularProgressIndicator(color: Tw.gray400))),
+        child: Center(child: SizedBox(width: 32, height: 32, child: CircularProgressIndicator(color: Tw.gray400))),
       );
     }
 
@@ -298,7 +298,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       return ThemedPage(
         theme: theme,
         children: [
-          const Icon(LucideIcons.circleCheckBig, size: 56, color: Tw.teal500),
+          Icon(LucideIcons.circleCheckBig, size: 56, color: Tw.teal500),
           const SizedBox(height: 16),
           Text(i18n.t('checkin.alreadyTitle'), textAlign: TextAlign.center, style: tx(20, w: 7)),
           const SizedBox(height: 8),
@@ -374,7 +374,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         if (changes.isNotEmpty) ...[
           Row(
             children: [
-              const Icon(LucideIcons.circleAlert, size: 16, color: Tw.amber500),
+              Icon(LucideIcons.circleAlert, size: 16, color: Tw.amber500),
               const SizedBox(width: 8),
               Expanded(child: Text('Değişiklikler', style: tx(14, w: 7, c: Tw.gray700))),
             ],
@@ -384,7 +384,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
             RCard(
               padding: const EdgeInsets.all(12),
               borderColor: Tw.amber100,
-              color: Color.alphaBlend(Tw.amber50.withValues(alpha: .5), Colors.white),
+              color: Color.alphaBlend(Tw.amber50.withValues(alpha: .5), Tw.surface),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -493,7 +493,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     OutlinedButton(
                       onPressed: _feedbackBusy ? null : () => setState(() => _feedbackStatus = 'skipped'),
                       style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Tw.gray200),
+                        side: BorderSide(color: Tw.gray200),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                         minimumSize: Size.zero,
@@ -792,9 +792,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
           gap,
           RCard(
             borderColor: Tw.slate100,
-            color: Color.alphaBlend(Tw.slate50.withValues(alpha: .9), Colors.white),
+            color: Color.alphaBlend(Tw.slate50.withValues(alpha: .9), Tw.surface),
             child: Text.rich(
-              const TextSpan(children: [
+              TextSpan(children: [
                 TextSpan(text: 'Endişene özel:', style: TextStyle(fontWeight: FontWeight.w600, color: Tw.slate800)),
                 TextSpan(
                   text: ' Aşağıdaki ek sorular analizindeki ana soruna göre seçilir. Cevap vermezsen atla; geçmiş check-in '
@@ -880,7 +880,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     }
 
     Widget smallBtn(String label, VoidCallback onTap, {bool primary = false}) => Material(
-          color: primary ? theme.primary : Colors.white,
+          color: primary ? theme.primary : Tw.surface,
           borderRadius: BorderRadius.circular(8),
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
@@ -1116,7 +1116,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
             padding: const EdgeInsets.only(top: 4, bottom: 4),
             child: Row(
               children: [
-                const Icon(LucideIcons.flaskConical, size: 16, color: Tw.violet400),
+                Icon(LucideIcons.flaskConical, size: 16, color: Tw.violet400),
                 const SizedBox(width: 8),
                 Expanded(child: Text('Aktif madde', style: tx(11, w: 6, c: Tw.gray700))),
               ],

@@ -61,7 +61,7 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
               activeColor: Tw.teal600,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
-              side: const BorderSide(color: Tw.gray300, width: 1.5),
+              side: BorderSide(color: Tw.gray300, width: 1.5),
             ),
           ),
           const SizedBox(width: 10),
@@ -111,7 +111,7 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.only(top: 8),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: Tw.teal100))),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: Tw.teal100))),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [

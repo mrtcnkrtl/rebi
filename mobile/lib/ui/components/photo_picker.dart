@@ -129,7 +129,7 @@ class PhotoPickerCard extends StatelessWidget {
                 label: pack.s('step4.galleryFile'),
                 labelColor: Tw.gray600,
                 border: Tw.gray200,
-                bg: Colors.white,
+                bg: Tw.surface,
                 onTap: () => onPick(ImageSource.gallery, CameraDevice.rear),
               ),
             ),

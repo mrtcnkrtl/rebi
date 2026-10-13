@@ -13,9 +13,9 @@ class RCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(24),
-    this.color = Colors.white,
+    this.color,
     this.gradient,
-    this.borderColor = Tw.gray100,
+    this.borderColor,
     this.borderWidth = 1,
     this.leftBorderColor,
     this.radius = 24,
@@ -27,9 +27,13 @@ class RCard extends StatelessWidget {
 
   final Widget child;
   final EdgeInsetsGeometry padding;
-  final Color color;
+
+  /// Verilmezse yüzey rengi (açık modda beyaz, koyu modda koyu yüzey).
+  final Color? color;
   final Gradient? gradient;
-  final Color borderColor;
+
+  /// Verilmezse ince gri kenarlık.
+  final Color? borderColor;
   final double borderWidth;
 
   /// `border-l-4` vurgu çizgisi.
@@ -42,6 +46,7 @@ class RCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = this.borderColor ?? Tw.gray100;
     final border = leftBorderColor != null
         ? Border(
             left: BorderSide(color: leftBorderColor!, width: 4),
@@ -56,11 +61,11 @@ class RCard extends StatelessWidget {
     Widget box = Container(
       margin: margin,
       decoration: BoxDecoration(
-        color: gradient == null ? color : null,
+        color: gradient == null ? (color ?? Tw.surface) : null,
         gradient: gradient,
         borderRadius: leftBorderColor != null ? null : radiusGeo,
         border: dashed ? null : border,
-        boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))],
+        boxShadow: Tw.dark ? null : const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))],
       ),
       child: dashed
           ? CustomPaint(painter: _DashedBorderPainter(borderColor, borderWidth, radius), child: content)
@@ -119,7 +124,7 @@ class PrimaryButton extends StatelessWidget {
     this.icon,
     this.trailingIcon,
     this.child,
-    this.color = Tw.teal600,
+    this.color,
     this.loading = false,
     this.minHeight = 48,
     this.fontSize = 16,
@@ -132,7 +137,9 @@ class PrimaryButton extends StatelessWidget {
   final IconData? icon;
   final IconData? trailingIcon;
   final Widget? child;
-  final Color color;
+
+  /// Verilmezse marka rengi (teal).
+  final Color? color;
   final bool loading;
   final double minHeight;
   final double fontSize;
@@ -141,6 +148,7 @@ class PrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = this.color ?? Tw.teal600;
     final enabled = onPressed != null && !loading;
     final content = loading
         ? const SizedBox(
@@ -192,8 +200,8 @@ class SecondaryButton extends StatelessWidget {
     this.icon,
     this.trailingIcon,
     this.child,
-    this.borderColor = Tw.teal200,
-    this.textColor = Tw.teal700,
+    this.borderColor,
+    this.textColor,
     this.loading = false,
     this.fontSize = 16,
     this.minHeight = 48,
@@ -205,8 +213,12 @@ class SecondaryButton extends StatelessWidget {
   final IconData? icon;
   final IconData? trailingIcon;
   final Widget? child;
-  final Color borderColor;
-  final Color textColor;
+
+  /// Verilmezse açık teal kenarlık.
+  final Color? borderColor;
+
+  /// Verilmezse koyu teal metin.
+  final Color? textColor;
   final bool loading;
   final double fontSize;
   final double minHeight;
@@ -214,6 +226,8 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final borderColor = this.borderColor ?? Tw.teal200;
+    final textColor = this.textColor ?? Tw.teal700;
     final enabled = onPressed != null && !loading;
     final content = loading
         ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: textColor))
@@ -235,7 +249,7 @@ class SecondaryButton extends StatelessWidget {
       child: Container(
         constraints: BoxConstraints(minHeight: minHeight),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Tw.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: borderColor, width: 2),
         ),
@@ -258,12 +272,14 @@ InputDecoration inputDecoration({
   IconData? prefixIcon,
   Widget? suffix,
   String? suffixText,
-  Color focusColor = Tw.teal400,
+  Color? focusColor,
   double radius = 16,
   double borderWidth = 2,
-  Color borderColor = Tw.gray200,
+  Color? borderColor,
   EdgeInsetsGeometry contentPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
 }) {
+  focusColor ??= Tw.teal400;
+  borderColor ??= Tw.gray200;
   OutlineInputBorder b(Color c) => OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
         borderSide: BorderSide(color: c, width: borderWidth),
@@ -273,7 +289,7 @@ InputDecoration inputDecoration({
     hintStyle: tx(16, c: Tw.gray400),
     isDense: true,
     filled: true,
-    fillColor: Colors.white,
+    fillColor: Tw.surface,
     contentPadding: contentPadding,
     prefixIcon: prefixIcon == null ? null : Icon(prefixIcon, size: 20, color: Tw.gray400),
     suffixIcon: suffix,
@@ -338,7 +354,7 @@ class ThemedBackground extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const ColoredBox(color: Colors.white),
+        ColoredBox(color: Tw.background),
         DecoratedBox(decoration: BoxDecoration(gradient: theme.bg)),
         ThemePatternOverlay(pattern: theme.pattern),
         ?extra,
@@ -425,10 +441,10 @@ class ChoiceChipBox extends StatelessWidget {
     this.radius = 999,
     this.fontSize = 12,
     this.padding = const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-    this.activeBorder = Tw.teal500,
-    this.activeBg = Tw.teal50,
-    this.activeText = Tw.teal700,
-    this.inactiveText = Tw.gray500,
+    this.activeBorder,
+    this.activeBg,
+    this.activeText,
+    this.inactiveText,
     this.inactiveBg = Colors.transparent,
     this.boldWhenActive = false,
     this.center = false,
@@ -441,10 +457,10 @@ class ChoiceChipBox extends StatelessWidget {
   final double radius;
   final double fontSize;
   final EdgeInsetsGeometry padding;
-  final Color activeBorder;
-  final Color activeBg;
-  final Color activeText;
-  final Color inactiveText;
+  final Color? activeBorder;
+  final Color? activeBg;
+  final Color? activeText;
+  final Color? inactiveText;
   final Color inactiveBg;
   final bool boldWhenActive;
   final bool center;
@@ -452,6 +468,10 @@ class ChoiceChipBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final activeBorder = this.activeBorder ?? Tw.teal500;
+    final activeBg = this.activeBg ?? Tw.teal50;
+    final activeText = this.activeText ?? Tw.teal700;
+    final inactiveText = this.inactiveText ?? Tw.gray500;
     final text = Text(
       label,
       textAlign: center ? TextAlign.center : TextAlign.start,
@@ -546,7 +566,7 @@ class StructuredBadges extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: .9),
+                color: Tw.surface.withValues(alpha: .9),
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(color: Tw.gray200.withValues(alpha: .9)),
               ),
@@ -560,10 +580,10 @@ class StructuredBadges extends StatelessWidget {
 
 /// Teal dönen halka (webdeki `animate-spin` yükleyici).
 class RingSpinner extends StatelessWidget {
-  const RingSpinner({super.key, this.color = Tw.teal600, this.track = Tw.teal200, this.size = 40, this.stroke = 4});
+  const RingSpinner({super.key, this.color, this.track, this.size = 40, this.stroke = 4});
 
-  final Color color;
-  final Color track;
+  final Color? color;
+  final Color? track;
   final double size;
   final double stroke;
 
@@ -571,7 +591,11 @@ class RingSpinner extends StatelessWidget {
   Widget build(BuildContext context) => SizedBox(
         width: size,
         height: size,
-        child: CircularProgressIndicator(strokeWidth: stroke, color: color, backgroundColor: track),
+        child: CircularProgressIndicator(
+          strokeWidth: stroke,
+          color: color ?? Tw.teal600,
+          backgroundColor: track ?? Tw.teal200,
+        ),
       );
 }
 
@@ -598,15 +622,15 @@ class TextLink extends StatelessWidget {
 
 /// Mesaj (başarı / hata) satırı — profil formlarındaki `CheckCircle` / `AlertCircle` ile.
 class StatusLine extends StatelessWidget {
-  const StatusLine({super.key, required this.ok, required this.text, this.errorColor = Tw.red600});
+  const StatusLine({super.key, required this.ok, required this.text, this.errorColor});
 
   final bool ok;
   final String text;
-  final Color errorColor;
+  final Color? errorColor;
 
   @override
   Widget build(BuildContext context) {
-    final c = ok ? Tw.emerald700 : errorColor;
+    final c = ok ? Tw.emerald700 : (errorColor ?? Tw.red600);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

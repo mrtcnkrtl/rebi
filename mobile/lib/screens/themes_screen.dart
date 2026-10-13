@@ -7,6 +7,7 @@ import '../core/i18n.dart';
 import '../core/subscription.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/components/appearance_card.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/widgets/theme_pattern_overlay.dart';
@@ -42,6 +43,8 @@ class ThemesScreen extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(i18n.t('themes.subtitle'), style: tx(14, c: Tw.gray500)),
+        const SizedBox(height: 16),
+        AppearanceCard(theme: theme),
         const SizedBox(height: 24),
         // Web: 2 sütunlu ızgara; kart yüksekliği içerikten gelir (önizleme h-28 = 112 px).
         for (var i = 0; i < rebiThemes.length; i += 2) ...[
@@ -183,7 +186,7 @@ class _ThemeCard extends StatelessWidget {
           child: Container(
             clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Tw.surface,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: active ? t.primary : Tw.gray200, width: 2),
             ),
@@ -233,7 +236,7 @@ class _ThemeCard extends StatelessWidget {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Icon(LucideIcons.lock, size: 12, color: Tw.gray800),
+                                      Icon(LucideIcons.lock, size: 12, color: Tw.gray800),
                                       const SizedBox(width: 4),
                                       Text('Plus', style: tx(10, w: 7, c: Tw.gray800)),
                                     ],

@@ -170,8 +170,8 @@ class _AuthScreenState extends State<AuthScreen> {
     final canSubmit = !_loading && _kvkk && _riza;
 
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Tw.teal50, Colors.white]),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Tw.teal50, Tw.surface]),
       ),
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 48, 16, 48),
@@ -186,7 +186,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   height: 64,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
+                    gradient: LinearGradient(
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [Tw.teal500, Tw.teal600],

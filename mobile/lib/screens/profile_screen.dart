@@ -293,11 +293,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Widget _sectionTitle(IconData icon, Color color, String text, {Color textColor = Tw.gray800}) => Row(
+  Widget _sectionTitle(IconData icon, Color color, String text, {Color? textColor}) => Row(
         children: [
           Icon(icon, size: 16, color: color),
           const SizedBox(width: 8),
-          Expanded(child: Text(text, style: tx(14, w: 7, c: textColor))),
+          Expanded(child: Text(text, style: tx(14, w: 7, c: textColor ?? Tw.gray800))),
         ],
       );
 
@@ -370,11 +370,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         RCard(
           padding: const EdgeInsets.all(16),
           borderColor: theme.primaryLight,
-          color: Color.alphaBlend(Tw.sky50.withValues(alpha: .6), Colors.white),
+          color: Color.alphaBlend(Tw.sky50.withValues(alpha: .6), Tw.surface),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.info, size: 20, color: Tw.sky700)),
+              Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.info, size: 20, color: Tw.sky700)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -413,7 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(LucideIcons.mail, size: 16, color: Tw.gray400),
+                  Icon(LucideIcons.mail, size: 16, color: Tw.gray400),
                   const SizedBox(width: 8),
                   Expanded(child: Text(user?.email ?? '—', style: tx(14, c: Tw.gray700))),
                 ],
@@ -421,7 +421,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(LucideIcons.calendar, size: 16, color: Tw.gray400),
+                  Icon(LucideIcons.calendar, size: 16, color: Tw.gray400),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(i18n.t('profile.membership', {'date': _formatJoined(user?.createdAt)}),
@@ -611,7 +611,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Tw.surface,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Tw.gray100),
             ),
@@ -669,7 +669,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.clipboardCheck, size: 16, color: Tw.gray500),
+                  Icon(LucideIcons.clipboardCheck, size: 16, color: Tw.gray500),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Column(
@@ -745,7 +745,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return RCard(
       padding: const EdgeInsets.all(16),
       borderColor: Tw.red200,
-      color: Color.alphaBlend(Tw.red50.withValues(alpha: .4), Colors.white),
+      color: Color.alphaBlend(Tw.red50.withValues(alpha: .4), Tw.surface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -765,7 +765,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 alignment: PlaceholderAlignment.middle,
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: .8), borderRadius: BorderRadius.circular(4)),
+                  decoration: BoxDecoration(color: Tw.surface.withValues(alpha: .8), borderRadius: BorderRadius.circular(4)),
                   child: Text(accountDeletePhrase, style: tx(12, w: 6, c: Tw.red950).copyWith(fontFamily: 'monospace')),
                 ),
               ),
@@ -789,7 +789,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Opacity(
             opacity: _deleteBusy || !phraseOk ? .5 : 1,
             child: Material(
-              color: Colors.white,
+              color: Tw.surface,
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                 borderRadius: BorderRadius.circular(12),
@@ -802,7 +802,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   child: Center(
                     child: _deleteBusy
-                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Tw.red700))
+                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Tw.red700))
                         : Text('Hesabımı kalıcı sil', style: tx(14, w: 6, c: Tw.red700)),
                   ),
                 ),
@@ -824,7 +824,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else if (_photosError.isNotEmpty) {
       body = Row(
         children: [
-          const Icon(LucideIcons.circleAlert, size: 16, color: Tw.red600),
+          Icon(LucideIcons.circleAlert, size: 16, color: Tw.red600),
           const SizedBox(width: 8),
           Expanded(child: Text(_photosError, style: tx(14, c: Tw.red600))),
         ],
@@ -833,12 +833,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body = RCard(
         dashed: true,
         borderColor: Tw.gray200,
-        color: Colors.white.withValues(alpha: .5),
+        color: Tw.surface.withValues(alpha: .5),
         radius: 16,
         padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
         child: Column(
           children: [
-            const Icon(LucideIcons.image, size: 40, color: Tw.gray300),
+            Icon(LucideIcons.image, size: 40, color: Tw.gray300),
             const SizedBox(height: 8),
             Text('Henüz kayıtlı fotoğraf yok.', style: tx(14, c: Tw.gray600)),
             const SizedBox(height: 12),
@@ -854,7 +854,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             Container(
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Tw.surface,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Tw.gray100),
                 boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))],
@@ -877,7 +877,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: const BoxDecoration(border: Border(top: BorderSide(color: Tw.gray50))),
+                    decoration: BoxDecoration(border: Border(top: BorderSide(color: Tw.gray50))),
                     child: Row(
                       children: [
                         Expanded(

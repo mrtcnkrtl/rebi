@@ -29,7 +29,7 @@ class LandingScreen extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Tw.warm50, Colors.white, Tw.teal50.withValues(alpha: .3)],
+          colors: [Tw.warm50, Tw.surface, Tw.teal50.withValues(alpha: .3)],
         ),
       ),
       child: SingleChildScrollView(
@@ -226,10 +226,10 @@ class _Hero extends StatelessWidget {
       _ChoiceCard(
         onTap: onRebi,
         border: Tw.teal200.withValues(alpha: .9),
-        bg: Colors.white.withValues(alpha: .75),
+        bg: Tw.surface.withValues(alpha: .75),
         glow: Tw.teal300.withValues(alpha: .3),
         glowAtTopRight: true,
-        icon: const _SolidIcon(icon: LucideIcons.messageCircle, colors: [Tw.teal600, Tw.teal600]),
+        icon: _SolidIcon(icon: LucideIcons.messageCircle, colors: [Tw.teal600, Tw.teal600]),
         title: i18n.t('appName'),
         desc: i18n.t('landing.choiceRebiDesc'),
         arrowColor: Tw.teal700,
@@ -237,10 +237,10 @@ class _Hero extends StatelessWidget {
       _ChoiceCard(
         onTap: onRoutine,
         border: Tw.gray200,
-        bg: Colors.white.withValues(alpha: .9),
+        bg: Tw.surface.withValues(alpha: .9),
         glow: const Color(0xFFD8B4FE).withValues(alpha: .2),
         glowAtTopRight: false,
-        icon: const _SolidIcon(icon: LucideIcons.sparkles, colors: [Tw.teal500, Tw.emerald500]),
+        icon: _SolidIcon(icon: LucideIcons.sparkles, colors: [Tw.teal500, Tw.emerald500]),
         title: i18n.t('landing.choiceRoutineName'),
         desc: i18n.t('landing.choiceRoutineDesc'),
         arrowColor: Tw.gray700,
@@ -257,7 +257,7 @@ class _Hero extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [Colors.white.withValues(alpha: .55), Colors.white.withValues(alpha: .25), Tw.teal50.withValues(alpha: .4)],
+                colors: [Tw.surface.withValues(alpha: .55), Tw.surface.withValues(alpha: .25), Tw.teal50.withValues(alpha: .4)],
               ),
             ),
           ),
@@ -286,7 +286,7 @@ class _Hero extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(LucideIcons.sparkles, size: 16, color: Tw.teal700),
+                      Icon(LucideIcons.sparkles, size: 16, color: Tw.teal700),
                       const SizedBox(width: 8),
                       Flexible(child: Text(i18n.t('landing.heroBadge'), style: tx(14, w: 5, c: Tw.teal700))),
                     ],
@@ -438,7 +438,7 @@ class _SchemaRow extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
         decoration: BoxDecoration(
-          color: us ? Colors.white.withValues(alpha: .9) : Tw.gray50,
+          color: us ? Tw.surface.withValues(alpha: .9) : Tw.gray50,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: us ? Tw.teal200.withValues(alpha: .7) : Tw.gray100),
           boxShadow: us ? const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))] : null,
@@ -464,7 +464,7 @@ class _Differences extends StatelessWidget {
     final others = Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Tw.surface,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Tw.gray200),
         boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))],
@@ -555,7 +555,7 @@ class _Differences extends StatelessWidget {
                             height: 48,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
-                              gradient: const LinearGradient(colors: [Tw.teal600, Tw.emerald500]),
+                              gradient: LinearGradient(colors: [Tw.teal600, Tw.emerald500]),
                             ),
                             child: const Icon(LucideIcons.arrowRight, color: Colors.white),
                           ),
@@ -643,7 +643,7 @@ class _PlusBlock extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Tw.slate900, Tw.violet950.withValues(alpha: .95), Tw.slate900],
+          colors: [Tw.fixedSlate900, Tw.fixedViolet950.withValues(alpha: .95), Tw.fixedSlate900],
         ),
       ),
       child: Stack(
@@ -681,7 +681,7 @@ class _PlusBlock extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(LucideIcons.crown, size: 16, color: Tw.amber300),
+                          Icon(LucideIcons.crown, size: 16, color: Tw.amber300),
                           const SizedBox(width: 8),
                           Text(i18n.t('landing.plusBadge'), style: tx(14, w: 5, c: Tw.amber200)),
                         ],
@@ -723,11 +723,11 @@ class _PlusBlock extends StatelessWidget {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(LucideIcons.crown, size: 20, color: Tw.amber600),
+                              Icon(LucideIcons.crown, size: 20, color: Tw.amber600),
                               const SizedBox(width: 8),
-                              Flexible(child: Text(i18n.t('landing.plusCta'), style: tx(16, w: 7, c: Tw.violet950))),
+                              Flexible(child: Text(i18n.t('landing.plusCta'), style: tx(16, w: 7, c: Tw.fixedViolet950))),
                               const SizedBox(width: 8),
-                              const Icon(LucideIcons.arrowRight, size: 20, color: Tw.violet950),
+                              Icon(LucideIcons.arrowRight, size: 20, color: Tw.fixedViolet950),
                             ],
                           ),
                         ),
@@ -829,7 +829,7 @@ class _HowItWorks extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Colors.white, Tw.teal50.withValues(alpha: .5)],
+          colors: [Tw.surface, Tw.teal50.withValues(alpha: .5)],
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 48),
@@ -844,7 +844,7 @@ class _HowItWorks extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: Tw.surface,
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: Tw.gray100),
                 ),
@@ -857,7 +857,7 @@ class _HowItWorks extends StatelessWidget {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        gradient: const LinearGradient(
+                        gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [Tw.teal500, Tw.teal600],
@@ -878,7 +878,7 @@ class _HowItWorks extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Padding(padding: EdgeInsets.only(top: 4), child: Icon(LucideIcons.chevronRight, size: 20, color: Tw.gray300)),
+                    Padding(padding: EdgeInsets.only(top: 4), child: Icon(LucideIcons.chevronRight, size: 20, color: Tw.gray300)),
                   ],
                 ),
               ),
@@ -910,7 +910,7 @@ class _Footer extends StatelessWidget {
   Widget build(BuildContext context) {
     final link = tx(12, c: Tw.gray400).copyWith(decoration: TextDecoration.underline, decorationColor: Tw.gray400);
     return Container(
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: Tw.gray100))),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: Tw.gray100))),
       padding: EdgeInsets.fromLTRB(16, 40, 16, 40 + MediaQuery.of(context).padding.bottom),
       child: Column(
         children: [
@@ -922,7 +922,7 @@ class _Footer extends StatelessWidget {
                 height: 32,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Tw.teal500, Tw.teal600]),
+                  gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Tw.teal500, Tw.teal600]),
                 ),
                 child: const Icon(LucideIcons.leaf, size: 16, color: Colors.white),
               ),

@@ -86,8 +86,8 @@ class _TodayActionBarState extends State<TodayActionBar> {
                 ),
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .97),
-                    border: const Border(top: BorderSide(color: Tw.gray100)),
+                    color: Tw.surface.withValues(alpha: .97),
+                    border: Border(top: BorderSide(color: Tw.gray100)),
                     boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, -4))],
                   ),
                   padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),

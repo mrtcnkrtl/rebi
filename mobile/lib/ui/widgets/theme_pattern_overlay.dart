@@ -124,7 +124,7 @@ Widget _sunburst(double alignY, List<double> stops) => DecoratedBox(
           center: Alignment(0, alignY),
           // conic-gradient(from 180deg …): 0° aşağıdan başlar.
           transform: const GradientRotation(math.pi / 2),
-          colors: const [
+          colors: [
             Tw.fuchsia300,
             Color(0x00F0ABFC),
             Tw.orange300,

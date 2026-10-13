@@ -110,8 +110,7 @@ class _TrackingTilesState extends State<TrackingTiles> {
         ),
       );
 
-  Text _sub(String text, {Color color = Tw.gray600, int w = 4}) =>
-      Text(text, style: tx(12, c: color, w: w, h: snug));
+  Text _sub(String text, {Color? color, int w = 4}) => Text(text, style: tx(12, c: color ?? Tw.gray600, w: w, h: snug));
 
   // --- Su ---------------------------------------------------------------
 
@@ -134,7 +133,7 @@ class _TrackingTilesState extends State<TrackingTiles> {
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sub(i18n.t('mobileToday.waterProgress', {'ml': p.waterMl, 'target': waterTargetMl}), color: Tw.blue500, w: 6),
+          _sub(i18n.t('mobileToday.waterProgress', {'ml': p.waterMl, 'target': waterTargetMl}), color: Tw.blueText, w: 6),
           if (reached)
             _sub(i18n.t('mobileToday.waterGoalReached'), color: Tw.emerald700, w: 5)
           else if (next != null)
@@ -154,14 +153,14 @@ class _TrackingTilesState extends State<TrackingTiles> {
           for (final (ml, key) in [(250, 'water250'), (500, 'water500')])
             TodayPill(
               label: i18n.t('mobileToday.actions.$key'),
-              color: Tw.blue500,
+              color: ml == 250 ? Tw.blue600 : Tw.blueText,
               filled: ml == 250,
               onTap: _busy ? null : () => add(ml),
             ),
         ],
         TodayPill(
           label: i18n.t('mobileToday.actions.waterMore'),
-          color: Tw.blue500,
+          color: Tw.blueText,
           onTap: () => widget.onOpenSheet(DaySheet.water),
         ),
       ],
@@ -205,7 +204,7 @@ class _TrackingTilesState extends State<TrackingTiles> {
           color: Tw.emerald700,
           w: 5,
         ),
-        trailing: const Icon(LucideIcons.circleCheck, size: 22, color: Tw.emerald500),
+        trailing: Icon(LucideIcons.circleCheck, size: 22, color: Tw.emerald500),
         actions: [TodayPill(label: i18n.t('mobileToday.actions.change'), color: color, onTap: openCleansing)],
       );
     }
@@ -275,7 +274,7 @@ class _TrackingTilesState extends State<TrackingTiles> {
         color: clean ? Tw.emerald700 : Tw.amber700,
         w: 5,
       ),
-      trailing: clean ? const Icon(LucideIcons.circleCheck, size: 22, color: Tw.emerald500) : null,
+      trailing: clean ? Icon(LucideIcons.circleCheck, size: 22, color: Tw.emerald500) : null,
       actions: [
         TodayPill(
           label: i18n.t('mobileToday.actions.edit'),

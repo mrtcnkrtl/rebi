@@ -62,7 +62,7 @@ class _SeverityTestState extends State<SeverityTest> {
 
     return RCard(
       borderColor: Tw.teal100,
-      color: Color.alphaBlend(Tw.teal50.withValues(alpha: .2), Colors.white),
+      color: Color.alphaBlend(Tw.teal50.withValues(alpha: .2), Tw.surface),
       margin: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -152,7 +152,7 @@ class _OptionButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final border = selected ? Tw.teal500 : (questionAnswered ? Tw.gray100 : Tw.gray200);
-    final bg = selected ? Tw.teal50 : (questionAnswered ? Tw.gray50 : Colors.white);
+    final bg = selected ? Tw.teal50 : (questionAnswered ? Tw.gray50 : Tw.surface);
     final fg = selected ? Tw.teal800 : (questionAnswered ? Tw.gray400 : Tw.gray700);
     return Material(
       color: bg,
@@ -174,7 +174,7 @@ class _OptionButton extends StatelessWidget {
                 ),
                 alignment: Alignment.center,
                 child: selected
-                    ? Container(width: 8, height: 8, decoration: const BoxDecoration(color: Tw.teal500, shape: BoxShape.circle))
+                    ? Container(width: 8, height: 8, decoration: BoxDecoration(color: Tw.teal500, shape: BoxShape.circle))
                     : null,
               ),
               const SizedBox(width: 8),

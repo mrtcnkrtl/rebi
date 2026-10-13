@@ -160,7 +160,7 @@ class _ProfileDetailsCardState extends State<ProfileDetailsCard> {
             const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: RingSpinner(size: 28, stroke: 3)))
           else if (_loadFailed)
             Row(children: [
-              const Icon(LucideIcons.wifiOff, size: 16, color: Tw.amber600),
+              Icon(LucideIcons.wifiOff, size: 16, color: Tw.amber600),
               const SizedBox(width: 8),
               Expanded(child: Text(i18n.t('mobileProfile.loadFailed'), style: tx(12, c: Tw.amber900))),
               TextLink(i18n.t('mobileProfile.retry'), onTap: _load, style: tx(12, w: 6, c: theme.primary)),

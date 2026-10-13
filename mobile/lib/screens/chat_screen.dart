@@ -358,7 +358,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .9),
+                    color: Tw.surface.withValues(alpha: .9),
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: Tw.gray200.withValues(alpha: .8)),
                     boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))],
@@ -392,7 +392,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .7),
+        color: Tw.surface.withValues(alpha: .7),
         border: Border(bottom: BorderSide(color: theme.cardBorder)),
       ),
       child: Row(
@@ -486,7 +486,7 @@ class _ChatScreenState extends State<ChatScreen> {
             alignment: Alignment.centerLeft,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Tw.gray100,
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(16),
@@ -553,7 +553,7 @@ class _ChatScreenState extends State<ChatScreen> {
     } else {
       footer = Text.rich(
         TextSpan(children: [
-          const WidgetSpan(
+          WidgetSpan(
             alignment: PlaceholderAlignment.middle,
             child: Icon(LucideIcons.sparkles, size: 12, color: Tw.gray400),
           ),
@@ -567,7 +567,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .9),
+        color: Tw.surface.withValues(alpha: .9),
         border: Border(top: BorderSide(color: theme.cardBorder)),
       ),
       child: Column(
@@ -614,7 +614,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _edgeHandle(I18n i18n, RebiTheme theme, String subtitle) {
     return Material(
-      color: Colors.white.withValues(alpha: .85),
+      color: Tw.surface.withValues(alpha: .85),
       borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
       child: InkWell(
         borderRadius: const BorderRadius.horizontal(right: Radius.circular(16)),
@@ -648,7 +648,7 @@ class _ChatScreenState extends State<ChatScreen> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Tw.surface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: Tw.gray200),
         ),
@@ -682,7 +682,7 @@ class _ChatScreenState extends State<ChatScreen> {
         Positioned.fill(
           child: GestureDetector(
             onTap: () => setState(() => _edgeOpen = false),
-            child: ColoredBox(color: Tw.slate950.withValues(alpha: .25)),
+            child: ColoredBox(color: Tw.fixedSlate950.withValues(alpha: .25)),
           ),
         ),
         Positioned(
@@ -691,14 +691,14 @@ class _ChatScreenState extends State<ChatScreen> {
           left: 0,
           width: 340,
           child: Material(
-            color: Colors.white.withValues(alpha: .95),
+            color: Tw.surface.withValues(alpha: .95),
             elevation: 16,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
                   padding: const EdgeInsets.all(16),
-                  decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Tw.gray200))),
+                  decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Tw.gray200))),
                   child: Row(
                     children: [
                       Expanded(
@@ -717,7 +717,7 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: InkWell(
                           borderRadius: BorderRadius.circular(16),
                           onTap: () => setState(() => _edgeOpen = false),
-                          child: const SizedBox(width: 36, height: 36, child: Icon(LucideIcons.x, size: 16, color: Tw.gray700)),
+                          child: SizedBox(width: 36, height: 36, child: Icon(LucideIcons.x, size: 16, color: Tw.gray700)),
                         ),
                       ),
                     ],
@@ -851,9 +851,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 children: [
                   leading,
                   const SizedBox(width: 8),
-                  Flexible(child: Text(label, style: tx(16, w: 8, c: Tw.violet950))),
+                  Flexible(child: Text(label, style: tx(16, w: 8, c: Tw.fixedViolet950))),
                   const SizedBox(width: 8),
-                  const Icon(LucideIcons.arrowRight, size: 16, color: Tw.violet950),
+                  Icon(LucideIcons.arrowRight, size: 16, color: Tw.fixedViolet950),
                 ],
               ),
             ),
@@ -883,7 +883,7 @@ class _ChatScreenState extends State<ChatScreen> {
         Positioned.fill(
           child: GestureDetector(
             onTap: () => setState(() => _paywallOpen = false),
-            child: ColoredBox(color: Tw.slate950.withValues(alpha: .7)),
+            child: ColoredBox(color: Tw.fixedSlate950.withValues(alpha: .7)),
           ),
         ),
         Center(
@@ -899,7 +899,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Tw.slate950, Tw.violet950.withValues(alpha: .95), Tw.slate950],
+                    colors: [Tw.fixedSlate950, Tw.fixedViolet950.withValues(alpha: .95), Tw.fixedSlate950],
                   ),
                   boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 50, offset: Offset(0, 25))],
                 ),
@@ -977,11 +977,11 @@ class _ChatScreenState extends State<ChatScreen> {
                           ),
                           const SizedBox(height: 20),
                           if (!loggedIn) ...[
-                            lightButton(const Icon(LucideIcons.lock, size: 16, color: Tw.violet950), 'Giriş yap',
+                            lightButton(Icon(LucideIcons.lock, size: 16, color: Tw.fixedViolet950), 'Giriş yap',
                                 () => context.go('/auth?next=${Uri.encodeComponent('/dashboard/chat')}')),
                             const SizedBox(height: 12),
                             ghostButton([
-                              const Icon(LucideIcons.crown, size: 16, color: Tw.amber300),
+                              Icon(LucideIcons.crown, size: 16, color: Tw.amber300),
                               const SizedBox(width: 8),
                               Flexible(child: Text('Plus’a geç', style: tx(16, w: 7, c: Colors.white))),
                               const SizedBox(width: 8),
@@ -991,7 +991,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             Text('Not: Rutin tarafına geçmek istersen zaten kayıt/giriş gerekiyor.',
                                 textAlign: TextAlign.center, style: tx(11, c: Colors.white.withValues(alpha: .6))),
                           ] else ...[
-                            lightButton(const Icon(LucideIcons.crown, size: 16, color: Tw.amber600), 'Rebi Plus’ı aç',
+                            lightButton(Icon(LucideIcons.crown, size: 16, color: Tw.amber600), 'Rebi Plus’ı aç',
                                 () => context.go('/dashboard/subscribe')),
                             const SizedBox(height: 12),
                             ghostButton([Flexible(child: Text('Şimdilik kapat', style: tx(16, w: 7, c: Colors.white)))],
