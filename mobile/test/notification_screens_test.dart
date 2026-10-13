@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:rebi/core/api.dart';
 import 'package:rebi/core/i18n.dart';
@@ -254,9 +253,8 @@ void main() {
       await settle(tester);
       expect(notifier.scheduled, isNotEmpty);
 
-      await tester.tap(find.byIcon(LucideIcons.menu));
-      await settle(tester, 3);
-      await tapText(tester, tr('nav.logout'));
+      await tapText(tester, tr('mobileNav.me'));
+      await tapText(tester, tr('mobileMe.logout'));
       await settle(tester);
 
       final delete = h.backend.calls('/devices/register').where((r) => r.method == 'DELETE');

@@ -382,5 +382,41 @@
     "system": "System",
     "light": "Light",
     "dark": "Dark"
+  },
+  "mobileNav": {
+    "today": "Today",
+    "routine": "Routine",
+    "chat": "Rebi",
+    "history": "History",
+    "me": "Me",
+    "back": "Back"
+  },
+  "mobileMe": {
+    "title": "Me",
+    "groups": {
+      "account": "My account",
+      "look": "Appearance",
+      "more": "More"
+    },
+    "account": {
+      "title": "Account and privacy",
+      "hint": "Skin profile, photos, password, permissions"
+    },
+    "reanalyze": {
+      "title": "Re-analyze",
+      "hint": "Reassess your skin and update your routine"
+    },
+    "themes": {
+      "title": "Color theme",
+      "hint": "Classic Teal, Pink Heart and more"
+    },
+    "plus": {
+      "title": "Rebi Plus",
+      "hint": "Unlimited chat and premium themes",
+      "active": "Rebi Plus is active"
+    },
+    "plusBadge": "Plus",
+    "logout": "Sign out",
+    "noName": "Rebi user"
   }
 }

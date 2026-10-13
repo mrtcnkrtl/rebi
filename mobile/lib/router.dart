@@ -9,6 +9,7 @@ import 'screens/dashboard_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/legal_screen.dart';
+import 'screens/me_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/reminders_screen.dart';
 import 'screens/subscribe_screen.dart';
@@ -83,7 +84,9 @@ GoRouter buildRouter(AuthController auth) {
           GoRoute(path: '/dashboard/chat', builder: (context, state) => const ChatScreen()),
           GoRoute(path: '/dashboard/themes', builder: (context, state) => const ThemesScreen()),
           GoRoute(path: '/dashboard/subscribe', builder: (context, state) => const SubscribeScreen()),
-          GoRoute(path: '/dashboard/profile', builder: (context, state) => const ProfileScreen()),
+          GoRoute(path: '/dashboard/routine', builder: (context, state) => const DashboardScreen(planOnly: true)),
+          GoRoute(path: '/dashboard/profile', builder: (context, state) => const MeScreen()),
+          GoRoute(path: '/dashboard/account', builder: (context, state) => const ProfileScreen()),
           GoRoute(path: '/dashboard/history', builder: (context, state) => const HistoryScreen()),
           GoRoute(path: '/dashboard/reminders', builder: (context, state) => const RemindersScreen()),
         ],

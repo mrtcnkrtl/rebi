@@ -179,7 +179,7 @@ class _AnalyzePhotoOnlyState extends State<AnalyzePhotoOnly> {
         Center(
           child: TextLink(
             pack.s('photoOnly.goProfilePhotos'),
-            onTap: () => context.go('/dashboard/profile'),
+            onTap: () => context.go('/dashboard/account'),
             style: tx(14, w: 6, c: theme.primary),
           ),
         ),

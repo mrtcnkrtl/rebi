@@ -6,7 +6,6 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/i18n.dart';
-import '../../core/routine_tracking.dart';
 import '../../state/auth_controller.dart';
 import '../../state/notifications_controller.dart';
 import '../../state/theme_controller.dart';
@@ -14,8 +13,40 @@ import '../components/modals.dart';
 import '../tw.dart';
 import '../widgets/common.dart';
 
-/// Web `App.jsx` düzeni: üstte Navbar, `/dashboard*` altında BottomNav,
-/// yapay zekâ yüzeylerinde beyan kutusu, oturum varken rıza kurtarma kutusu.
+/// Giriş yapmış kullanıcının beş ana sekmesi.
+enum AppTab {
+  today('/dashboard', LucideIcons.house, 'mobileNav.today'),
+  routine('/dashboard/routine', LucideIcons.listChecks, 'mobileNav.routine'),
+  chat('/dashboard/chat', LucideIcons.messageCircle, 'mobileNav.chat'),
+  history('/dashboard/history', LucideIcons.calendarDays, 'mobileNav.history'),
+  me('/dashboard/profile', LucideIcons.userRound, 'mobileNav.me');
+
+  const AppTab(this.path, this.icon, this.labelKey);
+
+  final String path;
+  final IconData icon;
+  final String labelKey;
+}
+
+/// Bir yolun hangi sekmeye ait olduğu; sekme dışı (genel) sayfalar için null.
+AppTab? tabForPath(String path) {
+  if (!path.startsWith('/dashboard')) return null;
+  if (path == '/dashboard' || path.startsWith('/dashboard/checkin')) return AppTab.today;
+  if (path.startsWith('/dashboard/routine') || path.startsWith('/dashboard/analyze')) return AppTab.routine;
+  if (path.startsWith('/dashboard/chat')) return AppTab.chat;
+  if (path.startsWith('/dashboard/history')) return AppTab.history;
+  return AppTab.me;
+}
+
+/// Sekme kökü olmayan, üstünde geri çubuğu görünen sayfalar (check-in, analiz, ayarlar…).
+bool isSubPage(String path) {
+  final tab = tabForPath(path);
+  return tab != null && path != tab.path;
+}
+
+/// Düzen: genel sayfalarda (tanıtım, giriş, yasal) üstte logo ve menü; giriş yapmış kullanıcıda
+/// `/dashboard*` altında üst çubuk yok, beş sekmeli alt çubuk ve alt sayfalarda geri çubuğu var.
+/// Yapay zekâ yüzeylerinde beyan kutusu, oturum varken rıza kurtarma kutusu üstte durur.
 class AppShell extends StatefulWidget {
   const AppShell({super.key, required this.location, required this.child});
 
@@ -35,7 +66,7 @@ class _AppShellState extends State<AppShell> {
     if (old.location != widget.location && _menuOpen) _menuOpen = false;
   }
 
-  /// Android geri tuşu: sekme yığını boşsa ana panele dön (web: tarayıcı geçmişi).
+  /// Android geri tuşu: alt sayfadan sekmesine, sekmeden Bugün'e, Bugün'de uygulamadan çıkış.
   Future<bool> _onBack() async {
     final router = GoRouter.of(context);
     if (router.canPop()) return false;
@@ -44,9 +75,18 @@ class _AppShellState extends State<AppShell> {
       setState(() => _menuOpen = false);
       return true;
     }
-    if (path.startsWith('/dashboard/') && context.read<AuthController>().user != null) {
-      router.go('/dashboard');
-      return true;
+    final signedIn = context.read<AuthController>().user != null;
+    final tab = tabForPath(path);
+    if (signedIn && tab != null) {
+      if (isSubPage(path)) {
+        router.go(tab.path);
+        return true;
+      }
+      if (tab != AppTab.today) {
+        router.go(AppTab.today.path);
+        return true;
+      }
+      return false;
     }
     if (path == '/auth' || path == '/rebi') {
       router.go('/');
@@ -61,30 +101,38 @@ class _AppShellState extends State<AppShell> {
     final path = widget.location.path;
     final isDashboard = path.startsWith('/dashboard');
     final isAiSurface = isDashboard || path.startsWith('/rebi');
+    final inApp = user != null && isDashboard;
 
     return BackButtonListener(
       onBackButtonPressed: _onBack,
       child: Stack(
         children: [
           Scaffold(
-            backgroundColor: Tw.surface,
-            appBar: _Navbar(
-              menuOpen: _menuOpen,
-              onToggleMenu: () => setState(() => _menuOpen = !_menuOpen),
-            ),
-            body: Stack(
-              children: [
-                Positioned.fill(child: widget.child),
-                if (_menuOpen)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    top: 0,
-                    child: _MobileMenu(onClose: () => setState(() => _menuOpen = false)),
+            backgroundColor: Tw.background,
+            appBar: inApp ? null : _Navbar(menuOpen: _menuOpen, onToggleMenu: () => setState(() => _menuOpen = !_menuOpen)),
+            body: inApp
+                ? SafeArea(
+                    bottom: false,
+                    child: Column(
+                      children: [
+                        if (isSubPage(path)) _SubBar(path: path),
+                        Expanded(child: widget.child),
+                      ],
+                    ),
+                  )
+                : Stack(
+                    children: [
+                      Positioned.fill(child: widget.child),
+                      if (_menuOpen)
+                        Positioned(
+                          left: 0,
+                          right: 0,
+                          top: 0,
+                          child: _MobileMenu(onClose: () => setState(() => _menuOpen = false)),
+                        ),
+                    ],
                   ),
-              ],
-            ),
-            bottomNavigationBar: user != null && isDashboard ? _BottomNav(path: path) : null,
+            bottomNavigationBar: inApp ? _BottomNav(path: path) : null,
           ),
           if (isAiSurface) const Positioned.fill(child: AiDisclaimerModal()),
           if (user != null) const Positioned.fill(child: ConsentRecoveryModal()),
@@ -94,7 +142,7 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-/// `sticky top-0 glass border-b` — logo + menü düğmesi.
+/// `sticky top-0 glass border-b` — logo + menü düğmesi (genel sayfalar).
 class _Navbar extends StatelessWidget implements PreferredSizeWidget {
   const _Navbar({required this.menuOpen, required this.onToggleMenu});
 
@@ -164,7 +212,7 @@ class _Navbar extends StatelessWidget implements PreferredSizeWidget {
   }
 }
 
-/// Webdeki mobil hamburger menüsü.
+/// Genel sayfalardaki açılır menü: dil seçimi ve giriş (giriş yapmış kullanıcıda uygulamaya dönüş).
 class _MobileMenu extends StatelessWidget {
   const _MobileMenu({required this.onClose});
 
@@ -190,7 +238,7 @@ class _MobileMenu extends StatelessWidget {
         );
 
     return Material(
-      color: Tw.surface,
+      color: Tw.surfaceRaised,
       elevation: 2,
       child: Container(
         decoration: BoxDecoration(border: Border(top: BorderSide(color: Tw.gray100))),
@@ -201,17 +249,13 @@ class _MobileMenu extends StatelessWidget {
           children: [
             const Padding(padding: EdgeInsets.only(bottom: 8), child: LanguageSelect()),
             if (user != null) ...[
-              item(i18n.t('nav.dashboard'), Tw.gray700, () => go('/dashboard')),
-              item(i18n.t('nav.profile'), Tw.gray700, () => go('/dashboard/profile')),
+              item(i18n.t('mobileNav.today'), Tw.gray700, () => go('/dashboard')),
+              item(i18n.t('mobileNav.me'), Tw.gray700, () => go('/dashboard/profile')),
               item(i18n.t('nav.plus'), Tw.amber700, () => go('/dashboard/subscribe')),
               item(i18n.t('nav.newAnalyze'), Tw.teal600, () => go('/dashboard/analyze')),
-              item(i18n.t('nav.logout'), Tw.red500, () async {
+              item(i18n.t('nav.logout'), Tw.red500, () {
                 onClose();
-                final router = GoRouter.of(context);
-                // Oturum kapanınca yetki gider: cihaz kaydı ve yerel bildirimler önce temizlenir.
-                await context.read<NotificationsController>().prepareSignOut();
-                await auth.signOut();
-                router.go('/');
+                signOutAndGoHome(context);
               }),
             ] else
               SizedBox(
@@ -223,6 +267,16 @@ class _MobileMenu extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Çıkış: oturum kapanınca yetki gider; cihaz kaydı ve yerel bildirimler önce temizlenir.
+Future<void> signOutAndGoHome(BuildContext context) async {
+  final router = GoRouter.of(context);
+  final auth = context.read<AuthController>();
+  final notifications = context.read<NotificationsController>();
+  await notifications.prepareSignOut();
+  await auth.signOut();
+  router.go('/');
 }
 
 const _langLabels = {'tr': 'Türkçe', 'en': 'English'};
@@ -251,6 +305,7 @@ class LanguageSelect extends StatelessWidget {
             child: DropdownButton<String>(
               value: i18n.lang,
               isDense: true,
+              dropdownColor: Tw.surfaceRaised,
               style: tx(11, w: 6, c: Tw.gray700),
               icon: Icon(LucideIcons.chevronDown, size: 14, color: Tw.gray500),
               items: [
@@ -268,15 +323,36 @@ class LanguageSelect extends StatelessWidget {
   }
 }
 
-class _Tab {
-  const _Tab(this.id, this.label, this.icon);
+/// Alt sayfalarda (check-in, analiz, ayarlar…) üstteki geri çubuğu.
+class _SubBar extends StatelessWidget {
+  const _SubBar({required this.path});
 
-  final String id;
-  final String label;
-  final IconData icon;
+  final String path;
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = context.i18n;
+    final parent = tabForPath(path)!;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(8, 4, 16, 0),
+        child: TextButton.icon(
+          onPressed: () => context.canPop() ? context.pop() : context.go(parent.path),
+          icon: Icon(LucideIcons.chevronLeft, size: 20, color: Tw.gray600),
+          label: Text(i18n.t('mobileNav.back'), style: tx(14, w: 6, c: Tw.gray600)),
+          style: TextButton.styleFrom(
+            foregroundColor: Tw.gray600,
+            minimumSize: const Size(48, 40),
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
-/// Alt sekme çubuğu (web: `BottomNav.jsx`).
+/// Alt sekme çubuğu: Bugün · Rutin · Rebi · Geçmiş · Ben.
 class _BottomNav extends StatelessWidget {
   const _BottomNav({required this.path});
 
@@ -286,18 +362,7 @@ class _BottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final i18n = context.i18n;
     final theme = context.watch<ThemeController>().theme;
-    final user = context.watch<AuthController>().user;
-    final analyzeLabel = user != null && hasCompletedOnboarding(user.id) ? i18n.t('nav.reanalyze') : i18n.t('nav.analyze');
-    final tabs = [
-      _Tab('/dashboard', i18n.t('nav.home'), LucideIcons.house),
-      _Tab('/dashboard/checkin', i18n.t('nav.checkin'), LucideIcons.clipboardCheck),
-      _Tab('/dashboard/chat', i18n.t('nav.chat'), LucideIcons.messageCircle),
-      _Tab('/dashboard/analyze', analyzeLabel, LucideIcons.scan),
-      _Tab('/dashboard/themes', i18n.t('nav.theme'), LucideIcons.palette),
-      _Tab('/dashboard/profile', i18n.t('nav.profile'), LucideIcons.userRound),
-    ];
-    final active = tabs.where((t) => path == t.id).firstOrNull?.id ??
-        tabs.where((t) => t.id != '/dashboard' && path.startsWith(t.id)).firstOrNull?.id;
+    final active = tabForPath(path);
 
     return ClipRect(
       child: BackdropFilter(
@@ -317,20 +382,15 @@ class _BottomNav extends StatelessWidget {
                   height: 64,
                   child: Row(
                     children: [
-                      for (final tab in tabs)
+                      for (final tab in AppTab.values)
                         Expanded(
                           child: _TabButton(
                             tab: tab,
-                            active: active == tab.id,
+                            label: i18n.t(tab.labelKey),
+                            active: active == tab,
                             color: theme.primary,
                             lightColor: theme.primaryLight,
-                            onTap: () {
-                              if (tab.id == '/dashboard/checkin' && user != null && !isRoutineTrackingAccepted(user.id)) {
-                                context.go('/dashboard', extra: const {'flashNeedAccept': true});
-                                return;
-                              }
-                              context.go(tab.id);
-                            },
+                            onTap: () => context.go(tab.path),
                           ),
                         ),
                     ],
@@ -348,13 +408,15 @@ class _BottomNav extends StatelessWidget {
 class _TabButton extends StatelessWidget {
   const _TabButton({
     required this.tab,
+    required this.label,
     required this.active,
     required this.color,
     required this.lightColor,
     required this.onTap,
   });
 
-  final _Tab tab;
+  final AppTab tab;
+  final String label;
   final bool active;
   final Color color;
   final Color lightColor;
@@ -362,31 +424,31 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: onTap,
-      child: AnimatedScale(
-        scale: active ? 1.05 : 1,
-        duration: const Duration(milliseconds: 150),
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(6),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               decoration: BoxDecoration(
-                color: active ? lightColor : Colors.transparent,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: active ? const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))] : null,
+                color: active ? lightColor.withValues(alpha: Tw.dark ? .5 : 1) : Colors.transparent,
+                borderRadius: BorderRadius.circular(999),
               ),
-              child: Icon(tab.icon, size: 20, color: active ? color : Tw.gray400),
+              child: Icon(tab.icon, size: 22, color: active ? color : Tw.gray400),
             ),
             const SizedBox(height: 2),
-            // Web'de etiket tam görünür ("Yeniden analiz"); dar sekmede kesmek yerine sığdır.
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(tab.label, maxLines: 1, style: tx(10, w: 5, c: active ? color : Tw.gray400)),
+                child: Text(label, maxLines: 1, style: tx(11, w: active ? 7 : 5, c: active ? color : Tw.gray500)),
               ),
             ),
           ],

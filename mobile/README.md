@@ -201,6 +201,43 @@ cihazdaki kopyadan okur. `/today/plan` yüklenemezse panelin geri kalanı çalı
 Havaya göre öneri metinleri sunucudan Türkçe gelir; İngilizce arayüzde de olduğu gibi gösterilir
 (hatırlatıcı başlıkları ise çevrilir).
 
+## Gezinme
+
+Giriş yapmış kullanıcıda üst çubuk ve hamburger menü yoktur; beş sekmeli alt çubuk vardır
+(`ui/shell/app_shell.dart`, `AppTab`):
+
+| Sekme | Yol | İçerik |
+| --- | --- | --- |
+| Bugün | `/dashboard` | günlük takip ekranı; check-in alt sayfası |
+| Rutin | `/dashboard/routine` | haftalık plan (gün seçiciyle), ürün listesi; analiz alt sayfası |
+| Rebi | `/dashboard/chat` | sohbet |
+| Geçmiş | `/dashboard/history` | geçmiş günler |
+| Ben | `/dashboard/profile` | hesap özeti, ayar menüsü, görünüm, dil, çıkış |
+
+Sekme köklerinde geri çubuğu yoktur; alt sayfalarda (`/dashboard/checkin`, `/analyze`, `/account`, `/themes`,
+`/subscribe`, `/reminders`) üstte "Geri" çubuğu çıkar ve ait olduğu sekmeye döner. Android geri tuşu: alt sayfadan
+sekmesine, sekmeden Bugün'e, Bugün'de uygulamadan çıkış. Tanıtım, giriş ve yasal sayfalar (oturum yokken) logo ve
+menülü üst çubuğu korur. "Ben" sekmesi eski hamburger menüsünün yerini alır; hesap ve gizlilik ayrıntıları
+`/dashboard/account` altındadır.
+
+## Renkler ve karanlık mod
+
+Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu moda göre değer verir (`Tw.dark`):
+
+- **Tonlar:** 50–300 (açık tint zeminler) koyu modda çok koyu ve sönük olur, 700–950 (koyu metin tonları) açılır,
+  400–600 (marka ve vurgu) iki modda da aynı kalır; üstüne beyaz yazı konabilir. Griler elle seçilmiştir.
+- **Anlamsal renkler:** `Tw.background` (sayfa), `Tw.surface` (kart), `Tw.surfaceRaised` (alt sayfa, menü),
+  `Tw.blueText` (mavi metin). Yeni kodda `Colors.white` yüzey için değil, yalnızca renkli dolgu üstündeki yazı ve
+  simge için kullanılır. Her iki modda koyu kalan bölümler (Plus tanıtımı) `Tw.fixed*` sabitlerini kullanır.
+- **Kullanıcı temaları** (`rebiThemes`): ana ve vurgu renkleri aynı kalır, açık tint ve koyu tonlar `Tw.adapt` /
+  `Tw.adaptText` ile uyarlanır; mod başına bir kez hesaplanır.
+- **Mod seçimi:** Ben → Görünüm (Sistem / Açık / Koyu, `rebi-theme-mode`). Uygulama kökü mod değişince alt ağacı
+  baştan kurar, böylece `Tw` okuyan her yer yenilenir.
+- **Kural:** `const` bir ifadede `Tw` rengi kullanılamaz (alıcılar sabit değildir); sınıf varsayılan parametreleri
+  `Color?` olur ve `build` içinde çözülür.
+- Testler (`test/dark_mode_test.dart`): metin hiyerarşisi için WCAG AA (4.5:1) kontrast, tüm rotaların koyu modda 390 ve
+  320 genişlikte taşmadan çizilmesi, tema ve mod kalıcılığı.
+
 ## Bilinçli platform farkları
 
 İşlev kaybı yoktur; aşağıdakiler mobil kullanıma uyarlamadır:

@@ -6,10 +6,13 @@ import 'today_clock.dart';
 
 /// Günün saatine göre selamlama (`mobileToday.greet.*`) ve tarih.
 class TodayHeader extends StatelessWidget {
-  const TodayHeader({super.key, required this.name, required this.dateLine});
+  const TodayHeader({super.key, required this.name, required this.dateLine, this.trailing});
 
   final String name;
   final String dateLine;
+
+  /// Sağ üstteki öğe (hesap kısayolu).
+  final Widget? trailing;
 
   static String greetingKey(DateTime now) {
     final h = now.hour;
@@ -23,15 +26,23 @@ class TodayHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final i18n = context.i18n;
     final first = name.trim().split(RegExp(r'\s+')).first;
-    return Column(
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          i18n.t('mobileToday.greet.${greetingKey(todayPanelClock())}', {'name': first}),
-          style: tx(26, w: 8, h: tight),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                i18n.t('mobileToday.greet.${greetingKey(todayPanelClock())}', {'name': first}),
+                style: tx(26, w: 8, h: tight),
+              ),
+              const SizedBox(height: 4),
+              Text(dateLine, style: tx(14, c: Tw.gray500)),
+            ],
+          ),
         ),
-        const SizedBox(height: 4),
-        Text(dateLine, style: tx(14, c: Tw.gray500)),
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }

@@ -217,6 +217,9 @@ void main() {
         '/dashboard/subscribe',
         '/dashboard/history',
         '/dashboard/reminders',
+        '/dashboard/routine',
+        '/dashboard/profile',
+        '/dashboard/account',
       ]) {
         testWidgets('$loc ${size.width.toInt()}×${size.height.toInt()} çizilir ve taşmaz', (tester) async {
           Tw.dark = true;

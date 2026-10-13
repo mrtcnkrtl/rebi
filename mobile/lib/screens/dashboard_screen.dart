@@ -36,9 +36,12 @@ import 'today/weather_advice_card.dart';
 /// Ana panel (web: `pages/Dashboard.jsx`).
 /// `nav`: webdeki `location.state` — analiz / check-in sonrası taşınan rutin ve meta.
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.nav});
+  const DashboardScreen({super.key, this.nav, this.planOnly = false});
 
   final Map<String, dynamic>? nav;
+
+  /// Rutin sekmesi: gün içi takip yerine tüm haftalık plan gösterilir.
+  final bool planOnly;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -49,6 +52,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<RoutineItem>? _fetchedRoutine;
   bool _fetchingDbRoutine = false;
   bool _showPlanExpanded = false;
+
+  /// Rutin sekmesinde gösterilen haftanın günü (0 = Pzt); null ise bugün.
+  int? _selectedDay;
   bool _translating = false;
   List<RoutineItem>? _translatedFor;
   late final AuthController _auth = context.read<AuthController>();
@@ -316,7 +322,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final view = RoutineView(routine);
-    final trackingMode = accepted && !_showPlanExpanded;
+    final trackingMode = accepted && !_showPlanExpanded && !widget.planOnly;
     final ctx = _Ctx(i18n: i18n, theme: theme, localized: localized, weekDays: weekDays);
 
     if (trackingMode) return _tracking(ctx, view, merged, dateLine, userName);
@@ -533,7 +539,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
       maxWidth: 672,
       padding: EdgeInsets.fromLTRB(16, 24, 16, actions != null ? 132 : 32),
       children: [
-        TodayHeader(name: userName, dateLine: dateLine),
+        TodayHeader(
+          name: userName,
+          dateLine: dateLine,
+          trailing: _AccountShortcut(name: userName, theme: theme),
+        ),
         const AiDisclaimer(padding: EdgeInsets.only(top: 8)),
         const SizedBox(height: 20),
         NotificationPromptCard(theme: theme),
@@ -624,14 +634,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
         ],
         SecondaryButton(
-          onPressed: () => setState(() => _showPlanExpanded = true),
+          onPressed: () => context.go('/dashboard/routine'),
           borderColor: theme.primaryLight,
           textColor: theme.primary,
           label: i18n.t('mobileToday.showFullPlan'),
         ),
         const SizedBox(height: 12),
         SecondaryButton(
-          onPressed: () => context.push('/dashboard/history'),
+          onPressed: () => context.go('/dashboard/history'),
           borderColor: theme.primaryLight,
           textColor: theme.primary,
           icon: LucideIcons.calendarDays,
@@ -723,7 +733,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       const SizedBox(height: 4),
       Text(dateLine, style: tx(14, c: Tw.gray500)),
       const AiDisclaimer(padding: EdgeInsets.only(top: 8)),
-      if (accepted && _showPlanExpanded)
+      if (accepted && _showPlanExpanded && !widget.planOnly)
         Padding(
           padding: const EdgeInsets.only(top: 12),
           child: Align(
@@ -877,7 +887,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         const SizedBox(height: 16),
       ],
-      for (var d = 0; d < c.weekDays.length && d < 7; d++) ..._dayCard(c, v, d, morning, evening),
+      if (widget.planOnly) ...[
+        _daySelector(c),
+        const SizedBox(height: 12),
+        ..._dayCard(c, v, _selectedDay ?? getTurkeyWeekdayIndex(), morning, evening),
+      ] else
+        for (var d = 0; d < c.weekDays.length && d < 7; d++) ..._dayCard(c, v, d, morning, evening),
       if (v.weeklyItems.isNotEmpty) ..._weeklySection(c, v),
       _SectionHeader(icon: '🌿', title: i18n.t('dashboard.lifestyleSupportsTitle'), subtitle: i18n.t('dashboard.lifestyleSupportsSubtitle'), color: Tw.green600),
       if (v.nutritionItems.isNotEmpty) ...[
@@ -929,6 +944,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
 
     return ThemedPage(theme: theme, maxWidth: 672, children: children);
+  }
+
+  /// Haftanın günleri: Rutin sekmesinde yalnızca seçilen günün planı gösterilir.
+  Widget _daySelector(_Ctx c) {
+    final selected = _selectedDay ?? getTurkeyWeekdayIndex();
+    final today = getTurkeyWeekdayIndex();
+    return Row(children: [
+      for (var d = 0; d < 7 && d < c.weekDays.length; d++) ...[
+        if (d > 0) const SizedBox(width: 6),
+        Expanded(
+          child: Semantics(
+            button: true,
+            selected: d == selected,
+            label: c.weekDays[d],
+            child: Material(
+              color: d == selected ? c.theme.primary : c.theme.primary.withValues(alpha: .06),
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => setState(() => _selectedDay = d),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        c.weekDays[d],
+                        style: tx(12, w: d == selected ? 7 : 5, c: d == selected ? Colors.white : Tw.gray600),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: d == today ? (d == selected ? Colors.white : c.theme.primary) : Colors.transparent,
+                      ),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ]);
   }
 
   Widget _tipCard(IconData icon, Color iconColor, Color border, Color bg, String title, String body) => RCard(
@@ -1253,6 +1315,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Bugün başlığındaki hesap kısayolu: baş harfli yuvarlak düğme, "Ben" sekmesini açar.
+class _AccountShortcut extends StatelessWidget {
+  const _AccountShortcut({required this.name, required this.theme});
+
+  final String name;
+  final RebiTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
+    return Semantics(
+      button: true,
+      label: I18n.instance.t('mobileNav.me'),
+      child: GestureDetector(
+        onTap: () => context.go('/dashboard/profile'),
+        child: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [theme.accent, theme.primary]),
+          ),
+          child: Text(initial, style: tx(17, w: 8, c: Colors.white)),
+        ),
       ),
     );
   }

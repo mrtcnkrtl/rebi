@@ -544,7 +544,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             alignment: Alignment.centerLeft,
             child: TextLink(
               i18n.t('mobileProfile.historyLink'),
-              onTap: () => context.push('/dashboard/history'),
+              onTap: () => context.go('/dashboard/history'),
               style: tx(14, w: 6, c: theme.primary),
             ),
           ),

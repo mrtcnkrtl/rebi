@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/local_store.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/analyze/analyze_screen.dart';
 import 'package:rebi/screens/today/today_header.dart';
+import 'package:rebi/ui/shell/app_shell.dart';
 import 'package:rebi/ui/components/severity_test.dart';
 
 import 'helpers/app_harness.dart';
@@ -124,10 +126,14 @@ void main() {
       expect(body['client_event_id'], isNotEmpty);
       expect(find.text(tr('mobileToday.toast.spf')), findsOneWidget);
 
+      // Tüm hafta artık Rutin sekmesinde; Bugün'e alt sekmeyle dönülür.
       await tapText(tester, tr('mobileToday.showFullPlan'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/routine');
       expect(find.text(tr('dashboard.routineByDayTitle')), findsOneWidget);
-      expect(find.text(tr('dashboard.backToTracking')), findsOneWidget);
-      await tapText(tester, tr('dashboard.backToTracking'));
+      expect(find.text(tr('dashboard.backToTracking')), findsNothing, reason: 'Rutin sekmesinde geri bağlantısı yok');
+      expect(find.byType(TodayHeader), findsNothing);
+      await tapText(tester, tr('mobileNav.today'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
       expect(find.byType(TodayHeader), findsOneWidget);
     });
 
@@ -409,15 +415,134 @@ void main() {
     });
   });
 
-  testWidgets('alt menü: check-in sekmesi kabul yoksa panele uyarıyla döner', (tester) async {
-    final h = await pumpApp(tester, location: '/dashboard/themes');
-    await tester.tap(find.text(tr('nav.checkin')));
-    await settle(tester);
-    expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
-    expect(find.text(tr('dashboard.acceptHint')), findsOneWidget);
-    await tester.tap(find.text(tr('nav.chat')));
-    await settle(tester);
-    expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/chat');
+  Finder tabButton(String label) => find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == label && w.properties.button == true && w.properties.selected != null,
+      );
+
+  group('alt sekmeler', () {
+    testWidgets('beş sekme gezinir; hamburger menüsü uygulama içinde yoktur', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
+      expect(find.byIcon(LucideIcons.menu), findsNothing);
+      for (final (key, path) in [
+        ('mobileNav.routine', '/dashboard/routine'),
+        ('mobileNav.chat', '/dashboard/chat'),
+        ('mobileNav.history', '/dashboard/history'),
+        ('mobileNav.me', '/dashboard/profile'),
+        ('mobileNav.today', '/dashboard'),
+      ]) {
+        await tester.tap(tabButton(tr(key)).first);
+        await settle(tester);
+        expect(h.router.routeInformationProvider.value.uri.path, path, reason: key);
+      }
+    });
+
+    testWidgets('check-in kabul yoksa Bugün\'e uyarıyla döner', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard/checkin');
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+      expect(find.text(tr('dashboard.acceptHint')), findsOneWidget);
+    });
+
+    testWidgets('alt sayfada geri çubuğu sekmesine döndürür', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard/themes');
+      expect(find.text(tr('mobileNav.back')), findsOneWidget);
+      await tapText(tester, tr('mobileNav.back'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/profile');
+    });
+
+    testWidgets('sekme köklerinde geri çubuğu yoktur', (tester) async {
+      await pumpApp(tester, location: '/dashboard/chat');
+      expect(find.text(tr('mobileNav.back')), findsNothing);
+    });
+
+    test('yol → sekme eşlemesi', () {
+      expect(tabForPath('/dashboard'), AppTab.today);
+      expect(tabForPath('/dashboard/checkin'), AppTab.today);
+      expect(tabForPath('/dashboard/routine'), AppTab.routine);
+      expect(tabForPath('/dashboard/analyze'), AppTab.routine);
+      expect(tabForPath('/dashboard/chat'), AppTab.chat);
+      expect(tabForPath('/dashboard/history'), AppTab.history);
+      expect(tabForPath('/dashboard/profile'), AppTab.me);
+      for (final p in ['/dashboard/account', '/dashboard/themes', '/dashboard/subscribe', '/dashboard/reminders']) {
+        expect(tabForPath(p), AppTab.me, reason: p);
+      }
+      expect(tabForPath('/'), isNull);
+      expect(tabForPath('/auth'), isNull);
+      expect(tabForPath('/rebi'), isNull);
+      expect(isSubPage('/dashboard/checkin'), isTrue);
+      expect(isSubPage('/dashboard/analyze'), isTrue);
+      expect(isSubPage('/dashboard/profile'), isFalse);
+      expect(isSubPage('/dashboard'), isFalse);
+    });
+  });
+
+  group('Rutin sekmesi', () {
+    testWidgets('haftalık plan gün seçiciyle gösterilir; takip çubuğu ve geri bağlantısı yoktur', (tester) async {
+      await pumpApp(tester, location: '/dashboard/routine', prefs: acceptedPrefs());
+      expect(find.text(tr('dashboard.routineByDayTitle')), findsOneWidget);
+      expect(find.text(tr('dashboard.backToTracking')), findsNothing);
+      expect(find.text(tr('mobileToday.bar.mark.morning')), findsNothing);
+      expect(find.byType(TodayHeader), findsNothing);
+    });
+
+    testWidgets('gün seçilince o günün planı açılır', (tester) async {
+      await pumpApp(tester, location: '/dashboard/routine', prefs: acceptedPrefs());
+      final days = I18n.instance.tList('dashboard.weekDays', const []);
+      expect(days, hasLength(7));
+      final other = days[(DateTime.now().weekday) % 7];
+      final chip = find.byWidgetPredicate(
+        (w) => w is Semantics && w.properties.label == other && w.properties.button == true && w.properties.selected == false,
+      );
+      expect(chip, findsOneWidget);
+      final before = find.text(other).evaluate().length;
+      await tapFinder(tester, chip);
+      expect(find.text(other).evaluate().length, before + 1, reason: 'seçilen günün kartı başlığı eklenir');
+    });
+
+    testWidgets('rutin yoksa analize çağırır', (tester) async {
+      await pumpApp(tester, location: '/dashboard/routine');
+      expect(find.text(tr('dashboard.startAnalyze')), findsOneWidget);
+    });
+  });
+
+  testWidgets('Ben sekmesi: hesap özeti, ayar satırları ve çıkış', (tester) async {
+    final h = await pumpApp(tester, location: '/dashboard/profile');
+    expect(find.text('Ayşe Test'), findsOneWidget);
+    expect(find.text('test@rebi.app'), findsOneWidget);
+    for (final key in [
+      'mobileMe.account.title',
+      'mobileReminders.open',
+      'mobileMe.reanalyze.title',
+      'mobileAppearance.title',
+      'mobileMe.themes.title',
+      'mobileMe.plus.title',
+      'mobileMe.logout',
+    ]) {
+      expect(find.text(tr(key)), findsOneWidget, reason: key);
+    }
+    for (final (key, path) in [
+      ('mobileMe.account.title', '/dashboard/account'),
+      ('mobileReminders.open', '/dashboard/reminders'),
+      ('mobileMe.reanalyze.title', '/dashboard/analyze'),
+      ('mobileMe.themes.title', '/dashboard/themes'),
+      ('mobileMe.plus.title', '/dashboard/subscribe'),
+    ]) {
+      h.router.go('/dashboard/profile');
+      await settle(tester);
+      await tapText(tester, tr(key));
+      expect(h.router.routeInformationProvider.value.uri.path, path, reason: key);
+    }
+  });
+
+  testWidgets('Ben sekmesi: Plus rozeti yalnızca aboneye görünür', (tester) async {
+    await pumpApp(tester, location: '/dashboard/profile');
+    expect(find.text(tr('mobileMe.plusBadge')), findsNothing);
+    expect(find.text(tr('mobileMe.plus.hint')), findsOneWidget);
+  });
+
+  testWidgets('Ben sekmesi: Plus aboneliğinde rozet ve etkin mesajı görünür', (tester) async {
+    await pumpApp(tester, location: '/dashboard/profile', user: fakeUser(appMetadata: {'subscription_tier': 'PLUS'}));
+    expect(find.text(tr('mobileMe.plusBadge')), findsOneWidget);
+    expect(find.text(tr('mobileMe.plus.active')), findsOneWidget);
   });
 
   testWidgets('menü: dil İngilizceye çevrilir ve kalıcıdır', (tester) async {
@@ -438,7 +563,7 @@ void main() {
   });
 
   group('tablet düzeni', () {
-    for (final loc in ['/', '/dashboard', '/dashboard/chat', '/dashboard/themes', '/dashboard/subscribe']) {
+    for (final loc in ['/', '/dashboard', '/dashboard/chat', '/dashboard/themes', '/dashboard/subscribe', '/dashboard/routine', '/dashboard/profile', '/dashboard/history']) {
       testWidgets('$loc 820×1180 çizilir', (tester) async {
         await pumpApp(tester, location: loc, prefs: acceptedPrefs(), size: const Size(820, 1180), loggedIn: loc != '/');
         expect(tester.takeException(), isNull);

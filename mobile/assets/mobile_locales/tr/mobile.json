@@ -382,5 +382,41 @@
     "system": "Sistem",
     "light": "Açık",
     "dark": "Koyu"
+  },
+  "mobileNav": {
+    "today": "Bugün",
+    "routine": "Rutin",
+    "chat": "Rebi",
+    "history": "Geçmiş",
+    "me": "Ben",
+    "back": "Geri"
+  },
+  "mobileMe": {
+    "title": "Ben",
+    "groups": {
+      "account": "Hesabım",
+      "look": "Görünüm",
+      "more": "Daha fazla"
+    },
+    "account": {
+      "title": "Hesap ve gizlilik",
+      "hint": "Cilt profili, fotoğraflar, şifre, izinler"
+    },
+    "reanalyze": {
+      "title": "Yeniden analiz",
+      "hint": "Cildini yeniden değerlendir, rutinini güncelle"
+    },
+    "themes": {
+      "title": "Renk teması",
+      "hint": "Klasik Teal, Pembe Kalp ve diğerleri"
+    },
+    "plus": {
+      "title": "Rebi Plus",
+      "hint": "Sınırsız sohbet ve premium temalar",
+      "active": "Rebi Plus aktif"
+    },
+    "plusBadge": "Plus",
+    "logout": "Çıkış yap",
+    "noName": "Rebi kullanıcısı"
   }
 }
