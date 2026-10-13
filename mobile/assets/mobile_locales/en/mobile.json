@@ -309,7 +309,46 @@
       "irritasyon": "Irritated"
     },
     "assessmentsTitle": "Recent analyses",
-    "severity": "Severity {{n}}"
+    "severity": "Severity {{n}}",
+    "trends": {
+      "title": "Trends",
+      "avg": "Avg. {{v}}",
+      "water": "Water",
+      "sleep": "Sleep",
+      "stress": "Stress",
+      "routine": "Routine",
+      "weeklyNote": "Each bar is a weekly average.",
+      "waterTarget": "Dashed line: daily goal ({{ml}} ml)",
+      "sleepBand": "Green band: recommended 7–9 hours",
+      "stressHint": "1 is low, 5 is high stress",
+      "routineHint": "Dark: morning + evening · medium: one · grey: skipped · faint: no record",
+      "routineRate": "{{n}}% done",
+      "noData": "No records in this range.",
+      "chartLabel": "{{name}} chart, {{n}} recorded points, average {{avg}}.",
+      "routineLabel": "Routine chart, {{n}} recorded points, average {{avg}}% done.",
+      "hoursUnit": "h"
+    },
+    "week": {
+      "title": "This week",
+      "subtitle": "Last 7 days; arrows show the change from the previous 7 days.",
+      "subtitleNoPrev": "Last 7 days. No records for the week before.",
+      "routine": "Routine",
+      "routineValue": "{{n}}/7 days",
+      "water": "Water",
+      "waterValue": "{{ml}} ml / day",
+      "sleep": "Sleep",
+      "sleepValue": "{{h}} h / day",
+      "stress": "Stress",
+      "stressValue": "{{n}}/5",
+      "spf": "Sunscreen",
+      "spfValue": "{{n}} times",
+      "checkins": "Check-ins",
+      "checkinsValue": "{{n}} days",
+      "junk": "Junk food eaten",
+      "junkValue": "{{n}} days",
+      "up": "increased",
+      "down": "decreased"
+    }
   },
   "mobileReminders": {
     "title": "Reminders",

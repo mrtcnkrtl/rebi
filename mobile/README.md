@@ -54,6 +54,11 @@ flutter test
   ve öneri kartı / profil anahtarı. Gerçek bildirim eklentisi yerine sahteleri kullanır.
 - `test/profile_history_core_test.dart`, `test/profile_history_screens_test.dart` — profil / geçmiş yanıtlarının
   ayrıştırılması, özet hesabı, profil formu (yalnızca değişen alanlar, doğrulama, hata durumları) ve geçmiş ekranı.
+- `test/chat_suggestions_test.dart` — sohbet öneri çiplerinin kuralları (hava, makyaj, beslenme, su, sıralama, sınır) ve
+  ekranda gösterimi / gönderimi.
+- `test/checkin_prefill_test.dart` — check-in ön doldurma kuralları ve ekranı (bilgi satırı, gövde, değiştirme, hata).
+- `test/history_trends_test.dart` — eğilim ekseni ve değerleri, haftalık özet, grafik çizimi ve ekran (320 px, %200 yazı,
+  koyu mod, ekran okuyucu).
 - `test/today_screens_test.dart` — "Bugün" ekranı: şimdi kartı, rutin kontrol listesi (adım, blok, geri al),
   yaptım / ürün bitti çubuğu, makyaj (temizleme yöntemi), beslenme, su ve ürün bitti sayfaları, çevrimdışı
   kuyruk, konum izni, hata durumu, küçük ekran.
@@ -150,6 +155,27 @@ olay cihazda kuyruğa alınır ve kullanıcıya "kaydedildi" denir; panelde iler
 - **Geçmişim** (`/dashboard/history`): 7 / 30 / 90 gün; her gün için su, SPF, rutin, makyaj, beslenme, "ürün bitti" ve
   check-in (cilt hissi, uyku, stres, risk), üstte özet ve altta son analizler. Gün içi kayıt ve check-in'i olmayan
   günler listelenmez. Çevrimdışı kuyrukta bekleyen kayıtlar sunucuya ulaşana kadar burada görünmez.
+- **Bu hafta** kartı (`core/history_trends.dart`, `summarizeWeeks`): son 7 gün; rutin, su, uyku, stres, güneş kremi,
+  check-in ve abur cubur günleri. Önceki 7 günde kayıt varsa okla değişim gösterilir (stres ve abur cubur için
+  düşüş iyi, diğerleri için artış iyi; yeşil / uyarı rengi). Önceki hafta boşsa karşılaştırma gösterilmez.
+- **Eğilimler** (`ui/widgets/trend_charts.dart`, yeni bağımlılık yok, `CustomPaint`): su (sütun + günlük hedef çizgisi),
+  uyku (çizgi + önerilen 7–9 saat bandı), stres (1–5 çizgi) ve rutin (gün kutuları: sabah + akşam / biri / yapılmadı /
+  kayıt yok). 7 ve 30 günde günlük, 90 günde haftalık ortalama noktalar. Uyku ve stres check-in'den, yoksa gün içi
+  kayıttan gelir. Kayıtsız günler boş bırakılır; çizgi en çok 3 kayıtsız günü birleştirir, daha uzun boşlukta kopar
+  (uydurma eğilim çizilmez). Renkler `Tw` ile modla birlikte değişir; her grafik ekran okuyucuya özet okur.
+
+### Sohbet ve check-in bugünün verisiyle
+
+- **Sohbet** (`core/chat_suggestions.dart`): `/chat_general` isteği `utc_offset_minutes` taşır; sunucu bugünün özetini
+  (hava, su, makyaj ve temizleme, beslenme, rutin, ürün bitti, check-in) kısa bir metin olarak yapay zekâ istemine
+  ekler (`backend/chat_context.py`), yalnızca soruyla ilgiliyse kullanılır. İstemcide boş sohbette ve yazı alanının
+  üstünde **öneri çipleri** çıkar (en çok 4): yüksek UV, soğuk / sıcak / kuru hava, makyaj temizliği, şekerli / süt /
+  atıştırmalık, geç saatte az su; dokunmak mesajı gönderir. Hava tabanlı öneriler yalnızca gerçek hava verisi varsa.
+- **Check-in ön doldurma** (`core/checkin_prefill.dart`): ekran açılınca `GET /daily_tracking/today` ile su, makyaj (ve
+  nasıl temizlendi), şekerli / abur cubur, süt ürünü ve güneş kremi soruları bugünkü kayıtlardan doldurulur ve üstte
+  "N cevap dolduruldu" bilgisi çıkar. Kullanıcı hepsini değiştirebilir; kullanıcı zaten cevapladıysa onunki korunur;
+  kayıt yoksa ya da istek başarısızsa sorular boş kalır. "Misel su / mendil" yöntemi sunucuda zayıf temizlik (`water`)
+  sayılır.
 
 ### Bildirimler
 

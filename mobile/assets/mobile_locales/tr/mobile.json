@@ -309,7 +309,46 @@
       "irritasyon": "İrritasyon"
     },
     "assessmentsTitle": "Son analizler",
-    "severity": "Şiddet {{n}}"
+    "severity": "Şiddet {{n}}",
+    "trends": {
+      "title": "Eğilimler",
+      "avg": "Ort. {{v}}",
+      "water": "Su",
+      "sleep": "Uyku",
+      "stress": "Stres",
+      "routine": "Rutin",
+      "weeklyNote": "Her sütun bir haftanın ortalaması.",
+      "waterTarget": "Kesikli çizgi: günlük hedef ({{ml}} ml)",
+      "sleepBand": "Yeşil bant: önerilen 7–9 saat",
+      "stressHint": "1 düşük, 5 yüksek stres",
+      "routineHint": "Koyu: sabah + akşam · orta: biri · gri: yapılmadı · soluk: kayıt yok",
+      "routineRate": "%{{n}} tamamlandı",
+      "noData": "Bu aralıkta kayıt yok.",
+      "chartLabel": "{{name}} grafiği, {{n}} kayıtlı nokta, ortalama {{avg}}.",
+      "routineLabel": "Rutin grafiği, {{n}} kayıtlı nokta, ortalama %{{avg}} tamamlandı.",
+      "hoursUnit": "sa"
+    },
+    "week": {
+      "title": "Bu hafta",
+      "subtitle": "Son 7 gün; oklar önceki 7 güne göre değişimi gösterir.",
+      "subtitleNoPrev": "Son 7 gün. Önceki hafta için kayıt yok.",
+      "routine": "Rutin",
+      "routineValue": "{{n}}/7 gün",
+      "water": "Su",
+      "waterValue": "{{ml}} ml / gün",
+      "sleep": "Uyku",
+      "sleepValue": "{{h}} sa / gün",
+      "stress": "Stres",
+      "stressValue": "{{n}}/5",
+      "spf": "Güneş kremi",
+      "spfValue": "{{n}} kez",
+      "checkins": "Check-in",
+      "checkinsValue": "{{n}} gün",
+      "junk": "Abur cubur yenen",
+      "junkValue": "{{n}} gün",
+      "up": "arttı",
+      "down": "azaldı"
+    }
   },
   "mobileReminders": {
     "title": "Hatırlatıcılar",
