@@ -418,5 +418,8 @@
     "plusBadge": "Plus",
     "logout": "Çıkış yap",
     "noName": "Rebi kullanıcısı"
+  },
+  "mobileCommon": {
+    "loading": "Yükleniyor"
   }
 }

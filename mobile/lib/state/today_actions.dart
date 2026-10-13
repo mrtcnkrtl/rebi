@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../core/day_log.dart';
+import '../core/haptics.dart';
 import '../core/i18n.dart';
 import 'today_plan_controller.dart';
 
@@ -50,9 +51,11 @@ class TodayActions extends ChangeNotifier {
     final i18n = I18n.instance;
     final outcome = await log(type, payload);
     if (outcome == LogOutcome.failed) {
+      Haptics.failure();
       showToast(i18n.t('mobileToday.toast.failed'));
       return outcome;
     }
+    Haptics.success();
     showToast(
       outcome == LogOutcome.queued ? i18n.t('mobileToday.queuedHint') : (message ?? i18n.t('dashboard.quickLogged')),
       undoLabel: undoPayload == null ? null : i18n.t('mobileToday.toast.undo'),
@@ -88,6 +91,7 @@ class TodayActions extends ChangeNotifier {
     if (progress == null) return;
     final blockDone = progress.blockDone(block);
     final done = progress.stepsOf(block);
+    Haptics.selection();
     if (!(blockDone || done.contains(step))) {
       final outcome = await log('routine_step', {'done': true, 'block': block, 'step_order': step});
       if (!outcome.saved) return;

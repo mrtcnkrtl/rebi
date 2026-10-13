@@ -10,6 +10,7 @@ import '../../state/today_actions.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import '../../ui/widgets/progress_ring.dart';
+import '../../ui/widgets/skeleton.dart';
 import 'today_clock.dart';
 import 'today_widgets.dart';
 
@@ -49,7 +50,15 @@ class _TrackingTilesState extends State<TrackingTiles> {
       listenable: Listenable.merge([widget.actions.plan, I18n.instance]),
       builder: (context, _) {
         final plan = widget.actions.plan.plan;
-        if (plan == null) return const SizedBox.shrink();
+        if (plan == null) {
+          // Plan yüklenirken kartların yeri belli olsun; yüklenemediyse "Şimdi" kartı uyarı gösterir.
+          if (!widget.actions.plan.loading) return const SizedBox.shrink();
+          return const Column(children: [
+            SkeletonCard(lines: 1, withActions: true),
+            SizedBox(height: 10),
+            SkeletonCard(lines: 1, withActions: true),
+          ]);
+        }
         final i18n = I18n.instance;
         final p = plan.progress;
         return Column(

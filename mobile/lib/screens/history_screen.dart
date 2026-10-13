@@ -10,6 +10,7 @@ import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import '../ui/widgets/skeleton.dart';
 
 /// Geçmiş günler (`GET /me/history`): her gün için gün içi kayıtlar ve check-in.
 /// Web'de karşılığı yok; mobilde profilden ve panelden açılır.
@@ -107,7 +108,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ]),
         const SizedBox(height: 16),
         if (_loading && history == null)
-          const Padding(padding: EdgeInsets.symmetric(vertical: 48), child: Center(child: RingSpinner()))
+          const Column(children: [SkeletonCard(lines: 2), SizedBox(height: 12), SkeletonCard(lines: 2), SizedBox(height: 12), SkeletonCard(lines: 2)])
         else if (_failed && history == null)
           _failedCard(i18n, theme)
         else if (history != null) ...[

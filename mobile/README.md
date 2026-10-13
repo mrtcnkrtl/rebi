@@ -238,6 +238,17 @@ Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu mod
 - Testler (`test/dark_mode_test.dart`): metin hiyerarşisi için WCAG AA (4.5:1) kontrast, tüm rotaların koyu modda 390 ve
   320 genişlikte taşmadan çizilmesi, tema ve mod kalıcılığı.
 
+## Cila: yükleme, dokunuş, erişilebilirlik
+
+- **İskelet yükleme** (`ui/widgets/skeleton.dart`): plan ve geçmiş yüklenirken dönen gösterge yerine kart biçiminde
+  nabız atan iskelet çıkar; içerik gelince yer değiştirmez. Ekran okuyucuya "Yükleniyor" denir.
+- **Dokunsal geri bildirim** (`core/haptics.dart`): kayıt başarılı → hafif, başarısız → orta titreşim; rutin adımı
+  işaretlemede seçim titreşimi. Desteklemeyen cihazda sessizce geçilir.
+- **Büyük yazı:** sistem yazı boyutu %150 (360 px) ve %200 (320 px) iken ana ekranlar açık ve koyu modda taşmadan çizilir
+  (`test/text_scale_test.dart`). Yeni ekranlarda sabit genişlikli `Row` yerine `Expanded` / `Flexible` / `Wrap` kullanın.
+- **Henüz yok:** Inter yazı tipi pakete gömülü değil (`google_fonts` çalışma anında indirir; ilk açılış çevrimdışıysa sistem
+  yazı tipine düşer).
+
 ## Bilinçli platform farkları
 
 İşlev kaybı yoktur; aşağıdakiler mobil kullanıma uyarlamadır:

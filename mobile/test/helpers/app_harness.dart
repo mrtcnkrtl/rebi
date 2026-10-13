@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
@@ -104,6 +105,9 @@ class FakeBackend {
 
   /// Günün planı isteği hata döndürsün.
   bool planFails = false;
+
+  /// Doluysa `GET /today/plan` bu tamamlanana kadar yanıt vermez (yükleniyor durumunu görmek için).
+  Completer<void>? planGate;
 
   /// Sunucudaki bugünkü su toplamı; `water_intake` kayıtlarıyla artar.
   int waterMl = 0;
@@ -280,6 +284,7 @@ class FakeBackend {
             if (snapshotFails) return http.Response('{"detail":"hata"}', 502);
             return ok(snapshot);
           case 'GET /today/plan':
+            await planGate?.future;
             if (planFails) return http.Response('{"detail":"hata"}', 502);
             return ok({'reminder_settings': reminderSettings, ...todayPlan, 'progress': progress});
           case 'GET /chat_usage':

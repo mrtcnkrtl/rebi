@@ -8,6 +8,7 @@ import '../../state/theme_controller.dart';
 import '../../state/today_plan_controller.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
+import '../../ui/widgets/skeleton.dart';
 import 'today_clock.dart';
 import 'today_widgets.dart';
 
@@ -84,9 +85,7 @@ class _NowCardState extends State<NowCard> {
         final c = widget.controller;
         final plan = c.plan;
         if (plan == null) {
-          if (c.loading) {
-            return const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: RingSpinner(size: 28, stroke: 3)));
-          }
+          if (c.loading) return const SkeletonCard(lines: 1, withActions: true);
           if (c.failed) return _failed(i18n, c);
           return const SizedBox.shrink();
         }

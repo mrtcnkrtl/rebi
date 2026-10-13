@@ -418,5 +418,8 @@
     "plusBadge": "Plus",
     "logout": "Sign out",
     "noName": "Rebi user"
+  },
+  "mobileCommon": {
+    "loading": "Loading"
   }
 }
