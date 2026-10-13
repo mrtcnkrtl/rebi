@@ -198,6 +198,14 @@ class EventOutbox extends ChangeNotifier {
     return delivered;
   }
 
+  /// Depoyu diskten yeniden okur. Bildirim düğmesine arka planda dokunulduğunda olay başka bir
+  /// izolatta kuyruğa yazılır; ana izolat bunu uygulama öne gelince buradan görür.
+  Future<void> reload(String userId) async {
+    await LocalStore.instance.reload();
+    _cache.remove(userId);
+    notifyListeners();
+  }
+
   /// Hesap silme gibi durumlarda kullanıcının bekleyen olaylarını siler.
   Future<void> clear(String userId) async {
     await _write(userId, const []);

@@ -1,3 +1,4 @@
+import 'notification_actions.dart';
 import 'reminder_schedule.dart';
 
 /// Telefonda yerel bildirim kuran taraf (Android / iOS bildirim merkezi).
@@ -22,6 +23,11 @@ abstract class ReminderNotifier {
 
   /// Uygulama açıkken ya da arka plandayken bildirime dokunulunca ekran yolu.
   Stream<String> get taps;
+
+  /// Bildirimin altındaki hızlı eylem düğmesine ("+250 ml", "Yaptım") dokunuldu. Uygulama
+  /// kapalıyken dokunulan düğme bu akıma gelmez; kayıt doğrudan kuyruğa alınır
+  /// ([queueNotificationAction]).
+  Stream<NotificationActionTap> get actions;
 }
 
 /// Sunucudan gönderilen (FCM) bildirimleri alan taraf. Firebase yapılandırılmadıysa
@@ -90,4 +96,7 @@ class UnsupportedNotifier implements ReminderNotifier {
 
   @override
   Stream<String> get taps => const Stream.empty();
+
+  @override
+  Stream<NotificationActionTap> get actions => const Stream.empty();
 }

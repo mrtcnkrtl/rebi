@@ -45,6 +45,10 @@ flutter test
 - `test/today_plan_test.dart` — `/today/plan` ve `/me/snapshot` yanıtlarının ayrıştırılması, hatırlatıcı
   pencereleri ve hatırlatıcı → olay eşlemesi.
 - `test/home_sync_test.dart` — açılış paketi denetleyicisi (oturum, rıza, giriş akışı beklemesi, demo kullanıcı).
+- `test/reminder_settings_test.dart`, `test/reminders_screen_test.dart` — hatırlatıcı ayarları: pencere hesabı (sunucuyla aynı),
+  yarının bildirimleri, ayar ekranı (saat seçimi, su aralığı, kategori anahtarları, doğrulama, hata durumları).
+- `test/notification_actions_test.dart` — bildirim düğmeleri: yük biçimi, hangi hatırlatıcıda hangi düğme, arka planda
+  kuyruğa alma, başka izolatın yazdığını yeniden okuma, düğmeye dokunulunca olay gönderme.
 - `test/reminder_schedule_test.dart`, `test/notifications_controller_test.dart`, `test/notification_screens_test.dart` —
   hatırlatma zamanlaması, bildirim denetleyicisi (izin, cihaz kaydı, çift bildirim önleme, dokunma yönlendirmesi)
   ve öneri kartı / profil anahtarı. Gerçek bildirim eklentisi yerine sahteleri kullanır.
@@ -97,6 +101,8 @@ hepsini temizler.
 | `POST /daily_tracking/ingest` — su, makyaj, SPF, beslenme, rutin, ürün bitti | var | `core/daily_tracking.dart` |
 | Çevrimdışı kuyruk (tekrar deneme) | var | `core/event_outbox.dart` (kalıcı kuyruk), `state/outbox_sync_controller.dart` (ne zaman gönderileceği) |
 | `POST /devices/register`, push / yerel bildirim | var; push için Firebase dosyaları gerekir | `state/notifications_controller.dart`, `core/local_notifications.dart`, `core/firebase_push.dart` |
+| `GET/PUT /me/reminder-settings` — uyanma / uyku saati, su aralığı, kapatılan kategoriler | var | `core/reminder_settings.dart`, `screens/reminders_screen.dart` (`/dashboard/reminders`; Profil ve Bugün ekranından açılır) |
+| `utc_offset_minutes` — "bugün" kullanıcının yerel günü | var | `core/api.dart` (`localUtcOffsetMinutes`); plan, açılış paketi, geçmiş, check-in |
 | `GET/PATCH /me/profile` — cilt tipi, yaş, cinsiyet, şehir | var | `core/user_profile.dart`, `ui/components/profile_details_card.dart` (Profil ekranı) |
 | `GET /me/history` — geçmiş günler, check-in'ler, son analizler | var | `core/user_history.dart`, `screens/history_screen.dart` (`/dashboard/history`; Profil ve panelden açılır) |
 
@@ -161,6 +167,23 @@ Bildirimler kullanıcı panelde ya da Profil'de açana kadar **kapalıdır**. İ
 
 Bildirime dokunmak ilgili ekranı açar (`daily_checkin` → check-in, diğerleri → panel); uygulama kapalıyken
 bildirimle açıldıysa ilk ekran odur.
+
+**Hatırlatıcı ayarları** (`/dashboard/reminders`): pencereler sabit değildir, kullanıcının gün düzenine göre kurulur.
+Uyanma ve uyku saati, su aralığı (1 / 1,5 / 2 / 3 saat) ve kategori anahtarları (rutin, su, makyaj, beslenme, güneş
+kremi, dudak balsamı, check-in) `PUT /me/reminder-settings` ile kaydedilir. Pencere hesabı sunucuyla aynıdır
+(`core/reminder_settings.dart` ↔ `backend/today_plan.py`); varsayılan düzen (07:30 / 23:00) eski sabit saatleri verir.
+Sunucu planı ve push'u bu ayara göre üretir; yerel bildirimlerde yarının hatırlatıcıları da bu pencerelerle kurulur.
+Kaydedince plan yeniden alınır ve bildirimler hemen yeniden kurulur.
+
+**Bildirim düğmeleri** (yerel bildirimler): rutin ("Yaptım"), makyaj sorusu ("Evet, yaptım" / "Hayır"), su ("+250 ml" /
+"+500 ml"), güneş kremi ve beslenme ("Hayır") bildirimlerinin altında hızlı eylem düğmeleri vardır; ekran ya da seçim
+sayfası açan eylemler (check-in, "nasıl temizledin", "evet yedim") bildirime dokunmakla zaten açılır.
+- **Android:** düğme uygulamayı açmadan çalışır (`ActionBroadcastReceiver`). Uygulama kapalıysa arka plan izolatında
+  oturum olmadığı için olay **gönderilmez, cihazdaki kuyruğa yazılır** (`rebiNotificationBackground`); uygulama öne
+  gelince `EventOutbox.reload` ile okunur ve gönderilir. Uygulama çalışıyorsa olay doğrudan gönderilir.
+- **iOS:** düğme uygulamayı öne getirir (arka plan izolatı için ek yerel kurulum gerekir, Mac olmadan doğrulanamadı).
+- Sunucu push'unda (FCM) düğme yoktur: sistem bildirimine eylem eklemek için veri mesajı + istemci tarafı gösterim
+  gerekir.
 
 **Firebase'i açmak** (push için; yerel bildirimler bunsuz da çalışır):
 

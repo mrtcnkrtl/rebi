@@ -543,6 +543,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             theme: theme,
             onAction: _runReminderAction,
             onRetryPending: () => context.read<OutboxSyncController>().flushNow(),
+            onOpenSettings: () => context.push('/dashboard/reminders'),
           ),
           const SizedBox(height: 12),
           RoutineChecklistCard(

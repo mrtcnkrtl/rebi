@@ -32,6 +32,7 @@ class NowCard extends StatefulWidget {
     required this.theme,
     required this.onAction,
     required this.onRetryPending,
+    this.onOpenSettings,
   });
 
   final TodayPlanController controller;
@@ -42,6 +43,9 @@ class NowCard extends StatefulWidget {
 
   /// Bekleyen kayıtları şimdi göndermeyi dene.
   final Future<void> Function() onRetryPending;
+
+  /// Hatırlatıcı ayarları ekranını açar; null ise simge gösterilmez.
+  final VoidCallback? onOpenSettings;
 
   @override
   State<NowCard> createState() => _NowCardState();
@@ -122,7 +126,16 @@ class _NowCardState extends State<NowCard> {
           Row(children: [
             TodayIconBadge(icon: LucideIcons.bellRing, color: theme.primary, size: 32),
             const SizedBox(width: 10),
-            Text(i18n.t('mobileToday.now'), style: tx(14, w: 7, c: Tw.gray800)),
+            Expanded(child: Text(i18n.t('mobileToday.now'), style: tx(14, w: 7, c: Tw.gray800))),
+            if (widget.onOpenSettings != null)
+              IconButton(
+                tooltip: i18n.t('mobileToday.settings'),
+                visualDensity: VisualDensity.compact,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                padding: EdgeInsets.zero,
+                onPressed: widget.onOpenSettings,
+                icon: const Icon(LucideIcons.settings2, size: 20, color: Tw.gray500),
+              ),
           ]),
           if (widget.controller.pendingCount > 0) ...[
             const SizedBox(height: 10),

@@ -10,6 +10,7 @@ import 'screens/history_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/legal_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/reminders_screen.dart';
 import 'screens/subscribe_screen.dart';
 import 'screens/themes_screen.dart';
 import 'state/auth_controller.dart';
@@ -84,6 +85,7 @@ GoRouter buildRouter(AuthController auth) {
           GoRoute(path: '/dashboard/subscribe', builder: (context, state) => const SubscribeScreen()),
           GoRoute(path: '/dashboard/profile', builder: (context, state) => const ProfileScreen()),
           GoRoute(path: '/dashboard/history', builder: (context, state) => const HistoryScreen()),
+          GoRoute(path: '/dashboard/reminders', builder: (context, state) => const RemindersScreen()),
         ],
       ),
     ],

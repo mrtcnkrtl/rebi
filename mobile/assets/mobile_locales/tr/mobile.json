@@ -230,7 +230,8 @@
     },
     "showFullPlan": "Tüm haftayı, detayları ve yaşam önerilerini göster",
     "quickPhoto": "Fotoğraf yükle (hızlı)",
-    "newAnalysis": "Yeni analiz"
+    "newAnalysis": "Yeni analiz",
+    "settings": "Hatırlatıcı ayarları"
   },
   "mobileNotifications": {
     "promptTitle": "Hatırlatıcıları bildirim olarak al",
@@ -309,5 +310,70 @@
     },
     "assessmentsTitle": "Son analizler",
     "severity": "Şiddet {{n}}"
+  },
+  "mobileReminders": {
+    "title": "Hatırlatıcılar",
+    "subtitle": "Gün düzenine göre saatleri ayarla, istemediklerini kapat.",
+    "open": "Hatırlatıcı saatlerini ayarla",
+    "openHint": "Uyanma ve uyku saatine göre hatırlatma pencereleri",
+    "openFromToday": "Hatırlatıcı ayarları",
+    "loadFailed": "Ayarlar yüklenemedi. Bağlantını kontrol et.",
+    "retry": "Tekrar dene",
+    "notSynced": "Bu hesapta ayarlar sunucuya kaydedilmez; uygulama kapanınca sıfırlanır.",
+    "day": {
+      "title": "Günün düzeni",
+      "hint": "Hatırlatıcılar uyanma ve uyku saatine göre kurulur.",
+      "wake": "Uyanma",
+      "sleep": "Uyku"
+    },
+    "water": {
+      "title": "Su hatırlatması",
+      "hint": "Günlük hedef 2000 ml. Hedefe ulaşınca hatırlatma durur.",
+      "every": {
+        "60": "Her saat",
+        "90": "1,5 saatte bir",
+        "120": "2 saatte bir",
+        "180": "3 saatte bir"
+      }
+    },
+    "categories": {
+      "title": "Hangi hatırlatıcılar gelsin?",
+      "routine": {
+        "title": "Sabah ve akşam rutini",
+        "desc": "Rutinini yapman için hatırlatır."
+      },
+      "water": {
+        "title": "Su içme",
+        "desc": "Gün içinde aralıklı hatırlatır."
+      },
+      "makeup": {
+        "title": "Makyaj",
+        "desc": "Makyaj sorusu ve akşam temizleme hatırlatması."
+      },
+      "nutrition": {
+        "title": "Beslenme kaydı",
+        "desc": "Akşam yediklerini kaydetmeni ister."
+      },
+      "spf": {
+        "title": "Güneş kremi",
+        "desc": "UV yüksek olduğunda yenilemeni hatırlatır."
+      },
+      "lip_balm": {
+        "title": "Dudak balsamı",
+        "desc": "Hava soğuk ya da kuruysa hatırlatır."
+      },
+      "checkin": {
+        "title": "Günlük check-in",
+        "desc": "Akşam cildinin nasıl olduğunu sorar."
+      }
+    },
+    "window": "{{start}} – {{end}}",
+    "windowEvery": "{{start}} – {{end}}, {{every}}",
+    "save": "Kaydet",
+    "saved": "Kaydedildi",
+    "saveFailed": "Kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
+    "errors": {
+      "span": "Uyanma ile uyku saati arası en az 9 saat olmalı. Uyanma en erken 04:00, uyku en geç 23:59 olabilir."
+    }
   }
 }

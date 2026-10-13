@@ -34,6 +34,8 @@
         </activity>
         <!-- Zamanlanmış yerel bildirimleri gösteren ve yeniden başlatmada geri kuran alıcılar. -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+        <!-- Bildirimdeki eylem düğmeleri (+250 ml, Yaptım) uygulamayı açmadan bu alıcıyla çalışır. -->
+        <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ActionBroadcastReceiver" />
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>

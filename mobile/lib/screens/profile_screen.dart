@@ -551,6 +551,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           gap,
           NotificationSettingsCard(theme: theme),
           gap,
+          ReminderSettingsLink(theme: theme),
+          gap,
           RCard(
             padding: const EdgeInsets.all(16),
             child: Column(

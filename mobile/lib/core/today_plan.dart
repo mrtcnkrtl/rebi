@@ -1,5 +1,6 @@
 import 'api.dart';
 import 'day_log.dart';
+import 'reminder_settings.dart';
 import 'routine_logic.dart';
 
 /// Günlük su hedefi (ml). Sunucudaki `WATER_TARGET_ML` ile aynıdır; hedef dolunca
@@ -292,6 +293,7 @@ class TodayPlan {
     required this.reminders,
     required this.progress,
     required this.checkinDone,
+    this.settings = const ReminderSettings(),
   });
 
   factory TodayPlan.fromJson(Map<String, dynamic> j) => TodayPlan(
@@ -307,6 +309,7 @@ class TodayPlan {
         ],
         progress: DayProgress.fromJson(j['progress']),
         checkinDone: j['checkin_done'] == true,
+        settings: ReminderSettings.fromJson(j['reminder_settings']),
       );
 
   final String logDate;
@@ -321,6 +324,9 @@ class TodayPlan {
   final DayProgress progress;
   final bool checkinDone;
 
+  /// Kullanıcının gün düzeni ve kapattığı hatırlatıcı kategorileri.
+  final ReminderSettings settings;
+
   /// Hava verisi gerçek bir kaynaktan mı geldi (varsayılan değerler değil).
   bool get hasRealWeather => weatherSource != 'default';
 
@@ -334,6 +340,7 @@ class TodayPlan {
         reminders: reminders,
         progress: next,
         checkinDone: checkinDone,
+        settings: settings,
       );
 }
 
@@ -344,6 +351,7 @@ Future<TodayPlan?> fetchTodayPlan(String userId, {double? lat, double? lon}) asy
     'user_id': userId,
     'lat': lat?.toString(),
     'lon': lon?.toString(),
+    'utc_offset_minutes': localUtcOffsetMinutes(),
   });
   return res.ok ? TodayPlan.fromJson(res.data) : null;
 }

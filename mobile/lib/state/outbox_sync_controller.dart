@@ -68,7 +68,14 @@ class OutboxSyncController extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) unawaited(flushNow());
+    if (state == AppLifecycleState.resumed) unawaited(_reloadAndFlush());
+  }
+
+  /// Uygulama öne gelince: bildirim düğmesinden arka planda kuyruğa alınanları da görüp gönder.
+  Future<void> _reloadAndFlush() async {
+    final uid = _uid;
+    if (uid != null) await outbox.reload(uid);
+    if (!_disposed) await flushNow();
   }
 
   /// Bekleyenleri hemen göndermeyi dener. Dönüş: sunucuya ulaşan olay sayısı.

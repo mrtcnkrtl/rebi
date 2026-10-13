@@ -31,6 +31,22 @@ String localIsoTimestamp([DateTime? at]) {
       'T${two(now.hour)}:${two(now.minute)}:${two(now.second)}$sign$h:$m';
 }
 
+/// Olayı sunucuya göndermeden yalnızca kuyruğa alır. Oturumun olmadığı yerde (bildirim düğmesinin
+/// arka plan izolatı) kullanılır; kuyruk uygulama açılınca gönderilir. Zaman damgası ve kimlik
+/// şimdi üretilir, bu yüzden olay gerçek anıyla kaydedilir.
+Future<bool> queueDailyTrackingEvent(String userId, String type, Map<String, dynamic> payload) async {
+  if (userId.isEmpty || userId == demoUserId) return false;
+  await EventOutbox.instance.add(OutboxEvent(
+    id: _uuid.v4(),
+    userId: userId,
+    type: type,
+    payload: payload,
+    timestamp: localIsoTimestamp(),
+    queuedAt: DateTime.now().millisecondsSinceEpoch,
+  ));
+  return true;
+}
+
 /// Gün içi olay: Supabase daily_events (backend ingest). Demo kullanıcıda atlanır.
 /// Mobil sözleşmesine göre (`docs/MOBIL-API.md`) yerel zaman damgası ve tekil
 /// `client_event_id` gönderilir. Sunucuya ulaşılamazsa olay cihazda kuyruğa alınır

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:rebi/core/notification_actions.dart';
 import 'package:rebi/core/notification_ports.dart';
 import 'package:rebi/core/reminder_schedule.dart';
 
@@ -21,10 +22,14 @@ class FakeReminderNotifier implements ReminderNotifier {
   int cancelCalls = 0;
   final List<List<PlannedNotification>> replaced = [];
   final StreamController<String> _taps = StreamController<String>.broadcast();
+  final StreamController<NotificationActionTap> _actions = StreamController<NotificationActionTap>.broadcast();
 
   List<PlannedNotification> get scheduled => replaced.isEmpty ? const [] : replaced.last;
 
   void tap(String route) => _taps.add(route);
+
+  /// Bildirimin altındaki bir düğmeye dokunulmuş gibi davranır.
+  void tapAction(NotificationActionTap tap) => _actions.add(tap);
 
   @override
   Future<bool> hasPermission() async => permission;
@@ -52,6 +57,9 @@ class FakeReminderNotifier implements ReminderNotifier {
 
   @override
   Stream<String> get taps => _taps.stream;
+
+  @override
+  Stream<NotificationActionTap> get actions => _actions.stream;
 }
 
 class FakePushClient implements PushClient {

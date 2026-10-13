@@ -80,6 +80,23 @@ class FakeBackend {
     'checkin_done': false,
   };
 
+  /// `GET /me/reminder-settings` içeriği; `PUT` gelen alanları buna işler.
+  Map<String, dynamic> reminderSettings = {
+    'wake_time': '07:30',
+    'sleep_time': '23:00',
+    'water_every_minutes': 120,
+    'enabled': {
+      for (final c in const ['routine', 'water', 'makeup', 'nutrition', 'spf', 'lip_balm', 'checkin']) c: true,
+    },
+  };
+
+  /// Hatırlatıcı ayarı okuma hata döndürsün.
+  bool reminderSettingsFails = false;
+
+  /// Doluysa `PUT /me/reminder-settings` bu durum koduyla (ve `reminderSettingsPutDetail` ile) yanıtlanır.
+  int? reminderSettingsPutStatus;
+  String reminderSettingsPutDetail = 'Geçersiz değer.';
+
   /// Açılış paketi isteği hata (ör. çevrimdışı sunucu) döndürsün.
   bool snapshotFails = false;
 
@@ -230,6 +247,24 @@ class FakeBackend {
             final patch = (jsonDecode(req.body) as Map).cast<String, dynamic>()..remove('user_id');
             profile = {...profile, ...patch};
             return ok({'user_id': testUserId, ...profile, 'synced': profileSynced});
+          case 'GET /me/reminder-settings':
+            if (reminderSettingsFails) return http.Response('{"detail":"hata"}', 502);
+            return ok({'user_id': testUserId, 'settings': reminderSettings, 'synced': true});
+          case 'PUT /me/reminder-settings':
+            if (reminderSettingsPutStatus != null) {
+              return http.Response.bytes(utf8.encode(jsonEncode({'detail': reminderSettingsPutDetail})),
+                  reminderSettingsPutStatus!, headers: {'content-type': 'application/json'});
+            }
+            final put = (jsonDecode(req.body) as Map).cast<String, dynamic>()..remove('user_id');
+            reminderSettings = {
+              ...reminderSettings,
+              ...put,
+              'enabled': {
+                ...(reminderSettings['enabled'] as Map).cast<String, dynamic>(),
+                ...((put['enabled'] as Map?)?.cast<String, dynamic>() ?? const {}),
+              },
+            };
+            return ok({'user_id': testUserId, 'settings': reminderSettings, 'synced': true});
           case 'GET /me/history':
             if (historyFails) return http.Response('{"detail":"hata"}', 502);
             return ok(history);
@@ -244,7 +279,7 @@ class FakeBackend {
             return ok(snapshot);
           case 'GET /today/plan':
             if (planFails) return http.Response('{"detail":"hata"}', 502);
-            return ok({...todayPlan, 'progress': progress});
+            return ok({'reminder_settings': reminderSettings, ...todayPlan, 'progress': progress});
           case 'GET /chat_usage':
             return ok({'kind': 'free_daily', 'remaining': 4, 'limit': 5, 'period': 'day'});
           case 'GET /chat/history':

@@ -41,6 +41,10 @@ Future<Map<String, String>> apiAuthHeaders() async {
   return {'Authorization': 'Bearer $token'};
 }
 
+/// Cihazın UTC farkı (dakika). Sunucu "bugün"ü kullanıcının yerel gününe göre hesaplasın diye
+/// gün içi uçlara gönderilir; yoksa gece 00:00-03:00 (TR) arası bir önceki gün görünür.
+String localUtcOffsetMinutes([DateTime? now]) => '${(now ?? DateTime.now()).timeZoneOffset.inMinutes}';
+
 const _timeout = Duration(seconds: 120);
 
 http.Client _http = http.Client();
@@ -86,6 +90,12 @@ Future<ApiResponse> apiPost(String path, Object? body, {bool auth = true}) async
 Future<ApiResponse> apiPatch(String path, Object? body) async {
   final headers = {'Content-Type': 'application/json', ...await apiAuthHeaders()};
   final res = await _http.patch(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(_timeout);
+  return ApiResponse(res.statusCode, _decode(res));
+}
+
+Future<ApiResponse> apiPut(String path, Object? body) async {
+  final headers = {'Content-Type': 'application/json', ...await apiAuthHeaders()};
+  final res = await _http.put(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(_timeout);
   return ApiResponse(res.statusCode, _decode(res));
 }
 

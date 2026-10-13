@@ -15,6 +15,15 @@ class LocalStore {
     instance = LocalStore._(await SharedPreferences.getInstance());
   }
 
+  /// Başka bir izolatın (bildirim düğmesinin arka plan işi) yazdıklarını görmek için diskten yeniden okur.
+  Future<void> reload() async {
+    try {
+      await _prefs.reload();
+    } catch (_) {
+      /* okunamadı: eldeki değerlerle devam */
+    }
+  }
+
   String? getString(String key) {
     try {
       return _prefs.getString(key);

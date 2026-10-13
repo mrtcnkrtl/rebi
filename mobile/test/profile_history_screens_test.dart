@@ -185,7 +185,11 @@ void main() {
       ]);
       final h = await pumpApp(tester, location: '/dashboard/history', prefs: acceptedPrefs(), backend: backend);
 
-      expect(h.backend.calls('/me/history').single.url.queryParameters, {'user_id': testUserId, 'days': '30'});
+      expect(h.backend.calls('/me/history').single.url.queryParameters, {
+        'user_id': testUserId,
+        'days': '30',
+        'utc_offset_minutes': '${DateTime.now().timeZoneOffset.inMinutes}',
+      });
       expect(find.text(tr('mobileHistory.title')), findsOneWidget);
 
       // Özet

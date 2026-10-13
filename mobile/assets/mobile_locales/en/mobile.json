@@ -230,7 +230,8 @@
     },
     "showFullPlan": "Show the whole week, details and lifestyle tips",
     "quickPhoto": "Upload a photo (quick)",
-    "newAnalysis": "New analysis"
+    "newAnalysis": "New analysis",
+    "settings": "Reminder settings"
   },
   "mobileNotifications": {
     "promptTitle": "Get reminders as notifications",
@@ -309,5 +310,70 @@
     },
     "assessmentsTitle": "Recent analyses",
     "severity": "Severity {{n}}"
+  },
+  "mobileReminders": {
+    "title": "Reminders",
+    "subtitle": "Set the times around your day and turn off the ones you don't want.",
+    "open": "Set reminder times",
+    "openHint": "Reminder windows based on when you wake up and go to sleep",
+    "openFromToday": "Reminder settings",
+    "loadFailed": "Couldn't load settings. Check your connection.",
+    "retry": "Try again",
+    "notSynced": "Settings aren't saved to the server for this account; they reset when the app closes.",
+    "day": {
+      "title": "Your day",
+      "hint": "Reminders are set around when you wake up and go to sleep.",
+      "wake": "Wake up",
+      "sleep": "Sleep"
+    },
+    "water": {
+      "title": "Water reminder",
+      "hint": "Daily goal is 2000 ml. Reminders stop once you reach it.",
+      "every": {
+        "60": "Every hour",
+        "90": "Every 1.5 hours",
+        "120": "Every 2 hours",
+        "180": "Every 3 hours"
+      }
+    },
+    "categories": {
+      "title": "Which reminders do you want?",
+      "routine": {
+        "title": "Morning and evening routine",
+        "desc": "Reminds you to do your routine."
+      },
+      "water": {
+        "title": "Drinking water",
+        "desc": "Reminds you at intervals through the day."
+      },
+      "makeup": {
+        "title": "Makeup",
+        "desc": "The makeup question and the evening removal reminder."
+      },
+      "nutrition": {
+        "title": "Nutrition log",
+        "desc": "Asks you to log what you ate in the evening."
+      },
+      "spf": {
+        "title": "Sunscreen",
+        "desc": "Reminds you to reapply when UV is high."
+      },
+      "lip_balm": {
+        "title": "Lip balm",
+        "desc": "Reminds you when it's cold or dry out."
+      },
+      "checkin": {
+        "title": "Daily check-in",
+        "desc": "Asks how your skin was in the evening."
+      }
+    },
+    "window": "{{start}} – {{end}}",
+    "windowEvery": "{{start}} – {{end}}, {{every}}",
+    "save": "Save",
+    "saved": "Saved",
+    "saveFailed": "Couldn't save. Check your connection and try again.",
+    "errors": {
+      "span": "There must be at least 9 hours between waking up and going to sleep. Wake-up can be 04:00 at the earliest and sleep 23:59 at the latest."
+    }
   }
 }

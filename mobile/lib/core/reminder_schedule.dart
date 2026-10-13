@@ -1,3 +1,5 @@
+import 'notification_actions.dart';
+import 'reminder_settings.dart';
 import 'today_plan.dart';
 
 /// Telefona kurulacak tek bir bildirim.
@@ -9,6 +11,8 @@ class PlannedNotification {
     required this.body,
     required this.reminderId,
     required this.route,
+    this.userId = '',
+    this.actions = const [],
   });
 
   final int id;
@@ -21,20 +25,27 @@ class PlannedNotification {
 
   /// Bildirime dokunulunca açılacak ekran.
   final String route;
-}
 
-/// Yarın için kurulan, koşulsuz her gün tekrar eden hatırlatıcılar ve pencereleri
-/// (`docs/MOBIL-API.md` → "Hatırlatıcı kimlikleri"). Havaya ve yapılan işe bağlı olanlar
-/// (SPF, dudak balsamı, makyaj temizliği) yarın için bilinemez; uygulama açılınca bugünün
-/// gerçek planıyla yeniden kurulur.
-const dailyReminderDefaults = <Reminder>[
-  Reminder(id: 'routine_morning', title: '', body: '', start: '07:30', end: '09:30'),
-  Reminder(id: 'water_intake', title: '', body: '', start: '09:00', end: '21:00', everyMinutes: 120),
-  Reminder(id: 'makeup_log', title: '', body: '', start: '10:00', end: '11:00'),
-  Reminder(id: 'nutrition_log', title: '', body: '', start: '20:00', end: '20:30'),
-  Reminder(id: 'routine_evening', title: '', body: '', start: '21:00', end: '23:00'),
-  Reminder(id: 'daily_checkin', title: '', body: '', start: '21:00', end: '22:30'),
-];
+  /// Bildirimin kurulduğu kullanıcı.
+  final String userId;
+
+  /// Bildirimin altındaki hızlı eylem düğmeleri.
+  final List<NotificationActionSpec> actions;
+
+  /// Bildirime iliştirilen yük: ekran, hatırlatıcı ve kullanıcı.
+  NotificationPayload get payload => NotificationPayload(route: route, reminderId: reminderId, userId: userId);
+
+  PlannedNotification withId(int next) => PlannedNotification(
+        id: next,
+        at: at,
+        title: title,
+        body: body,
+        reminderId: reminderId,
+        route: route,
+        userId: userId,
+        actions: actions,
+      );
+}
 
 /// iOS en fazla 64 bekleyen yerel bildirim tutar; biz çok daha azını kurarız.
 const maxScheduledNotifications = 40;
@@ -54,11 +65,18 @@ String routeForReminder(String? reminderId) => reminderId == 'daily_checkin' ? '
 /// Bugünün kalan hatırlatıcılarından ve yarının koşulsuz hatırlatıcılarından bildirim listesi çıkarır.
 ///
 /// [today] sunucunun bugün için ürettiği listedir; yapılan işler zaten düşmüştür. Geçmiş
-/// saatler atlanır. [textFor] başlık/gövdeyi arayüz diline göre verir.
+/// saatler atlanır. Yarın için yalnızca havaya ve yapılan işe bağlı olmayanlar bilinir
+/// (`docs/MOBIL-API.md` → "Hatırlatıcı kimlikleri"); bunlar [settings]e (gün düzeni, su aralığı,
+/// kapatılan kategoriler) göre kurulur. SPF, dudak balsamı ve makyaj temizliği uygulama
+/// açılınca bugünün gerçek planıyla kurulur. [textFor] başlık/gövdeyi arayüz diline göre verir,
+/// [actionsFor] bildirimin altındaki düğmeleri.
 List<PlannedNotification> planNotifications({
   required List<Reminder> today,
   required DateTime now,
   required ({String title, String body}) Function(Reminder r) textFor,
+  List<NotificationActionSpec> Function(Reminder r)? actionsFor,
+  ReminderSettings settings = const ReminderSettings(),
+  String userId = '',
   bool includeTomorrow = true,
   int limit = maxScheduledNotifications,
 }) {
@@ -67,6 +85,7 @@ List<PlannedNotification> planNotifications({
   void addDay(DateTime day, Iterable<Reminder> reminders, {required bool onlyFuture}) {
     for (final r in reminders) {
       final text = textFor(r);
+      final actions = actionsFor?.call(r) ?? const <NotificationActionSpec>[];
       for (final minute in reminderSlots(r)) {
         final at = DateTime(day.year, day.month, day.day, minute ~/ 60, minute % 60);
         if (onlyFuture && !at.isAfter(now)) continue;
@@ -77,6 +96,8 @@ List<PlannedNotification> planNotifications({
           body: text.body,
           reminderId: r.id,
           route: routeForReminder(r.id),
+          userId: userId,
+          actions: actions,
         ));
       }
     }
@@ -84,7 +105,7 @@ List<PlannedNotification> planNotifications({
 
   addDay(now, today, onlyFuture: true);
   if (includeTomorrow) {
-    addDay(DateTime(now.year, now.month, now.day + 1), dailyReminderDefaults, onlyFuture: false);
+    addDay(DateTime(now.year, now.month, now.day + 1), dailyReminders(settings), onlyFuture: false);
   }
 
   // Aynı anda gelen bildirimler arasında sıra: önce zaman, sonra kimlik (kararlı).
@@ -92,19 +113,11 @@ List<PlannedNotification> planNotifications({
     final byTime = a.at.compareTo(b.at);
     return byTime != 0 ? byTime : a.reminderId.compareTo(b.reminderId);
   });
-  return [
-    for (var i = 0; i < items.length && i < limit; i++)
-      PlannedNotification(
-        id: i + 1,
-        at: items[i].at,
-        title: items[i].title,
-        body: items[i].body,
-        reminderId: items[i].reminderId,
-        route: items[i].route,
-      ),
-  ];
+  return [for (var i = 0; i < items.length && i < limit; i++) items[i].withId(i + 1)];
 }
 
 /// Aynı liste ikinci kez kurulmasın diye parmak izi.
-String scheduleSignature(List<PlannedNotification> items) =>
-    items.map((n) => '${n.at.millisecondsSinceEpoch}|${n.reminderId}|${n.title}|${n.body}').join('\n');
+String scheduleSignature(List<PlannedNotification> items) => items
+    .map((n) => '${n.at.millisecondsSinceEpoch}|${n.reminderId}|${n.title}|${n.body}|${n.userId}|'
+        '${n.actions.map((a) => '${a.id}=${a.label}').join(',')}')
+    .join('\n');

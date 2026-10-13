@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/daily_tracking.dart';
 import '../core/demo_user.dart';
 import '../core/device_registration.dart';
 import '../core/i18n.dart';
+import '../core/notification_actions.dart';
 import '../core/notification_ports.dart';
 import '../core/notification_prefs.dart';
 import '../core/reminder_schedule.dart';
@@ -34,6 +36,7 @@ class NotificationsController extends ChangeNotifier {
         _clock = clock ?? DateTime.now {
     _auth.addListener(_onAuth);
     _subs.add(_notifier.taps.listen(_open));
+    _subs.add(_notifier.actions.listen((tap) => unawaited(_onAction(tap))));
     _subs.add(_push.opened.listen(_open));
     _subs.add(_push.tokenRefreshes.listen((_) => unawaited(_register())));
     _onAuth();
@@ -46,7 +49,7 @@ class NotificationsController extends ChangeNotifier {
   final Future<String?> Function() _appVersion;
   final String Function() _platform;
   final DateTime Function() _clock;
-  final List<StreamSubscription<String>> _subs = [];
+  final List<StreamSubscription<Object?>> _subs = [];
 
   /// Bildirime dokunulunca açılacak ekran; uygulama dinler, gidince null yapar.
   final ValueNotifier<String?> openRoute = ValueNotifier<String?>(null);
@@ -198,9 +201,15 @@ class NotificationsController extends ChangeNotifier {
         final items = planNotifications(
           today: plan.reminders,
           now: _clock(),
+          settings: plan.settings,
+          userId: uid,
           textFor: (r) => r.title.isNotEmpty
               ? (title: reminderTitle(i18n, r), body: reminderBody(i18n, r, plan.weather))
               : (title: localReminderTitle(i18n, r.id), body: localReminderBody(i18n, r.id)),
+          actionsFor: (r) => [
+            for (final a in notificationQuickActions(r.id))
+              NotificationActionSpec(notificationActionId(r.id, a), i18n.t('mobileToday.actions.${a.labelKey}')),
+          ],
         );
         final signature = '${i18n.lang}\n${scheduleSignature(items)}';
         if (signature == _lastSignature) return;
@@ -225,6 +234,17 @@ class NotificationsController extends ChangeNotifier {
     final next = _serial.then((_) => job()).catchError((Object _) {});
     _serial = next;
     return next;
+  }
+
+  /// Bildirimdeki düğmeye uygulama çalışırken dokunuldu: olay gönderilir (olmazsa kuyruğa alınır).
+  /// Başka bir hesap için kurulmuş bildirimin düğmesi yok sayılır.
+  Future<void> _onAction(NotificationActionTap tap) async {
+    final uid = _uid;
+    if (uid == null || tap.userId != uid || _disposed) return;
+    final action = resolveNotificationAction(tap.reminderId, tap.actionId);
+    final type = action?.type;
+    if (action == null || type == null) return;
+    await ingestDailyTrackingEvent(uid, type, action.payload);
   }
 
   Future<void> _openFromLaunch() async {

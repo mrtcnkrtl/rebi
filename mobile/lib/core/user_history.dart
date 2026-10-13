@@ -163,6 +163,10 @@ double? _num(Object? v) => v is num ? v.toDouble() : double.tryParse('${v ?? ''}
 
 /// `days`: 1–90 (sunucu üst sınırı). Başarısızlıkta null döner.
 Future<UserHistory?> fetchHistory(String userId, {int days = 30}) async {
-  final res = await apiGet('/me/history', query: {'user_id': userId, 'days': '${days.clamp(1, 90)}'});
+  final res = await apiGet('/me/history', query: {
+    'user_id': userId,
+    'days': '${days.clamp(1, 90)}',
+    'utc_offset_minutes': localUtcOffsetMinutes(),
+  });
   return res.ok ? UserHistory.fromJson(res.data) : null;
 }

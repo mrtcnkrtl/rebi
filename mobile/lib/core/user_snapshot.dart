@@ -78,6 +78,6 @@ class UserSnapshot {
 
 /// Başarısızlıkta (ağ yok, 401, 5xx) null döner; çağıran yerel veriye düşer.
 Future<UserSnapshot?> fetchMeSnapshot(String userId) async {
-  final res = await apiGet('/me/snapshot', query: {'user_id': userId});
+  final res = await apiGet('/me/snapshot', query: {'user_id': userId, 'utc_offset_minutes': localUtcOffsetMinutes()});
   return res.ok ? UserSnapshot.fromJson(res.data) : null;
 }

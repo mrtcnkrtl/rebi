@@ -169,7 +169,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       return;
     }
     try {
-      final res = await apiGet('/daily_checkin/status', query: {'user_id': id});
+      final res = await apiGet('/daily_checkin/status', query: {'user_id': id, 'utc_offset_minutes': localUtcOffsetMinutes()});
       if (!mounted) return;
       if (!res.ok) {
         setState(() => _submitError = formatApiErrorDetail(res.data));
@@ -209,6 +209,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         'skin_feeling': _skinFeeling,
         'applied_routine': _appliedRoutine,
         'notes': _notes.text.isEmpty ? null : _notes.text,
+        'utc_offset_minutes': DateTime.now().timeZoneOffset.inMinutes,
       };
       final w = parseWaterMlInput(_waterMl.text);
       if (w != null && w > 0) payload['water_ml_today'] = w;
