@@ -149,3 +149,62 @@ def test_advice_falls_back_to_normal_skin_for_unknown_type():
     unknown = build_environment_advice({"uv_index": 6, "humidity": 50, "temperature": 20}, "bilinmiyor")
 
     assert known == unknown
+
+
+def test_negative_water_entry_corrects_the_total_without_going_below_zero():
+    agg = _aggregate_daily_events([
+        _event("water_intake", {"ml": 500}),
+        _event("water_intake", {"ml": -250}),
+    ])
+    assert agg["water_ml_total"] == 250
+
+    only_undo = _aggregate_daily_events([
+        _event("water_intake", {"ml": -250}),
+        _event("water_intake", {"ml": 300}),
+    ])
+    assert only_undo["water_ml_total"] == 300, "eksiye düşen toplam sıfırda durur"
+
+
+def test_single_water_entry_is_capped():
+    agg = _aggregate_daily_events([_event("water_intake", {"ml": 10_000_000})])
+
+    assert agg["water_ml_total"] == 5000
+
+
+def test_routine_steps_are_tracked_per_block_and_can_be_unchecked():
+    agg = _aggregate_daily_events([
+        _event("routine_step", {"done": True, "block": "morning", "step_order": 10}),
+        _event("routine_step", {"done": True, "block": "morning", "step_order": 20}),
+        _event("routine_step", {"done": True, "block": "evening", "step_order": 10}),
+        _event("routine_step", {"done": False, "block": "morning", "step_order": 20}),
+    ])
+
+    assert agg["routine_steps"] == {"morning": [10], "evening": [10]}
+
+
+def test_routine_step_without_block_is_counted_but_not_listed():
+    agg = _aggregate_daily_events([_event("routine_step", {"done": True, "step_order": 10})])
+
+    assert agg["routine_steps_done"] == 1
+    assert agg["routine_steps"] == {"morning": [], "evening": []}
+
+
+def test_routine_block_can_be_reopened_by_the_last_event():
+    agg = _aggregate_daily_events([
+        _event("routine_completed_block", {"morning": True}),
+        _event("routine_completed_block", {"morning": False}),
+        _event("routine_completed_block", {"evening": True}),
+    ])
+
+    assert agg["routine_morning_done"] is False
+    assert agg["routine_evening_done"] is True
+
+
+def test_nutrition_choices_merge_and_latest_value_wins():
+    agg = _aggregate_daily_events([
+        _event("nutrition", {"junk_food": True, "sweets": True, "balanced": False}),
+        _event("nutrition", {"sweets": False, "dairy": True}),
+    ])
+
+    assert agg["nutrition_logged"] is True
+    assert agg["nutrition"] == {"junk_food": True, "sweets": False, "balanced": False, "dairy": True}

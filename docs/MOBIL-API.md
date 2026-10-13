@@ -61,7 +61,11 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
       "log_event": "water_intake"
     }
   ],
-  "progress": { "water_ml_total": 750, "makeup": { "logged": true, "used": true, "removed": false } },
+  "progress": {
+    "water_ml_total": 750,
+    "routine_steps": { "morning": [10, 20], "evening": [] },
+    "makeup": { "logged": true, "used": true, "removed": false, "removal_method": null }
+  },
   "checkin_done": false
 }
 ```
@@ -116,12 +120,12 @@ Olay tipleri ve yükleri:
 
 | type | payload | not |
 | --- | --- | --- |
-| `water_intake` | `{ "ml": 250 }` | gün toplamına eklenir |
-| `nutrition` | `{ "junk_food": true }` | alanlar gün içinde birleştirilir |
+| `water_intake` | `{ "ml": 250 }` | gün toplamına eklenir. Negatif değer (`-250`) yanlış girişi düzeltir; toplam 0'ın altına inmez, tek kayıt en çok ±5000 ml |
+| `nutrition` | `{ "junk_food": true, "snacks": true, "sweets": false, "fried_food": false, "dairy": false, "balanced": false }` | alanlar gün içinde birleştirilir, her alan için son değer geçerlidir. `junk_food` bütün abur cubur seçeneklerinin özetidir |
 | `makeup` | `{ "used": true }` / `{ "removed": true, "method": "double" }` | `method`: `double`, `cleanser`, `water`, `wipe`, `none` |
 | `product_finished` | `{ "product": "SPF 50", "step_order": 40 }` | "ürün bitti" butonu; günde en fazla 20 kayıt |
-| `routine_completed_block` | `{ "morning": true }` / `{ "evening": true }` | "yaptım" butonu |
-| `routine_step` | `{ "done": true, "step_order": 20 }` | adım adım işaretleme |
+| `routine_completed_block` | `{ "morning": true }` / `{ "evening": true }` | "yaptım" butonu. `false` bloğu yeniden açar (son olay geçerli) |
+| `routine_step` | `{ "done": true, "block": "morning", "step_order": 20 }` | adım adım işaretleme; `block`: `morning` / `evening`. Aynı adım için son olay geçerlidir, `done: false` işareti kaldırır. `progress.routine_steps` işaretli adımları döndürür |
 | `spf_refresh` | `{}` | güneş kremi tazelendi |
 | `stress` / `sleep` | `{ "value": 3 }` / `{ "hours": 7 }` | |
 | `location` | `{ "lat": 41.0, "lon": 29.0 }` | sunucu hava durumu anlık görüntüsü ekler; **konum izni yoksa 403** |

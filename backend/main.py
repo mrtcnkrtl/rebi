@@ -232,6 +232,12 @@ def _mem_append_event(user_id: str, log_date: str, event: dict) -> None:
 
 _MAX_PRODUCTS_FINISHED = 20
 
+# Tek bir su kaydının sınırı; negatif değer yanlış girişi düzeltir (ör. -250).
+_MAX_WATER_EVENT_ML = 5000
+
+# Rutin blokları: adım işaretleri bu iki gruba ayrı yazılır.
+_ROUTINE_BLOCKS = ("morning", "evening")
+
 # Kabul edilen makyaj temizleme yöntemleri; bilinmeyen değer None olur.
 _MAKEUP_REMOVAL_METHODS = frozenset({"double", "cleanser", "water", "wipe", "none"})
 
@@ -247,6 +253,7 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
     routine_steps_done = 0
     routine_morning_done = False
     routine_evening_done = False
+    routine_steps: dict[str, set[int]] = {block: set() for block in _ROUTINE_BLOCKS}
     spf_refreshes = 0
     last_photo_meta = None
     checkin_feedback_events = 0
@@ -261,9 +268,11 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         payload = ev.get("payload") or {}
         if t == "water_intake":
             try:
-                water_ml_total += int(payload.get("ml", 0) or 0)
+                ml = int(payload.get("ml", 0) or 0)
             except Exception:
-                pass
+                ml = 0
+            ml = max(-_MAX_WATER_EVENT_ML, min(_MAX_WATER_EVENT_ML, ml))
+            water_ml_total = max(0, water_ml_total + ml)
         elif t == "nutrition":
             if isinstance(payload, dict):
                 nutrition = {**nutrition, **payload}
@@ -285,15 +294,27 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
             if isinstance(payload, dict):
                 last_weather = payload
         elif t == "routine_step":
-            if bool(payload.get("done")):
+            done = bool(payload.get("done"))
+            if done:
                 routine_steps_done += 1
+            # Hangi adım: `block` + `step_order`. Aynı adım için son olay geçerlidir (işaret kaldırılabilir).
+            block = str(payload.get("block") or "").strip().lower()
+            step = payload.get("step_order")
+            if block in routine_steps and isinstance(step, (int, float)) and not isinstance(step, bool):
+                if done:
+                    routine_steps[block].add(int(step))
+                else:
+                    routine_steps[block].discard(int(step))
         elif t == "routine_completed_block":
-            if bool(payload.get("morning")):
-                routine_steps_done += 1
-                routine_morning_done = True
-            if bool(payload.get("evening")):
-                routine_steps_done += 1
-                routine_evening_done = True
+            # Son olay geçerlidir: `{"morning": false}` bloğu yeniden açar (yanlış dokunuşu geri alma).
+            if "morning" in payload:
+                routine_morning_done = bool(payload.get("morning"))
+                if routine_morning_done:
+                    routine_steps_done += 1
+            if "evening" in payload:
+                routine_evening_done = bool(payload.get("evening"))
+                if routine_evening_done:
+                    routine_steps_done += 1
         elif t == "spf_refresh":
             spf_refreshes += 1
         elif t == "photo_meta":
@@ -338,6 +359,7 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         "routine_steps_done": routine_steps_done,
         "routine_morning_done": routine_morning_done,
         "routine_evening_done": routine_evening_done,
+        "routine_steps": {block: sorted(steps) for block, steps in routine_steps.items()},
         "spf_refreshes": spf_refreshes,
         "last_photo_meta": last_photo_meta,
         "checkin_feedback_events": checkin_feedback_events,
