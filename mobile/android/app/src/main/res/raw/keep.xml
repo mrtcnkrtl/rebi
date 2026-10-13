@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Kaynak küçültme (shrinkResources) yalnızca koddan başvurulan kaynakları tutar. Bildirim simgesi
+  çalışma anında ismiyle ('@drawable/ic_stat_rebi') istendiği için silinmesin; aksi halde bildirimler
+  release'te sessizce hiç görünmeyebilir.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_rebi,@mipmap/ic_launcher" />

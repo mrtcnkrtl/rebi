@@ -70,7 +70,7 @@ class LocalNotificationsNotifier implements ReminderNotifier {
       final notifier = LocalNotificationsNotifier._(plugin);
       await plugin.initialize(
         settings: InitializationSettings(
-          android: const AndroidInitializationSettings('@mipmap/ic_launcher'),
+          android: const AndroidInitializationSettings('@drawable/ic_stat_rebi'),
           // İzin kullanıcı "bildirimleri aç" deyince istenir, uygulama açılırken değil.
           iOS: DarwinInitializationSettings(
             requestAlertPermission: false,
