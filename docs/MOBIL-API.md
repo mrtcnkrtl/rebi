@@ -27,7 +27,7 @@ hâlihazırda kullanılan Supabase SDK'sı ile aynı projeye bağlanır.
 
 ## Ana ekran
 
-### `GET /today/plan?user_id=...&lat=&lon=`
+### `GET /today/plan?user_id=...&lat=&lon=&utc_offset_minutes=`
 
 `lat`/`lon` verilirse canlı hava durumu kullanılır ve **konum izni** gerekir
 (`consent.location_processing_allowed`). Verilmezse sırayla bugün kaydedilmiş hava
@@ -50,6 +50,7 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
   "environment_advice": [
     { "time": "Sabah", "category": "Koruma", "icon": "☀️", "action": "SPF 50 (…)", "detail": "…", "priority": 1 }
   ],
+  "reminder_settings": { "wake_time": "07:30", "sleep_time": "23:00", "water_every_minutes": 120, "enabled": { "water": true } },
   "reminders": [
     {
       "id": "water_intake",
@@ -70,6 +71,11 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
 }
 ```
 
+`utc_offset_minutes` (−840…840) verilirse "bugün" kullanıcının yerel günüdür; verilmezse sunucu günü
+kullanılır. Mobil bunu her zaman göndermelidir: yoksa gece 00:00–03:00 (TR) arası bir önceki gün görünür.
+Aynı parametre `/me/snapshot`, `/me/history`, `/daily_tracking/today` ve `/daily_checkin/status`
+uçlarında, check-in isteğinde ise gövdede (`utc_offset_minutes`) vardır.
+
 Hatırlatıcı saatleri **yerel duvar saatidir**. Sunucu planı üretir; cihaz bu pencereleri
 kendi saat diliminde yerel bildirim olarak kurabilir veya sunucudan push bekleyebilir
 (aşağıya bakın). `every_minutes` doluysa hatırlatıcı pencere boyunca o aralıkla tekrarlar.
@@ -78,9 +84,31 @@ kendi saat diliminde yerel bildirim olarak kurabilir veya sunucudan push bekleye
 Yapılan iş listeden otomatik düşer: su hedefi dolunca su hatırlatıcısı, rutin blok
 işaretlenince rutin hatırlatıcısı gelmez.
 
+### Hatırlatıcı ayarları
+
+Pencereler kullanıcının gün düzenine göre kayar. Aşağıdaki saatler varsayılan düzenin (uyanma 07:30,
+uyku 23:00) sonucudur.
+
+- `GET /me/reminder-settings?user_id=…` — `{ "settings": {…}, "synced": true }`. Kayıt yoksa varsayılan döner.
+- `PUT /me/reminder-settings` — `{ "user_id": "…", "wake_time": "06:30", "sleep_time": "22:30",
+  "water_every_minutes": 90, "enabled": { "spf": false } }`; yalnızca gönderilen alanlar değişir
+  (`enabled` içinde yalnızca gönderilen kategoriler). Yanıt güncel ayardır.
+
+| alan | kural |
+| --- | --- |
+| `wake_time` | `SS:DD`, en erken 04:00 |
+| `sleep_time` | `SS:DD`, en geç 23:59; uyanmadan en az 9 saat sonra |
+| `water_every_minutes` | `60`, `90`, `120` ya da `180` |
+| `enabled` | `routine`, `water`, `makeup`, `nutrition`, `spf`, `lip_balm`, `checkin` → `true`/`false` |
+
+Geçersiz değer 422 döner ve hiçbir şey kaydedilmez. Kapatılan kategorinin hatırlatıcıları ne plana ne
+push'a girer. Pencereler: sabah rutini uyanma + 0–2 sa; makyaj sorusu +2,5–3,5 sa; güneş kremi +3,5–8,5 sa;
+dudak balsamı +4,5–5,5 sa; su +1,5 sa ile uykudan 2 sa önce arası; akşam rutini ve makyaj temizliği uykudan
+2 sa önce–uyku; check-in uykudan 2 sa–30 dk önce; beslenme kaydı uykudan 3–2,5 sa önce.
+
 ### Hatırlatıcı kimlikleri
 
-| id | pencere | koşul |
+| id | pencere (varsayılan düzen) | koşul |
 | --- | --- | --- |
 | `routine_morning` | 07:30–09:30 | sabah rutini işaretlenmemişse |
 | `makeup_log` | 10:00–11:00 | bugün makyaj kaydı yoksa |

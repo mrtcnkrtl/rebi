@@ -9,6 +9,7 @@ Teknik uygulama `supabase/migrations/20260920174000_data_retention.sql` içinded
 - Sunucudaki sohbet geçmişi (`chat_history`): 365 gün
 - Gönderilen hatırlatıcı defteri (`push_sends`): 30 gün
 - Kullanılmayan cihaz kayıtları (`device_tokens`): son görülmeden 180 gün sonra
+- Hatırlatıcı ayarları (`reminder_settings`): hesap silinince silinir (süre sınırı yok, kullanıcının tercihidir)
 - Günlük check-in kayıtları (`daily_logs`): 730 gün
 - Aktif olmayan rutinler: 730 gün
 - Artık bir rutin tarafından kullanılmayan değerlendirmeler: 730 gün

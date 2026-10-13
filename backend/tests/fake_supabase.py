@@ -1,7 +1,7 @@
 """supabase-py sorgu zincirinin test amaçlı küçük bir taklidi.
 
 Yalnızca backend'in kullandığı zincir parçalarını destekler:
-select/insert/upsert/delete + eq/gt/gte/lte/order/limit/execute.
+select/insert/upsert/delete + eq/in_/gt/gte/lte/order/limit/execute.
 """
 
 from __future__ import annotations
@@ -58,6 +58,10 @@ class FakeTable:
         self.filters.append(("eq", column, value))
         return self
 
+    def in_(self, column, values):
+        self.filters.append(("in", column, list(values)))
+        return self
+
     def gt(self, column, value):
         self.filters.append(("gt", column, value))
         return self
@@ -83,6 +87,8 @@ class FakeTable:
         for op, column, value in self.filters:
             cell = row.get(column)
             if op == "eq" and cell != value:
+                return False
+            if op == "in" and cell not in value:
                 return False
             if op == "gt" and not (cell is not None and cell > value):
                 return False

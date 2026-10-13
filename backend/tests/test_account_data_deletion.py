@@ -76,6 +76,7 @@ def test_account_deletion_explicitly_covers_personal_data_tables():
         ("legal_consents", "user_id", USER_ID),
         ("device_tokens", "user_id", USER_ID),
         ("push_sends", "user_id", USER_ID),
+        ("reminder_settings", "user_id", USER_ID),
         ("chat_history", "user_id", USER_ID),
         ("daily_events", "user_id", USER_ID),
         ("daily_logs", "user_id", USER_ID),
