@@ -17,6 +17,7 @@ import 'package:rebi/core/event_outbox.dart';
 import 'package:rebi/core/notification_ports.dart';
 import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/local_store.dart';
+import 'package:rebi/core/subscription.dart';
 import 'package:rebi/app.dart';
 import 'package:rebi/router.dart';
 import 'package:rebi/ui/tw.dart';
@@ -528,6 +529,12 @@ Future<void> settle(WidgetTester tester, [int frames = 12]) async {
 }
 
 /// Kaydırılabilir alanda bir metni görünür kılıp dokunur.
+/// Testin süresince Plus'a geçmenin bir yolu varmış gibi davranır (varsayılan: v1 mağaza sürümü, yol yok).
+void withPlusPurchasable() {
+  plusPurchasableOverride = true;
+  addTearDown(() => plusPurchasableOverride = null);
+}
+
 Future<void> tapText(WidgetTester tester, String text, {bool exact = true}) async {
   final f = exact ? find.text(text) : find.textContaining(text);
   expect(f, findsWidgets, reason: '"$text" bulunamadı');

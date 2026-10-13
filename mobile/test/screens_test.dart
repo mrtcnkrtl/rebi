@@ -327,6 +327,7 @@ void main() {
 
   group('sohbet', () {
     testWidgets('mesaj gönderilir, yanıt ve kota rozeti görünür, kota dolunca paywall açılır', (tester) async {
+      withPlusPurchasable();
       final backend = FakeBackend()..quotaAfter = 1;
       final h = await pumpApp(tester, location: '/dashboard/chat', backend: backend);
       expect(find.text(tr('chat.emptyTitle')), findsOneWidget);
@@ -386,6 +387,7 @@ void main() {
 
   group('tema ve abonelik', () {
     testWidgets('ücretsiz tema seçilir, premium tema aboneliğe yönlendirir', (tester) async {
+      withPlusPurchasable();
       final h = await pumpApp(tester, location: '/dashboard/themes');
       await tapText(tester, '💗 Pembe Kalp');
       expect(h.theme.themeId, 'pink');
@@ -505,6 +507,7 @@ void main() {
   });
 
   testWidgets('Ben sekmesi: hesap özeti, ayar satırları ve çıkış', (tester) async {
+    withPlusPurchasable();
     final h = await pumpApp(tester, location: '/dashboard/profile');
     expect(find.text('Ayşe Test'), findsOneWidget);
     expect(find.text('test@rebi.app'), findsOneWidget);
@@ -534,6 +537,7 @@ void main() {
   });
 
   testWidgets('Ben sekmesi: Plus rozeti yalnızca aboneye görünür', (tester) async {
+    withPlusPurchasable();
     await pumpApp(tester, location: '/dashboard/profile');
     expect(find.text(tr('mobileMe.plusBadge')), findsNothing);
     expect(find.text(tr('mobileMe.plus.hint')), findsOneWidget);

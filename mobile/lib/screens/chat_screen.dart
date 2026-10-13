@@ -9,6 +9,7 @@ import '../core/consent_recovery.dart';
 import '../core/demo_user.dart';
 import '../core/device_location.dart';
 import '../core/i18n.dart';
+import '../core/subscription.dart';
 import '../core/local_store.dart';
 import '../core/routine_tracking.dart';
 import '../core/today_plan.dart';
@@ -625,11 +626,13 @@ class _ChatScreenState extends State<ChatScreen> {
         alignment: WrapAlignment.center,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          GestureDetector(
-            onTap: () => context.go(subscribeHref),
-            child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(10, w: 6, c: theme.primary)),
-          ),
-          Text(' · ', style: tx(10, c: Tw.gray500)),
+          if (plusPurchasable) ...[
+            GestureDetector(
+              onTap: () => context.go(subscribeHref),
+              child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(10, w: 6, c: theme.primary)),
+            ),
+            Text(' · ', style: tx(10, c: Tw.gray500)),
+          ],
           Text(i18n.t('chat.footerHintShort'), style: tx(10, c: Tw.gray400)),
         ],
       );
@@ -974,6 +977,8 @@ class _ChatScreenState extends State<ChatScreen> {
         );
 
     final month = _paywallKind == 'plus_monthly';
+    // Satın alma yolu yoksa panel yalnızca "limit doldu" bilgisini verir; Plus tanıtımı ve düğmeleri çıkmaz.
+    final offer = plusPurchasable;
     return Stack(
       children: [
         Positioned.fill(
@@ -1039,18 +1044,26 @@ class _ChatScreenState extends State<ChatScreen> {
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              GradientIconBox(icon: LucideIcons.crown, from: theme.accent, to: theme.primary, size: 48, iconSize: 24),
+                              GradientIconBox(
+                                  icon: offer ? LucideIcons.crown : LucideIcons.messageCircle, from: theme.accent, to: theme.primary, size: 48, iconSize: 24),
                               const SizedBox(width: 12),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('REBI PLUS', style: tx(12, w: 7, c: Tw.amber200.withValues(alpha: .9))),
+                                    Text(offer ? 'REBI PLUS' : i18n.t('mobileChat.limit.label'),
+                                        style: tx(12, w: 7, c: Tw.amber200.withValues(alpha: .9))),
                                     const SizedBox(height: 4),
-                                    Text(month ? i18n.t('chat.paywallTitleMonth') : i18n.t('chat.paywallTitleDay'),
+                                    Text(
+                                        offer
+                                            ? (month ? i18n.t('chat.paywallTitleMonth') : i18n.t('chat.paywallTitleDay'))
+                                            : i18n.t(month ? 'mobileChat.limit.titleMonth' : 'mobileChat.limit.titleDay'),
                                         style: tx(24, w: 9, c: Colors.white, h: tight)),
                                     const SizedBox(height: 8),
-                                    Text(month ? i18n.t('chat.paywallBodyMonth') : i18n.t('chat.paywallBodyDay'),
+                                    Text(
+                                        offer
+                                            ? (month ? i18n.t('chat.paywallBodyMonth') : i18n.t('chat.paywallBodyDay'))
+                                            : i18n.t(month ? 'mobileChat.limit.bodyMonth' : 'mobileChat.limit.bodyDay'),
                                         style: tx(14, c: Tw.violet100.withValues(alpha: .85), h: relaxed)),
                                   ],
                                 ),
@@ -1076,42 +1089,51 @@ class _ChatScreenState extends State<ChatScreen> {
                             lightButton(Icon(LucideIcons.lock, size: 16, color: Tw.fixedViolet950), 'Giriş yap',
                                 () => context.go('/auth?next=${Uri.encodeComponent('/dashboard/chat')}')),
                             const SizedBox(height: 12),
-                            ghostButton([
-                              Icon(LucideIcons.crown, size: 16, color: Tw.amber300),
-                              const SizedBox(width: 8),
-                              Flexible(child: Text('Plus’a geç', style: tx(16, w: 7, c: Colors.white))),
-                              const SizedBox(width: 8),
-                              const Icon(LucideIcons.arrowRight, size: 16, color: Colors.white),
-                            ], () => context.go(subscribeHref)),
+                            if (offer)
+                              ghostButton([
+                                Icon(LucideIcons.crown, size: 16, color: Tw.amber300),
+                                const SizedBox(width: 8),
+                                Flexible(child: Text('Plus’a geç', style: tx(16, w: 7, c: Colors.white))),
+                                const SizedBox(width: 8),
+                                const Icon(LucideIcons.arrowRight, size: 16, color: Colors.white),
+                              ], () => context.go(subscribeHref))
+                            else
+                              ghostButton([Flexible(child: Text(i18n.t('mobileChat.limit.close'), style: tx(16, w: 7, c: Colors.white)))],
+                                  () => setState(() => _paywallOpen = false)),
                             const SizedBox(height: 4),
                             Text('Not: Rutin tarafına geçmek istersen zaten kayıt/giriş gerekiyor.',
                                 textAlign: TextAlign.center, style: tx(11, c: Colors.white.withValues(alpha: .6))),
                           ] else ...[
-                            lightButton(Icon(LucideIcons.crown, size: 16, color: Tw.amber600), 'Rebi Plus’ı aç',
-                                () => context.go('/dashboard/subscribe')),
-                            const SizedBox(height: 12),
-                            ghostButton([Flexible(child: Text('Şimdilik kapat', style: tx(16, w: 7, c: Colors.white)))],
+                            if (offer) ...[
+                              lightButton(Icon(LucideIcons.crown, size: 16, color: Tw.amber600), 'Rebi Plus’ı aç',
+                                  () => context.go('/dashboard/subscribe')),
+                              const SizedBox(height: 12),
+                            ],
+                            ghostButton(
+                                [Flexible(child: Text(offer ? 'Şimdilik kapat' : i18n.t('mobileChat.limit.close'), style: tx(16, w: 7, c: Colors.white)))],
                                 () => setState(() => _paywallOpen = false)),
                           ],
-                          const SizedBox(height: 20),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: .05),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.white.withValues(alpha: .1)),
+                          if (offer) ...[
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: .05),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.white.withValues(alpha: .1)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Plus ile', style: tx(12, w: 7, c: Colors.white.withValues(alpha: .9))),
+                                  const SizedBox(height: 8),
+                                  bullet(i18n.t('chat.paywallBulletUnlimited')),
+                                  bullet('Takip + check-in verisiyle daha tutarlı öneriler'),
+                                  bullet('Premium temalar ve yeni özellikler'),
+                                ],
+                              ),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Plus ile', style: tx(12, w: 7, c: Colors.white.withValues(alpha: .9))),
-                                const SizedBox(height: 8),
-                                bullet(i18n.t('chat.paywallBulletUnlimited')),
-                                bullet('Takip + check-in verisiyle daha tutarlı öneriler'),
-                                bullet('Premium temalar ve yeni özellikler'),
-                              ],
-                            ),
-                          ),
+                          ],
                         ],
                       ),
                     ),

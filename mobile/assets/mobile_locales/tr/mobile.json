@@ -478,6 +478,14 @@
       "generic1": "Rutinimi nasıl daha iyi uygulayabilirim?",
       "generic2": "Nem bariyeri nedir, nasıl güçlendirilir?",
       "generic3": "Retinole nasıl başlamalıyım?"
+    },
+    "limit": {
+      "label": "Sohbet limiti",
+      "titleDay": "Günlük ücretsiz sohbet hakkın doldu",
+      "titleMonth": "Bu ayki sohbet hakkın doldu",
+      "bodyDay": "Hakkın yarın yenilenir. Bugün rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
+      "bodyMonth": "Hakkın ay başında yenilenir. O zamana kadar rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
+      "close": "Tamam"
     }
   },
   "mobileCheckin": {

@@ -597,8 +597,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            TextLink('Rebi Plus', onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.primary)),
-            Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('·', style: tx(12, c: Tw.gray300))),
+            if (plusEntryVisible(context.read<AuthController>().user)) ...[
+              TextLink('Rebi Plus', onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.primary)),
+              Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('·', style: tx(12, c: Tw.gray300))),
+            ],
             TextLink('Temalar', onTap: () => context.go('/dashboard/themes'), style: tx(12, c: Tw.gray600)),
           ],
         ),

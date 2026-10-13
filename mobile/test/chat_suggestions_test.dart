@@ -163,6 +163,7 @@ void main() {
     });
 
     testWidgets('kota dolunca öneri çipleri mesaj göndermez', (tester) async {
+      withPlusPurchasable();
       final backend = FakeBackend()..quotaAfter = 0;
       await pumpApp(tester, location: '/dashboard/chat', backend: backend);
       await tapText(tester, tr('mobileChat.suggestions.generic1'));

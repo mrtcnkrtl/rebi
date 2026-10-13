@@ -478,6 +478,14 @@
       "generic1": "How can I follow my routine better?",
       "generic2": "What is the skin barrier and how do I strengthen it?",
       "generic3": "How should I start using retinol?"
+    },
+    "limit": {
+      "label": "Chat limit",
+      "titleDay": "You've used today's free chats",
+      "titleMonth": "You've used this month's chats",
+      "bodyDay": "Your allowance renews tomorrow. You can keep using your routine, tracking and check-in today.",
+      "bodyMonth": "Your allowance renews at the start of the month. Until then you can keep using your routine, tracking and check-in.",
+      "close": "OK"
     }
   },
   "mobileCheckin": {

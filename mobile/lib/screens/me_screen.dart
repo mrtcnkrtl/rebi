@@ -70,14 +70,16 @@ class MeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 24),
         _GroupTitle(i18n.t('mobileMe.groups.more')),
-        _MenuRow(
-          icon: LucideIcons.crown,
-          color: Tw.amber600,
-          title: i18n.t('mobileMe.plus.title'),
-          hint: i18n.t(plus ? 'mobileMe.plus.active' : 'mobileMe.plus.hint'),
-          onTap: () => context.go('/dashboard/subscribe'),
-        ),
-        const SizedBox(height: 10),
+        if (plus || plusPurchasable) ...[
+          _MenuRow(
+            icon: LucideIcons.crown,
+            color: Tw.amber600,
+            title: i18n.t('mobileMe.plus.title'),
+            hint: i18n.t(plus ? 'mobileMe.plus.active' : 'mobileMe.plus.hint'),
+            onTap: () => context.go('/dashboard/subscribe'),
+          ),
+          const SizedBox(height: 10),
+        ],
         RCard(
           padding: const EdgeInsets.all(14),
           radius: 20,

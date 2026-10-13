@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/i18n.dart';
+import '../../core/subscription.dart';
 import '../../state/auth_controller.dart';
 import '../../state/notifications_controller.dart';
 import '../../state/theme_controller.dart';
@@ -251,7 +252,7 @@ class _MobileMenu extends StatelessWidget {
             if (user != null) ...[
               item(i18n.t('mobileNav.today'), Tw.gray700, () => go('/dashboard')),
               item(i18n.t('mobileNav.me'), Tw.gray700, () => go('/dashboard/profile')),
-              item(i18n.t('nav.plus'), Tw.amber700, () => go('/dashboard/subscribe')),
+              if (plusEntryVisible(user)) item(i18n.t('nav.plus'), Tw.amber700, () => go('/dashboard/subscribe')),
               item(i18n.t('nav.newAnalyze'), Tw.teal600, () => go('/dashboard/analyze')),
               item(i18n.t('nav.logout'), Tw.red500, () {
                 onClose();

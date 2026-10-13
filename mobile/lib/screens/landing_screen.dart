@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../core/i18n.dart';
+import '../core/subscription.dart';
 import '../state/auth_controller.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
@@ -43,7 +44,7 @@ class LandingScreen extends StatelessWidget {
             ),
             const SizedBox(height: 32),
             _Differences(wide: wide),
-            _PlusBlock(onCta: () => context.go(authed ? '/dashboard/subscribe' : '/auth')),
+            if (plusPurchasable) _PlusBlock(onCta: () => context.go(authed ? '/dashboard/subscribe' : '/auth')),
             _Features(wide: wide),
             _HowItWorks(onCta: () => context.go(authed ? '/dashboard/analyze' : '/auth')),
             _Footer(i18n: i18n),

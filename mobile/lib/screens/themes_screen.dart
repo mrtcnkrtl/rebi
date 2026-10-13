@@ -22,6 +22,8 @@ class ThemesScreen extends StatelessWidget {
     final ctrl = context.watch<ThemeController>();
     final theme = ctrl.theme;
     final plus = userHasRebiPlus(context.watch<AuthController>().user);
+    // Plus satın alınamıyorsa (v1 mağaza sürümü) premium temalar yalnızca Plus hesaplarda listelenir.
+    final themes = [for (final t in rebiThemes.values) if (!t.premium || plus || plusPurchasable) t];
 
     void pick(RebiTheme t) {
       if (t.premium && !plus) {
@@ -47,13 +49,13 @@ class ThemesScreen extends StatelessWidget {
         AppearanceCard(theme: theme),
         const SizedBox(height: 24),
         // Web: 2 sütunlu ızgara; kart yüksekliği içerikten gelir (önizleme h-28 = 112 px).
-        for (var i = 0; i < rebiThemes.length; i += 2) ...[
+        for (var i = 0; i < themes.length; i += 2) ...[
           if (i > 0) const SizedBox(height: 12),
           IntrinsicHeight(
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                for (final t in rebiThemes.values.skip(i).take(2).toList().asMap().entries) ...[
+                for (final t in themes.skip(i).take(2).toList().asMap().entries) ...[
                   if (t.key > 0) const SizedBox(width: 12),
                   Expanded(
                     child: _ThemeCard(
@@ -64,22 +66,23 @@ class ThemesScreen extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (rebiThemes.length - i == 1) ...[const SizedBox(width: 12), const Expanded(child: SizedBox())],
+                if (themes.length - i == 1) ...[const SizedBox(width: 12), const Expanded(child: SizedBox())],
               ],
             ),
           ),
         ],
         const SizedBox(height: 16),
-        Wrap(
-          alignment: WrapAlignment.center,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text('Rebi Plus için ', style: tx(12, c: Tw.gray500)),
-            TextLink('abonelik sayfası',
-                onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.primary)),
-            Text('.', style: tx(12, c: Tw.gray500)),
-          ],
-        ),
+        if (plusEntryVisible(context.read<AuthController>().user))
+          Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text('Rebi Plus için ', style: tx(12, c: Tw.gray500)),
+              TextLink('abonelik sayfası',
+                  onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.primary)),
+              Text('.', style: tx(12, c: Tw.gray500)),
+            ],
+          ),
         const SizedBox(height: 32),
         Text('Canlı Önizleme', style: tx(14, w: 7, c: Tw.gray700)),
         const SizedBox(height: 12),
