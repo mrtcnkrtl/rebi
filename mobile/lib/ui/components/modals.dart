@@ -121,6 +121,7 @@ class _ConsentRecoveryModalState extends State<ConsentRecoveryModal> {
   @override
   void initState() {
     super.initState();
+    _open = consentRecoveryPending;
     consentRecoveryRequests.addListener(_onRequest);
   }
 

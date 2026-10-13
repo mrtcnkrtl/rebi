@@ -6,15 +6,20 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/env.dart';
+import 'core/firebase_push.dart';
 import 'core/i18n.dart';
+import 'core/local_notifications.dart';
 import 'core/local_store.dart';
+import 'core/notification_ports.dart';
 import 'router.dart';
 import 'ui/tw.dart';
 
 Future<void> main() async {
   await bootstrap();
   _installErrorBoundary();
-  runApp(const RebiApp());
+  // Firebase yalnızca proje dosyaları eklenip FIREBASE_ENABLED=true verildiğinde başlatılır.
+  final PushClient push = Env.firebaseEnabled ? await FirebasePushClient.create() : const NoPushClient();
+  runApp(RebiApp(notifier: await LocalNotificationsNotifier.create(), push: push));
 }
 
 /// Uygulama çizilmeden önceki hazırlık: yerel depo, Supabase oturumu, tarih biçimleri, çeviriler.

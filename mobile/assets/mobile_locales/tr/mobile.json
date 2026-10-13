@@ -1,0 +1,167 @@
+{
+  "mobileToday": {
+    "title": "Bugün",
+    "now": "Şimdi",
+    "later": "Sıradaki hatırlatmalar",
+    "nothingNow": "Şu an bekleyen bir hatırlatma yok.",
+    "loadFailed": "Günün planı yüklenemedi. Bağlantını kontrol et.",
+    "queuedHint": "Kaydedildi. Bağlantı gelince gönderilecek.",
+    "pending": "{{count}} kayıt gönderilmeyi bekliyor",
+    "pendingRetry": "Şimdi dene",
+    "retry": "Tekrar dene",
+    "waterTitle": "Su",
+    "waterProgress": "{{ml}} / {{target}} ml",
+    "waterGoalReached": "Günlük su hedefine ulaştın",
+    "morningDone": "Sabah rutini tamam",
+    "eveningDone": "Akşam rutini tamam",
+    "makeupUsed": "Makyaj yapıldı",
+    "makeupRemoved": "Makyaj temizlendi",
+    "spfRefreshed": "SPF {{n}} kez yenilendi",
+    "checkinDoneToday": "Bugün tamamlandı",
+    "actions": {
+      "done": "Yaptım",
+      "yes": "Evet, yaptım",
+      "no": "Hayır",
+      "removed": "Temizledim",
+      "water250": "+250 ml",
+      "water500": "+500 ml",
+      "junkYes": "Evet, yedim",
+      "junkNo": "Hayır",
+      "open": "Check-in'e git"
+    },
+    "advice": {
+      "title": "Bugünün havasına göre",
+      "weatherLine": "{{temp}}°C · UV {{uv}} · nem %{{humidity}}",
+      "locationHint": "Tahmini hava değerleri kullanılıyor. Konum izni verirsen canlı hava durumuna göre öneri alırsın.",
+      "source": {
+        "live": "Canlı hava (konumun)",
+        "tracking": "Bugün kaydedilen hava",
+        "profile": "Son bilinen konumun",
+        "default": "Tahmini değerler"
+      }
+    },
+    "quick": {
+      "makeup": "Makyaj yaptım",
+      "makeupRemoved": "Makyajı temizledim",
+      "junk": "Abur cubur yedim"
+    },
+    "productFinished": "Ürün bitti",
+    "productFinishedLogged": "Bitti olarak kaydedildi",
+    "reminders": {
+      "routine_morning": {
+        "title": "Sabah rutini",
+        "body": "Bugünün sabah adımlarını uygula ve bitince işaretle."
+      },
+      "makeup_log": {
+        "title": "Bugün makyaj yaptın mı?",
+        "body": "Makyaj yaptıysan akşam temizliği planına eklenir."
+      },
+      "water_intake": {
+        "title": "Su içme zamanı",
+        "body": "Günlük hedef {{target}} ml. İçtikçe kaydet."
+      },
+      "spf_refresh": {
+        "title": "Güneş kremini yenile",
+        "body": "UV {{uv}}. Dışarıdaysan 2 saatte bir tazele."
+      },
+      "lip_balm": {
+        "title": "Dudak balsamı",
+        "body": "Soğuk / kuru hava dudak derisini hızlı kurutur."
+      },
+      "nutrition_log": {
+        "title": "Beslenme kaydı",
+        "body": "Bugün abur cubur veya şekerli bir şey yedin mi?"
+      },
+      "makeup_removal": {
+        "title": "Makyaj temizliği",
+        "body": "Makyajlı gün: yağ bazlı temizleyici + ardından jel ile çift temizlik yap."
+      },
+      "routine_evening": {
+        "title": "Akşam rutini",
+        "body": "Akşam adımlarını uygula ve bitince işaretle."
+      },
+      "daily_checkin": {
+        "title": "Günlük check-in",
+        "body": "Cildin bugün nasıldı? Rutin buna göre uyarlanır."
+      }
+    }
+  },
+  "mobileNotifications": {
+    "promptTitle": "Hatırlatıcıları bildirim olarak al",
+    "promptBody": "Rutin, su, güneş kremi ve check-in hatırlatmalarını telefonuna gönderelim. İstediğin zaman kapatabilirsin.",
+    "promptEnable": "Bildirimleri aç",
+    "promptLater": "Şimdi değil",
+    "title": "Hatırlatma bildirimleri",
+    "description": "Sabah / akşam rutini, su, güneş kremi ve check-in hatırlatmaları.",
+    "blocked": "Bildirim izni kapalı. Telefon ayarlarından Rebi için bildirimlere izin ver.",
+    "modeLocal": "Hatırlatmalar bu telefonda planlanır.",
+    "modePush": "Hatırlatmalar sunucudan gönderilir.",
+    "channelName": "Hatırlatıcılar",
+    "channelDescription": "Rutin, su, güneş kremi ve check-in hatırlatmaları"
+  },
+  "mobileProfile": {
+    "title": "Cilt profilim",
+    "intro": "Havaya göre öneriler ve sohbet bu bilgilere göre kişiselleşir. Boş bıraktığın alan değişmez.",
+    "skinType": "Cilt tipi",
+    "age": "Yaş",
+    "agePlaceholder": "13–100",
+    "gender": "Cinsiyet",
+    "city": "Şehir",
+    "cityPlaceholder": "Örn. İstanbul",
+    "save": "Profili kaydet",
+    "saved": "Profilin güncellendi.",
+    "nothingChanged": "Değişiklik yok.",
+    "saveFailed": "Profil kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
+    "loadFailed": "Profil bilgilerin yüklenemedi.",
+    "retry": "Tekrar dene",
+    "ageInvalid": "Yaş 13 ile 100 arasında olmalı.",
+    "notSynced": "Bu hesapta profil sunucuda saklanmıyor; değişiklikler kaydedilmez.",
+    "historyLink": "Geçmişimi gör"
+  },
+  "mobileHistory": {
+    "open": "Geçmişim",
+    "title": "Geçmişim",
+    "subtitle": "Gün içi kayıtların ve check-in'lerin",
+    "range7": "7 gün",
+    "range30": "30 gün",
+    "range90": "90 gün",
+    "empty": "Bu aralıkta kayıt yok. Su, makyaj veya check-in kaydettikçe burada görünür.",
+    "loadFailed": "Geçmiş yüklenemedi. Bağlantını kontrol et.",
+    "retry": "Tekrar dene",
+    "notSynced": "Bu hesapta kayıtlar sunucuda tutulmuyor; geçmiş boş görünebilir.",
+    "summaryTitle": "Özet",
+    "summary": {
+      "recordedDays": "{{n}} kayıtlı gün",
+      "checkins": "{{n}} check-in",
+      "fullRoutine": "{{n}} gün sabah + akşam rutini",
+      "avgWater": "Ort. su {{ml}} ml",
+      "avgSleep": "Ort. uyku {{h}} sa",
+      "avgRisk": "Ort. risk {{n}}"
+    },
+    "chips": {
+      "water": "{{ml}} ml su",
+      "spf": "SPF ×{{n}}",
+      "morning": "Sabah rutini",
+      "evening": "Akşam rutini",
+      "makeupUsed": "Makyaj",
+      "makeupRemoved": "Makyaj temizlendi",
+      "junk": "Abur cubur",
+      "products": "{{n}} ürün bitti"
+    },
+    "checkin": {
+      "title": "Check-in",
+      "sleep": "Uyku {{h}} sa",
+      "stress": "Stres {{n}}/5",
+      "risk": "Risk {{n}}"
+    },
+    "feelings": {
+      "iyi": "İyi",
+      "kuru": "Kuru",
+      "yagli": "Yağlı",
+      "kirik": "Hassas",
+      "irritasyon": "İrritasyon"
+    },
+    "assessmentsTitle": "Son analizler",
+    "severity": "Şiddet {{n}}"
+  }
+}

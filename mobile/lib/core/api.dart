@@ -83,6 +83,12 @@ Future<ApiResponse> apiPost(String path, Object? body, {bool auth = true}) async
   return ApiResponse(res.statusCode, _decode(res));
 }
 
+Future<ApiResponse> apiPatch(String path, Object? body) async {
+  final headers = {'Content-Type': 'application/json', ...await apiAuthHeaders()};
+  final res = await _http.patch(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(_timeout);
+  return ApiResponse(res.statusCode, _decode(res));
+}
+
 Future<ApiResponse> apiDelete(String path, {Map<String, String?>? query}) async {
   final headers = await apiAuthHeaders();
   final res = await _http.delete(apiUri(path, query), headers: headers).timeout(_timeout);

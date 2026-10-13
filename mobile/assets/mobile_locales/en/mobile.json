@@ -1,0 +1,167 @@
+{
+  "mobileToday": {
+    "title": "Today",
+    "now": "Right now",
+    "later": "Coming up",
+    "nothingNow": "Nothing needs your attention right now.",
+    "loadFailed": "Couldn't load today's plan. Check your connection.",
+    "queuedHint": "Saved. It will be sent when you're back online.",
+    "pending": "{{count}} entries waiting to be sent",
+    "pendingRetry": "Try now",
+    "retry": "Try again",
+    "waterTitle": "Water",
+    "waterProgress": "{{ml}} / {{target}} ml",
+    "waterGoalReached": "Daily water goal reached",
+    "morningDone": "Morning routine done",
+    "eveningDone": "Evening routine done",
+    "makeupUsed": "Makeup worn",
+    "makeupRemoved": "Makeup removed",
+    "spfRefreshed": "SPF reapplied {{n}}×",
+    "checkinDoneToday": "Done for today",
+    "actions": {
+      "done": "Done",
+      "yes": "Yes, I did",
+      "no": "No",
+      "removed": "Removed it",
+      "water250": "+250 ml",
+      "water500": "+500 ml",
+      "junkYes": "Yes, I did",
+      "junkNo": "No",
+      "open": "Go to check-in"
+    },
+    "advice": {
+      "title": "For today's weather",
+      "weatherLine": "{{temp}}°C · UV {{uv}} · humidity {{humidity}}%",
+      "locationHint": "Estimated weather values are in use. Allow location access to get advice based on live weather.",
+      "source": {
+        "live": "Live weather (your location)",
+        "tracking": "Weather logged today",
+        "profile": "Your last known location",
+        "default": "Estimated values"
+      }
+    },
+    "quick": {
+      "makeup": "I wore makeup",
+      "makeupRemoved": "I removed my makeup",
+      "junk": "I had junk food"
+    },
+    "productFinished": "Product finished",
+    "productFinishedLogged": "Marked as finished",
+    "reminders": {
+      "routine_morning": {
+        "title": "Morning routine",
+        "body": "Do today's morning steps and tick them off when you're done."
+      },
+      "makeup_log": {
+        "title": "Did you wear makeup today?",
+        "body": "If you did, evening cleansing is added to your plan."
+      },
+      "water_intake": {
+        "title": "Time to drink water",
+        "body": "Daily goal {{target}} ml. Log as you drink."
+      },
+      "spf_refresh": {
+        "title": "Reapply sunscreen",
+        "body": "UV {{uv}}. If you're outside, reapply every 2 hours."
+      },
+      "lip_balm": {
+        "title": "Lip balm",
+        "body": "Cold or dry air dries out lips quickly."
+      },
+      "nutrition_log": {
+        "title": "Food log",
+        "body": "Did you have junk food or something sugary today?"
+      },
+      "makeup_removal": {
+        "title": "Remove makeup",
+        "body": "Makeup day: oil-based cleanser first, then a gel cleanser (double cleanse)."
+      },
+      "routine_evening": {
+        "title": "Evening routine",
+        "body": "Do your evening steps and tick them off when you're done."
+      },
+      "daily_checkin": {
+        "title": "Daily check-in",
+        "body": "How was your skin today? Your routine adapts to it."
+      }
+    }
+  },
+  "mobileNotifications": {
+    "promptTitle": "Get reminders as notifications",
+    "promptBody": "We can send routine, water, sunscreen and check-in reminders to your phone. You can turn them off any time.",
+    "promptEnable": "Turn on notifications",
+    "promptLater": "Not now",
+    "title": "Reminder notifications",
+    "description": "Morning / evening routine, water, sunscreen and check-in reminders.",
+    "blocked": "Notification permission is off. Allow notifications for Rebi in your phone settings.",
+    "modeLocal": "Reminders are scheduled on this phone.",
+    "modePush": "Reminders are sent from the server.",
+    "channelName": "Reminders",
+    "channelDescription": "Routine, water, sunscreen and check-in reminders"
+  },
+  "mobileProfile": {
+    "title": "My skin profile",
+    "intro": "Weather-based advice and chat are personalised with this. Fields you leave empty stay unchanged.",
+    "skinType": "Skin type",
+    "age": "Age",
+    "agePlaceholder": "13–100",
+    "gender": "Gender",
+    "city": "City",
+    "cityPlaceholder": "e.g. Istanbul",
+    "save": "Save profile",
+    "saved": "Your profile is updated.",
+    "nothingChanged": "Nothing changed.",
+    "saveFailed": "Couldn't save your profile. Check your connection and try again.",
+    "loadFailed": "Couldn't load your profile.",
+    "retry": "Try again",
+    "ageInvalid": "Age must be between 13 and 100.",
+    "notSynced": "Profiles aren't stored on the server for this account; changes won't be saved.",
+    "historyLink": "View my history"
+  },
+  "mobileHistory": {
+    "open": "My history",
+    "title": "My history",
+    "subtitle": "Your daily logs and check-ins",
+    "range7": "7 days",
+    "range30": "30 days",
+    "range90": "90 days",
+    "empty": "Nothing logged in this range. Water, makeup and check-ins show up here as you log them.",
+    "loadFailed": "Couldn't load your history. Check your connection.",
+    "retry": "Try again",
+    "notSynced": "Logs aren't stored on the server for this account; history may look empty.",
+    "summaryTitle": "Summary",
+    "summary": {
+      "recordedDays": "{{n}} days logged",
+      "checkins": "{{n}} check-ins",
+      "fullRoutine": "{{n}} days with morning + evening routine",
+      "avgWater": "Avg. water {{ml}} ml",
+      "avgSleep": "Avg. sleep {{h}} h",
+      "avgRisk": "Avg. risk {{n}}"
+    },
+    "chips": {
+      "water": "{{ml}} ml water",
+      "spf": "SPF ×{{n}}",
+      "morning": "Morning routine",
+      "evening": "Evening routine",
+      "makeupUsed": "Makeup",
+      "makeupRemoved": "Makeup removed",
+      "junk": "Junk food",
+      "products": "{{n}} products finished"
+    },
+    "checkin": {
+      "title": "Check-in",
+      "sleep": "Sleep {{h}} h",
+      "stress": "Stress {{n}}/5",
+      "risk": "Risk {{n}}"
+    },
+    "feelings": {
+      "iyi": "Good",
+      "kuru": "Dry",
+      "yagli": "Oily",
+      "kirik": "Sensitive",
+      "irritasyon": "Irritated"
+    },
+    "assessmentsTitle": "Recent analyses",
+    "severity": "Severity {{n}}"
+  }
+}

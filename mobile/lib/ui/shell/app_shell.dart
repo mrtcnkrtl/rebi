@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../core/i18n.dart';
 import '../../core/routine_tracking.dart';
 import '../../state/auth_controller.dart';
+import '../../state/notifications_controller.dart';
 import '../../state/theme_controller.dart';
 import '../components/modals.dart';
 import '../tw.dart';
@@ -207,6 +208,8 @@ class _MobileMenu extends StatelessWidget {
               item(i18n.t('nav.logout'), Tw.red500, () async {
                 onClose();
                 final router = GoRouter.of(context);
+                // Oturum kapanınca yetki gider: cihaz kaydı ve yerel bildirimler önce temizlenir.
+                await context.read<NotificationsController>().prepareSignOut();
                 await auth.signOut();
                 router.go('/');
               }),

@@ -1,15 +1,21 @@
+import 'dart:async';
+
 import 'package:uuid/uuid.dart';
 
-import 'api.dart';
 import 'demo_user.dart';
+import 'event_outbox.dart';
 
 const _uuid = Uuid();
 
 class IngestResult {
-  const IngestResult({required this.ok, this.skipped = false, this.data = const {}});
+  const IngestResult({required this.ok, this.skipped = false, this.queued = false, this.data = const {}});
 
+  /// Olay sunucuya yazıldı ya da güvenle kuyruğa alındı. false: sunucu kalıcı olarak reddetti.
   final bool ok;
   final bool skipped;
+
+  /// Sunucuya ulaşılamadı; olay cihazda bekliyor ve bağlantı gelince gönderilecek.
+  final bool queued;
   final Map<String, dynamic> data;
 }
 
@@ -27,7 +33,8 @@ String localIsoTimestamp([DateTime? at]) {
 
 /// Gün içi olay: Supabase daily_events (backend ingest). Demo kullanıcıda atlanır.
 /// Mobil sözleşmesine göre (`docs/MOBIL-API.md`) yerel zaman damgası ve tekil
-/// `client_event_id` gönderilir; ağ tekrar denemesi olayı iki kez saydırmaz.
+/// `client_event_id` gönderilir. Sunucuya ulaşılamazsa olay cihazda kuyruğa alınır
+/// ([EventOutbox]) ve aynı kimlikle yeniden denenir; ağ tekrar denemesi olayı iki kez saydırmaz.
 Future<IngestResult> ingestDailyTrackingEvent(
   String? userId,
   String type, [
@@ -36,17 +43,25 @@ Future<IngestResult> ingestDailyTrackingEvent(
   if (userId == null || userId.isEmpty || userId == demoUserId) {
     return const IngestResult(ok: true, skipped: true);
   }
-  try {
-    final res = await apiPost('/daily_tracking/ingest', {
-      'user_id': userId,
-      'type': type,
-      'payload': payload,
-      'source': 'mobile',
-      'timestamp': localIsoTimestamp(),
-      'client_event_id': _uuid.v4(),
-    });
-    return IngestResult(ok: res.ok, data: res.data);
-  } catch (_) {
-    return const IngestResult(ok: false);
+  final outbox = EventOutbox.instance;
+  final event = OutboxEvent(
+    id: _uuid.v4(),
+    userId: userId,
+    type: type,
+    payload: payload,
+    timestamp: localIsoTimestamp(),
+    queuedAt: DateTime.now().millisecondsSinceEpoch,
+  );
+  final delivery = await outbox.send(event);
+  switch (delivery.kind) {
+    case DeliveryKind.delivered:
+      // Bağlantı çalışıyor: önceden birikmiş olaylar varsa onları da gönder.
+      if (outbox.pendingCount(userId) > 0) unawaited(outbox.flush(userId));
+      return IngestResult(ok: true, data: delivery.data);
+    case DeliveryKind.retry:
+      await outbox.add(event);
+      return const IngestResult(ok: true, queued: true);
+    case DeliveryKind.drop:
+      return const IngestResult(ok: false);
   }
 }

@@ -10,12 +10,20 @@ import 'package:http/testing.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
 import 'package:rebi/core/api.dart';
+import 'package:rebi/core/consent_recovery.dart';
+import 'package:rebi/core/event_outbox.dart';
+import 'package:rebi/core/notification_ports.dart';
 import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/local_store.dart';
 import 'package:rebi/router.dart';
 import 'package:rebi/state/auth_controller.dart';
+import 'package:rebi/state/home_sync_controller.dart';
+import 'package:rebi/state/notifications_controller.dart';
+import 'package:rebi/state/outbox_sync_controller.dart';
 import 'package:rebi/state/theme_controller.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'notification_fakes.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show User;
 
 const testUserId = '7c1e2d3a-0000-4000-8000-00000000abcd';
@@ -34,6 +42,103 @@ class FakeBackend {
   bool consentMissing = false;
   Map<String, dynamic> checkinStatus = {'already_checked_in': false, 'log_date': '2026-10-10'};
 
+  /// `GET /me/snapshot` yanıtı; testler istediği alanı değiştirir.
+  Map<String, dynamic> snapshot = {
+    'user_id': testUserId,
+    'server_time': '2026-10-10T10:00:00Z',
+    'log_date': '2026-10-10',
+    'profile': <String, dynamic>{},
+    'has_routine': false,
+    'routine': <dynamic>[],
+    'routine_created_at': null,
+    'progress': <String, dynamic>{},
+    'checkin_done': false,
+    'chat_cursor': null,
+    'consent': {
+      'legal_version': 'v2',
+      'legal_accepted': true,
+      'ai_processing_allowed': true,
+      'location_processing_allowed': false,
+      'photo_processing_allowed': false,
+    },
+    'plus': false,
+    'synced': true,
+  };
+
+  /// `GET /today/plan` yanıtı; su toplamı `waterMl` ile birlikte güncel tutulur.
+  Map<String, dynamic> todayPlan = {
+    'user_id': testUserId,
+    'log_date': '2026-10-10',
+    'has_routine': false,
+    'routine': <dynamic>[],
+    'weather': {'uv_index': 3, 'humidity': 50, 'temperature': 20},
+    'weather_source': 'default',
+    'environment_advice': <dynamic>[],
+    'reminders': <dynamic>[],
+    'progress': <String, dynamic>{},
+    'checkin_done': false,
+  };
+
+  /// Açılış paketi isteği hata (ör. çevrimdışı sunucu) döndürsün.
+  bool snapshotFails = false;
+
+  /// Günün planı isteği hata döndürsün.
+  bool planFails = false;
+
+  /// Sunucudaki bugünkü su toplamı; `water_intake` kayıtlarıyla artar.
+  int waterMl = 0;
+
+  /// `POST /devices/register` yanıtındaki `push_configured` (sunucuda FCM açık mı).
+  bool pushConfigured = false;
+
+  /// Cihaz kaydı uçlarına ağ yokmuş gibi davranır.
+  bool devicesOffline = false;
+
+  /// `GET /me/profile` içeriği; `PATCH` gelen alanları buna işler.
+  Map<String, dynamic> profile = {
+    'full_name': 'Ayşe Test',
+    'skin_type': 'dry',
+    'age': 29,
+    'gender': 'female',
+    'city': 'İstanbul',
+    'updated_at': '2026-10-01T10:00:00Z',
+  };
+
+  /// Profil yanıtlarındaki `synced` (false: kullanıcı verisi sunucuda tutulmuyor).
+  bool profileSynced = true;
+
+  /// `GET /me/profile` hata döndürsün.
+  bool profileFails = false;
+
+  /// Profil uçlarına ağ yokmuş gibi davranır (bağlantı hatası fırlatır).
+  bool profileOffline = false;
+
+  /// Doluysa `PATCH /me/profile` bu durum koduyla (ve `profilePatchDetail` ile) yanıtlanır.
+  int? profilePatchStatus;
+  String profilePatchDetail = 'Geçersiz değer.';
+
+  /// `GET /me/history` içeriği.
+  Map<String, dynamic> history = {
+    'user_id': testUserId,
+    'from_date': '2026-09-11',
+    'to_date': '2026-10-10',
+    'days': <dynamic>[],
+    'assessments': <dynamic>[],
+    'synced': true,
+  };
+
+  /// `GET /me/history` hata döndürsün.
+  bool historyFails = false;
+
+  /// Gün içi kayıt uçlarına ağ yokmuş gibi davranır (istek atılır, bağlantı hatası döner).
+  bool ingestOffline = false;
+
+  /// Doluysa gün içi kayıt bu durum koduyla yanıtlanır (ör. 500 geçici, 422 kalıcı hata).
+  int? ingestStatus;
+
+  /// Sunucuya yazılan olayların `client_event_id` değerleri (tekrar gelenler yazılmaz).
+  final Set<String> storedEventIds = {};
+
   /// API tabanındaki `/api` öneki atılır (varsayılan taban canlı adres: `…/api`).
   static String pathOf(http.BaseRequest r) => r.url.path.replaceFirst(RegExp('^/api'), '');
 
@@ -47,6 +152,37 @@ class FakeBackend {
         http.Response ok(Object body) =>
             http.Response.bytes(utf8.encode(jsonEncode(body)), 200, headers: {'content-type': 'application/json'});
         switch ('${req.method} ${pathOf(req)}') {
+          case 'GET /me/profile':
+            if (profileOffline) throw const SocketException('çevrimdışı');
+            if (profileFails) return http.Response('{"detail":"hata"}', 502);
+            return ok({'user_id': testUserId, ...profile, 'synced': profileSynced});
+          case 'PATCH /me/profile':
+            if (profileOffline) throw const SocketException('çevrimdışı');
+            if (profilePatchStatus != null) {
+              return http.Response.bytes(utf8.encode(jsonEncode({'detail': profilePatchDetail})), profilePatchStatus!,
+                  headers: {'content-type': 'application/json'});
+            }
+            final patch = (jsonDecode(req.body) as Map).cast<String, dynamic>()..remove('user_id');
+            profile = {...profile, ...patch};
+            return ok({'user_id': testUserId, ...profile, 'synced': profileSynced});
+          case 'GET /me/history':
+            if (historyFails) return http.Response('{"detail":"hata"}', 502);
+            return ok(history);
+          case 'POST /devices/register':
+            if (devicesOffline) throw const SocketException('çevrimdışı');
+            return ok({'ok': true, 'push_configured': pushConfigured, 'synced': true});
+          case 'DELETE /devices/register':
+            if (devicesOffline) throw const SocketException('çevrimdışı');
+            return ok({'ok': true});
+          case 'GET /me/snapshot':
+            if (snapshotFails) return http.Response('{"detail":"hata"}', 502);
+            return ok(snapshot);
+          case 'GET /today/plan':
+            if (planFails) return http.Response('{"detail":"hata"}', 502);
+            return ok({
+              ...todayPlan,
+              'progress': {...(todayPlan['progress'] as Map).cast<String, dynamic>(), 'water_ml_total': waterMl},
+            });
           case 'GET /chat_usage':
             return ok({'kind': 'free_daily', 'remaining': 4, 'limit': 5, 'period': 'day'});
           case 'GET /chat/history':
@@ -88,7 +224,17 @@ class FakeBackend {
               'today_routine': routineFixture['routine'],
             });
           case 'POST /daily_tracking/ingest':
-            return ok({'ok': true, 'log_date': '2026-10-10', 'aggregated': {}});
+            if (ingestOffline) throw const SocketException('çevrimdışı');
+            if (ingestStatus != null) return http.Response('{"detail":"hata"}', ingestStatus!);
+            final sent = (jsonDecode(req.body) as Map).cast<String, dynamic>();
+            // Sunucu aynı client_event_id'yi ikinci kez yazmaz (docs/MOBIL-API.md).
+            final fresh = storedEventIds.add('${sent['client_event_id']}');
+            if (fresh && sent['type'] == 'water_intake') waterMl += ((sent['payload'] as Map)['ml'] as num).toInt();
+            return ok({
+              'ok': true,
+              'log_date': '2026-10-10',
+              'aggregated': {'water_ml_total': waterMl},
+            });
           case 'POST /legal-consent/accept':
             consentMissing = false;
             return ok({'ok': true, 'accepted_at': '2026-10-10T10:00:00Z'});
@@ -97,8 +243,61 @@ class FakeBackend {
       });
 }
 
-User fakeUser({Map<String, dynamic> appMetadata = const {}}) => User(
-      id: testUserId,
+/// Birim testlerinde (widget çizmeden) çeviri sözlüklerini yükler.
+void loadTestI18n([String lang = 'tr']) {
+  Map<String, Map<String, dynamic>> read(String dir, String name, List<String> langs) =>
+      {for (final l in langs) l: _json('assets/$dir/$l/$name.json')};
+  I18n.instance.debugLoad(
+    common: read('locales', 'common', ['tr', 'en']),
+    analyzeWizard: read('locales', 'analyzeWizard', ['tr', 'en']),
+    mobile: read('mobile_locales', 'mobile', ['tr', 'en']),
+    lang: lang,
+  );
+}
+
+/// Tek bir bileşeni (Supabase gerektiren tam ekran olmadan) kullanıcı oturumu, çeviriler ve
+/// sahte sunucuyla çizer.
+Future<FakeBackend> pumpStandalone(
+  WidgetTester tester,
+  Widget Function(RebiTheme theme) build, {
+  FakeBackend? backend,
+  String lang = 'tr',
+  Size size = const Size(390, 844),
+  Map<String, Object> prefs = const {},
+}) async {
+  tester.view.physicalSize = size * 3;
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+  SharedPreferences.setMockInitialValues({'rebi-lang': lang, ...prefs});
+  await tester.runAsync(() async {
+    await LocalStore.init();
+    await initializeDateFormatting();
+  });
+  loadTestI18n(lang);
+  final fb = backend ?? FakeBackend();
+  apiHttpClient = fb.client;
+  final auth = AuthController()..debugSetUser(fakeUser());
+  addTearDown(auth.dispose);
+  final theme = ThemeController(auth);
+  await tester.pumpWidget(MultiProvider(
+    providers: [
+      ChangeNotifierProvider<I18n>.value(value: I18n.instance),
+      ChangeNotifierProvider<AuthController>.value(value: auth),
+      ChangeNotifierProvider<ThemeController>.value(value: theme),
+    ],
+    child: MaterialApp(
+      locale: Locale(lang),
+      supportedLocales: [for (final l in supportedLangs) Locale(l)],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      home: Scaffold(body: SingleChildScrollView(child: build(theme.theme))),
+    ),
+  ));
+  await settle(tester);
+  return fb;
+}
+
+User fakeUser({Map<String, dynamic> appMetadata = const {}, String id = testUserId}) => User(
+      id: id,
       appMetadata: appMetadata,
       userMetadata: const {'full_name': 'Ayşe Test'},
       aud: 'authenticated',
@@ -107,12 +306,16 @@ User fakeUser({Map<String, dynamic> appMetadata = const {}}) => User(
     );
 
 class Harness {
-  Harness(this.auth, this.theme, this.router, this.backend);
+  Harness(this.auth, this.theme, this.router, this.backend, this.sync, this.outbox, this.notifications, this.notifier);
 
   final AuthController auth;
   final ThemeController theme;
   final GoRouter router;
   final FakeBackend backend;
+  final HomeSyncController sync;
+  final OutboxSyncController outbox;
+  final NotificationsController notifications;
+  final FakeReminderNotifier notifier;
 }
 
 /// Uygulamanın gerçek yönlendirme + kabuk + ekranlarını telefon boyutunda (390×844) kurar.
@@ -126,12 +329,16 @@ Future<Harness> pumpApp(
   bool acknowledgeAi = true,
   String lang = 'tr',
   FakeBackend? backend,
+  FakeReminderNotifier? notifier,
+  PushClient? push,
   Size size = const Size(390, 844),
 }) async {
   tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
   addTearDown(tester.view.reset);
 
+  resetConsentRecovery();
+  EventOutbox.instance.debugReset();
   SharedPreferences.setMockInitialValues({
     if (acknowledgeAi) 'rebi-ai-disclaimer-ack-v1': '1',
     'rebi-lang': lang,
@@ -149,6 +356,9 @@ Future<Harness> pumpApp(
       common: ns('common'),
       analyzeWizard: ns('analyzeWizard'),
       severityTests: ns('severityTests'),
+      mobile: {
+        for (final l in const ['tr', 'en']) l: _json('assets/mobile_locales/$l/mobile.json'),
+      },
       lang: lang,
     );
   });
@@ -156,6 +366,19 @@ Future<Harness> pumpApp(
   final auth = AuthController();
   if (loggedIn) auth.debugSetUser(user ?? fakeUser());
   final theme = ThemeController(auth);
+  final sync = HomeSyncController(auth);
+  addTearDown(sync.dispose);
+  final outbox = OutboxSyncController(auth, retryDelays: const []);
+  addTearDown(outbox.dispose);
+  // Varsayılan: bildirimler bu platformda desteklenmiyor (öneri kartı çıkmaz); ilgili testler destekli sahte verir.
+  final fakeNotifier = notifier ?? FakeReminderNotifier(supported: false);
+  final notifications = NotificationsController(
+    auth,
+    notifier: fakeNotifier,
+    push: push ?? const NoPushClient(),
+    platform: () => 'android',
+  );
+  addTearDown(notifications.dispose);
   final router = buildRouter(auth);
 
   await tester.pumpWidget(MultiProvider(
@@ -163,6 +386,9 @@ Future<Harness> pumpApp(
       ChangeNotifierProvider<I18n>.value(value: I18n.instance),
       ChangeNotifierProvider<AuthController>.value(value: auth),
       ChangeNotifierProvider<ThemeController>.value(value: theme),
+      ChangeNotifierProvider<HomeSyncController>.value(value: sync),
+      ChangeNotifierProvider<OutboxSyncController>.value(value: outbox),
+      ChangeNotifierProvider<NotificationsController>.value(value: notifications),
     ],
     child: Consumer<I18n>(
       builder: (context, i18n, _) => MaterialApp.router(
@@ -176,7 +402,7 @@ Future<Harness> pumpApp(
   ));
   router.go(location, extra: extra);
   await settle(tester);
-  return Harness(auth, theme, router, fb);
+  return Harness(auth, theme, router, fb, sync, outbox, notifications, fakeNotifier);
 }
 
 /// Sonsuz animasyonlar (landing) yüzünden `pumpAndSettle` yerine sabit kare ilerletir.

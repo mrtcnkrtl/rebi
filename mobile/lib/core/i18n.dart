@@ -24,6 +24,9 @@ class I18n extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _analyzeWizard = {};
   final Map<String, Map<String, dynamic>> _severityTests = {};
 
+  /// Yalnızca mobilde olan metinler (`assets/mobile_locales`); web ile eşitleme testine girmez.
+  final Map<String, Map<String, dynamic>> _mobile = {};
+
   String _lang = 'tr';
 
   /// Webdeki `i18n.resolvedLanguage`.
@@ -37,6 +40,7 @@ class I18n extends ChangeNotifier {
       _common[lng] = await _load(lng, 'common');
       _analyzeWizard[lng] = await _load(lng, 'analyzeWizard');
       _severityTests[lng] = await _load(lng, 'severityTests');
+      _mobile[lng] = await _load(lng, 'mobile', dir: 'mobile_locales');
     }
     _lang = _detect();
     // i18next `caches: ["localStorage"]`: algılanan dil saklanır.
@@ -49,6 +53,7 @@ class I18n extends ChangeNotifier {
     required Map<String, Map<String, dynamic>> common,
     Map<String, Map<String, dynamic>> analyzeWizard = const {},
     Map<String, Map<String, dynamic>> severityTests = const {},
+    Map<String, Map<String, dynamic>> mobile = const {},
     String lang = 'tr',
   }) {
     _common
@@ -60,12 +65,15 @@ class I18n extends ChangeNotifier {
     _severityTests
       ..clear()
       ..addAll(severityTests);
+    _mobile
+      ..clear()
+      ..addAll(mobile);
     _lang = lang;
   }
 
-  static Future<Map<String, dynamic>> _load(String lng, String ns) async {
+  static Future<Map<String, dynamic>> _load(String lng, String ns, {String dir = 'locales'}) async {
     try {
-      final raw = await rootBundle.loadString('assets/locales/$lng/$ns.json');
+      final raw = await rootBundle.loadString('assets/$dir/$lng/$ns.json');
       return (jsonDecode(raw) as Map).cast<String, dynamic>();
     } catch (_) {
       return {};
@@ -110,9 +118,10 @@ class I18n extends ChangeNotifier {
   }
 
   dynamic _resolve(String key) {
-    final v = _lookup(_common[_lang], key);
-    if (v != null) return v;
-    return _lookup(_common[_fallbackLang], key);
+    return _lookup(_common[_lang], key) ??
+        _lookup(_mobile[_lang], key) ??
+        _lookup(_common[_fallbackLang], key) ??
+        _lookup(_mobile[_fallbackLang], key);
   }
 
   /// `t("chat.usageBadgeDay", {rem: 3, lim: 5})`

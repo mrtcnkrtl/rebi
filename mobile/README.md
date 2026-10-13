@@ -42,6 +42,16 @@ flutter test
   telefon / tablet boyutlarında taşma kontrolü. API çağrıları sahte istemciyle yakalanır ve
   gövdelerin web ile aynı alanları taşıdığı doğrulanır.
 - `test/web_sync_test.dart` — çeviri dosyaları ve KVKK/açık rıza metinleri web ile birebir aynı mı.
+- `test/today_plan_test.dart` — `/today/plan` ve `/me/snapshot` yanıtlarının ayrıştırılması, hatırlatıcı
+  pencereleri ve hatırlatıcı → olay eşlemesi.
+- `test/home_sync_test.dart` — açılış paketi denetleyicisi (oturum, rıza, giriş akışı beklemesi, demo kullanıcı).
+- `test/reminder_schedule_test.dart`, `test/notifications_controller_test.dart`, `test/notification_screens_test.dart` —
+  hatırlatma zamanlaması, bildirim denetleyicisi (izin, cihaz kaydı, çift bildirim önleme, dokunma yönlendirmesi)
+  ve öneri kartı / profil anahtarı. Gerçek bildirim eklentisi yerine sahteleri kullanır.
+- `test/profile_history_core_test.dart`, `test/profile_history_screens_test.dart` — profil / geçmiş yanıtlarının
+  ayrıştırılması, özet hesabı, profil formu (yalnızca değişen alanlar, doğrulama, hata durumları) ve geçmiş ekranı.
+- `test/today_screens_test.dart` — panelin "bugün" bölümü: hatırlatıcılar, su, hızlı kayıt, ürün bitti,
+  konum izni, hata durumu, küçük ekran.
 
 ## Web ile ortak içerik
 
@@ -50,6 +60,9 @@ flutter test
 - **KVKK / açık rıza metinleri:** `frontend/src/lib/legalTexts.js` ↔ `lib/core/legal_texts.dart`.
   İkisini birlikte güncelleyin; test farkı yakalar.
 - **Tema tanımları:** `frontend/src/context/ThemeContext.jsx` ↔ `lib/state/theme_controller.dart`.
+- **Yalnızca mobilde olan metinler:** `assets/mobile_locales/{tr,en}/mobile.json` (`mobileToday.*`).
+  Web'de karşılığı yoktur; `tool/sync_locales.sh` bu klasöre dokunmaz, `web_sync_test` karşılaştırmaz.
+  Yer tutucu biçimi webdeki gibi `{{ad}}`'dır.
 
 ## Yapı
 
@@ -69,6 +82,82 @@ flutter test
 Cihazda tutulan veriler (rutin kabulü, check-in serisi, sohbet önbelleği) web'deki
 `localStorage` anahtarlarıyla aynı adları kullanır; hesap silmede `core/privacy_storage.dart`
 hepsini temizler.
+
+## Mobil API entegrasyonu
+
+`docs/MOBIL-API.md` sözleşmesinin uygulama durumu:
+
+| Sözleşme | Durum | Nerede |
+| --- | --- | --- |
+| `GET /me/snapshot` — açılış paketi (rutin, rıza, ilerleme) | var | `state/home_sync_controller.dart`; panel her açıldığında tazeler |
+| Rıza eksikse onay kutusu | var | snapshot `consent` → `core/consent_recovery.dart` |
+| `GET /today/plan` — rutin, havaya göre öneri, hatırlatıcı, ilerleme | var | `state/today_plan_controller.dart`, `screens/dashboard_today.dart` |
+| Canlı hava için `lat`/`lon` | var, izin sorulmaz | `core/device_location.dart` (yalnızca konum izni ve rıza varsa) |
+| `POST /daily_tracking/ingest` — su, makyaj, SPF, beslenme, rutin, ürün bitti | var | `core/daily_tracking.dart` |
+| Çevrimdışı kuyruk (tekrar deneme) | var | `core/event_outbox.dart` (kalıcı kuyruk), `state/outbox_sync_controller.dart` (ne zaman gönderileceği) |
+| `POST /devices/register`, push / yerel bildirim | var; push için Firebase dosyaları gerekir | `state/notifications_controller.dart`, `core/local_notifications.dart`, `core/firebase_push.dart` |
+| `GET/PATCH /me/profile` — cilt tipi, yaş, cinsiyet, şehir | var | `core/user_profile.dart`, `ui/components/profile_details_card.dart` (Profil ekranı) |
+| `GET /me/history` — geçmiş günler, check-in'ler, son analizler | var | `core/user_history.dart`, `screens/history_screen.dart` (`/dashboard/history`; Profil ve panelden açılır) |
+
+### Çevrimdışı kuyruk
+
+Gün içi kayıtlar önce doğrudan gönderilir. Sunucuya ulaşılamazsa (bağlantı yok, zaman aşımı, 5xx, 429, 401)
+olay cihazda kuyruğa alınır ve kullanıcıya "kaydedildi" denir; panelde ilerleme hemen güncellenir ve
+"N kayıt gönderilmeyi bekliyor" satırı çıkar. Kuralları:
+
+- Kimlik (`client_event_id`) ve zaman damgası kullanıcı işlemi yaptığı anda üretilir, yeniden denemelerde
+  değişmez; sunucu aynı kimliği ikinci kez yazmaz. Bu yüzden "yazıldı ama yanıt gelmedi" durumunda da
+  su miktarı iki kez sayılmaz.
+- Sunucu olayı gününe, olayın zaman damgasına göre (UTC tarihi) yazar; dünden kalan kayıt dünün özetine girer.
+- Gönderim eskiden yeniye sırayla yapılır ve ilk geçici hatada durur. Zamanlayıcı 30 sn → 1 dk → 2 dk → 5 dk
+  aralıklarla dener; ayrıca oturum açılınca, uygulama öne gelince ve "Şimdi dene" ile.
+- Kalıcı reddedilen (400/403/404/422…) olay kuyruğu tıkamasın diye düşürülür. Kuyruk kullanıcı başınadır;
+  en fazla 200 olay, 7 gün ve 30 deneme tutulur. Hesap silinince kuyruk da silinir.
+- Bağlantı durumu eklentisi yoktur: gönderim başarısızsa ağ yok sayılır.
+- Yalnızca gün içi kayıtlar kuyruğa girer. Check-in ve analiz gibi yapay zekâ çağrıları çevrimdışı çalışmaz.
+
+### Profil ve geçmiş
+
+- **Cilt profilim** (Profil ekranı): cilt tipi, yaş, cinsiyet ve şehir `GET /me/profile` ile yüklenir, `PATCH /me/profile`
+  ile kaydedilir. Yalnızca değişen alanlar gönderilir (sunucu `null` alanlara dokunmaz); şehir silinirse boş metin gider.
+  Yaş sunucuda 13–100'e sabitlenir; sessizce değişmesin diye istemci baştan uyarır. Cilt tipi, bir sonraki panel
+  açılışında havaya göre önerileri ve sohbeti etkiler. Görünen ad kaydedilince sunucudaki profil adı da güncellenir.
+- **Geçmişim** (`/dashboard/history`): 7 / 30 / 90 gün; her gün için su, SPF, rutin, makyaj, beslenme, "ürün bitti" ve
+  check-in (cilt hissi, uyku, stres, risk), üstte özet ve altta son analizler. Gün içi kayıt ve check-in'i olmayan
+  günler listelenmez. Çevrimdışı kuyrukta bekleyen kayıtlar sunucuya ulaşana kadar burada görünmez.
+
+### Bildirimler
+
+Bildirimler kullanıcı panelde ya da Profil'de açana kadar **kapalıdır**. İki yol vardır, aynı anda çalışmaz:
+
+- **Yerel bildirim** (`flutter_local_notifications`): sunucuda FCM yoksa ya da bu derlemede Firebase kapalıysa
+  bugünün kalan hatırlatıcıları ve yarının koşulsuz olanları (sabah / akşam rutini, su, makyaj ve beslenme kaydı,
+  check-in) telefona kurulur. Plan her değiştiğinde (yeni kayıt, uygulama açılışı) liste baştan kurulur; yapılan iş
+  listeden düşer. Tam saatli alarm izni istenmez, bildirim birkaç dakika kayabilir. Havaya bağlı olanlar (SPF, dudak
+  balsamı) yalnızca uygulama açıkken bilinen gerçek planla kurulur.
+- **Sunucu push'u** (FCM): cihaz `POST /devices/register` ile kaydolur (`utc_offset_minutes`, dil, sürüm,
+  `push_enabled`; uygulama her açılışta ve anahtar yenilenince yeniden kaydeder). Yanıttaki `push_configured`
+  true ise hatırlatıcıları sunucu gönderir ve yerel bildirimler silinir. Çıkışta cihaz `DELETE /devices/register`
+  ile kaldırılır.
+
+Bildirime dokunmak ilgili ekranı açar (`daily_checkin` → check-in, diğerleri → panel); uygulama kapalıyken
+bildirimle açıldıysa ilk ekran odur.
+
+**Firebase'i açmak** (push için; yerel bildirimler bunsuz da çalışır):
+
+1. Firebase konsolunda Android (`com.rebiovil.rebi`) ve iOS (`com.rebiovil.rebi`) uygulamalarını ekleyin.
+2. `google-services.json` → `android/app/`, `GoogleService-Info.plist` → `ios/Runner/` (Xcode'da Runner hedefine ekleyin).
+   Android'de dosya varsa Google Services eklentisi kendiliğinden uygulanır, yoksa atlanır.
+3. iOS (Mac gerekir): Xcode → Runner → Signing & Capabilities → **Push Notifications** ekleyin; Firebase konsoluna
+   bir APNs anahtarı (.p8) yükleyin; `cd ios && pod install` çalıştırıp `Podfile.lock`u commit'leyin.
+4. Derlerken `env/dev.json`a `"FIREBASE_ENABLED": true` ekleyin. Bu bayrak olmadan Firebase hiç başlatılmaz
+   (iOS'ta plist yokken başlatmak uygulamayı çökertir).
+5. Sunucuda `FCM_SERVICE_ACCOUNT_JSON` ve `PUSH_DISPATCH_SECRET` tanımlı olmalı (`docs/MOBIL-API.md`).
+
+Panel açılışta önce `/me/snapshot` ister; alınamazsa rutini doğrudan Supabase'den, o da olmazsa
+cihazdaki kopyadan okur. `/today/plan` yüklenemezse panelin geri kalanı çalışmaya devam eder.
+Havaya göre öneri metinleri sunucudan Türkçe gelir; İngilizce arayüzde de olduğu gibi gösterilir
+(hatırlatıcı başlıkları ise çevrilir).
 
 ## Bilinçli platform farkları
 
@@ -91,5 +180,5 @@ hepsini temizler.
 - İkonlar web'deki marka görselinden üretilir: `dart run flutter_launcher_icons`.
 - Android release imzası henüz tanımlı değil (`android/app/build.gradle.kts` debug anahtarıyla
   imzalar); mağazaya çıkmadan önce yükleme anahtarı eklenmeli.
-- Push bildirimleri (FCM) backend'de hazır (`/devices/register`, `docs/MOBIL-API.md`); mobilde
-  Firebase kurulumu sonraki geliştirme adımıdır.
+- Push bildirimleri (FCM): uygulama tarafı hazır, Firebase proje dosyaları eklenip `FIREBASE_ENABLED=true`
+  verilince açılır (ayrıntı: "Mobil API entegrasyonu → Bildirimler").

@@ -1,4 +1,5 @@
 import 'api.dart';
+import 'consent_recovery.dart';
 import 'local_store.dart';
 
 /// Sürümlü KVKK + açık rıza kaydı. Asıl kanıt backend tablosundadır.
@@ -42,5 +43,6 @@ Future<Map<String, dynamic>> recordLegalConsent(String? userId, ConsentPermissio
   });
   if (!res.ok) throw Exception(detailOr(res.data, 'Rıza kaydı oluşturulamadı.'));
   await saveLegalConsent(userId, res.data['accepted_at']?.toString(), p);
+  notifyConsentChanged();
   return res.data;
 }

@@ -47,6 +47,11 @@ dependencies:
   lucide_icons_flutter: ^3.1.24
   intl: ^0.20.3
   uuid: ^4.6.0
+  flutter_local_notifications: ^22.3.2
+  timezone: ^0.11.2
+  firebase_core: ^4.15.0
+  firebase_messaging: ^16.7.0
+  package_info_plus: ^10.2.2
 
 dev_dependencies:
   flutter_test:
@@ -79,6 +84,9 @@ flutter:
     - assets/locales/fr/
     - assets/locales/it/
     - assets/locales/pt/
+    # Yalnızca mobilde olan metinler (web'de karşılığı yok; sync_locales.sh bu klasöre dokunmaz).
+    - assets/mobile_locales/tr/
+    - assets/mobile_locales/en/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

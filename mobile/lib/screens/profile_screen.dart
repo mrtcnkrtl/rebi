@@ -14,8 +14,11 @@ import '../core/privacy_preferences.dart';
 import '../core/privacy_storage.dart';
 import '../core/routine_tracking.dart';
 import '../core/subscription.dart';
+import '../core/user_profile.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/components/notification_widgets.dart';
+import '../ui/components/profile_details_card.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 
@@ -200,6 +203,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final trimmed = _displayName.text.trim();
       await client.auth.updateUser(UserAttributes(data: {'full_name': trimmed.isEmpty ? null : trimmed}));
       await auth.refreshUser();
+      // Sunucudaki profil kaydındaki ad da güncellensin (en iyi çaba; ad zaten oturumda güncellendi).
+      final uid = auth.user?.id;
+      if (uid != null && uid != demoUserId && trimmed.isNotEmpty) {
+        try {
+          await updateMyProfile(uid, ProfileUpdate(fullName: trimmed));
+        } catch (_) {
+          /* çevrimdışı: bir sonraki analizde sunucu adı yine yazar */
+        }
+      }
       if (mounted) setState(() => _profileMsg = ('ok', 'Bilgilerin güncellendi.'));
     } on AuthException catch (e) {
       if (mounted) setState(() => _profileMsg = ('err', e.message.isEmpty ? 'Kaydedilemedi.' : e.message));
@@ -525,6 +537,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         if (uid != null && uid != demoUserId) ...[
+          gap,
+          ProfileDetailsCard(theme: theme),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextLink(
+              i18n.t('mobileProfile.historyLink'),
+              onTap: () => context.push('/dashboard/history'),
+              style: tx(14, w: 6, c: theme.primary),
+            ),
+          ),
+          gap,
+          NotificationSettingsCard(theme: theme),
           gap,
           RCard(
             padding: const EdgeInsets.all(16),
