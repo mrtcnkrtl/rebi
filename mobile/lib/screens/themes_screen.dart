@@ -105,12 +105,14 @@ class ThemesScreen extends StatelessWidget {
                           child: const Icon(LucideIcons.sparkles, size: 20, color: Colors.white),
                         ),
                         const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Sabah Rutini', style: tx(14, w: 7)),
-                            Text('3 adım', style: tx(11, c: Tw.gray500)),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Sabah Rutini', style: tx(14, w: 7)),
+                              Text('3 adım', style: tx(11, c: Tw.gray500)),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -150,7 +152,7 @@ class _PreviewRow extends StatelessWidget {
           children: [
             Text(emoji),
             const SizedBox(width: 8),
-            Text(label, style: tx(12, w: 5, c: theme.primaryDark)),
+            Expanded(child: Text(label, overflow: TextOverflow.ellipsis, style: tx(12, w: 5, c: theme.primaryDark))),
           ],
         ),
       );

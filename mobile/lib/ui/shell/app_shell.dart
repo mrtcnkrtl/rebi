@@ -288,11 +288,12 @@ class LanguageSelect extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final i18n = context.i18n;
-    return Row(
-      mainAxisSize: MainAxisSize.min,
+    return Wrap(
+      crossAxisAlignment: WrapCrossAlignment.center,
+      spacing: 8,
+      runSpacing: 6,
       children: [
         Text(i18n.t('lang.label'), style: tx(11, w: 6, c: Tw.gray500)),
-        const SizedBox(width: 8),
         Container(
           height: 30,
           padding: const EdgeInsets.symmetric(horizontal: 8),

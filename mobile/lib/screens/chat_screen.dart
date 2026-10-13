@@ -564,6 +564,14 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
+    // Büyük yazı boyutunda dipnotlar ekranı kaplamasın: çubuk ekranın %42'siyle sınırlı, taşarsa kayar.
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .42),
+      child: SingleChildScrollView(child: _inputBarBody(i18n, theme, canSend, footer)),
+    );
+  }
+
+  Widget _inputBarBody(I18n i18n, RebiTheme theme, bool canSend, Widget footer) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
       decoration: BoxDecoration(

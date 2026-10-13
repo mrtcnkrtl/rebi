@@ -151,23 +151,21 @@ class _RoutineChecklistCardState extends State<RoutineChecklistCard> {
           onTap: () => widget.actions.chooseBlock(block),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                emojiText(block == 'morning' ? '☀️' : '🌙', 14),
-                const SizedBox(width: 6),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(label, style: tx(13, w: 6, c: selected ? Colors.white : theme.primaryDark)),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                if (done)
-                  Icon(LucideIcons.circleCheck, size: 14, color: selected ? Colors.white : Tw.emerald700)
-                else if (items.isNotEmpty)
-                  Text('$count/${items.length}', style: tx(11, w: 6, c: selected ? Colors.white70 : Tw.gray500)),
-              ],
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  emojiText(block == 'morning' ? '☀️' : '🌙', 14),
+                  const SizedBox(width: 6),
+                  Text(label, style: tx(13, w: 6, c: selected ? Colors.white : theme.primaryDark)),
+                  const SizedBox(width: 6),
+                  if (done)
+                    Icon(LucideIcons.circleCheck, size: 14, color: selected ? Colors.white : Tw.emerald700)
+                  else if (items.isNotEmpty)
+                    Text('$count/${items.length}', style: tx(11, w: 6, c: selected ? Colors.white70 : Tw.gray500)),
+                ],
+              ),
             ),
           ),
         ),

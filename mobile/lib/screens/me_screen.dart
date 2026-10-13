@@ -81,7 +81,7 @@ class MeScreen extends StatelessWidget {
         RCard(
           padding: const EdgeInsets.all(14),
           radius: 20,
-          child: const Row(children: [LanguageSelect()]),
+          child: const Align(alignment: Alignment.centerLeft, child: LanguageSelect()),
         ),
         const SizedBox(height: 24),
         SecondaryButton(
