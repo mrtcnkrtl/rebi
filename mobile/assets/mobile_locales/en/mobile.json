@@ -440,5 +440,8 @@
       "generic2": "What is the skin barrier and how do I strengthen it?",
       "generic3": "How should I start using retinol?"
     }
+  },
+  "mobileCheckin": {
+    "prefilled": "{{n}} answers were filled in from today's tracking. Change them if you like."
   }
 }

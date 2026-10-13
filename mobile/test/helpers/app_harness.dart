@@ -106,6 +106,9 @@ class FakeBackend {
   /// Günün planı isteği hata döndürsün.
   bool planFails = false;
 
+  /// `GET /daily_tracking/today` (check-in ön doldurma) hata döndürsün.
+  bool trackingTodayFails = false;
+
   /// Doluysa `GET /today/plan` bu tamamlanana kadar yanıt vermez (yükleniyor durumunu görmek için).
   Completer<void>? planGate;
 
@@ -271,6 +274,9 @@ class FakeBackend {
               },
             };
             return ok({'user_id': testUserId, 'settings': reminderSettings, 'synced': true});
+          case 'GET /daily_tracking/today':
+            if (trackingTodayFails) return http.Response('{"detail":"hata"}', 502);
+            return ok({'user_id': testUserId, 'log_date': '2026-10-10', 'aggregated': progress, 'events': <dynamic>[]});
           case 'GET /me/history':
             if (historyFails) return http.Response('{"detail":"hata"}', 502);
             return ok(history);

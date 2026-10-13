@@ -440,5 +440,8 @@
       "generic2": "Nem bariyeri nedir, nasıl güçlendirilir?",
       "generic3": "Retinole nasıl başlamalıyım?"
     }
+  },
+  "mobileCheckin": {
+    "prefilled": "Bugünkü takip kayıtlarından {{n}} cevap dolduruldu. İstersen değiştir."
   }
 }

@@ -6,12 +6,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api.dart';
+import '../core/checkin_prefill.dart';
 import '../core/checkin_stats.dart';
 import '../core/daily_tracking.dart';
 import '../core/demo_user.dart';
 import '../core/i18n.dart';
 import '../core/routine_logic.dart';
 import '../core/routine_tracking.dart';
+import '../core/today_plan.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/tw.dart';
@@ -98,6 +100,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
   int _reactionSeverity = 2;
   bool _feedbackBusy = false;
 
+  /// Bugünkü takip kayıtlarından önceden doldurulan cevap sayısı (0 ise bilgi çıkmaz).
+  int _prefilled = 0;
+
   /// null | sent | skipped
   String? _feedbackStatus;
   final _feedbackNote = TextEditingController();
@@ -116,6 +121,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       }
       _loadContext();
       _loadStatus();
+      _prefillFromTracking();
     });
   }
 
@@ -159,6 +165,46 @@ class _CheckInScreenState extends State<CheckInScreen> {
       }
     } finally {
       if (mounted) setState(() => _ctxLoading = false);
+    }
+  }
+
+  /// Bugünkü takip kayıtlarıyla (su, makyaj, beslenme, güneş kremi) soruları önceden doldurur.
+  /// Kullanıcı bu sırada bir soruyu zaten cevapladıysa onun cevabı korunur.
+  Future<void> _prefillFromTracking() async {
+    final id = _uid;
+    if (id == null || id == demoUserId) return;
+    try {
+      final res = await apiGet('/daily_tracking/today', query: {'user_id': id, 'utc_offset_minutes': localUtcOffsetMinutes()});
+      if (!mounted || !res.ok) return;
+      final prefill = checkinPrefill(DayProgress.fromJson(res.data['aggregated']));
+      if (prefill.isEmpty) return;
+      var applied = 0;
+      setState(() {
+        final water = prefill.waterMl;
+        if (water != null && _waterMl.text.isEmpty) {
+          _waterMl.text = '$water';
+          applied++;
+        }
+        final used = prefill.makeupUsed;
+        if (used != null && _makeupUsedToday == null) {
+          _makeupUsedToday = used;
+          applied++;
+          final method = prefill.removalMethod;
+          if (used && method != null) {
+            _makeupRemovalToday = method;
+            applied++;
+          }
+        }
+        prefill.extras.forEach((key, value) {
+          if (_concernExtra[key] == null) {
+            _concernExtra[key] = value;
+            applied++;
+          }
+        });
+        _prefilled = applied;
+      });
+    } catch (_) {
+      /* çevrimdışı: sorular boş kalır, elle cevaplanır */
     }
   }
 
@@ -603,6 +649,17 @@ class _CheckInScreenState extends State<CheckInScreen> {
           NoticeBox(text: _submitError, bg: Tw.amber50, border: Tw.amber200, fg: Tw.amber900),
           gap,
         ],
+        if (_prefilled > 0) ...[
+          NoticeBox(
+            text: i18n.t('mobileCheckin.prefilled', {'n': _prefilled}),
+            bg: theme.primaryLight.withValues(alpha: .35),
+            border: theme.primaryLight,
+            fg: theme.primaryDark,
+            icon: LucideIcons.sparkles,
+            fontSize: 12,
+          ),
+          gap,
+        ],
         // S1: Uyku
         RCard(
           child: Column(
@@ -1015,6 +1072,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   ('cleanser', 'Temizleyici'),
                   ('double', 'Çift aşama'),
                   ('water', 'Sadece su'),
+                  ('wipe', 'Misel su / mendil'),
                   ('none', 'Temizlemedim'),
                 ])
                   ChoiceChipBox(
