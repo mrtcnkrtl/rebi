@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -166,12 +167,6 @@ class SubscribeScreen extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        'Ödeme bağlantısı hazır olduğunda buraya yönlendirileceksin. Şimdilik ödeme altyapısı '
-                        '(Stripe, iyzico vb.) projeye eklendiğinde REBI_PLUS_CHECKOUT_URL ortam değişkeni ile ödeme sayfası açılır.',
-                        style: tx(12, c: Colors.white.withValues(alpha: .7), h: relaxed),
-                      ),
-                      const SizedBox(height: 12),
                       if (checkoutUrl.isNotEmpty)
                         Material(
                           color: Colors.white,
@@ -203,10 +198,12 @@ class SubscribeScreen extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Ödeme URL’si tanımlı değil. Stripe/iyzico linkini alıp uygulama ortamına ekleyin.',
-                                  style: tx(12, c: Tw.amber100.withValues(alpha: .9))),
-                              const SizedBox(height: 4),
-                              Text('(Dev: REBI_PLUS_CHECKOUT_URL)', style: tx(11, c: Tw.amber100.withValues(alpha: .7))),
+                              Text(i18n.t('mobileSubscribe.unavailable'), style: tx(12, c: Tw.amber100.withValues(alpha: .9), h: relaxed)),
+                              // Geliştirici ipucu yalnızca debug derlemesinde görünür.
+                              if (kDebugMode) ...[
+                                const SizedBox(height: 4),
+                                Text('(Dev: REBI_PLUS_CHECKOUT_URL tanımlı değil)', style: tx(11, c: Tw.amber100.withValues(alpha: .7))),
+                              ],
                             ],
                           ),
                         ),

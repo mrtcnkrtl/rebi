@@ -482,5 +482,8 @@
   },
   "mobileCheckin": {
     "prefilled": "Bugünkü takip kayıtlarından {{n}} cevap dolduruldu. İstersen değiştir."
+  },
+  "mobileSubscribe": {
+    "unavailable": "Rebi Plus şu an uygulama içinden satın alınamıyor. Hesabında etkinleştirildiğinde burada görünür."
   }
 }

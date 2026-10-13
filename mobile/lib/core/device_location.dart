@@ -16,13 +16,14 @@ Future<Coordinates?> _lookupGrantedLocation() async {
         await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 8)),
         );
-    return (lat: _round(position.latitude), lon: _round(position.longitude));
+    return (lat: roundCoordinate(position.latitude), lon: roundCoordinate(position.longitude));
   } catch (_) {
     return null;
   }
 }
 
-double _round(double v) => (v * 100).roundToDouble() / 100;
+/// Hava durumu için ~1 km yeter; sunucuya kesin konum gitmesin diye iki ondalığa yuvarlanır.
+double roundCoordinate(double v) => (v * 100).roundToDouble() / 100;
 
 LocationLookup _lookup = _lookupGrantedLocation;
 

@@ -482,5 +482,8 @@
   },
   "mobileCheckin": {
     "prefilled": "{{n}} answers were filled in from today's tracking. Change them if you like."
+  },
+  "mobileSubscribe": {
+    "unavailable": "Rebi Plus can't be purchased in the app right now. It will show up here once it's active on your account."
   }
 }

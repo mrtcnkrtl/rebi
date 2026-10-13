@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'config/env.dart';
+import 'core/crash_reporter.dart';
 import 'core/firebase_push.dart';
 import 'core/i18n.dart';
 import 'core/local_notifications.dart';
@@ -37,13 +38,7 @@ Future<void> bootstrap() async {
 /// Web `ErrorBoundary.jsx` karşılığı: çizimde hata olursa boş/kırmızı ekran yerine
 /// kullanıcı dostu kart gösterilir; geliştirmede hata metni de yazılır.
 void _installErrorBoundary() {
-  FlutterError.onError = (details) {
-    FlutterError.presentError(details);
-  };
-  PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('Yakalanmamış hata: $error\n$stack');
-    return true;
-  };
+  installCrashHandlers();
   ErrorWidget.builder = (details) => _ErrorCard(details: details);
 }
 

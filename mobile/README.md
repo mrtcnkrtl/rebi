@@ -59,6 +59,8 @@ flutter test
 - `test/checkin_prefill_test.dart` — check-in ön doldurma kuralları ve ekranı (bilgi satırı, gövde, değiştirme, hata).
 - `test/history_trends_test.dart` — eğilim ekseni ve değerleri, haftalık özet, grafik çizimi ve ekran (320 px, %200 yazı,
   koyu mod, ekran okuyucu).
+- `test/crash_reporter_test.dart`, `test/subscribe_release_test.dart` — hata raporlama (tekilleştirme, kısaltma, raporlayıcı
+  hatasını yutma, çerçeve bağlantısı), konum yuvarlama ve abonelik ekranında geliştirici notu olmaması.
 - `test/today_screens_test.dart` — "Bugün" ekranı: şimdi kartı, rutin kontrol listesi (adım, blok, geri al),
   yaptım / ürün bitti çubuğu, makyaj (temizleme yöntemi), beslenme, su ve ürün bitti sayfaları, çevrimdışı
   kuyruk, konum izni, hata durumu, küçük ekran.
@@ -293,8 +295,18 @@ Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu mod
 ## Uygulama kimliği ve yayın
 
 - Paket / bundle kimliği: `com.rebiovil.rebi`, görünen ad: `Rebi`.
-- İkonlar web'deki marka görselinden üretilir: `dart run flutter_launcher_icons`.
-- Android release imzası henüz tanımlı değil (`android/app/build.gradle.kts` debug anahtarıyla
-  imzalar); mağazaya çıkmadan önce yükleme anahtarı eklenmeli.
+- İkonlar web'deki marka görselinden üretilir: `dart run flutter_launcher_icons`. Android bildirim küçük simgesi tek
+  renkli `ic_stat_rebi`'dir (logodan üretildi) ve `res/raw/keep.xml` ile release kaynak küçültmesinden korunur.
+- **Mağaza derlemesi:** `tool/build_release.sh android|ios`. `env/prod.json` doğrulanır (şablon değeri, yerel adres,
+  http reddedilir); Android'de `android/key.properties` yoksa debug anahtarıyla sessizce imzalamak yerine durur
+  (şablon: `android/key.properties.example`). Anahtar oluşturma, sürüm numarası, mağaza metinleri, gizlilik
+  beyanları, inceleme notları ve gönderim kontrol listesi: [`docs/MOBIL-YAYIN.md`](../docs/MOBIL-YAYIN.md).
+- Android release: R8 + kaynak küçültme açık, yedekleme kapalı, tam zamanlı alarm izni yok. iOS: `PrivacyInfo.xcprivacy`
+  toplanan veri türlerini bildirir (izleme yok).
+- **Hata raporlama:** tüm çizim ve yakalanmamış asenkron hatalar `core/crash_reporter.dart` üzerinden geçer; servis
+  (Sentry / Crashlytics) seçilene kadar yalnızca konsola yazar. Raporlara kullanıcı kimliği ya da istek gövdesi girmez.
+- CI (`.github/workflows/mobile-ci.yml`): analiz + test; geçerse imzasız Android AAB ve iOS (`--no-codesign`) release
+  derlemeleri de denenir.
 - Push bildirimleri (FCM): uygulama tarafı hazır, Firebase proje dosyaları eklenip `FIREBASE_ENABLED=true`
   verilince açılır (ayrıntı: "Mobil API entegrasyonu → Bildirimler").
+- Rebi Plus satışı: ödeme altyapısı yoktur; mağaza kuralları ve seçenekler `docs/MOBIL-YAYIN.md` bölüm 6'da.

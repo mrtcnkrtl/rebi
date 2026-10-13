@@ -14,6 +14,7 @@ import '../../core/api.dart';
 import '../../core/consent_recovery.dart';
 import '../../core/daily_tracking.dart';
 import '../../core/demo_user.dart';
+import '../../core/device_location.dart' show roundCoordinate;
 import '../../core/i18n.dart';
 import '../../core/image_quality.dart';
 import '../../core/interpolate.dart';
@@ -244,12 +245,12 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
       if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
       if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) throw Exception('denied');
       final p = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 10)),
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 10)),
       );
       if (!mounted) return;
       setState(() {
-        _lat = p.latitude;
-        _lon = p.longitude;
+        _lat = roundCoordinate(p.latitude);
+        _lon = roundCoordinate(p.longitude);
         _locationSet = true;
         _locationLoading = false;
       });
