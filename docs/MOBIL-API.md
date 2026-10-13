@@ -185,7 +185,7 @@ Akşam check-in'i; rutini risk skoruna göre uyarlar. Yapay zekâ izni gerekir.
 
 Sohbet geçmişi sunucuda tutulur; web ve mobil aynı konuşmayı görür.
 
-- `POST /chat_general` — `{ user_id, message, history }`. Yanıt: `reply`, kota alanları
+- `POST /chat_general` — `{ user_id, message, history, utc_offset_minutes }`. `utc_offset_minutes` (−840…840) verilirse sohbet kullanıcının yerel gününün özetini (hava, su, makyaj ve temizleme yöntemi, beslenme, rutin) yanıt için kullanır; özet kısa tutulur, ürün adı içermez ve yalnızca soruyla ilgiliyse kullanılır. Yanıt: `reply`, kota alanları
   (`usage_kind`, `usage_remaining`, `usage_limit`, `chat_quota_exceeded`). Başarılı her
   tur sunucuda saklanır.
 - `GET /chat/history?user_id=...&limit=50&after_seq=&surface=general` — eskiden yeniye

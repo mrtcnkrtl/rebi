@@ -33,6 +33,7 @@ from today_plan import (
     parse_hhmm,
 )
 from push_service import push_configured, send_push
+from chat_context import build_today_summary
 from flow_engine import (
     run_flow,
     adapt_existing_routine,
@@ -636,6 +637,23 @@ async def _weather_from_profile(supabase, user_id: str) -> Optional[dict]:
     return await _weather_for_coords(lat, lon)
 
 
+async def _chat_today_summary(supabase, user_id: str, utc_offset_minutes: Optional[int]) -> str:
+    """
+    Sohbet için bugünün kısa özeti (hava, su, makyaj, beslenme, rutin). Veri ya da veritabanı
+    yoksa, ya da herhangi bir hata olursa boş döner; sohbet bunsuz da çalışır.
+    """
+    if not should_use_supabase_db(supabase, user_id):
+        return ""
+    try:
+        today = str(_local_today(utc_offset_minutes))
+        aggregated = _aggregate_daily_events(_load_daily_events(supabase, user_id, today))
+        weather = aggregated.get("weather") or await _weather_from_profile(supabase, user_id)
+        return build_today_summary(aggregated, weather, _checkin_done_today(supabase, user_id, today))
+    except Exception as e:
+        log.error("Sohbet günlük özeti hazırlanamadı: %s", type(e).__name__)
+        return ""
+
+
 def _profile_skin_type(supabase, user_id: str) -> str:
     if not should_use_supabase_db(supabase, user_id):
         return "normal"
@@ -867,6 +885,8 @@ class ChatGeneralRequest(BaseModel):
     user_id: str
     message: str
     history: Optional[list] = None
+    # İstemcinin UTC farkı (dakika): sohbetin bildiği "bugün" kullanıcının yerel günüdür.
+    utc_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
 
 
 class ChatGeneralResponse(BaseModel):
@@ -2758,6 +2778,10 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
                 pass
     except Exception:
         profile_hint = {}
+
+    today_summary = await _chat_today_summary(get_supabase(), req.user_id, req.utc_offset_minutes)
+    if today_summary:
+        profile_hint["today_summary"] = today_summary
 
     reply = await rebi_chat_general(
         user_message=req.message,
