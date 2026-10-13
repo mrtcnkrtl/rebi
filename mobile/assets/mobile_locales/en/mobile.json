@@ -421,5 +421,24 @@
   },
   "mobileCommon": {
     "loading": "Loading"
+  },
+  "mobileChat": {
+    "suggestionsTitle": "Suggested questions for today",
+    "suggestions": {
+      "uvHigh": "UV is {{uv}} today. How often should I reapply sunscreen?",
+      "uvMid": "UV is {{uv}} today. Is my SPF enough?",
+      "cold": "It's {{temp}}°C. How do I protect my skin and lips from the cold?",
+      "hot": "It's {{temp}}°C. Should I lighten my routine in the heat?",
+      "dry": "The air is very dry ({{humidity}}% humidity). How do I boost hydration?",
+      "makeupPending": "I wore makeup today. How should I remove it tonight?",
+      "makeupLight": "I only removed my makeup with a wipe or water. Is that enough?",
+      "sweets": "I had sweets today. Will it affect my skin?",
+      "dairy": "I had dairy today. Will it affect my skin?",
+      "snacks": "I ate junk food today. What should I do for my skin?",
+      "lowWater": "I drank little water today. How does it affect my skin?",
+      "generic1": "How can I follow my routine better?",
+      "generic2": "What is the skin barrier and how do I strengthen it?",
+      "generic3": "How should I start using retinol?"
+    }
   }
 }

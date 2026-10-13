@@ -4,12 +4,16 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api.dart';
+import '../core/chat_suggestions.dart';
 import '../core/consent_recovery.dart';
 import '../core/demo_user.dart';
+import '../core/device_location.dart';
 import '../core/i18n.dart';
 import '../core/local_store.dart';
 import '../core/routine_tracking.dart';
+import '../core/today_plan.dart';
 import '../state/auth_controller.dart';
+import '../state/home_sync_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
@@ -92,6 +96,9 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _edgeOpen = false;
   int _generation = 0;
 
+  /// Bugünün planı; öneri çipleri buradan çıkar. Plan yoksa genel sorular gösterilir.
+  TodayPlan? _plan;
+
   @override
   void initState() {
     super.initState();
@@ -127,6 +134,7 @@ class _ChatScreenState extends State<ChatScreen> {
       _routineSnap = null;
       _routineAccepted = false;
       _edgeOpen = false;
+      _plan = null;
     });
     _loadForUser();
   }
@@ -135,6 +143,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final gen = ++_generation;
     _loadServerHistory(gen);
     _loadUsage(gen);
+    _loadSuggestions(gen);
   }
 
   void _setHistory(List<ChatMessage> next) {
@@ -183,6 +192,21 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  /// Bugünün planını (hava, makyaj, beslenme, su) alır; konum izni varsa canlı hava istenir.
+  /// Oturum yoksa ya da plan alınamazsa genel öneriler kalır.
+  Future<void> _loadSuggestions(int gen) async {
+    final uid = _auth.user?.id;
+    if (uid == null || uid == demoUserId) return;
+    try {
+      final locationAllowed = context.read<HomeSyncController>().snapshot?.consent.locationAllowed == true;
+      final at = locationAllowed ? await lookupDeviceLocation() : null;
+      final plan = await fetchTodayPlan(uid, lat: at?.lat, lon: at?.lon);
+      if (plan != null && mounted && gen == _generation) setState(() => _plan = plan);
+    } catch (_) {
+      /* öneriler genel kalır */
+    }
+  }
+
   Future<void> _loadUsage(int gen) async {
     final uid = _effectiveUserId;
     final cached = _Usage.fromJson(LocalStore.instance.getJson(_usageKey(uid)));
@@ -224,10 +248,11 @@ class _ChatScreenState extends State<ChatScreen> {
     if (next != null && uid != null) LocalStore.instance.setJson(_usageKey(uid), next.toJson());
   }
 
-  Future<void> _send() async {
-    final msg = _input.text.trim();
+  /// Öneri çipine dokunulursa [preset] gönderilir (yazı alanına dokunulmaz).
+  Future<void> _send([String? preset]) async {
+    final msg = (preset ?? _input.text).trim();
     if (msg.isEmpty || _loading || _paywallOpen) return;
-    _input.clear();
+    if (preset == null) _input.clear();
     _sentThisSession = true;
     final newHist = [..._history, {'role': 'user', 'content': msg}];
     _setHistory(newHist);
@@ -239,6 +264,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'user_id': _auth.user?.id ?? demoUserId,
         'message': msg,
         'history': newHist,
+        'utc_offset_minutes': DateTime.now().timeZoneOffset.inMinutes,
       });
       if (!mounted || gen != _generation) return;
       final data = res.data;
@@ -345,6 +371,7 @@ class _ChatScreenState extends State<ChatScreen> {
               children: [
                 _header(i18n, theme, hasConversation),
                 Expanded(child: hasConversation ? _messages(theme) : _empty(i18n, theme)),
+                if (hasConversation) _suggestionStrip(i18n, theme),
                 _inputBar(i18n, theme, subscribeHref),
               ],
             ),
@@ -440,6 +467,55 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  List<ChatSuggestion> _currentSuggestions(I18n i18n) => chatSuggestions(_plan, DateTime.now(), i18n);
+
+  Widget _suggestionChip(RebiTheme theme, ChatSuggestion s) {
+    return Semantics(
+      button: true,
+      label: s.text,
+      child: Material(
+        color: theme.primary.withValues(alpha: .06),
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _send(s.text),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 300, minHeight: 40),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.primary.withValues(alpha: .3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(LucideIcons.sparkles, size: 14, color: theme.primary),
+                const SizedBox(width: 8),
+                Flexible(child: Text(s.text, style: tx(13, w: 5, c: theme.primaryDark, h: snug))),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Konuşma sürerken giriş alanının üstünde yatay kayan öneriler.
+  Widget _suggestionStrip(I18n i18n, RebiTheme theme) {
+    if (_loading || _paywallOpen || _input.text.isNotEmpty) return const SizedBox.shrink();
+    final items = _currentSuggestions(i18n);
+    return SizedBox(
+      height: 52,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+        itemCount: items.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (context, i) => _suggestionChip(theme, items[i]),
+      ),
+    );
+  }
+
   Widget _empty(I18n i18n, RebiTheme theme) {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
@@ -461,6 +537,18 @@ class _ChatScreenState extends State<ChatScreen> {
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 448),
               child: Text(i18n.t('chat.emptySubtitle'), textAlign: TextAlign.center, style: tx(16, c: Tw.gray600, h: relaxed)),
+            ),
+            const SizedBox(height: 24),
+            Text(i18n.t('mobileChat.suggestionsTitle'), style: tx(12, w: 7, c: Tw.gray600)),
+            const SizedBox(height: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 448),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
+                children: [for (final s in _currentSuggestions(i18n)) _suggestionChip(theme, s)],
+              ),
             ),
             const SizedBox(height: 24),
             ConstrainedBox(

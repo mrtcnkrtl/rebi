@@ -421,5 +421,24 @@
   },
   "mobileCommon": {
     "loading": "Yükleniyor"
+  },
+  "mobileChat": {
+    "suggestionsTitle": "Bugün için önerilen sorular",
+    "suggestions": {
+      "uvHigh": "Bugün UV {{uv}}. Güneş kremimi ne sıklıkla yenilemeliyim?",
+      "uvMid": "Bugün UV {{uv}}. SPF'im yeterli mi?",
+      "cold": "Hava {{temp}}°C. Cildimi ve dudaklarımı soğuktan nasıl korurum?",
+      "hot": "Hava {{temp}}°C. Sıcakta rutinimi hafifletmeli miyim?",
+      "dry": "Hava çok kuru (nem %{{humidity}}). Nemlendirmeyi nasıl artırmalıyım?",
+      "makeupPending": "Bugün makyaj yaptım. Akşam nasıl temizlemeliyim?",
+      "makeupLight": "Makyajımı sadece mendil ya da suyla temizledim. Yeterli mi?",
+      "sweets": "Bugün şekerli şeyler yedim. Cildime etkisi olur mu?",
+      "dairy": "Bugün süt ürünleri tükettim. Cildime etkisi olur mu?",
+      "snacks": "Bugün abur cubur yedim. Cildim için ne yapmalıyım?",
+      "lowWater": "Bugün az su içtim. Cildime etkisi ne olur?",
+      "generic1": "Rutinimi nasıl daha iyi uygulayabilirim?",
+      "generic2": "Nem bariyeri nedir, nasıl güçlendirilir?",
+      "generic3": "Retinole nasıl başlamalıyım?"
+    }
   }
 }
