@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Kabuk betikleri her platformda LF kalmalı (Windows checkout CRLF yapıp bash'i bozmasın)
+*.sh text eol=lf
