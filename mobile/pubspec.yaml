@@ -43,7 +43,6 @@ dependencies:
   geolocator: ^14.1.1
   image: ^4.10.2
   url_launcher: ^6.3.3
-  google_fonts: ^8.2.1
   lucide_icons_flutter: ^3.1.24
   intl: ^0.20.3
   uuid: ^4.6.0
@@ -52,6 +51,7 @@ dependencies:
   firebase_core: ^4.15.0
   firebase_messaging: ^16.7.0
   package_info_plus: ^10.2.2
+  firebase_crashlytics: ^5.4.0
 
 dev_dependencies:
   flutter_test:
@@ -87,6 +87,15 @@ flutter:
     # Yalnızca mobilde olan metinler (web'de karşılığı yok; sync_locales.sh bu klasöre dokunmaz).
     - assets/mobile_locales/tr/
     - assets/mobile_locales/en/
+    # Yazı tipi lisansı (SIL OFL): Inter'i dağıtırken lisans metni paketle birlikte gitmeli.
+    - assets/fonts/Inter-LICENSE.txt
+
+  # Inter (web ile aynı yazı tipi) pakete gömülüdür: çalışma anında internetten indirilmez, çevrimdışı ilk açılış
+  # ve üçüncü tarafa istek sorunu yoktur. Değişken yazı tipi: tüm ağırlıklar tek dosyada (`wght` ekseni).
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/InterVariable.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

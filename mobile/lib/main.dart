@@ -1,5 +1,7 @@
+import 'package:firebase_core/firebase_core.dart' show Firebase;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:go_router/go_router.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app.dart';
 import 'config/env.dart';
 import 'core/crash_reporter.dart';
+import 'core/firebase_crash.dart';
 import 'core/firebase_push.dart';
 import 'core/i18n.dart';
 import 'core/local_notifications.dart';
@@ -20,6 +23,11 @@ Future<void> main() async {
   _installErrorBoundary();
   // Firebase yalnızca proje dosyaları eklenip FIREBASE_ENABLED=true verildiğinde başlatılır.
   final PushClient push = Env.firebaseEnabled ? await FirebasePushClient.create() : const NoPushClient();
+  // Hata raporlama Firebase'e bağlı: yalnızca Firebase gerçekten başlatıldıysa Crashlytics devreye girer.
+  if (Env.firebaseEnabled && Firebase.apps.isNotEmpty) {
+    final reporter = await FirebaseCrashReporter.create();
+    if (reporter != null) CrashReporting.reporter = reporter;
+  }
   runApp(RebiApp(notifier: await LocalNotificationsNotifier.create(), push: push));
 }
 
@@ -27,6 +35,9 @@ Future<void> main() async {
 /// Uçtan uca testler de bunu kullanır (hata sınırı test çerçevesininkini ezmesin diye ayrı).
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
+  LicenseRegistry.addLicense(() async* {
+    yield LicenseEntryWithLineBreaks(['Inter'], await rootBundle.loadString('assets/fonts/Inter-LICENSE.txt'));
+  });
   await LocalStore.init();
   if (Env.supabaseConfigured) {
     await Supabase.initialize(url: Env.supabaseUrl, publishableKey: Env.supabaseAnonKey);

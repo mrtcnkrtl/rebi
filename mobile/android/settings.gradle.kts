@@ -23,6 +23,8 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.4.0" apply false
     // Firebase (push bildirimleri). Yalnızca android/app/google-services.json varsa uygulanır.
     id("com.google.gms.google-services") version "4.4.4" apply false
+    // Crashlytics: SDK, derleme kimliğini bu eklentiden alır; eklenti olmadan Firebase başlatılırsa hata verir.
+    id("com.google.firebase.crashlytics") version "3.0.8" apply false
 }
 
 include(":app")

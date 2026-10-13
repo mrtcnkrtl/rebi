@@ -12,8 +12,8 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 | Android release imzalama (`android/key.properties`) | **kod hazır, anahtar sizde yok** (bölüm 3) |
 | Android release derlemesi (R8 + kaynak küçültme, bildirim simgesi korunuyor) | derleme geçiyor (AAB 59,8 MB, 3 ABI; Play cihaza özel daha küçük parça verir); cihazda çalıştırılmadı |
 | iOS gizlilik bildirimi (`ios/Runner/PrivacyInfo.xcprivacy`) | hazır, Mac'te derlenmedi (CI derler, bölüm 4) |
-| Hata raporlama noktası (`core/crash_reporter.dart`) | hazır, **servis seçilmedi** (bölüm 5) |
-| Firebase push | kod hazır, **`google-services.json` / `GoogleService-Info.plist` bekleniyor** |
+| Hata raporlama (Firebase Crashlytics) | **kod hazır, Firebase dosyalarıyla açılır** (bölüm 5) |
+| Firebase push + Crashlytics | kod hazır, **`google-services.json` / `GoogleService-Info.plist` bekleniyor** |
 | Rebi Plus satışı | **ödeme altyapısı yok, karar gerekiyor** (bölüm 6) |
 | Mağaza görselleri | **gerçek cihazdan çekilmeli** (bölüm 10) |
 | Gerçek cihazda doğrulama | **yapılmadı**: bu geliştirme makinesinde emülatör açılmıyor (bölüm 11) |
@@ -71,20 +71,25 @@ paketlemesi doğrulanır).
 6. Uygulama iPhone + iPad için işaretli (`TARGETED_DEVICE_FAMILY = 1,2`): iPad ekran görüntüleri de gerekir.
    Yalnızca iPhone isterseniz `1` yapın.
 
-## 5. Hata raporlama
+## 5. Hata raporlama (Firebase Crashlytics)
 
-`lib/core/crash_reporter.dart`: tüm çizim ve yakalanmamış asenkron hatalar `CrashReporting.report` üzerinden
-geçer (60 sn içinde aynı hata tek sayılır, ileti 300 / yığın 4000 karaktere kısaltılır, **kullanıcı kimliği ya da
-istek gövdesi eklenmez**). Şu an yalnızca konsola yazar, çünkü servis seçimi sizin kararınız:
+Seçilen servis: **Firebase Crashlytics**. Tüm çizim ve yakalanmamış asenkron hatalar `core/crash_reporter.dart`
+üzerinden geçer (60 sn içinde aynı hata tek sayılır, ileti 300 / yığın 4000 karaktere kısaltılır, **kullanıcı kimliği
+ya da istek gövdesi eklenmez**); `core/firebase_crash.dart` bunları Crashlytics'e gönderir.
 
-| Seçenek | Artı | Eksi |
-| --- | --- | --- |
-| Firebase Crashlytics | Firebase zaten kuruluyor (push), ücretsiz | Google'a ek veri aktarımı; Gradle / Xcode betiği (dSYM) kurulumu |
-| Sentry | Hesap + DSN yeter, Firebase'den bağımsız, hata gruplama iyi | Ücretsiz katman sınırlı; yeni bağımlılık |
-
-Seçince: ilgili paketi ekleyin, `CrashReporter` arayüzünü uygulayan bir sınıf yazıp `main()` içinde
-`CrashReporting.reporter = ...` atayın (yaklaşık 20 satır). Hata raporlama **kişisel veri işlemesi sayılabilir**:
-KVKK aydınlatma metnine ve mağaza beyanlarına ("Crash logs / Diagnostics") eklenmeli.
+- **Ne zaman açılır:** yalnızca `FIREBASE_ENABLED=true` ve Firebase gerçekten başlatıldıysa. Debug derlemelerinde
+  toplama kapalıdır. Firebase dosyaları yokken uygulama hataları yalnızca konsola yazar.
+- **Android:** `google-services.json` varsa Crashlytics Gradle eklentisi de uygulanır (derleme kimliği + R8 eşleme
+  dosyası). Eklenti olmadan Firebase başlatılırsa Crashlytics SDK'sı hata verir; bu yüzden ikisi birlikte uygulanır.
+  Eklentinin AGP 9.1 ile derlendiği sahte bir yapılandırmayla yerelde doğrulandı (`injectCrashlyticsMappingFileId`
+  görevi çalıştı); gerçek Firebase projesiyle ilk derleme sizde.
+- **iOS:** yerel çökmelerin okunur olması için Xcode'da Runner hedefine bir "Run Script" derleme aşaması ekleyin:
+  `"${PODS_ROOT}/FirebaseCrashlytics/run"` (Input Files: `${DWARF_DSYM_FOLDER_PATH}/${DWARF_DSYM_FILE_NAME}/Contents/Resources/DWARF/${TARGET_NAME}`
+  ve `$(SRCROOT)/$(BUILT_PRODUCTS_DIR)/$(INFOPLIST_PATH)`). Dart hataları bu adım olmadan da raporlanır; CI'da
+  Firebase dosyası olmadığı için bu aşama projeye işlenmedi.
+- **Gizlilik:** Crashlytics çökme günlüğü ve cihaz / kurulum kimliği toplar. Mağaza beyanlarına ("Crash logs",
+  "Diagnostics") ve KVKK aydınlatma metnine eklenmelidir (bölüm 8). Hata iletileri kullanıcı metni içermemesi için
+  kısaltılır, yine de metin girişinden kaynaklanan istisnalar (örn. `FormatException`) iletide parça taşıyabilir.
 
 ## 6. Rebi Plus ödemesi: karar gerekiyor
 
@@ -160,7 +165,8 @@ uygulama işlevi için, izleme / reklam yok:
 | Cilt tipi / sorunlar, uyku, stres, su, beslenme, makyaj, check-in | Health & Fitness → Health | Health and fitness → Health info | kısmen |
 | Yaş, cinsiyet, şehir | Other Data Types | Personal info → Other info | hayır |
 | Sohbet mesajları | User Content → Other User Content | Messages → Other in-app messages | hayır |
-| Bildirim cihaz kimliği (push) | Identifiers → Device ID | Device or other IDs | hayır |
+| Bildirim cihaz kimliği (push) ve Firebase kurulum kimliği | Identifiers → Device ID | Device or other IDs | hayır |
+| Çökme günlükleri ve tanılama (Crashlytics; kullanıcıyla eşlenmez) | Diagnostics → Crash Data, Other Diagnostic Data | App info and performance → Crash logs, Diagnostics | hayır |
 
 - **Aktarım şifreli** (HTTPS). **Silme:** uygulama içinde Ben → "Hesap ve gizlilik" → "Hesabı kalıcı olarak sil" (`/account/delete`; profil, rutin,
   check-in, rıza kaydı, fotoğraflar kalıcı silinir).
@@ -212,6 +218,8 @@ Aşağıdakiler yalnızca otomatik testle ve derlemeyle doğrulandı; **gerçek 
 - [ ] iOS: bildirim düğmeleri, izin metinleri, karanlık mod, iPad düzeni
 - [ ] Çevrimdışı kuyruk: uçak modunda kayıt, bağlantı gelince gönderim
 - [ ] Büyük yazı boyutu (%150–200) ve ekran okuyucu (TalkBack / VoiceOver)
-- [ ] Yazı tipi: uygulama **Inter'i çalışma anında internetten indirir** (`google_fonts`); ilk açılışta çevrimdışıysa
-      sistem yazı tipi görünür ve Google'a bir istek gider (gizlilik açısından beyan edin ya da yazı tipini pakete
-      gömün).
+- [ ] Yazı tipi: Inter artık pakete gömülü (`assets/fonts/InterVariable.ttf`, SIL OFL; çalışma anında indirme yok);
+      cihazda ağırlıkların (400–900) ve Türkçe karakterlerin doğru göründüğüne bakın.
+- [ ] Profil → "Gizlilik izinleri" kutusu "Hava/UV için **kesin** konum aktarımı" diyor, oysa sunucuya ~1 km'ye yuvarlanmış
+      konum gider. Metin web ile aynı olduğu için değiştirilmedi; mağaza beyanı "yaklaşık konum"dur. Web ile birlikte
+      "yaklaşık" yapılması önerilir.

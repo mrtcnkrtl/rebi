@@ -59,8 +59,10 @@ flutter test
 - `test/checkin_prefill_test.dart` — check-in ön doldurma kuralları ve ekranı (bilgi satırı, gövde, değiştirme, hata).
 - `test/history_trends_test.dart` — eğilim ekseni ve değerleri, haftalık özet, grafik çizimi ve ekran (320 px, %200 yazı,
   koyu mod, ekran okuyucu).
-- `test/crash_reporter_test.dart`, `test/subscribe_release_test.dart` — hata raporlama (tekilleştirme, kısaltma, raporlayıcı
-  hatasını yutma, çerçeve bağlantısı), konum yuvarlama ve abonelik ekranında geliştirici notu olmaması.
+- `test/crash_reporter_test.dart`, `test/firebase_crash_test.dart` — hata raporlama (tekilleştirme, kısaltma, raporlayıcı
+  hatasını yutma, çerçeve bağlantısı, Crashlytics eşlemesi) ve konum yuvarlama.
+- `test/subscribe_release_test.dart`, `test/plus_gate_test.dart` — abonelik ekranında geliştirici notu olmaması; Plus
+  satın alınamıyorsa (v1) hiçbir ekranda "Plus'a geç" çağrısı çıkmaması, elle Plus verilen hesapların çalışması.
 - `test/today_screens_test.dart` — "Bugün" ekranı: şimdi kartı, rutin kontrol listesi (adım, blok, geri al),
   yaptım / ürün bitti çubuğu, makyaj (temizleme yöntemi), beslenme, su ve ürün bitti sayfaları, çevrimdışı
   kuyruk, konum izni, hata durumu, küçük ekran.
@@ -274,8 +276,10 @@ Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu mod
   işaretlemede seçim titreşimi. Desteklemeyen cihazda sessizce geçilir.
 - **Büyük yazı:** sistem yazı boyutu %150 (360 px) ve %200 (320 px) iken ana ekranlar açık ve koyu modda taşmadan çizilir
   (`test/text_scale_test.dart`). Yeni ekranlarda sabit genişlikli `Row` yerine `Expanded` / `Flexible` / `Wrap` kullanın.
-- **Henüz yok:** Inter yazı tipi pakete gömülü değil (`google_fonts` çalışma anında indirir; ilk açılış çevrimdışıysa sistem
-  yazı tipine düşer).
+- **Yazı tipi:** Inter pakete gömülüdür (`assets/fonts/InterVariable.ttf`, değişken font, SIL OFL; lisans metni
+  `Inter-LICENSE.txt` ve uygulama lisans listesinde). Çalışma anında indirme yoktur: çevrimdışı ilk açılış ve Google'a giden
+  istek sorunu kalmadı. `FontWeight` `wght` eksenine eşlenir. `flutter test` gömülü yazı tiplerini yüklemediği için testler
+  `buildRebiTheme(fonts: false)` ile çalışır (Ahem).
 
 ## Bilinçli platform farkları
 
@@ -303,8 +307,10 @@ Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu mod
   beyanları, inceleme notları ve gönderim kontrol listesi: [`docs/MOBIL-YAYIN.md`](../docs/MOBIL-YAYIN.md).
 - Android release: R8 + kaynak küçültme açık, yedekleme kapalı, tam zamanlı alarm izni yok. iOS: `PrivacyInfo.xcprivacy`
   toplanan veri türlerini bildirir (izleme yok).
-- **Hata raporlama:** tüm çizim ve yakalanmamış asenkron hatalar `core/crash_reporter.dart` üzerinden geçer; servis
-  (Sentry / Crashlytics) seçilene kadar yalnızca konsola yazar. Raporlara kullanıcı kimliği ya da istek gövdesi girmez.
+- **Hata raporlama:** tüm çizim ve yakalanmamış asenkron hatalar `core/crash_reporter.dart` üzerinden geçer;
+  `FIREBASE_ENABLED=true` ve Firebase başlatılmışsa `core/firebase_crash.dart` bunları Crashlytics'e gönderir (debug'da
+  kapalı), aksi halde yalnızca konsola yazar. Raporlara kullanıcı kimliği ya da istek gövdesi girmez. Android'de
+  `google-services.json` varsa Crashlytics Gradle eklentisi de uygulanır.
 - CI (`.github/workflows/mobile-ci.yml`): analiz + test; geçerse imzasız Android AAB ve iOS (`--no-codesign`) release
   derlemeleri de denenir.
 - Push bildirimleri (FCM): uygulama tarafı hazır, Firebase proje dosyaları eklenip `FIREBASE_ENABLED=true`

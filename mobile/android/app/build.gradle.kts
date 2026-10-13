@@ -69,8 +69,10 @@ dependencies {
 
 // Firebase proje dosyası eklenmediyse (push kapalı) Google Services eklentisi uygulanmaz;
 // uygulama yalnızca yerel bildirimlerle derlenir ve çalışır.
+// Crashlytics eklentisi google-services ile birlikte uygulanmalı (derleme kimliği + R8 eşleme dosyası yükleme).
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
 }
 
 flutter {

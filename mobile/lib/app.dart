@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
@@ -113,7 +112,8 @@ class _RebiAppState extends State<RebiApp> {
 }
 
 /// Uygulamanın Material teması. Renkler `Tw` alıcılarından geldiği için hesap sırasında
-/// ilgili moda geçilir, sonra eski değer geri konur. [fonts] false ise Google Fonts indirilmez (testler).
+/// ilgili moda geçilir, sonra eski değer geri konur. [fonts] true ise pakete gömülü Inter kullanılır; testler
+/// `flutter test` gömülü yazı tiplerini yüklemediği için false verir.
 ThemeData buildRebiTheme(Brightness brightness, {bool fonts = true}) {
   final previous = Tw.dark;
   Tw.dark = brightness == Brightness.dark;
@@ -129,11 +129,12 @@ ThemeData buildRebiTheme(Brightness brightness, {bool fonts = true}) {
       ),
       scaffoldBackgroundColor: Tw.background,
       splashFactory: InkSparkle.splashFactory,
+      // Web ile aynı yazı tipi: `assets/fonts/InterVariable.ttf` (değişken font; FontWeight `wght` eksenine eşlenir).
+      // Arapça gibi Inter'de olmayan yazılar sistem yazı tipine düşer.
+      fontFamily: fonts ? 'Inter' : null,
     );
-    // Web: Inter (Google Fonts). Yüklenemezse sistem yazı tipine düşer.
     return base.copyWith(
-      textTheme: (fonts ? GoogleFonts.interTextTheme(base.textTheme) : base.textTheme)
-          .apply(bodyColor: Tw.gray900, displayColor: Tw.gray900),
+      textTheme: base.textTheme.apply(bodyColor: Tw.gray900, displayColor: Tw.gray900),
       checkboxTheme: CheckboxThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         fillColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Tw.teal600 : Tw.surface),
