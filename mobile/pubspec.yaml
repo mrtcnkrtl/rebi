@@ -89,6 +89,7 @@ flutter:
     - assets/mobile_locales/en/
     # Yazı tipi lisansı (SIL OFL): Inter'i dağıtırken lisans metni paketle birlikte gitmeli.
     - assets/fonts/Inter-LICENSE.txt
+    - assets/fonts/Fraunces-LICENSE.txt
 
   # Inter (web ile aynı yazı tipi) pakete gömülüdür: çalışma anında internetten indirilmez, çevrimdışı ilk açılış
   # ve üçüncü tarafa istek sorunu yoktur. Değişken yazı tipi: tüm ağırlıklar tek dosyada (`wght` ekseni).
@@ -96,6 +97,10 @@ flutter:
     - family: Inter
       fonts:
         - asset: assets/fonts/InterVariable.ttf
+    # Başlıklar için serif (SIL OFL); eksenler: opsz, wght, SOFT, WONK.
+    - family: Fraunces
+      fonts:
+        - asset: assets/fonts/Fraunces.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

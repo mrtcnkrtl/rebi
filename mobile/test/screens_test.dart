@@ -31,19 +31,53 @@ void main() {
       };
 
   group('giriş yapmamış kullanıcı', () {
-    testWidgets('landing: rutin seçimi girişe, ardından analize yönlendirir', (tester) async {
+    testWidgets('landing: ana eylem kayıt ekranını açar ve analize yönlendirmeyi taşır', (tester) async {
       final h = await pumpApp(tester, location: '/', loggedIn: false);
-      expect(find.text(tr('landing.choiceTitle')), findsOneWidget);
-      await tapText(tester, tr('landing.choiceRoutineName'));
-      expect(h.router.routeInformationProvider.value.uri.toString(), '/auth?next=%2Fdashboard%2Fanalyze');
-      expect(find.text(tr('auth.welcome')), findsOneWidget);
+      expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
+      await tapText(tester, tr('landing.ctaBuildRoutine'));
+      expect(h.router.routeInformationProvider.value.uri.toString(), '/auth?next=%2Fdashboard%2Fanalyze&mode=signup');
+      expect(find.text(tr('auth.createAccount')), findsOneWidget);
+      expect(find.text(tr('auth.fullName')), findsOneWidget);
     });
 
-    testWidgets('landing: Rebi seçimi anonim sohbete gider', (tester) async {
+    testWidgets('landing: "Giriş yap" bağlantısı giriş modunu açar', (tester) async {
       final h = await pumpApp(tester, location: '/', loggedIn: false);
-      await tapText(tester, tr('landing.choiceRebiDesc'));
+      await tapText(tester, tr('auth.login'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/auth');
+      expect(find.text(tr('auth.welcome')), findsOneWidget);
+      expect(find.text(tr('auth.fullName')), findsNothing);
+    });
+
+    testWidgets('landing: Rebi ile konuş anonim sohbete gider', (tester) async {
+      final h = await pumpApp(tester, location: '/', loggedIn: false);
+      await tapText(tester, tr('landing.ctaChat'));
       expect(h.router.routeInformationProvider.value.uri.path, '/rebi');
       expect(find.text(tr('chat.emptyTitle')), findsOneWidget);
+    });
+
+    testWidgets('landing: yana kaydırınca sahne metinleri değişir', (tester) async {
+      await pumpApp(tester, location: '/', loggedIn: false);
+      await tester.drag(find.byType(PageView), const Offset(-320, 0));
+      await settle(tester, 6);
+      expect(find.text(tr('mobileLanding.s2Title')), findsOneWidget);
+      await tester.drag(find.byType(PageView), const Offset(-320, 0));
+      await settle(tester, 6);
+      expect(find.text(tr('mobileLanding.s3Title')), findsOneWidget);
+    });
+
+    testWidgets('landing: oturum açıkken ana eylem panele götürür', (tester) async {
+      final h = await pumpApp(tester, location: '/');
+      expect(find.text(tr('auth.login')), findsNothing);
+      await tapText(tester, tr('mobileLanding.openApp'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+
+    testWidgets('splash: animasyon bitince karşılamaya geçer', (tester) async {
+      final h = await pumpApp(tester, location: '/splash', loggedIn: false);
+      expect(h.router.routeInformationProvider.value.uri.path, '/splash');
+      await settle(tester, 12);
+      expect(h.router.routeInformationProvider.value.uri.path, '/');
+      expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
     });
 
     testWidgets('korumalı rota girişe yönlendirir ve next parametresini taşır', (tester) async {
@@ -53,7 +87,7 @@ void main() {
 
     testWidgets('auth: onay kutuları işaretlenmeden gönderilemez, form doğrulaması çalışır', (tester) async {
       await pumpApp(tester, location: '/auth', loggedIn: false);
-      final submit = find.text(tr('auth.login'));
+      final submit = find.byKey(const Key('auth-submit'));
       await tester.ensureVisible(submit.first);
       await tester.tap(submit.first, warnIfMissed: false);
       await settle(tester, 3);
@@ -549,16 +583,15 @@ void main() {
     expect(find.text(tr('mobileMe.plus.active')), findsOneWidget);
   });
 
-  testWidgets('menü: dil İngilizceye çevrilir ve kalıcıdır', (tester) async {
+  testWidgets('açılış: dil rozetinden İngilizceye çevrilir ve kalıcıdır', (tester) async {
     await pumpApp(tester, location: '/', loggedIn: false);
-    await tester.tap(find.byIcon(LucideIcons.menu));
-    await settle(tester, 3);
-    await tester.tap(find.text('Türkçe'));
-    await settle(tester, 3);
-    await tester.tap(find.text('English').last);
-    await settle(tester, 3);
+    await tester.tap(find.byIcon(LucideIcons.globe));
+    await settle(tester, 4);
+    expect(find.text('Türkçe'), findsOneWidget);
+    await tester.tap(find.text('English'));
+    await settle(tester, 4);
     expect(LocalStore.instance.getString('rebi-lang'), 'en');
-    expect(find.text(tr('landing.choiceTitle')), findsOneWidget);
+    expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
   });
 
   testWidgets('hızlı foto yükleme: Supabase yoksa açıklama gösterir', (tester) async {

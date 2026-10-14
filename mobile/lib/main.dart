@@ -37,6 +37,7 @@ Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
   LicenseRegistry.addLicense(() async* {
     yield LicenseEntryWithLineBreaks(['Inter'], await rootBundle.loadString('assets/fonts/Inter-LICENSE.txt'));
+    yield LicenseEntryWithLineBreaks(['Fraunces'], await rootBundle.loadString('assets/fonts/Fraunces-LICENSE.txt'));
   });
   await LocalStore.init();
   if (Env.supabaseConfigured) {

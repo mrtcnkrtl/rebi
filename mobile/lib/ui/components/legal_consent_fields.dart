@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/i18n.dart';
+import '../brand/palette.dart';
 import '../tw.dart';
 import '../widgets/common.dart';
 
@@ -48,7 +49,7 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
   Widget _row({required bool value, required ValueChanged<bool> onChanged, required Widget label}) {
     return InkWell(
       onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(10),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -58,13 +59,14 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
             child: Checkbox(
               value: value,
               onChanged: (v) => onChanged(v ?? false),
-              activeColor: Tw.teal600,
+              activeColor: Brand.forest,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               visualDensity: VisualDensity.compact,
-              side: BorderSide(color: Tw.gray300, width: 1.5),
+              side: BorderSide(color: Brand.ink.withValues(alpha: .35), width: 1.5),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(child: Padding(padding: const EdgeInsets.only(top: 2), child: label)),
         ],
       ),
@@ -74,17 +76,17 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
   @override
   Widget build(BuildContext context) {
     final i18n = context.i18n;
-    final base = tx(14, c: Tw.gray700, h: relaxed);
-    final link = tx(14, w: 6, c: Tw.teal700, h: relaxed).copyWith(decoration: TextDecoration.underline);
+    final base = tx(13, c: Brand.inkSoft, h: 1.5);
+    final link = tx(13, w: 7, c: Brand.ink, h: 1.5).copyWith(decoration: TextDecoration.underline, decorationColor: Brand.teal);
     final kvkkBefore = i18n.t('auth.kvkkBefore').trim();
     final rizaBefore = i18n.t('auth.rizaBefore').trim();
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Tw.teal50.withValues(alpha: .4),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Tw.teal100),
+        color: Brand.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Brand.ink.withValues(alpha: .10)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -98,7 +100,7 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
               TextSpan(text: i18n.t('auth.kvkkAfter')),
             ])),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           _row(
             value: widget.riza,
             onChanged: widget.onRiza,
@@ -108,21 +110,21 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
               TextSpan(text: i18n.t('auth.rizaAfter')),
             ])),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Container(
-            padding: const EdgeInsets.only(top: 8),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: Tw.teal100))),
+            padding: const EdgeInsets.only(top: 14),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: Brand.inkFaint))),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(i18n.t('auth.optionalPermissions'), style: tx(12, w: 6, c: Tw.gray600)),
-                const SizedBox(height: 8),
+                Text(i18n.t('auth.optionalPermissions'), style: tx(12.5, w: 7, c: Brand.inkSoft)),
+                const SizedBox(height: 10),
                 _row(
                   value: widget.location,
                   onChanged: widget.onLocation,
                   label: Text(i18n.t('auth.locationConsent'), style: base),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 _row(
                   value: widget.photo,
                   onChanged: widget.onPhoto,
@@ -131,7 +133,7 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           const AiDisclaimer(),
         ],
       ),

@@ -10,6 +10,7 @@ import '../../core/subscription.dart';
 import '../../state/auth_controller.dart';
 import '../../state/notifications_controller.dart';
 import '../../state/theme_controller.dart';
+import '../components/language_sheet.dart';
 import '../components/modals.dart';
 import '../tw.dart';
 import '../widgets/common.dart';
@@ -45,7 +46,7 @@ bool isSubPage(String path) {
   return tab != null && path != tab.path;
 }
 
-/// Düzen: genel sayfalarda (tanıtım, giriş, yasal) üstte logo ve menü; giriş yapmış kullanıcıda
+/// Düzen: genel sayfalarda (sohbet, yasal) üstte logo ve menü; açılış ve giriş kendi üst çubuğunu çizer; giriş yapmış kullanıcıda
 /// `/dashboard*` altında üst çubuk yok, beş sekmeli alt çubuk ve alt sayfalarda geri çubuğu var.
 /// Yapay zekâ yüzeylerinde beyan kutusu, oturum varken rıza kurtarma kutusu üstte durur.
 class AppShell extends StatefulWidget {
@@ -103,6 +104,8 @@ class _AppShellState extends State<AppShell> {
     final isDashboard = path.startsWith('/dashboard');
     final isAiSurface = isDashboard || path.startsWith('/rebi');
     final inApp = user != null && isDashboard;
+    // Açılış ve giriş ekranları kendi üst çubuğunu çizer (hero zeminin üstünde).
+    final immersive = path == '/' || path == '/auth';
 
     return BackButtonListener(
       onBackButtonPressed: _onBack,
@@ -110,7 +113,7 @@ class _AppShellState extends State<AppShell> {
         children: [
           Scaffold(
             backgroundColor: Tw.background,
-            appBar: inApp ? null : _Navbar(menuOpen: _menuOpen, onToggleMenu: () => setState(() => _menuOpen = !_menuOpen)),
+            appBar: inApp || immersive ? null : _Navbar(menuOpen: _menuOpen, onToggleMenu: () => setState(() => _menuOpen = !_menuOpen)),
             body: inApp
                 ? SafeArea(
                     bottom: false,
@@ -280,8 +283,6 @@ Future<void> signOutAndGoHome(BuildContext context) async {
   router.go('/');
 }
 
-const _langLabels = {'tr': 'Türkçe', 'en': 'English'};
-
 /// Dil seçici (web: `LanguageSelect.jsx`).
 class LanguageSelect extends StatelessWidget {
   const LanguageSelect({super.key});
@@ -312,7 +313,7 @@ class LanguageSelect extends StatelessWidget {
               icon: Icon(LucideIcons.chevronDown, size: 14, color: Tw.gray500),
               items: [
                 for (final lng in supportedLangs)
-                  DropdownMenuItem(value: lng, child: Text(_langLabels[lng] ?? lng)),
+                  DropdownMenuItem(value: lng, child: Text(languageLabels[lng] ?? lng)),
               ],
               onChanged: (v) {
                 if (v != null) I18n.instance.changeLanguage(v);

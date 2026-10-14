@@ -416,17 +416,20 @@ class GradientIconBox extends StatelessWidget {
 
 /// Kalıcı, kutusuz beyan: Rebi bir yapay zekâdır ve hata payı vardır.
 class AiDisclaimer extends StatelessWidget {
-  const AiDisclaimer({super.key, this.textAlign = TextAlign.start, this.padding = EdgeInsets.zero});
+  const AiDisclaimer({super.key, this.textAlign = TextAlign.start, this.padding = EdgeInsets.zero, this.color});
 
   final TextAlign textAlign;
   final EdgeInsetsGeometry padding;
+
+  /// Verilmezse soluk gri; koyu zeminlerde açık renk verilir.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final i18n = context.i18n;
     return Padding(
       padding: padding,
-      child: Text(i18n.t('common.aiDisclaimer'), textAlign: textAlign, style: tx(11, c: Tw.gray500, h: relaxed)),
+      child: Text(i18n.t('common.aiDisclaimer'), textAlign: textAlign, style: tx(11, c: color ?? Tw.gray500, h: relaxed)),
     );
   }
 }

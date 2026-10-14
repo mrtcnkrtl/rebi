@@ -61,7 +61,7 @@ class _RebiAppState extends State<RebiApp> {
     _notifications.openRoute.value = null;
     WidgetsBinding.instance.addPostFrameCallback((_) => _router.go(route));
   }
-  late final GoRouter _router = buildRouter(_auth);
+  late final GoRouter _router = buildRouter(_auth, splash: true);
 
   @override
   void dispose() {

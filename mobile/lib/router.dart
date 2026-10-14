@@ -12,6 +12,7 @@ import 'screens/legal_screen.dart';
 import 'screens/me_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/reminders_screen.dart';
+import 'screens/splash_screen.dart';
 import 'screens/subscribe_screen.dart';
 import 'screens/themes_screen.dart';
 import 'state/auth_controller.dart';
@@ -26,13 +27,34 @@ String safeNext(String? next) {
   return next;
 }
 
+/// Açılış ↔ giriş geçişi: kısa bir solma ve hafif yukarı kayma (varsayılan sert geçişin yerine).
+CustomTransitionPage<void> _softPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 380),
+    reverseTransitionDuration: const Duration(milliseconds: 280),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      return FadeTransition(
+        opacity: curved,
+        child: SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, .03), end: Offset.zero).animate(curved),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
 Map<String, dynamic>? _extraMap(Object? extra) => extra is Map ? extra.cast<String, dynamic>() : null;
 
 /// Web `App.jsx` rotaları. `/dashboard*` korumalıdır (web: `ProtectedRoute`).
-GoRouter buildRouter(AuthController auth) {
+/// [splash] true ise oturum yokken uygulama animasyonlu açılışla başlar (yalnızca gerçek uygulamada).
+GoRouter buildRouter(AuthController auth, {bool splash = false}) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: auth.user != null ? '/dashboard' : '/',
+    initialLocation: auth.user != null ? '/dashboard' : (splash ? '/splash' : '/'),
     refreshListenable: auth,
     redirect: (context, state) {
       final path = state.uri.path;
@@ -40,6 +62,7 @@ GoRouter buildRouter(AuthController auth) {
       if (path.startsWith('/dashboard') && user == null) {
         return '/auth?next=${Uri.encodeComponent(state.uri.toString())}';
       }
+      if (path == '/splash' && user != null) return '/dashboard';
       if (path == '/auth' && user != null && !auth.authFlowInProgress) {
         return safeNext(state.uri.queryParameters['next']);
       }
@@ -48,6 +71,17 @@ GoRouter buildRouter(AuthController auth) {
     // Bilinmeyen yol → ana sayfa (web: `<Route path="*" element={<Navigate to="/" />} />`).
     onException: (context, state, router) => router.go('/'),
     routes: [
+      GoRoute(
+        path: '/splash',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          child: const SplashScreen(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: const Duration(milliseconds: 520),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) => child,
+        ),
+      ),
       // Yasal metinler formların üstünde açılır; geri dönüldüğünde form korunur.
       GoRoute(
         path: '/kvkk',
@@ -63,10 +97,16 @@ GoRouter buildRouter(AuthController auth) {
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => AppShell(location: state.uri, child: child),
         routes: [
-          GoRoute(path: '/', builder: (context, state) => const LandingScreen()),
+          GoRoute(
+            path: '/',
+            pageBuilder: (context, state) => _softPage(state, const LandingScreen()),
+          ),
           GoRoute(
             path: '/auth',
-            builder: (context, state) => AuthScreen(next: safeNext(state.uri.queryParameters['next'])),
+            pageBuilder: (context, state) => _softPage(
+              state,
+              AuthScreen(next: safeNext(state.uri.queryParameters['next']), startInSignup: state.uri.queryParameters['mode'] == 'signup'),
+            ),
           ),
           GoRoute(path: '/rebi', builder: (context, state) => const ChatScreen()),
           GoRoute(
