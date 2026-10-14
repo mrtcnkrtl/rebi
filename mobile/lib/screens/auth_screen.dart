@@ -68,6 +68,11 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   String _friendlyError(String raw, {required bool network}) {
+    if (raw == supabaseNotConfiguredError) {
+      return 'Giriş şu an yapılamıyor: uygulama Supabase ayarları olmadan başlatılmış. '
+          'Geliştirme sırasında "main.dart (dev)" ayarıyla ya da '
+          '`flutter run --dart-define-from-file=env/dev.json` ile çalıştır.';
+    }
     final lower = raw.toLowerCase();
     if (network) {
       return 'Sunucuya bağlanılamadı. Kontrol et: internet / VPN bağlantın açık mı; '

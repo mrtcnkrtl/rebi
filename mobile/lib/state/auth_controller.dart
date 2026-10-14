@@ -22,6 +22,9 @@ class SignInResult {
   final bool networkError;
 }
 
+/// Uygulama `SUPABASE_URL` olmadan derlendiğinde giriş/kayıt bu hatayla döner.
+const supabaseNotConfiguredError = 'Supabase not configured';
+
 /// Webdeki "Failed to fetch" karşılığı: sunucuya hiç ulaşılamadı.
 bool _isNetwork(Object e) => e is AuthRetryableFetchException || isNetworkError(e);
 
@@ -61,7 +64,7 @@ class AuthController extends ChangeNotifier {
 
   Future<SignUpResult> signUp(String email, String password, String fullName) async {
     final client = supabase;
-    if (client == null) return const SignUpResult(error: 'Supabase not configured');
+    if (client == null) return const SignUpResult(error: supabaseNotConfiguredError);
     try {
       final res = await client.auth.signUp(email: email, password: password, data: {'full_name': fullName});
       final needs = res.user != null && res.session == null;
@@ -75,7 +78,7 @@ class AuthController extends ChangeNotifier {
 
   Future<SignInResult> signIn(String email, String password) async {
     final client = supabase;
-    if (client == null) return const SignInResult(error: 'Supabase not configured');
+    if (client == null) return const SignInResult(error: supabaseNotConfiguredError);
     try {
       final res = await client.auth.signInWithPassword(email: email, password: password);
       return SignInResult(user: res.user);

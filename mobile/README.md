@@ -17,6 +17,10 @@ flutter run --dart-define-from-file=env/dev.json
 
 `env/*.json` dosyaları git'e girmez (yalnızca `env/example.json`).
 
+Android Studio / IntelliJ'de yeşil Run düğmesi `env/dev.json`'ı kendiliğinden vermez; bunun yerine
+`.run/` altındaki **main.dart (dev)** ayarını seçin (içinde `--dart-define-from-file=env/dev.json` hazır).
+Değer verilmeden açılan uygulamada giriş/kayıt "Supabase not configured" hatası verir.
+
 | Anahtar | Web karşılığı | Not |
 | --- | --- | --- |
 | `SUPABASE_URL` | `VITE_SUPABASE_URL` | Boşsa giriş/profil/fotoğraf devre dışı (web ile aynı davranış) |
