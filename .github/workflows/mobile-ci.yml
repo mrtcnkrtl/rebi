@@ -1,5 +1,5 @@
 # Mobil uygulama (Flutter): her push ve PR'da analiz + test.
-# Dağıtım akışından (deploy-rebiovil.yml) bağımsızdır; yalnızca mobile/ değişince çalışır.
+# Dağıtım akışından (deploy-rebiovil.yml) bağımsızdır; yalnızca mobile/ ya da API sözleşmesi (contract/) değişince çalışır.
 # Analiz + test geçince Android (R8 + kaynak küçültme) ve iOS (proje dosyası, Pod, gizlilik dosyası) release
 # derlemeleri denenir; imzasızdır, yalnızca derlemenin kırılmadığını doğrular.
 name: Mobile CI
@@ -11,10 +11,12 @@ on:
       - flutter-mobile
     paths:
       - 'mobile/**'
+      - 'contract/**'
       - '.github/workflows/mobile-ci.yml'
   pull_request:
     paths:
       - 'mobile/**'
+      - 'contract/**'
       - '.github/workflows/mobile-ci.yml'
   workflow_dispatch:
 

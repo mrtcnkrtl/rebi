@@ -1,0 +1,47 @@
+{
+  "ok": true,
+  "log_date": "2026-10-15",
+  "aggregated": {
+    "water_ml_total": 1000,
+    "nutrition": {
+      "junk_food": true
+    },
+    "nutrition_logged": true,
+    "avg_stress": null,
+    "sleep_hours": null,
+    "last_location": null,
+    "weather": {
+      "uv_index": 6,
+      "humidity": 38,
+      "temperature": 18,
+      "description": "Açık"
+    },
+    "events_count": 10,
+    "routine_steps_done": 2,
+    "routine_morning_done": false,
+    "routine_evening_done": false,
+    "routine_steps": {
+      "morning": [
+        10,
+        30
+      ],
+      "evening": []
+    },
+    "spf_refreshes": 1,
+    "last_photo_meta": null,
+    "checkin_feedback_events": 0,
+    "makeup": {
+      "logged": true,
+      "used": true,
+      "removed": false,
+      "removal_method": null
+    },
+    "products_finished": [
+      {
+        "product": "SPF 50 (geniş spektrumlu)",
+        "step_order": 40,
+        "at": "2026-10-15T12:30:00+00:00"
+      }
+    ]
+  }
+}

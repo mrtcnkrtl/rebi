@@ -1,0 +1,18 @@
+{
+  "user_id": "99999999-9999-4999-8999-999999999999",
+  "settings": {
+    "wake_time": "07:00",
+    "sleep_time": "23:00",
+    "water_every_minutes": 90,
+    "enabled": {
+      "routine": true,
+      "water": true,
+      "makeup": true,
+      "nutrition": false,
+      "spf": true,
+      "lip_balm": true,
+      "checkin": true
+    }
+  },
+  "synced": true
+}

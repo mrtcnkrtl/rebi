@@ -1,0 +1,103 @@
+{
+  "user_id": "99999999-9999-4999-8999-999999999999",
+  "from_date": "2026-10-09",
+  "to_date": "2026-10-15",
+  "days": [
+    {
+      "log_date": "2026-10-14",
+      "tracking": {
+        "water_ml_total": 500,
+        "nutrition": {},
+        "nutrition_logged": false,
+        "avg_stress": null,
+        "sleep_hours": null,
+        "last_location": null,
+        "weather": null,
+        "events_count": 1,
+        "routine_steps_done": 0,
+        "routine_morning_done": false,
+        "routine_evening_done": false,
+        "routine_steps": {
+          "morning": [],
+          "evening": []
+        },
+        "spf_refreshes": 0,
+        "last_photo_meta": null,
+        "checkin_feedback_events": 0,
+        "makeup": {
+          "logged": false,
+          "used": false,
+          "removed": false,
+          "removal_method": null
+        },
+        "products_finished": []
+      },
+      "checkin": null
+    },
+    {
+      "log_date": "2026-10-15",
+      "tracking": {
+        "water_ml_total": 750,
+        "nutrition": {
+          "junk_food": true
+        },
+        "nutrition_logged": true,
+        "avg_stress": null,
+        "sleep_hours": null,
+        "last_location": null,
+        "weather": {
+          "uv_index": 6,
+          "humidity": 38,
+          "temperature": 18,
+          "description": "Açık"
+        },
+        "events_count": 9,
+        "routine_steps_done": 2,
+        "routine_morning_done": false,
+        "routine_evening_done": false,
+        "routine_steps": {
+          "morning": [
+            10,
+            30
+          ],
+          "evening": []
+        },
+        "spf_refreshes": 1,
+        "last_photo_meta": null,
+        "checkin_feedback_events": 0,
+        "makeup": {
+          "logged": true,
+          "used": true,
+          "removed": false,
+          "removal_method": null
+        },
+        "products_finished": [
+          {
+            "product": "SPF 50 (geniş spektrumlu)",
+            "step_order": 40,
+            "at": "2026-10-15T12:30:00+00:00"
+          }
+        ]
+      },
+      "checkin": {
+        "user_id": "99999999-9999-4999-8999-999999999999",
+        "log_date": "2026-10-15",
+        "applied_routine": true,
+        "skin_feeling": "iyi",
+        "sleep_hours": 7.5,
+        "stress_level": 2,
+        "risk_score": 1
+      }
+    }
+  ],
+  "assessments": [
+    {
+      "id": "a1",
+      "user_id": "99999999-9999-4999-8999-999999999999",
+      "concern": "acne",
+      "severity_score": 4,
+      "created_at": "2026-10-14T08:00:00+00:00"
+    }
+  ],
+  "synced": true
+}

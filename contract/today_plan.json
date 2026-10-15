@@ -1,0 +1,170 @@
+{
+  "user_id": "99999999-9999-4999-8999-999999999999",
+  "log_date": "2026-10-15",
+  "has_routine": true,
+  "routine": [
+    {
+      "time": "Sabah",
+      "category": "Bakım",
+      "icon": "🧴",
+      "step_order": 10,
+      "action": "Temizleme: köpük temizleyici",
+      "usage": "Yüzü ıslat, köpürt, ılık su ile durula."
+    },
+    {
+      "time": "Sabah",
+      "category": "Bakım",
+      "icon": "🧊",
+      "step_order": 30,
+      "action": "Nemlendirici: Niasinamid + Hyaluronik asit (hafif jel)",
+      "usage": "Temiz cilde, ince katman."
+    },
+    {
+      "time": "Sabah",
+      "category": "Koruma",
+      "icon": "☀️",
+      "step_order": 40,
+      "action": "SPF 50 (geniş spektrumlu)",
+      "usage": "Son adım olarak sür."
+    },
+    {
+      "time": "Akşam",
+      "category": "Bakım",
+      "icon": "🌙",
+      "step_order": 10,
+      "action": "Temizleme: yağ bazlı temizleyici + jel",
+      "usage": "Çift temizlik."
+    }
+  ],
+  "weather": {
+    "uv_index": 6,
+    "humidity": 38,
+    "temperature": 18,
+    "description": "Açık"
+  },
+  "weather_source": "tracking",
+  "environment_advice": [
+    {
+      "time": "Sabah",
+      "category": "Koruma",
+      "icon": "☀️",
+      "action": "SPF 50 (mat bitişli, yağsız SPF)",
+      "detail": "UV yüksek (6.0). Son adım olarak sür, öğlen direkt güneşten kaçın.",
+      "priority": 1,
+      "step_order": 40
+    },
+    {
+      "time": "Sabah",
+      "category": "Bakım",
+      "icon": "💦",
+      "action": "Ekstra nem: HA + Panthenol %5 katmanı",
+      "detail": "Nem düşük (%38.0). Serum + nemlendirici ikili kullan.",
+      "priority": 2
+    }
+  ],
+  "reminders": [
+    {
+      "id": "routine_morning",
+      "title": "Sabah rutini",
+      "body": "Bugünün sabah adımlarını uygula ve bitince işaretle.",
+      "start": "07:00",
+      "end": "09:00",
+      "every_minutes": null,
+      "log_event": "routine_completed_block"
+    },
+    {
+      "id": "water_intake",
+      "title": "Su içme zamanı",
+      "body": "Günlük hedef 2000 ml. İçtikçe kaydet.",
+      "start": "08:30",
+      "end": "21:00",
+      "every_minutes": 90,
+      "log_event": "water_intake"
+    },
+    {
+      "id": "spf_refresh",
+      "title": "Güneş kremini yenile",
+      "body": "UV 6. Dışarıdaysan 2 saatte bir tazele.",
+      "start": "10:30",
+      "end": "15:30",
+      "every_minutes": 120,
+      "log_event": "spf_refresh"
+    },
+    {
+      "id": "makeup_removal",
+      "title": "Makyaj temizliği",
+      "body": "Makyajlı gün: yağ bazlı temizleyici + ardından jel ile çift temizlik yap.",
+      "start": "21:00",
+      "end": "23:00",
+      "every_minutes": null,
+      "log_event": "makeup"
+    },
+    {
+      "id": "routine_evening",
+      "title": "Akşam rutini",
+      "body": "Akşam adımlarını uygula ve bitince işaretle.",
+      "start": "21:00",
+      "end": "23:00",
+      "every_minutes": null,
+      "log_event": "routine_completed_block"
+    }
+  ],
+  "reminder_settings": {
+    "wake_time": "07:00",
+    "sleep_time": "23:00",
+    "water_every_minutes": 90,
+    "enabled": {
+      "routine": true,
+      "water": true,
+      "makeup": true,
+      "nutrition": false,
+      "spf": true,
+      "lip_balm": true,
+      "checkin": true
+    }
+  },
+  "progress": {
+    "water_ml_total": 750,
+    "nutrition": {
+      "junk_food": true
+    },
+    "nutrition_logged": true,
+    "avg_stress": null,
+    "sleep_hours": null,
+    "last_location": null,
+    "weather": {
+      "uv_index": 6,
+      "humidity": 38,
+      "temperature": 18,
+      "description": "Açık"
+    },
+    "events_count": 9,
+    "routine_steps_done": 2,
+    "routine_morning_done": false,
+    "routine_evening_done": false,
+    "routine_steps": {
+      "morning": [
+        10,
+        30
+      ],
+      "evening": []
+    },
+    "spf_refreshes": 1,
+    "last_photo_meta": null,
+    "checkin_feedback_events": 0,
+    "makeup": {
+      "logged": true,
+      "used": true,
+      "removed": false,
+      "removal_method": null
+    },
+    "products_finished": [
+      {
+        "product": "SPF 50 (geniş spektrumlu)",
+        "step_order": 40,
+        "at": "2026-10-15T12:30:00+00:00"
+      }
+    ]
+  },
+  "checkin_done": true
+}
