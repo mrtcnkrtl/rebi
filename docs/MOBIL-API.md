@@ -237,13 +237,21 @@ Gerekli sunucu ortam değişkenleri:
 - `FCM_PROJECT_ID` — isteğe bağlı; yoksa servis hesabındaki `project_id` kullanılır
 - `PUSH_DISPATCH_SECRET` — dağıtım anahtarı; tanımlı değilse uç 503 döner
 
-Cron örneği (10 dakikada bir):
+Zamanlayıcı repoda hazırdır: `docker-compose.yml` içindeki **`push-cron`** servisi (`backend/push_cron.py`)
+her 5 dakikada bir (saat başlarına hizalı) bu ucu çağırır; sunucuda elle crontab gerekmez.
+`deploy/.env.api` içine `PUSH_DISPATCH_SECRET` ve `FCM_SERVICE_ACCOUNT_JSON` yazıp
+`docker compose up -d --build` yeterlidir. `PUSH_DISPATCH_SECRET` boşsa servis kapalı bekler ve tek satır bildirir.
+Elle denemek için:
 
 ```bash
-*/10 * * * * curl -fsS -X POST \
-  -H "X-Push-Dispatch-Token: $PUSH_DISPATCH_SECRET" \
-  https://rebiovil.com/api/push/dispatch >/dev/null
+curl -fsS -X POST -H "X-Push-Dispatch-Token: $PUSH_DISPATCH_SECRET"   "https://rebiovil.com/api/push/dispatch?max_users=1000"
 ```
+
+Yanıt: `users_considered`, `reminders_sent`, `notifications_sent`, `invalid_tokens_removed`,
+`push_configured` ve **`deliveries_failed`** (FCM'e ulaşılamadığı için gitmeyen; gönderim rezervi geri alınır
+ve pencere bitmeden sonraki turda yeniden denenir). Son turun özeti `GET /health` içinde
+`push_dispatch` altında görünür (`at` zamanı bayatlarsa dağıtıcı çalışmıyordur).
+`max_users` sınırına ulaşılırsa sunucu günlüğüne uyarı düşer.
 
 Her hatırlatıcı gün içinde bir kez gider (`push_sends` defteri). Bildirim verisinde
 `reminder_id`, `log_event` ve `log_date` taşınır; kullanıcı bildirime dokunduğunda

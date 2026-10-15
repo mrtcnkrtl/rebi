@@ -1199,6 +1199,12 @@ class PushDispatchResponse(BaseModel):
     notifications_sent: int
     invalid_tokens_removed: int
     push_configured: bool
+    # Hiçbir cihaza ulaşmayan ve sonraki turda yeniden denenecek hatırlatıcılar.
+    deliveries_failed: int = 0
+
+
+# Son dağıtım turunun özeti (bellekte): /health izleyicisi dağıtımın çalışıp çalışmadığını görsün.
+_PUSH_LAST_RUN: dict = {}
 
 
 class UserSnapshotResponse(BaseModel):
@@ -1358,6 +1364,7 @@ async def health():
         ),
         "rate_limit_backend": rate_limit_backend_label(),
         "push": "configured" if push_configured() else "off",
+        "push_dispatch": _PUSH_LAST_RUN or None,
         "db_schema": _DB_SCHEMA_STATUS,
     }
     if not auth_valid:
@@ -1895,9 +1902,37 @@ def _claim_push_slot(supabase, user_id: str, reminder_id: str, log_date: str, sl
             "slot": slot,
         }).execute()
         return True
-    except Exception:
-        log.info("Hatırlatıcı atlandı (zaten gönderilmiş): %s %s", reminder_id, slot)
+    except Exception as e:
+        if _is_duplicate_error(e):
+            log.info("Hatırlatıcı atlandı (zaten gönderilmiş): %s %s", reminder_id, slot)
+        else:
+            # Defter yazılamıyorsa tekrarı önleyemeyiz; göndermeyiz ama sessiz kalmayız.
+            log.error("Gönderim defterine yazılamadı (hatırlatıcı atlandı): %s %s %s", reminder_id, slot, type(e).__name__)
         return False
+
+
+def _is_duplicate_error(exc: Exception) -> bool:
+    """Benzersiz kısıt ihlali mi (Postgres 23505)?"""
+    if str(getattr(exc, "code", "") or "") == "23505":
+        return True
+    text = str(exc).lower()
+    return "duplicate key" in text or "unique constraint" in text
+
+
+def _release_push_slot(supabase, user_id: str, reminder_id: str, log_date: str, slot: str) -> None:
+    """Gönderim hiçbir cihaza ulaşmadıysa rezervi geri al; sonraki turda yeniden denenir."""
+    try:
+        (
+            supabase.table("push_sends")
+            .delete()
+            .eq("user_id", user_id)
+            .eq("reminder_id", reminder_id)
+            .eq("log_date", log_date)
+            .eq("slot", slot)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Gönderim rezervi geri alınamadı: %s", type(e).__name__)
 
 
 def _remove_invalid_device_tokens(supabase, tokens: list[str]) -> int:
@@ -2023,6 +2058,7 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
     reminders_sent = 0
     notifications_sent = 0
     invalid_removed = 0
+    deliveries_failed = 0
     users = list(by_user.items())[:max_users]
     settings_by_user = _load_reminder_settings_bulk(supabase, [uid for uid, _ in users])
 
@@ -2060,17 +2096,32 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
             notifications_sent += sent
             if sent:
                 reminders_sent += 1
+            elif not result.get("invalid_tokens"):
+                # FCM'e ulaşılamadı / istek reddedildi: rezervi bırak, pencere bitmeden yeniden denensin.
+                _release_push_slot(supabase, uid, reminder["id"], log_date, reminder["slot"])
+                deliveries_failed += 1
             invalid_removed += _remove_invalid_device_tokens(
                 supabase, result.get("invalid_tokens") or []
             )
 
-    return PushDispatchResponse(
+    summary = PushDispatchResponse(
         users_considered=len(users),
         reminders_sent=reminders_sent,
         notifications_sent=notifications_sent,
         invalid_tokens_removed=invalid_removed,
         push_configured=True,
+        deliveries_failed=deliveries_failed,
     )
+    _PUSH_LAST_RUN.clear()
+    _PUSH_LAST_RUN.update(summary.model_dump(), at=_utc_now_iso())
+    log.info(
+        "Push dağıtımı: kullanıcı=%d hatırlatıcı=%d bildirim=%d geçersiz_token=%d başarısız=%d",
+        summary.users_considered, summary.reminders_sent, summary.notifications_sent,
+        summary.invalid_tokens_removed, summary.deliveries_failed,
+    )
+    if len(by_user) > max_users:
+        log.warning("Push dağıtımı: %d kullanıcıdan yalnız %d işlendi (max_users)", len(by_user), max_users)
+    return summary
 
 
 @app.post(

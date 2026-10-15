@@ -22,6 +22,31 @@ services:
       retries: 4
       start_period: 40s
 
+  # Hatırlatıcı bildirimlerini 5 dakikada bir dağıtır (backend/push_cron.py).
+  # PUSH_DISPATCH_SECRET deploy/.env.api'de tanımlı değilse kapalı bekler, hata vermez.
+  push-cron:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: ["python", "push_cron.py"]
+    env_file:
+      - ./deploy/.env.api
+    environment:
+      PUSH_DISPATCH_URL: http://api:8000/push/dispatch?max_users=1000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    # Görüntüdeki HEALTHCHECK API portunu yoklar; bu konteynerde port yok. Döngü canlıysa dosya güncellenir.
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - python -c "import os,sys,time; sys.exit(0 if time.time()-os.path.getmtime('/tmp/push_cron_alive')<900 else 1)"
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 360s
+
   web:
     build:
       context: .
