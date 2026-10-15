@@ -356,7 +356,7 @@ def test_plan_uses_profile_location_when_client_sends_none(monkeypatch, client, 
         assert (lat, lon) == (41.0, 29.0)
         return {"uv_index": 8, "humidity": 40, "temperature": 28}
 
-    monkeypatch.setattr(main, "fetch_weather", _weather)
+    monkeypatch.setattr(main, "fetch_weather_live", _weather)
     main._WEATHER_CACHE.clear()
 
     body = client.get("/today/plan", params={"user_id": USER_ID}, headers=headers).json()
@@ -376,21 +376,21 @@ def test_plan_falls_back_to_defaults_without_location_consent(monkeypatch, clien
     async def _never_called(lat, lon):
         raise AssertionError("Konum izni yokken hava durumu çekilmemeli")
 
-    monkeypatch.setattr(main, "fetch_weather", _never_called)
+    monkeypatch.setattr(main, "fetch_weather_live", _never_called)
 
     body = client.get("/today/plan", params={"user_id": USER_ID}, headers=headers).json()
 
     assert body["weather_source"] == "default"
 
 
-def test_weather_is_cached_per_region_and_time_block(monkeypatch):
+def test_weather_is_cached_per_region(monkeypatch):
     calls = []
 
     async def _weather(lat, lon):
         calls.append((lat, lon))
         return {"uv_index": 5, "humidity": 50, "temperature": 20}
 
-    monkeypatch.setattr(main, "fetch_weather", _weather)
+    monkeypatch.setattr(main, "fetch_weather_live", _weather)
     main._WEATHER_CACHE.clear()
 
     first = asyncio.run(main._weather_for_coords(41.0150, 28.9790))
@@ -398,6 +398,124 @@ def test_weather_is_cached_per_region_and_time_block(monkeypatch):
 
     assert first == second
     assert len(calls) == 1
+
+
+def _clock(monkeypatch, start=1000.0):
+    now = {"t": start}
+    monkeypatch.setattr(main.time, "monotonic", lambda: now["t"])
+    return now
+
+
+def test_cached_weather_expires_after_the_ttl(monkeypatch):
+    calls = []
+    now = _clock(monkeypatch)
+
+    async def _weather(lat, lon):
+        calls.append((lat, lon))
+        return {"uv_index": 5, "humidity": 50, "temperature": 20}
+
+    monkeypatch.setattr(main, "fetch_weather_live", _weather)
+    main._WEATHER_CACHE.clear()
+
+    asyncio.run(main._weather_for_coords(41.0, 29.0))
+    now["t"] += main._WEATHER_TTL_SECONDS - 1
+    asyncio.run(main._weather_for_coords(41.0, 29.0))
+    assert len(calls) == 1
+
+    now["t"] += 2
+    asyncio.run(main._weather_for_coords(41.0, 29.0))
+    assert len(calls) == 2
+
+
+def test_failed_weather_is_not_stored_as_data_and_is_retried_soon(monkeypatch):
+    calls = []
+    now = _clock(monkeypatch)
+
+    async def _down(lat, lon):
+        calls.append((lat, lon))
+        return None
+
+    monkeypatch.setattr(main, "fetch_weather_live", _down)
+    main._WEATHER_CACHE.clear()
+
+    assert asyncio.run(main._weather_for_coords(41.0, 29.0)) is None
+    assert asyncio.run(main._weather_for_coords(41.0, 29.0)) is None
+    assert len(calls) == 1  # sağlayıcı çökükken her istekte yeniden yüklenmez
+
+    now["t"] += main._WEATHER_FAILURE_TTL_SECONDS + 1
+    assert asyncio.run(main._weather_for_coords(41.0, 29.0)) is None
+    assert len(calls) == 2  # ama kısa süre sonra yeniden denenir
+
+    async def _up(lat, lon):
+        return {"uv_index": 6, "humidity": 40, "temperature": 24}
+
+    monkeypatch.setattr(main, "fetch_weather_live", _up)
+    now["t"] += main._WEATHER_FAILURE_TTL_SECONDS + 1
+    assert asyncio.run(main._weather_for_coords(41.0, 29.0))["uv_index"] == 6
+
+
+def test_plan_does_not_label_default_weather_as_live_when_provider_is_down(monkeypatch, client, headers):
+    _db(monkeypatch, privacy_preferences=[{"user_id": USER_ID, "location_processing_allowed": True}])
+
+    async def _down(lat, lon):
+        return None
+
+    monkeypatch.setattr(main, "fetch_weather_live", _down)
+    main._WEATHER_CACHE.clear()
+
+    body = client.get(
+        "/today/plan", params={"user_id": USER_ID, "lat": 41.0, "lon": 29.0}, headers=headers
+    ).json()
+
+    assert body["weather_source"] == "default"
+    assert body["weather"]["temperature"] == main.WEATHER_FALLBACK["temperature"]
+
+
+def test_plan_falls_back_to_todays_tracked_weather_when_provider_is_down(monkeypatch, client, headers):
+    _db(
+        monkeypatch,
+        privacy_preferences=[{"user_id": USER_ID, "location_processing_allowed": True}],
+        daily_events=[{
+            "user_id": USER_ID,
+            "log_date": str(main.date.today()),
+            "event_time": "2026-10-15T08:00:00+00:00",
+            "type": "weather",
+            "payload": {"uv_index": 7, "humidity": 30, "temperature": 26},
+        }],
+    )
+
+    async def _down(lat, lon):
+        return None
+
+    monkeypatch.setattr(main, "fetch_weather_live", _down)
+    main._WEATHER_CACHE.clear()
+
+    body = client.get(
+        "/today/plan", params={"user_id": USER_ID, "lat": 41.0, "lon": 29.0}, headers=headers
+    ).json()
+
+    assert body["weather_source"] == "tracking"
+    assert body["weather"]["uv_index"] == 7
+
+
+def test_location_event_does_not_store_fake_weather_when_provider_is_down(monkeypatch, client, headers):
+    db = _db(monkeypatch, privacy_preferences=[{"user_id": USER_ID, "location_processing_allowed": True}])
+
+    async def _down(lat, lon):
+        return None
+
+    monkeypatch.setattr(main, "fetch_weather_live", _down)
+    main._WEATHER_CACHE.clear()
+
+    r = client.post(
+        "/daily_tracking/ingest",
+        json={"user_id": USER_ID, "type": "location", "payload": {"lat": 41.0, "lon": 29.0}},
+        headers=headers,
+    )
+
+    assert r.status_code == 200, r.text
+    stored_types = [row["type"] for row in db.tables["daily_events"].rows]
+    assert "weather" not in stored_types
 
 
 def test_repeated_offline_event_is_written_once(monkeypatch, client, headers):

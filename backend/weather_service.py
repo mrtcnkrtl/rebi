@@ -12,8 +12,14 @@ FALLBACK = {
 
 
 async def fetch_weather(lat: float, lon: float) -> dict:
+    """Hava durumu; hiçbir kaynak yanıt vermezse varsayılan değerler (her zaman dict)."""
+    return await fetch_weather_live(lat, lon) or dict(FALLBACK)
+
+
+async def fetch_weather_live(lat: float, lon: float) -> dict | None:
     """Fetch current weather from Open-Meteo (free, no key needed) with
-    OpenWeatherMap as optional upgrade."""
+    OpenWeatherMap as optional upgrade. Hiçbir kaynak yanıt vermezse None:
+    çağıran, varsayılan değeri gerçek hava gibi saklamamalı."""
 
     # Try Open-Meteo first (completely free, no API key)
     try:
@@ -73,8 +79,8 @@ async def fetch_weather(lat: float, lon: float) -> dict:
         except Exception as e:
             log.warning("OpenWeatherMap hatası: %s", e)
 
-    log.warning("Tüm hava servisleri başarısız, varsayılan değerler kullanılıyor")
-    return FALLBACK
+    log.warning("Tüm hava servisleri başarısız")
+    return None
 
 
 def _weather_code_to_text(code: int) -> str:

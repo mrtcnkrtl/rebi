@@ -14,11 +14,12 @@ from typing import Optional, Literal
 import os
 import re
 import secrets
+import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
-from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather
+from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather, fetch_weather_live
 from today_plan import (
     CATEGORY_NAMES,
     EARLIEST_WAKE_MINUTES,
@@ -593,23 +594,28 @@ def _privacy_permission_granted(supabase, user_id: str, permission: str) -> bool
         return False
 
 
-# Aynı bölge ve 3 saatlik dilim için hava durumu bir kez çekilir; dağıtıcı
-# yüzlerce kullanıcı için sağlayıcıyı tekrar tekrar çağırmaz.
-_WEATHER_CACHE: dict[tuple, dict] = {}
+# Aynı bölge için hava durumu kısa süre saklanır; dağıtıcı ve ana ekran yüzlerce kullanıcı için
+# sağlayıcıyı tekrar tekrar çağırmaz. Başarısız çekim çok kısa saklanır ve ASLA varsayılan
+# değerle doldurulmaz: kullanıcı sahte değeri "canlı hava" diye görmesin.
+_WEATHER_CACHE: dict[tuple, tuple[float, Optional[dict]]] = {}
 _WEATHER_CACHE_MAX = 500
+_WEATHER_TTL_SECONDS = 30 * 60
+_WEATHER_FAILURE_TTL_SECONDS = 2 * 60
 
 
-async def _weather_for_coords(lat: float, lon: float) -> dict:
-    now = datetime.now(timezone.utc)
-    key = (round(float(lat), 1), round(float(lon), 1), now.strftime("%Y-%m-%d"), now.hour // 3)
+async def _weather_for_coords(lat: float, lon: float) -> Optional[dict]:
+    """Önbellekli canlı hava; hiçbir kaynak yanıt vermiyorsa None."""
+    key = (round(float(lat), 1), round(float(lon), 1))
+    now = time.monotonic()
     cached = _WEATHER_CACHE.get(key)
-    if cached is not None:
-        return dict(cached)
-    data = await fetch_weather(lat, lon)
+    if cached is not None and cached[0] > now:
+        return dict(cached[1]) if cached[1] else None
+    data = await fetch_weather_live(lat, lon)
     if len(_WEATHER_CACHE) >= _WEATHER_CACHE_MAX:
         _WEATHER_CACHE.clear()
-    _WEATHER_CACHE[key] = data
-    return dict(data)
+    ttl = _WEATHER_TTL_SECONDS if data else _WEATHER_FAILURE_TTL_SECONDS
+    _WEATHER_CACHE[key] = (now + ttl, data)
+    return dict(data) if data else None
 
 
 async def _weather_from_profile(supabase, user_id: str) -> Optional[dict]:
@@ -1413,8 +1419,11 @@ async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestReques
         try:
             lat = (req.payload or {}).get("lat")
             lon = (req.payload or {}).get("lon")
-            if lat is not None and lon is not None:
-                weather_data = await fetch_weather(lat, lon)
+            # Hava servisi yanıt vermezse olay yazılmaz: varsayılan değer gerçek hava gibi saklanmasın.
+            weather_data = (
+                await _weather_for_coords(lat, lon) if lat is not None and lon is not None else None
+            )
+            if weather_data:
                 w_event = {
                     "user_id": req.user_id,
                     "event_time": _utc_now_iso(),
@@ -1531,20 +1540,24 @@ async def today_plan_endpoint(
     events = _load_daily_events(supabase, user_id, today)
     aggregated = _aggregate_daily_events(events)
 
-    weather = dict(WEATHER_FALLBACK)
+    # Sıra: istemcinin konumu (canlı) → bugün kaydedilen hava → profildeki konum → varsayılan.
+    # Canlı çekim başarısızsa bir sonraki kaynağa düşülür; varsayılan değer "canlı" diye sunulmaz.
+    weather: Optional[dict] = None
     weather_source = "default"
     if lat is not None and lon is not None:
         _require_privacy_permission(user_id, "location")
         weather = await _weather_for_coords(lat, lon)
-        weather_source = "live"
-    elif aggregated.get("weather"):
+        if weather:
+            weather_source = "live"
+    if weather is None and aggregated.get("weather"):
         weather = dict(aggregated["weather"])
         weather_source = "tracking"
-    else:
-        from_profile = await _weather_from_profile(supabase, user_id)
-        if from_profile:
-            weather = from_profile
+    if weather is None:
+        weather = await _weather_from_profile(supabase, user_id)
+        if weather:
             weather_source = "profile"
+    if weather is None:
+        weather = dict(WEATHER_FALLBACK)
 
     row = _load_active_routine(supabase, user_id)
     routine = row.get("active_routine") or []
@@ -3416,8 +3429,24 @@ def _delete_skin_photos_for_user(supabase, user_id: str) -> None:
         )
 
 
+# PostgREST "tablo yok" (şema önbelleğinde bulunamadı) ve Postgres "undefined_table" kodları.
+_MISSING_TABLE_CODES = frozenset({"PGRST205", "42P01"})
+
+
+def _is_missing_table_error(exc: Exception) -> bool:
+    """Tablo henüz oluşturulmamış mı (migration uygulanmadan yayına çıkıldı)?"""
+    if str(getattr(exc, "code", "") or "") in _MISSING_TABLE_CODES:
+        return True
+    text = str(exc).lower()
+    return "could not find the table" in text or ("relation" in text and "does not exist" in text)
+
+
 def _delete_user_application_data(supabase, user_id: str) -> None:
-    """Cascade yapılandırmasından bağımsız olarak kişisel veri satırlarını sil."""
+    """
+    Cascade yapılandırmasından bağımsız olarak kişisel veri satırlarını sil.
+    Tablo hiç yoksa silinecek veri de yoktur: bu hesap silmeyi durdurmaz (yeni bir tablo
+    migration'ından önce yayına çıkan sürüm hesap silmeyi bozmasın). Diğer her hata durdurur.
+    """
     targets = (
         ("privacy_preferences", "user_id"),
         ("legal_consents", "user_id"),
@@ -3435,6 +3464,9 @@ def _delete_user_application_data(supabase, user_id: str) -> None:
         try:
             supabase.table(table).delete().eq(column, user_id).execute()
         except Exception as e:
+            if _is_missing_table_error(e):
+                log.warning("Hesap veri silme: tablo yok, atlandı: table=%s", table)
+                continue
             log.error("Hesap veri silme başarısız: table=%s error=%s", table, type(e).__name__)
             raise HTTPException(
                 status_code=502,
