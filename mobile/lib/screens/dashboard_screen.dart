@@ -159,7 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _translatedFor = fetched;
     () async {
       try {
-        final res = await apiPost('/routine/translate_items', {'user_id': uid, 'routine_items': fetched});
+        final res = await apiPost('/routine/translate_items', {'user_id': uid, 'routine_items': fetched}, timeout: apiLongTimeout);
         final items = asRoutine(res.data['routine_items']);
         if (mounted && identical(_fetchedRoutine, fetched) && items.isNotEmpty) {
           setState(() {

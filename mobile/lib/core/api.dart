@@ -45,7 +45,12 @@ Future<Map<String, String>> apiAuthHeaders() async {
 /// gün içi uçlara gönderilir; yoksa gece 00:00-03:00 (TR) arası bir önceki gün görünür.
 String localUtcOffsetMinutes([DateTime? now]) => '${(now ?? DateTime.now()).timeZoneOffset.inMinutes}';
 
-const _timeout = Duration(seconds: 120);
+/// Okuma, olay kaydı ve ayar uçları: bağlantı kötüyse ekran iki dakika dönmesin, kısa sürede bırakılır
+/// (olay kaydı çevrimdışı kuyrukta bekler, ekranlar yerel kopyayla açılır).
+const apiTimeout = Duration(seconds: 20);
+
+/// Yapay zekâ ya da toplu işlem yapan uçlar (rutin üretme, sohbet, check-in notu, çeviri, hesap silme).
+const apiLongTimeout = Duration(seconds: 120);
 
 http.Client _http = http.Client();
 
@@ -72,36 +77,36 @@ Map<String, dynamic> _decode(http.Response res) {
   }
 }
 
-Future<ApiResponse> apiGet(String path, {Map<String, String?>? query, bool auth = true}) async {
+Future<ApiResponse> apiGet(String path, {Map<String, String?>? query, bool auth = true, Duration timeout = apiTimeout}) async {
   final headers = auth ? await apiAuthHeaders() : <String, String>{};
-  final res = await _http.get(apiUri(path, query), headers: headers).timeout(_timeout);
+  final res = await _http.get(apiUri(path, query), headers: headers).timeout(timeout);
   return ApiResponse(res.statusCode, _decode(res));
 }
 
-Future<ApiResponse> apiPost(String path, Object? body, {bool auth = true}) async {
+Future<ApiResponse> apiPost(String path, Object? body, {bool auth = true, Duration timeout = apiTimeout}) async {
   final headers = {
     'Content-Type': 'application/json',
     if (auth) ...await apiAuthHeaders(),
   };
-  final res = await _http.post(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(_timeout);
+  final res = await _http.post(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(timeout);
   return ApiResponse(res.statusCode, _decode(res));
 }
 
-Future<ApiResponse> apiPatch(String path, Object? body) async {
+Future<ApiResponse> apiPatch(String path, Object? body, {Duration timeout = apiTimeout}) async {
   final headers = {'Content-Type': 'application/json', ...await apiAuthHeaders()};
-  final res = await _http.patch(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(_timeout);
+  final res = await _http.patch(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(timeout);
   return ApiResponse(res.statusCode, _decode(res));
 }
 
-Future<ApiResponse> apiPut(String path, Object? body) async {
+Future<ApiResponse> apiPut(String path, Object? body, {Duration timeout = apiTimeout}) async {
   final headers = {'Content-Type': 'application/json', ...await apiAuthHeaders()};
-  final res = await _http.put(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(_timeout);
+  final res = await _http.put(apiUri(path), headers: headers, body: jsonEncode(body)).timeout(timeout);
   return ApiResponse(res.statusCode, _decode(res));
 }
 
-Future<ApiResponse> apiDelete(String path, {Map<String, String?>? query}) async {
+Future<ApiResponse> apiDelete(String path, {Map<String, String?>? query, Duration timeout = apiTimeout}) async {
   final headers = await apiAuthHeaders();
-  final res = await _http.delete(apiUri(path, query), headers: headers).timeout(_timeout);
+  final res = await _http.delete(apiUri(path, query), headers: headers).timeout(timeout);
   return ApiResponse(res.statusCode, _decode(res));
 }
 

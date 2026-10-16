@@ -46,7 +46,7 @@ Future<void> _importLocalHistory(String userId) async {
   await LocalStore.instance.setString(_importedKey(userId), '1');
   if (local.isEmpty) return;
   try {
-    await apiPost('/chat/history/import', {'user_id': userId, 'messages': local, 'surface': 'general'});
+    await apiPost('/chat/history/import', {'user_id': userId, 'messages': local, 'surface': 'general'}, timeout: apiLongTimeout);
   } catch (_) {
     /* çevrimdışı: yerel geçmiş yerinde kalır */
   }
@@ -266,7 +266,7 @@ class _ChatScreenState extends State<ChatScreen> {
         'message': msg,
         'history': newHist,
         'utc_offset_minutes': DateTime.now().timeZoneOffset.inMinutes,
-      });
+      }, timeout: apiLongTimeout);
       if (!mounted || gen != _generation) return;
       final data = res.data;
       if (!res.ok) {

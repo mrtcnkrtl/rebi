@@ -272,7 +272,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         payload['active_reaction_severity'] = _reactionSeverity;
       }
 
-      final res = await apiPost('/daily_checkin', payload);
+      final res = await apiPost('/daily_checkin', payload, timeout: apiLongTimeout);
       if (!mounted) return;
       if (res.status == 409) {
         final d = res.data['detail'];

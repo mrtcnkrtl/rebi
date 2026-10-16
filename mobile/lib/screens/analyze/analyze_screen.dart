@@ -359,7 +359,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         'makeup_removal': _makeupFreq > 0 ? _makeupRemoval : 'cleanser',
         'special_flags': anyFlag ? _specialFlags : null,
       };
-      final res = await apiPost('/generate_routine', body);
+      final res = await apiPost('/generate_routine', body, timeout: apiLongTimeout);
       if (!res.ok) {
         if (isConsentError(res.status, res.data)) {
           requestConsentRecovery();

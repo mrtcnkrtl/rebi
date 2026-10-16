@@ -261,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
     setState(() => _deleteBusy = true);
     try {
-      final res = await apiPost('/account/delete', {'user_id': uid, 'confirm_text': accountDeletePhrase});
+      final res = await apiPost('/account/delete', {'user_id': uid, 'confirm_text': accountDeletePhrase}, timeout: apiLongTimeout);
       if (!res.ok) throw Exception(detailOr(res.data, 'İstek başarısız'));
       _deletePhrase.clear();
       await clearUserLocalData(uid);
