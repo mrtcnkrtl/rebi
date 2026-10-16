@@ -1,0 +1,48 @@
+# Backend testleri: dal ve PR'larda, birleştirmeden ÖNCE.
+# main'e push'ta aynı testleri deploy-rebiovil.yml zaten çalıştırır (geçmezse VPS'e bir şey gitmez);
+# bu akış sorunu birleşmeden önce, canlı ortamla aynı Python ve sabitlenmiş requirements ile yakalar.
+# API sözleşmesi (contract/) değişince de çalışır: backend testi fixture'lara karşı doğrulanır.
+name: Backend CI
+
+on:
+  push:
+    branches:
+      - flutter-mobile
+    paths:
+      - 'backend/**'
+      - 'contract/**'
+      - 'scripts/smoke_mobile_api.py'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    paths:
+      - 'backend/**'
+      - 'contract/**'
+      - 'scripts/smoke_mobile_api.py'
+      - '.github/workflows/backend-ci.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: backend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Bağımlılıklar
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Testler
+        working-directory: backend
+        run: python -m pytest -q -m "not slow"
