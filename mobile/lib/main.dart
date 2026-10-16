@@ -17,6 +17,7 @@ import 'core/local_store.dart';
 import 'core/notification_ports.dart';
 import 'router.dart';
 import 'ui/tw.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 Future<void> main() async {
   await bootstrap();
@@ -78,7 +79,7 @@ class _ErrorCard extends StatelessWidget {
                   height: 64,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(color: Tw.red100, borderRadius: BorderRadius.circular(16)),
-                  child: const Text('😥', style: TextStyle(fontSize: 30)),
+                  child: Icon(LucideIcons.cloudAlert, size: 30, color: Tw.red600),
                 ),
                 const SizedBox(height: 16),
                 Text('Bir Sorun Oluştu', style: tx(20, w: 7)),

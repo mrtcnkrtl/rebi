@@ -6,6 +6,7 @@ import '../core/i18n.dart';
 import '../core/legal_texts.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import '../ui/brand/palette.dart';
 
 /// `/kvkk` ve `/riza` (web: `pages/Legal.jsx`). Form üstüne açıldığı için geri dönüş formu korur.
 class LegalScreen extends StatelessWidget {
@@ -79,7 +80,7 @@ class LegalScreen extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(title, style: tx(24, w: 7)),
+                            Text(title, style: heading(28)),
                             const SizedBox(height: 4),
                             Text(i18n.t('legal.updated', {'date': legalUpdated}), style: tx(12, c: Tw.gray500)),
                           ],

@@ -29,6 +29,8 @@ import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import 'analyze_photo_only.dart';
 import 'analyze_widgets.dart';
+import '../../ui/brand/glyphs.dart';
+import '../../ui/brand/palette.dart';
 
 const strongActiveFamilyIds = [
   'retinol',
@@ -47,16 +49,7 @@ const strongActiveFamilyIds = [
   'urea',
 ];
 
-const _concernDefs = [
-  ('general', '🧼'),
-  ('oiliness', '💧'),
-  ('pores', '🕳️'),
-  ('acne', '🔴'),
-  ('aging', '✨'),
-  ('dryness', '🏜️'),
-  ('pigmentation', '🎯'),
-  ('sensitivity', '🌸'),
-];
+const _concernIds = ['general', 'oiliness', 'pores', 'acne', 'aging', 'dryness', 'pigmentation', 'sensitivity'];
 
 const _zoneIds = ['forehead', 'nose', 'cheeks', 'chin', 'undereye', 'lips', 'temples'];
 
@@ -438,7 +431,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
             children: [
               Center(child: GradientIconBox(icon: LucideIcons.sparkles, from: theme.accent, to: theme.primary, size: 64, iconSize: 32)),
               const SizedBox(height: 16),
-              Text(i18n.t('analyze.routineReadyTitle'), textAlign: TextAlign.center, style: tx(20, w: 7)),
+              Text(i18n.t('analyze.routineReadyTitle'), textAlign: TextAlign.center, style: heading(24)),
               const SizedBox(height: 16),
               Text(pack.s('compactHub.description'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray600, h: relaxed)),
               const SizedBox(height: 24),
@@ -767,8 +760,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           children: [
             Text(i18n.t('analyze.concerns'), style: tx(14, w: 5, c: Tw.gray700)),
             const SizedBox(height: 12),
-            for (final (id, icon) in _concernDefs) ...[
-              _concernButton(id, icon, pack.or('concern.$id', id)),
+            for (final id in _concernIds) ...[
+              _concernButton(id, pack.or('concern.$id', id)),
               if (_concerns.contains(id)) ...[
                 const SizedBox(height: 8),
                 Padding(
@@ -905,7 +898,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                   height: 28,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(color: Tw.purple100, borderRadius: BorderRadius.circular(8)),
-                  child: const Text('🧠', style: TextStyle(fontSize: 14)),
+                  child: Icon(LucideIcons.brain, size: 16, color: Tw.purple700),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1082,7 +1075,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
     ];
   }
 
-  Widget _concernButton(String id, String icon, String label) {
+  Widget _concernButton(String id, String label) {
     final active = _concerns.contains(id);
     return Material(
       color: active ? Tw.teal50 : Colors.transparent,
@@ -1098,7 +1091,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           ),
           child: Row(
             children: [
-              Text(icon, style: const TextStyle(fontSize: 18)),
+              Icon(concernGlyph(id), size: 19, color: active ? Tw.teal700 : Tw.gray500),
               const SizedBox(width: 10),
               Expanded(child: Text(label, style: tx(14, w: active ? 5 : 4, c: active ? Tw.teal800 : Tw.gray600))),
               if (active) Icon(LucideIcons.circleCheck, size: 16, color: Tw.teal500),

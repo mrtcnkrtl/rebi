@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/i18n.dart';
 import '../../ui/tw.dart';
 import 'today_clock.dart';
+import '../../ui/brand/palette.dart';
 
 /// Günün saatine göre selamlama (`mobileToday.greet.*`) ve tarih.
 class TodayHeader extends StatelessWidget {
@@ -35,7 +36,7 @@ class TodayHeader extends StatelessWidget {
             children: [
               Text(
                 i18n.t('mobileToday.greet.${greetingKey(todayPanelClock())}', {'name': first}),
-                style: tx(26, w: 8, h: tight),
+                style: heading(30, h: 1.1),
               ),
               const SizedBox(height: 4),
               Text(dateLine, style: tx(14, c: Tw.gray500)),

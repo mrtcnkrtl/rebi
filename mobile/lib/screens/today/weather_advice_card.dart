@@ -7,6 +7,7 @@ import '../../core/today_plan.dart';
 import '../../state/theme_controller.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
+import '../../ui/brand/glyphs.dart';
 
 /// Havaya göre bugün kullanılacak ürün önerileri (SPF, nemlendirici, dudak balsamı).
 class EnvironmentAdviceCard extends StatelessWidget {
@@ -52,7 +53,7 @@ class EnvironmentAdviceCard extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      emojiText(truthy(item['icon']) ? str(item['icon']) : '🧴', 16),
+                      Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.pipette), size: 18, color: theme.primary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(

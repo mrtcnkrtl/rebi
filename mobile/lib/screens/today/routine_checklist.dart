@@ -12,6 +12,7 @@ import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import 'today_clock.dart';
 import 'today_widgets.dart';
+import '../../ui/brand/glyphs.dart';
 
 /// Günün rutini: sabah / akşam sekmeleri ve adım adım işaretlenen liste. Son adım işaretlenince
 /// blok tamamlanır; alttaki "yaptım" düğmesiyle tek dokunuşta da tamamlanabilir.
@@ -156,7 +157,7 @@ class _RoutineChecklistCardState extends State<RoutineChecklistCard> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  emojiText(block == 'morning' ? '☀️' : '🌙', 14),
+                  Icon(block == 'morning' ? LucideIcons.sun : LucideIcons.moon, size: 15, color: selected ? Colors.white : theme.primaryDark),
                   const SizedBox(width: 6),
                   Text(label, style: tx(13, w: 6, c: selected ? Colors.white : theme.primaryDark)),
                   const SizedBox(width: 6),
@@ -289,7 +290,7 @@ class _RoutineChecklistCardState extends State<RoutineChecklistCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          emojiText(truthy(item['icon']) ? str(item['icon']) : '•', 14),
+          Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.dot), size: 16, color: Tw.gray600),
           const SizedBox(width: 8),
           Expanded(
             child: Column(

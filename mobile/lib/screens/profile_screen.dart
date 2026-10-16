@@ -21,6 +21,7 @@ import '../ui/components/notification_widgets.dart';
 import '../ui/components/profile_details_card.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import '../ui/brand/palette.dart';
 
 const accountDeletePhrase = 'HESABIMI_SIL';
 
@@ -359,7 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(i18n.t('profile.title'), style: tx(20, w: 7)),
+                  Text(i18n.t('profile.title'), style: heading(26)),
                   Text(i18n.t('profile.subtitle'), style: tx(14, c: Tw.gray500)),
                 ],
               ),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../tw.dart';
+import '../brand/palette.dart';
 
 List<(IconData, String, Color)> get _steps => [
   (LucideIcons.cloudSun, 'Hava durumu inceleniyor...', Tw.blue500),
@@ -76,7 +77,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                   ),
                 ),
                 const SizedBox(height: 32),
-                Text('Rebi Analiz Ediyor', style: tx(24, w: 7)),
+                Text('Rebi Analiz Ediyor', style: heading(26)),
                 const SizedBox(height: 8),
                 Text('Sana özel bütüncül rutin hazırlanıyor', textAlign: TextAlign.center, style: tx(16, c: Tw.gray500)),
                 const SizedBox(height: 40),

@@ -49,14 +49,14 @@ void main() {
 
     testWidgets('temalar: premium temalar ücretsiz hesapta listelenmez, abonelik bağlantısı yok', (tester) async {
       await pumpApp(tester, location: '/dashboard/themes');
-      expect(find.text('💗 Pembe Kalp'), findsOneWidget, reason: 'ücretsiz tema');
-      expect(find.text('🌅 Gün Batımı'), findsNothing, reason: 'premium tema');
+      expect(find.text('Pudra'), findsOneWidget, reason: 'ücretsiz tema');
+      expect(find.text('Gün Batımı'), findsNothing, reason: 'premium tema');
       expect(find.text('abonelik sayfası'), findsNothing);
     });
 
     testWidgets('temalar: Plus hesapta premium temalar seçilir', (tester) async {
       final h = await pumpApp(tester, location: '/dashboard/themes', user: fakeUser(appMetadata: plusUser));
-      await tapText(tester, '🌅 Gün Batımı');
+      await tapText(tester, 'Gün Batımı');
       expect(h.theme.themeId, 'sunset');
     });
 
@@ -114,7 +114,7 @@ void main() {
     testWidgets('premium temalar kilitli olarak listelenir', (tester) async {
       withPlusPurchasable();
       await pumpApp(tester, location: '/dashboard/themes');
-      expect(find.text('🌅 Gün Batımı'), findsOneWidget);
+      expect(find.text('Gün Batımı'), findsOneWidget);
       expect(find.text('abonelik sayfası'), findsOneWidget);
     });
 

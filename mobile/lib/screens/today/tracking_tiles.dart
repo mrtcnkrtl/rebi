@@ -14,8 +14,9 @@ import '../../ui/widgets/skeleton.dart';
 import 'today_clock.dart';
 import 'today_widgets.dart';
 
-const _makeupColor = Color(0xFFDB2777);
-const _nutritionColor = Color(0xFF16A34A);
+// Kategori renkleri paletten gelir (pudra = makyaj, adaçayı = beslenme); moda göre değişir, bu yüzden alıcıdır.
+Color get _makeupColor => Tw.pink600;
+Color get _nutritionColor => Tw.green600;
 
 /// Gün içi takip kartları: su, makyaj, beslenme ve güneş kremi. Her kart tek dokunuşla kayıt
 /// alır; ayrıntı gereken kayıtlar (temizleme yöntemi, yenilen şeyler, su miktarı) alt sayfa açar.

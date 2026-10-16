@@ -5,20 +5,19 @@ import '../../core/i18n.dart';
 import '../../core/routine_logic.dart';
 import '../../state/theme_controller.dart';
 import '../tw.dart';
-import 'theme_pattern_overlay.dart';
 
-/// `.card` — beyaz, rounded-3xl, ince kenarlık, hafif gölge, p-6.
+/// Kart: yüzey rengi, ince sıcak kenarlık, çok hafif orman tonlu gölge.
 class RCard extends StatelessWidget {
   const RCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(24),
+    this.padding = const EdgeInsets.all(20),
     this.color,
     this.gradient,
     this.borderColor,
     this.borderWidth = 1,
     this.leftBorderColor,
-    this.radius = 24,
+    this.radius = 20,
     this.margin,
     this.onTap,
     this.dashed = false,
@@ -65,7 +64,7 @@ class RCard extends StatelessWidget {
         gradient: gradient,
         borderRadius: leftBorderColor != null ? null : radiusGeo,
         border: dashed ? null : border,
-        boxShadow: Tw.dark ? null : const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))],
+        boxShadow: Tw.dark ? null : const [BoxShadow(color: Color(0x0F0B3D38), blurRadius: 14, offset: Offset(0, 4))],
       ),
       child: dashed
           ? CustomPaint(painter: _DashedBorderPainter(borderColor, borderWidth, radius), child: content)
@@ -126,10 +125,10 @@ class PrimaryButton extends StatelessWidget {
     this.child,
     this.color,
     this.loading = false,
-    this.minHeight = 48,
+    this.minHeight = 52,
     this.fontSize = 16,
     this.padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-    this.radius = 16,
+    this.radius = 999,
   });
 
   final VoidCallback? onPressed;
@@ -138,12 +137,14 @@ class PrimaryButton extends StatelessWidget {
   final IconData? trailingIcon;
   final Widget? child;
 
-  /// Verilmezse marka rengi (teal).
+  /// Verilmezse marka rengi (orman).
   final Color? color;
   final bool loading;
   final double minHeight;
   final double fontSize;
   final EdgeInsetsGeometry padding;
+
+  /// Varsayılan tam yuvarlak uç (karşılama düğmeleriyle aynı dil).
   final double radius;
 
   @override
@@ -164,7 +165,7 @@ class PrimaryButton extends StatelessWidget {
                 if (icon != null) ...[Icon(icon, size: 20, color: Colors.white), const SizedBox(width: 8)],
                 if (label != null)
                   Flexible(
-                    child: Text(label!, textAlign: TextAlign.center, style: tx(fontSize, w: 6, c: Colors.white)),
+                    child: Text(label!, textAlign: TextAlign.center, style: tx(fontSize, w: 6, c: Colors.white, ls: .1)),
                   ),
                 if (trailingIcon != null) ...[const SizedBox(width: 8), Icon(trailingIcon, size: 20, color: Colors.white)],
               ],
@@ -176,7 +177,6 @@ class PrimaryButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: color,
           borderRadius: BorderRadius.circular(radius),
-          boxShadow: [BoxShadow(color: color.withValues(alpha: .25), blurRadius: 15, offset: const Offset(0, 8))],
         ),
         child: Material(
           color: Colors.transparent,
@@ -191,7 +191,7 @@ class PrimaryButton extends StatelessWidget {
   }
 }
 
-/// `.btn-secondary`
+/// İkincil düğme: çerçeveli, yüzey dolgulu, tam yuvarlak uç.
 class SecondaryButton extends StatelessWidget {
   const SecondaryButton({
     super.key,
@@ -204,7 +204,7 @@ class SecondaryButton extends StatelessWidget {
     this.textColor,
     this.loading = false,
     this.fontSize = 16,
-    this.minHeight = 48,
+    this.minHeight = 52,
     this.padding = const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
   });
 
@@ -214,10 +214,10 @@ class SecondaryButton extends StatelessWidget {
   final IconData? trailingIcon;
   final Widget? child;
 
-  /// Verilmezse açık teal kenarlık.
+  /// Verilmezse ince mürekkep kenarlık.
   final Color? borderColor;
 
-  /// Verilmezse koyu teal metin.
+  /// Verilmezse mürekkep rengi.
   final Color? textColor;
   final bool loading;
   final double fontSize;
@@ -226,8 +226,8 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = this.borderColor ?? Tw.teal200;
-    final textColor = this.textColor ?? Tw.teal700;
+    final borderColor = this.borderColor ?? Tw.gray200;
+    final textColor = this.textColor ?? Tw.gray900;
     final enabled = onPressed != null && !loading;
     final content = loading
         ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: textColor))
@@ -250,13 +250,13 @@ class SecondaryButton extends StatelessWidget {
         constraints: BoxConstraints(minHeight: minHeight),
         decoration: BoxDecoration(
           color: Tw.surface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor, width: 2),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: borderColor, width: 1.5),
         ),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(999),
             onTap: enabled ? onPressed : null,
             child: Padding(padding: padding, child: Center(widthFactor: 1, child: content)),
           ),
@@ -274,11 +274,11 @@ InputDecoration inputDecoration({
   String? suffixText,
   Color? focusColor,
   double radius = 16,
-  double borderWidth = 2,
+  double borderWidth = 1.5,
   Color? borderColor,
   EdgeInsetsGeometry contentPadding = const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
 }) {
-  focusColor ??= Tw.teal400;
+  focusColor ??= Tw.teal600;
   borderColor ??= Tw.gray200;
   OutlineInputBorder b(Color c) => OutlineInputBorder(
         borderRadius: BorderRadius.circular(radius),
@@ -302,7 +302,7 @@ InputDecoration inputDecoration({
   );
 }
 
-/// Beyaz zemin + tema gradyanı + desen; içerik kaydırılabilir ve `max-w-*` ile ortalanır.
+/// Krem kâğıt zemin + temanın çok hafif yıkaması; içerik kaydırılabilir ve `max-w-*` ile ortalanır.
 class ThemedPage extends StatelessWidget {
   const ThemedPage({
     super.key,
@@ -342,6 +342,9 @@ class ThemedPage extends StatelessWidget {
   }
 }
 
+/// Sayfa zemini kabuktan gelir (krem kâğıt + temanın hafif yıkaması, bkz. `AppShell`); bu sınıf yalnızca
+/// isteğe bağlı [extra] katmanı içeriğin arkasına koyar. Zemini burada boyamak, üstteki geri çubuğuyla sayfa arasında
+/// yatay bir dikiş bırakıyordu.
 class ThemedBackground extends StatelessWidget {
   const ThemedBackground({super.key, required this.theme, required this.child, this.extra});
 
@@ -354,9 +357,6 @@ class ThemedBackground extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColoredBox(color: Tw.background),
-        DecoratedBox(decoration: BoxDecoration(gradient: theme.bg)),
-        ThemePatternOverlay(pattern: theme.pattern),
         ?extra,
         child,
       ],
@@ -376,7 +376,7 @@ class CenteredBox extends StatelessWidget {
       Center(child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: child));
 }
 
-/// accent → primary gradyanlı ikon kutusu.
+/// Marka renginde düz ikon kutusu (adı eski; gradyan ve parıltı yok, `to` rengiyle dolar).
 class GradientIconBox extends StatelessWidget {
   const GradientIconBox({
     super.key,
@@ -404,10 +404,7 @@ class GradientIconBox extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
-        gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [from, to]),
-        boxShadow: shadow
-            ? [BoxShadow(color: to.withValues(alpha: .25), blurRadius: 15, offset: const Offset(0, 8))]
-            : null,
+        color: to,
       ),
       child: Icon(icon, size: iconSize, color: Colors.white),
     );
@@ -471,7 +468,7 @@ class ChoiceChipBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeBorder = this.activeBorder ?? Tw.teal500;
+    final activeBorder = this.activeBorder ?? Tw.teal600;
     final activeBg = this.activeBg ?? Tw.teal50;
     final activeText = this.activeText ?? Tw.teal700;
     final inactiveText = this.inactiveText ?? Tw.gray500;
@@ -491,7 +488,7 @@ class ChoiceChipBox extends StatelessWidget {
           decoration: BoxDecoration(
             color: selected ? activeBg : inactiveBg,
             borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: selected ? activeBorder : Tw.gray200, width: 2),
+            border: Border.all(color: selected ? activeBorder : Tw.gray200, width: 1.5),
           ),
           child: leading == null
               ? (center ? Center(child: text) : text)

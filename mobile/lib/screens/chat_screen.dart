@@ -18,6 +18,7 @@ import '../state/home_sync_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import '../ui/brand/palette.dart';
 
 String _historyKey(String userId) => 'rebi-chat-history_$userId';
 
@@ -532,7 +533,7 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(height: 24),
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 448),
-              child: Text(i18n.t('chat.emptyTitle'), textAlign: TextAlign.center, style: tx(24, w: 6, h: snug, ls: -.4)),
+              child: Text(i18n.t('chat.emptyTitle'), textAlign: TextAlign.center, style: heading(28, h: 1.2)),
             ),
             const SizedBox(height: 12),
             ConstrainedBox(

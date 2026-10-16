@@ -19,21 +19,23 @@ import '../state/theme_controller.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import 'analyze/analyze_widgets.dart';
+import '../ui/brand/glyphs.dart';
+import '../ui/brand/palette.dart';
 
 const _skinFeelings = [
-  ('iyi', 'İyi', '😊', 'Normal hissediyorum'),
-  ('kuru', 'Kuru', '🏜️', 'Sıkışma, gerginlik'),
-  ('yagli', 'Yağlı', '💧', 'Parlaklık, yağlanma'),
-  ('kirik', 'Hassas', '🩹', 'Kızarıklık, soyulma'),
-  ('irritasyon', 'İrritasyon', '🔥', 'Yanma, batma'),
+  ('iyi', 'İyi', 'Normal hissediyorum'),
+  ('kuru', 'Kuru', 'Sıkışma, gerginlik'),
+  ('yagli', 'Yağlı', 'Parlaklık, yağlanma'),
+  ('kirik', 'Hassas', 'Kızarıklık, soyulma'),
+  ('irritasyon', 'İrritasyon', 'Yanma, batma'),
 ];
 
 const _stressLevels = [
-  (1, 'Çok düşük', '😌'),
-  (2, 'Düşük', '🙂'),
-  (3, 'Orta', '😐'),
-  (4, 'Yüksek', '😣'),
-  (5, 'Çok yüksek', '😰'),
+  (1, 'Çok düşük'),
+  (2, 'Düşük'),
+  (3, 'Orta'),
+  (4, 'Yüksek'),
+  (5, 'Çok yüksek'),
 ];
 
 const _concernExtraKeys = [
@@ -346,7 +348,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         children: [
           Icon(LucideIcons.circleCheckBig, size: 56, color: Tw.teal500),
           const SizedBox(height: 16),
-          Text(i18n.t('checkin.alreadyTitle'), textAlign: TextAlign.center, style: tx(20, w: 7)),
+          Text(i18n.t('checkin.alreadyTitle'), textAlign: TextAlign.center, style: heading(24)),
           const SizedBox(height: 8),
           Text(i18n.t('checkin.alreadyDesc'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray500)),
           const SizedBox(height: 24),
@@ -391,7 +393,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       children: [
         Center(child: GradientIconBox(icon: LucideIcons.sparkles, from: theme.accent, to: theme.primary, size: 64, iconSize: 32)),
         const SizedBox(height: 16),
-        Text(i18n.t('checkin.todayReport'), textAlign: TextAlign.center, style: tx(20, w: 7)),
+        Text(i18n.t('checkin.todayReport'), textAlign: TextAlign.center, style: heading(24)),
         const SizedBox(height: 4),
         Text.rich(
           TextSpan(children: [
@@ -461,7 +463,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  emojiText(truthy(item['icon']) ? str(item['icon']) : '•', 14),
+                  Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.dot), size: 16, color: Tw.gray600),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -635,7 +637,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     return ThemedPage(
       theme: theme,
       children: [
-        Text(i18n.t('checkin.title'), textAlign: TextAlign.center, style: tx(20, w: 7)),
+        Text(i18n.t('checkin.title'), textAlign: TextAlign.center, style: heading(28)),
         const SizedBox(height: 4),
         Text(i18n.t('checkin.subtitle'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray500)),
         const SizedBox(height: 8),
@@ -711,7 +713,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final (value, label, emoji) in _stressLevels) ...[
+                  for (final (value, label) in _stressLevels) ...[
                     if (value > 1) const SizedBox(width: 8),
                     Expanded(
                       child: _selectable(
@@ -721,7 +723,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         onTap: () => setState(() => _stressToday = value),
                         child: Column(
                           children: [
-                            Text(emoji, style: const TextStyle(fontSize: 20)),
+                            Icon(stressGlyph(value), size: 22, color: _stressToday == value ? theme.primary : Tw.gray400),
                             const SizedBox(height: 2),
                             Text(label, textAlign: TextAlign.center, style: tx(9, c: Tw.gray500, h: tight)),
                           ],
@@ -742,7 +744,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
             children: [
               _cardTitle(LucideIcons.droplets, theme.primary, 'Cildin bugün nasıl hissediyor?'),
               const SizedBox(height: 12),
-              for (final (id, label, icon, desc) in _skinFeelings) ...[
+              for (final (id, label, desc) in _skinFeelings) ...[
                 _selectable(
                   selected: _skinFeeling == id,
                   theme: theme,
@@ -750,7 +752,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   onTap: () => setState(() => _skinFeeling = id),
                   child: Row(
                     children: [
-                      Text(icon, style: const TextStyle(fontSize: 20)),
+                      Icon(skinFeelingGlyph(id), size: 22, color: _skinFeeling == id ? theme.primary : Tw.gray500),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(

@@ -17,6 +17,7 @@ import '../../state/theme_controller.dart';
 import '../../ui/components/photo_picker.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
+import '../../ui/brand/palette.dart';
 
 /// Profilden veya rutin hazır ekranından: yalnızca depoya foto yükle (tam analiz zorunlu değil).
 class AnalyzePhotoOnly extends StatefulWidget {
@@ -141,7 +142,7 @@ class _AnalyzePhotoOnlyState extends State<AnalyzePhotoOnly> {
         const SizedBox(height: 16),
         Center(child: GradientIconBox(icon: LucideIcons.camera, from: theme.accent, to: theme.primary)),
         const SizedBox(height: 8),
-        Text(i18n.t('analyze.photoOnlyTitle'), textAlign: TextAlign.center, style: tx(20, w: 7)),
+        Text(i18n.t('analyze.photoOnlyTitle'), textAlign: TextAlign.center, style: heading(24)),
         const SizedBox(height: 8),
         Text(
           '${pack.s('errors.photoOnlyIntro1')}${intro2.isNotEmpty ? ' $intro2' : ''}',

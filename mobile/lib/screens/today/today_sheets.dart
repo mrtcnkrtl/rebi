@@ -12,6 +12,8 @@ import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import '../../ui/widgets/progress_ring.dart';
 import 'today_widgets.dart';
+import '../../ui/brand/glyphs.dart';
+import '../../ui/widgets/app_sheet.dart';
 
 /// "Bugün" ekranındaki seçim ekranlarından birini alt sayfa olarak açar.
 /// [products]: "ürün bitti" sayfasında listelenecek bakım ürünleri.
@@ -45,95 +47,13 @@ Future<void> showTodaySheet(
         (BuildContext c) => _ProductsBody(actions: actions, theme: theme, products: products),
       ),
   };
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useRootNavigator: true,
-    backgroundColor: Colors.transparent,
-    builder: (ctx) => _SheetFrame(title: title, subtitle: subtitle, child: body(ctx)),
-  );
-}
-
-class _SheetFrame extends StatelessWidget {
-  const _SheetFrame({required this.title, required this.child, this.subtitle});
-
-  final String title;
-  final String? subtitle;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-    return Padding(
-      padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxWidth: 672, maxHeight: media.size.height * .88),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Tw.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-            ),
-            child: SafeArea(
-              top: false,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Center(
-                    child: Container(
-                      margin: const EdgeInsets.only(top: 10, bottom: 6),
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(color: Tw.gray200, borderRadius: BorderRadius.circular(2)),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 8, 8, 0),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(title, style: tx(18, w: 8, h: tight)),
-                              if (subtitle != null) ...[
-                                const SizedBox(height: 4),
-                                Text(subtitle!, style: tx(13, c: Tw.gray500, h: snug)),
-                              ],
-                            ],
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
-                          onPressed: () => Navigator.of(context).pop(),
-                          icon: Icon(LucideIcons.x, size: 22, color: Tw.gray500),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Flexible(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
-                      child: child,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  return AppSheet.show<void>(context, title: title, subtitle: subtitle, body: body);
 }
 
 /// Seçilebilir satır: simge, başlık, açıklama.
 class _OptionTile extends StatelessWidget {
   const _OptionTile({
-    required this.emoji,
+    required this.icon,
     required this.title,
     required this.color,
     required this.selected,
@@ -143,7 +63,7 @@ class _OptionTile extends StatelessWidget {
     this.titleMaxLines,
   });
 
-  final String emoji;
+  final IconData icon;
   final String title;
 
   /// Çok uzun başlıklar (ürün adları) bu kadar satırda kesilir.
@@ -183,7 +103,7 @@ class _OptionTile extends StatelessWidget {
                     height: 40,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(color: Tw.surface, borderRadius: BorderRadius.circular(12)),
-                    child: emojiText(emoji, 20),
+                    child: Icon(icon, size: 20, color: selected ? color : Tw.gray600),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -219,7 +139,6 @@ class _OptionTile extends StatelessWidget {
 
 // --- Makyaj nasıl temizlendi ----------------------------------------------
 
-const _cleansingEmoji = {'double': '🧴', 'cleanser': '🧼', 'water': '💧', 'wipe': '🧻', 'none': '🌙'};
 
 class _CleansingBody extends StatelessWidget {
   const _CleansingBody({required this.actions, required this.theme});
@@ -236,7 +155,7 @@ class _CleansingBody extends StatelessWidget {
       children: [
         for (final method in cleansingMethods)
           _OptionTile(
-            emoji: _cleansingEmoji[method] ?? '🧴',
+            icon: cleansingGlyph(method),
             title: i18n.t('mobileToday.cleansing.$method.title'),
             description: i18n.t('mobileToday.cleansing.$method.desc'),
             color: theme.primary,
@@ -256,8 +175,6 @@ class _CleansingBody extends StatelessWidget {
 }
 
 // --- Beslenme ---------------------------------------------------------------
-
-const _nutritionEmoji = {'snacks': '🍟', 'sweets': '🍰', 'fried_food': '🍔', 'dairy': '🥛', 'balanced': '🥗'};
 
 class _NutritionBody extends StatefulWidget {
   const _NutritionBody({required this.actions, required this.theme});
@@ -296,10 +213,10 @@ class _NutritionBodyState extends State<_NutritionBody> {
       children: [
         for (final choice in nutritionChoices)
           _OptionTile(
-            emoji: _nutritionEmoji[choice] ?? '🍽️',
+            icon: nutritionGlyph(choice),
             title: i18n.t('mobileToday.nutrition.choices.$choice.title'),
             description: i18n.t('mobileToday.nutrition.choices.$choice.desc'),
-            color: const Color(0xFF16A34A),
+            color: Tw.green600,
             selected: _selected.contains(choice),
             check: true,
             onTap: () => _toggle(choice),
@@ -527,7 +444,7 @@ class _ProductsBodyState extends State<_ProductsBody> {
             final time = str(item['time']).toLowerCase();
             final isMorning = time == 'sabah' || time == 'morning';
             return _OptionTile(
-              emoji: isMorning ? '☀️' : '🌙',
+              icon: isMorning ? LucideIcons.sun : LucideIcons.moon,
               title: pickAction(item, localized: localized),
               titleMaxLines: 3,
               description: already ? i18n.t('mobileToday.sheets.products.already') : null,

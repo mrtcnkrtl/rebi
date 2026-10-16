@@ -16,6 +16,7 @@ import '../state/theme_controller.dart';
 import '../ui/components/notification_widgets.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import '../ui/brand/palette.dart';
 
 /// Saat seçici. Testlerde gerçek iletişim kutusu yerine sabit bir saat vermek için değiştirilir.
 Future<TimeOfDay?> Function(BuildContext context, TimeOfDay initial) reminderTimePicker = (context, initial) =>
@@ -171,7 +172,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
       theme: theme,
       maxWidth: 672,
       children: [
-        Text(i18n.t('mobileReminders.title'), style: tx(24, w: 7)),
+        Text(i18n.t('mobileReminders.title'), style: heading(30)),
         const SizedBox(height: 4),
         Text(i18n.t('mobileReminders.subtitle'), style: tx(14, c: Tw.gray500)),
         const SizedBox(height: 16),
@@ -287,7 +288,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  emojiText(wake ? '☀️' : '🌙', 16),
+                  Icon(wake ? LucideIcons.sunrise : LucideIcons.moon, size: 17, color: Tw.gray600),
                   const SizedBox(width: 6),
                   Flexible(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(12, w: 6, c: Tw.gray600))),
                 ]),

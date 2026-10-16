@@ -423,10 +423,10 @@ void main() {
     testWidgets('ücretsiz tema seçilir, premium tema aboneliğe yönlendirir', (tester) async {
       withPlusPurchasable();
       final h = await pumpApp(tester, location: '/dashboard/themes');
-      await tapText(tester, '💗 Pembe Kalp');
+      await tapText(tester, 'Pudra');
       expect(h.theme.themeId, 'pink');
       expect(LocalStore.instance.getString('rebi-theme'), 'pink');
-      await tapText(tester, '🌅 Gün Batımı');
+      await tapText(tester, 'Gün Batımı');
       expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/subscribe');
       expect(h.theme.themeId, 'pink');
     });
@@ -437,7 +437,7 @@ void main() {
         location: '/dashboard/themes',
         user: fakeUser(appMetadata: {'rebi_plus': true}),
       );
-      await tapText(tester, '🌅 Gün Batımı');
+      await tapText(tester, 'Gün Batımı');
       expect(h.theme.themeId, 'sunset');
       h.auth.debugSetUser(fakeUser());
       await settle(tester, 2);

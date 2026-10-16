@@ -53,3 +53,8 @@ class Brand {
     );
   }
 }
+
+/// Sayfa ve kart başlıkları: Fraunces serif, mürekkep rengi. Gövde metni `tx()` (Inter) ile yazılır;
+/// başlık yalnızca kısa ve insani olmalı, sayılar ve etiketler için kullanılmaz.
+TextStyle heading(double size, {Color? c, int w = 500, double? h}) =>
+    Brand.serif(size, weight: w, color: c ?? Tw.gray900, h: h ?? 1.15, ls: size >= 28 ? -.6 : -.3);

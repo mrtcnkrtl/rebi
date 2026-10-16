@@ -5,178 +5,146 @@ import '../core/subscription.dart';
 import '../ui/tw.dart';
 import 'auth_controller.dart';
 
-/// Web `ThemeContext.jsx` içindeki tema tanımlarının birebir karşılığı.
+/// Kullanıcının seçtiği vurgu rengi. Uygulamanın dili tektir ("klinik sıcaklık": krem kâğıt, orman yeşili
+/// mürekkep, Fraunces + Inter); tema yalnızca düğme, seçim ve vurgu rengini değiştirir. Desen, emoji ya da
+/// şekil farkı yoktur. Web'deki dokuz temadan çocuksu olanlar (kedi, ayıcık) bu yüzden kaldırıldı; kayıtlı
+/// kimliği artık olmayan kullanıcı varsayılana (`teal`, "Orman") döner.
 class RebiTheme {
   const RebiTheme({
     required this.id,
     required this.label,
-    required this.emoji,
     required this.primary,
     required this.primaryLight,
     required this.primaryDark,
     required this.accent,
     required this.cardBorder,
     required this.bg,
-    this.pattern = '',
-    this.shape = '',
     this.premium = false,
   });
 
   final String id;
   final String label;
-  final String emoji;
+
+  /// Düğme dolgusu ve vurgu; üstüne beyaz yazı yazılır (AA kontrast).
   final Color primary;
   final Color primaryLight;
   final Color primaryDark;
   final Color accent;
   final Color cardBorder;
 
-  /// Sayfa arka planı (beyaz zemin üzerinde, webdeki `bg-gradient-*` sınıfları).
+  /// Sayfa arka planı: krem kâğıdın üstünde temanın çok hafif bir yıkaması.
   final Gradient bg;
-  final String pattern;
-  final String shape;
   final bool premium;
+
+  /// Yüzeyin ÜSTÜNDE metin/ikon olarak kullanılacak vurgu rengi: açık modda `primary`, koyu modda okunacak kadar açılmış hâli.
+  /// (`primary` düğme dolgusudur ve üstüne beyaz yazı yazılır; koyu zeminde metin olarak soluk kalır.)
+  Color get fg => Tw.dark ? Color.lerp(primary, Colors.white, .5)! : primary;
 
   /// Koyu mod için: açık tint ve koyu metin tonları uyarlanır; `primary` / `accent` aynı kalır.
   /// (`cardBorder` ve `bg` zaten koyu moda duyarlı renklerden kuruludur.)
   RebiTheme adaptedForDark() => RebiTheme(
         id: id,
         label: label,
-        emoji: emoji,
         primary: primary,
         primaryLight: Tw.adapt(primaryLight),
         primaryDark: Tw.adaptText(primaryDark),
         accent: accent,
         cardBorder: cardBorder,
         bg: bg,
-        pattern: pattern,
-        shape: shape,
         premium: premium,
       );
 }
 
-Color _a(Color c, double opacity) => c.withValues(alpha: opacity);
+/// Kâğıt zeminin üstünde tema renginin çok hafif yıkaması: yukarıdan aşağı solar.
+LinearGradient _wash(Color tint) => LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      stops: const [0, .42],
+      colors: [tint.withValues(alpha: Tw.dark ? .09 : .55), tint.withValues(alpha: 0)],
+    );
 
-LinearGradient _toB(List<Color> colors) =>
-    LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: colors);
+RebiTheme _theme({
+  required String id,
+  required String label,
+  required Color primary,
+  required Color light,
+  required Color dark,
+  required Color accent,
+  bool premium = false,
+}) =>
+    RebiTheme(
+      id: id,
+      label: label,
+      primary: primary,
+      primaryLight: light,
+      primaryDark: dark,
+      accent: accent,
+      cardBorder: Tw.gray100,
+      bg: _wash(light),
+      premium: premium,
+    );
 
-LinearGradient _toBr(List<Color> colors) =>
-    LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors);
-
+/// Sıra seçici ekranındaki sıradır. Ücretsiz dört vurgu rengi, Plus için üç koyu/derin ton.
 Map<String, RebiTheme> _buildThemes() => {
-  'teal': RebiTheme(
+  'teal': _theme(
     id: 'teal',
-    label: 'Klasik Teal',
-    emoji: '🌿',
-    primary: const Color(0xFF0D9488),
-    primaryLight: const Color(0xFFCCFBF1),
-    primaryDark: const Color(0xFF115E59),
+    label: 'Orman',
+    primary: const Color(0xFF0F766E),
+    light: const Color(0xFFD3E7DF),
+    dark: const Color(0xFF0B3D38),
     accent: const Color(0xFF14B8A6),
-    cardBorder: Tw.gray100,
-    bg: _toB([_a(Tw.teal50, .5), Tw.background]),
   ),
-  'pink': RebiTheme(
-    id: 'pink',
-    label: 'Pembe Kalp',
-    emoji: '💗',
-    primary: const Color(0xFFDB2777),
-    primaryLight: const Color(0xFFFCE7F3),
-    primaryDark: const Color(0xFF9D174D),
-    accent: const Color(0xFFEC4899),
-    cardBorder: Tw.pink100,
-    bg: _toB([_a(Tw.pink50, .6), _a(Tw.rose50, .3)]),
-    pattern: 'hearts',
-  ),
-  'green': RebiTheme(
+  'green': _theme(
     id: 'green',
-    label: 'Yeşil Doğa',
-    emoji: '🌱',
-    primary: const Color(0xFF16A34A),
-    primaryLight: const Color(0xFFDCFCE7),
-    primaryDark: const Color(0xFF14532D),
-    accent: const Color(0xFF22C55E),
-    cardBorder: Tw.green100,
-    bg: _toB([_a(Tw.green50, .5), _a(Tw.emerald50, .2)]),
-    pattern: 'leaves',
+    label: 'Adaçayı',
+    primary: const Color(0xFF47804E),
+    light: const Color(0xFFDDE9D6),
+    dark: const Color(0xFF22442A),
+    accent: const Color(0xFF5E9A62),
   ),
-  'lavender': RebiTheme(
+  'pink': _theme(
+    id: 'pink',
+    label: 'Pudra',
+    primary: const Color(0xFFA94F65),
+    light: const Color(0xFFF1DCE0),
+    dark: const Color(0xFF7A3548),
+    accent: const Color(0xFFCC7387),
+  ),
+  'lavender': _theme(
     id: 'lavender',
-    label: 'Lavanta Manzara',
-    emoji: '🏔️',
-    primary: const Color(0xFF7C3AED),
-    primaryLight: const Color(0xFFEDE9FE),
-    primaryDark: const Color(0xFF4C1D95),
-    accent: const Color(0xFF8B5CF6),
-    cardBorder: Tw.violet100,
-    bg: _toB([_a(Tw.violet50, .5), _a(Tw.purple50, .2)]),
-    pattern: 'landscape',
-  ),
-  'cat': RebiTheme(
-    id: 'cat',
-    label: 'Kedi Sever',
-    emoji: '🐱',
-    primary: const Color(0xFFEA580C),
-    primaryLight: const Color(0xFFFFF7ED),
-    primaryDark: const Color(0xFF9A3412),
-    accent: const Color(0xFFF97316),
-    cardBorder: Tw.orange100,
-    bg: _toB([_a(Tw.orange50, .4), _a(Tw.amber50, .2)]),
-    pattern: 'cats',
-  ),
-  'teddy': RebiTheme(
-    id: 'teddy',
-    label: 'Ayıcık',
-    emoji: '🧸',
-    primary: const Color(0xFFB45309),
-    primaryLight: const Color(0xFFFEF3C7),
-    primaryDark: const Color(0xFF78350F),
-    accent: const Color(0xFFD97706),
-    cardBorder: Tw.amber200,
-    bg: _toB([_a(Tw.amber50, .55), _a(Tw.orange50, .25), _a(Tw.rose50, .2)]),
-    pattern: 'bears',
+    label: 'Lavanta',
+    primary: const Color(0xFF6C5AA0),
+    light: const Color(0xFFE4DFEE),
+    dark: const Color(0xFF3B2E58),
+    accent: const Color(0xFF8575B5),
   ),
   // Rebi Plus — premium
-  'sunset': RebiTheme(
+  'sunset': _theme(
     id: 'sunset',
     label: 'Gün Batımı',
-    emoji: '🌅',
     premium: true,
-    primary: const Color(0xFFC026D3),
-    primaryLight: const Color(0xFFFAE8FF),
-    primaryDark: const Color(0xFF86198F),
-    accent: const Color(0xFFF97316),
-    cardBorder: Tw.fuchsia100,
-    bg: _toBr([_a(Tw.fuchsia50, .7), _a(Tw.orange50, .4), _a(Tw.rose50, .5)]),
-    pattern: 'sunburst',
-    shape: 'sunburst',
+    primary: const Color(0xFFA9562E),
+    light: const Color(0xFFF4DDCF),
+    dark: const Color(0xFF773E24),
+    accent: const Color(0xFFCF7C54),
   ),
-  'ocean': RebiTheme(
+  'ocean': _theme(
     id: 'ocean',
-    label: 'Derin Okyanus',
-    emoji: '🌊',
+    label: 'Derin Su',
     premium: true,
-    primary: const Color(0xFF0369A1),
-    primaryLight: const Color(0xFFE0F2FE),
-    primaryDark: const Color(0xFF0C4A6E),
-    accent: const Color(0xFF06B6D4),
-    cardBorder: Tw.sky200,
-    bg: _toB([_a(Tw.sky100, .5), _a(Tw.cyan50, .3), _a(Tw.blue50, .4)]),
-    pattern: 'waves',
-    shape: 'waves',
+    primary: const Color(0xFF2F7686),
+    light: const Color(0xFFD5E7EA),
+    dark: const Color(0xFF174C58),
+    accent: const Color(0xFF3E8A9A),
   ),
-  'noir': RebiTheme(
+  'noir': _theme(
     id: 'noir',
-    label: 'Gece Şehir',
-    emoji: '🌃',
+    label: 'Gece',
     premium: true,
-    primary: const Color(0xFF4338CA),
-    primaryLight: const Color(0xFFE0E7FF),
-    primaryDark: const Color(0xFF312E81),
-    accent: const Color(0xFFA855F7),
-    cardBorder: Tw.indigo200,
-    bg: _toB([_a(Tw.indigo100, .4), _a(Tw.violet50, .3), _a(Tw.slate100, .5)]),
-    pattern: 'stars',
-    shape: 'angular',
+    primary: const Color(0xFF3E4C7A),
+    light: const Color(0xFFDDE1EE),
+    dark: const Color(0xFF242E4E),
+    accent: const Color(0xFF7C8BC4),
   ),
 };
 
@@ -203,7 +171,9 @@ ThemeMode themeModeFromName(String? name) => switch (name) {
 /// Web `ThemeProvider` + `ThemePremiumGate`.
 class ThemeController extends ChangeNotifier {
   ThemeController(this._auth) {
-    _themeId = LocalStore.instance.getString(_themeKey) ?? 'teal';
+    final saved = LocalStore.instance.getString(_themeKey);
+    // Kaldırılmış bir tema (kedi, ayıcık) kayıtlıysa varsayılana dön.
+    _themeId = saved != null && rebiThemes.containsKey(saved) ? saved : 'teal';
     _mode = themeModeFromName(LocalStore.instance.getString(_modeKey));
     _auth.addListener(_premiumGate);
     _premiumGate();

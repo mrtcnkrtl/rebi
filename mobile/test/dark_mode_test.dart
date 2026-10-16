@@ -9,6 +9,7 @@ import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/state/auth_controller.dart';
 import 'package:rebi/state/theme_controller.dart';
 import 'package:rebi/ui/components/appearance_card.dart';
+import 'package:rebi/ui/brand/palette.dart';
 import 'package:rebi/ui/tw.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -42,12 +43,21 @@ void main() {
       };
 
   group('renk alıcıları', () {
-    test('açık mod eski Tailwind değerlerini verir', () {
+    test('açık mod klinik sıcaklık paletini verir (orman mürekkebi, krem kâğıt, beyaz kart)', () {
       Tw.dark = false;
-      expect(Tw.gray900, const Color(0xFF111827));
-      expect(Tw.teal50, const Color(0xFFF0FDFA));
+      expect(Tw.gray900, const Color(0xFF0B3D38), reason: 'mürekkep = Brand.forest');
+      expect(Tw.teal50, const Color(0xFFEAF4F0));
       expect(Tw.surface, Colors.white);
-      expect(Tw.background, Colors.white);
+      expect(Tw.background, const Color(0xFFF7F3EC), reason: 'krem kâğıt');
+    });
+
+    test('tema renkleri Brand ile aynı kaynaktan gelir', () {
+      for (final dark in [false, true]) {
+        Tw.dark = dark;
+        expect(Tw.background, Brand.paper);
+        expect(Tw.surface, Brand.surface);
+        expect(Tw.gray900, Brand.ink);
+      }
     });
 
     test('koyu modda zemin ve yüzey koyu, gri sırası ters döner', () {
@@ -188,8 +198,8 @@ void main() {
       final light = buildRebiTheme(Brightness.light, fonts: false);
       expect(dark.brightness, Brightness.dark);
       expect(light.brightness, Brightness.light);
-      expect(dark.scaffoldBackgroundColor, const Color(0xFF0B1118));
-      expect(light.scaffoldBackgroundColor, Colors.white);
+      expect(dark.scaffoldBackgroundColor, const Color(0xFF071A18));
+      expect(light.scaffoldBackgroundColor, const Color(0xFFF7F3EC));
       expect(dark.colorScheme.surface, isNot(light.colorScheme.surface));
     });
   });
@@ -232,9 +242,9 @@ void main() {
     testWidgets('sayfa zemini koyu modda koyu yüzeydir', (tester) async {
       Tw.dark = true;
       await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
-      final background = tester.widgetList<ColoredBox>(find.byType(ColoredBox)).map((w) => w.color);
+      final background = tester.widgetList<Scaffold>(find.byType(Scaffold)).map((w) => w.backgroundColor);
       expect(background, contains(Tw.background));
-      expect(Tw.background, const Color(0xFF0B1118));
+      expect(Tw.background, const Color(0xFF071A18));
     });
   });
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/i18n.dart';
+import '../brand/palette.dart';
 import '../tw.dart';
 
 const languageLabels = {'tr': 'Türkçe', 'en': 'English'};
@@ -32,7 +33,7 @@ class _LanguageSheet extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(bottom: 12),
-              child: Text(i18n.t('lang.label'), style: tx(18, w: 8)),
+              child: Text(i18n.t('lang.label'), style: heading(24)),
             ),
             for (final lng in supportedLangs)
               _Option(

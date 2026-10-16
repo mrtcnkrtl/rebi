@@ -137,20 +137,24 @@ Amaç: "sorunsuz backend" şartı. Bunu başa koyuyoruz çünkü sonraki her faz
 
 **Kabul:** canlı API'ye karşı `/me/snapshot`, `/today/plan`, `/me/reminder-settings`, olay yazma, sohbet uçları gerçek bir hesapla çalışıyor; web bozulmamış.
 
-### Faz B — Tasarım sistemi birliği  *(boyut: büyük)*
+### Faz B — Tasarım sistemi birliği  *(boyut: büyük)* — **yapıldı (2026-10-16)**
 
-| # | İş | Kim |
-|---|----|-----|
-| B1 | **Bugün ekranının görsel taslağı** (açık + koyu) → onay kapısı. Kod yok. | Ben, Sen onaylar |
-| B2 | Tasarım belgesi (1 sayfa): palet, tipografi ölçeği, boşluk, köşe, gölge, ikon, hareket, kategori renkleri. | Ben |
-| B3 | Token katmanı: `Brand` uygulamanın tek kaynağı olur; `Tw` kullanımı kademeli köprülenir (40 dosya, ekran ekran). | Ben |
-| B4 | Ortak bileşenler: kart, düğme (ana/ikincil/metin), hap/çip, alt sayfa, ilerleme halkası, boş durum, iskelet, toast. | Ben |
-| B5 | **Tema kararı** (bkz. §6-1): 9 tema → klinik paletle uyumlu vurgu seçenekleri. | Sen karar verir |
-| B6 | Emoji → çizili/Lucide ikon (~20 yer). | Ben |
-| B7 | Kabuk: 5 sekmeli alt gezinme ve üst çubuk yeni dilde. | Ben |
-| B8 | **Kalıcı görsel test altyapısı**: gerçek yazı tipleriyle (Inter, Fraunces, Lucide) ekran görüntüsü testi; açık/koyu × %100/%150/%200 yazı. Geçici betik yerine repoda. | Ben |
+Dil belgesi: [`docs/MOBIL-TASARIM-DILI.md`](MOBIL-TASARIM-DILI.md).
 
-**Kabul:** onaylı taslak + bileşen kitaplığı + görsel test altyapısı hazır; hiçbir ekranda yeni ve eski dil yan yana değil (geçiş sırasında bile ekran ekran tamamlanır).
+| # | İş | Durum |
+|---|----|-------|
+| B1 | Görsel taslak onay kapısı | Kullanıcı isteğiyle atlandı ("direkt uygula"); yerine gerçek yazı tipleriyle ekran görüntüleriyle doğrulandı (B8). |
+| B2 | Tasarım belgesi | `docs/MOBIL-TASARIM-DILI.md`. |
+| B3 | Token katmanı | `Tw` değerleri marka paletinden üretildi (krem kâğıt, orman mürekkebi, soluk kategori aileleri; 40 dosya tek hamlede geçti), kontrast ölçütleri testli. `Tw` adları webden korunur. |
+| B4 | Ortak bileşenler | `RCard`, `PrimaryButton`, `SecondaryButton`, `ChoiceChipBox`, `inputDecoration` yeniden stillendi; yeni `AppSheet` (alt sayfa), `heading()` (Fraunces), `glyphs.dart` (ikon eşlemesi). Material teması: sheet/dialog/switch/slider/snackbar. |
+| B5 | Tema kararı | Öneri uygulandı: 9 → 7 tema (4 ücretsiz: Orman, Adaçayı, Pudra, Lavanta; 3 Plus: Gün Batımı, Derin Su, Gece). Kedi/ayıcık, tüm desenler ve emojiler kalktı; kayıtlı eski kimlik `Orman`a döner. |
+| B6 | Emoji → ikon | Arayüzdeki tüm emojiler çizgi ikon oldu; backend emojileri `glyphForEmoji` ile çevrilir. Kodda emoji testle yasak. |
+| B7 | Kabuk | Zemin + tema yıklaması kabukta (sayfa/geri çubuğu dikişi kalktı), yeni üst çubuk ve alt sekme çubuğu, başlıklar Fraunces, düz avatar. |
+| B8 | Kalıcı görsel test | `test/visual_gallery_test.dart` + `test/helpers/visual.dart`: gerçek yazı tipleriyle 10 ekran + 4 Bugün alt sayfası, açık/koyu PNG (`REBI_SCREENSHOTS=1`). Piksel karşılaştırması bilerek yok (OS'ler arası kararsız). |
+
+**Bilerek kalanlar (Faz C/F):** Bugün'ün yerleşimi (kahraman kart, gün akışı şeridi, 2×2 ızgara), Plus/Abonelik ekranının koyu mor görünümü,
+`skin_type_visual` çizimleri ve karşılama sahneleri (zaten yeni dilde ya da çizim). Ekranların **içerik düzeni** değişmedi; bu faz renk, tipografi,
+bileşen ve kabuk birliğini kurar.
 
 ### Faz C — Bugün ekranı baştan  *(boyut: büyük)*
 

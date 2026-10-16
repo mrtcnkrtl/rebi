@@ -12,6 +12,7 @@ import '../ui/shell/app_shell.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import 'today/today_widgets.dart';
+import '../ui/brand/palette.dart';
 
 /// "Ben" sekmesi: hesap özeti ve ayarlara giden menü. Hamburger menüsünün yerini alır.
 class MeScreen extends StatelessWidget {
@@ -63,7 +64,7 @@ class MeScreen extends StatelessWidget {
         const SizedBox(height: 10),
         _MenuRow(
           icon: LucideIcons.palette,
-          color: const Color(0xFF7C3AED),
+          color: Tw.purple600,
           title: i18n.t('mobileMe.themes.title'),
           hint: i18n.t('mobileMe.themes.hint'),
           onTap: () => context.go('/dashboard/themes'),
@@ -117,12 +118,8 @@ class _Header extends StatelessWidget {
           width: 64,
           height: 64,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [theme.accent, theme.primary]),
-            boxShadow: [BoxShadow(color: theme.primary.withValues(alpha: .25), blurRadius: 14, offset: const Offset(0, 6))],
-          ),
-          child: Text(initial, style: tx(26, w: 8, c: Colors.white)),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: theme.primary),
+          child: Text(initial, style: heading(30, c: Colors.white, w: 500)),
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -130,7 +127,7 @@ class _Header extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(children: [
-                Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(22, w: 8, h: tight))),
+                Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: heading(26, h: 1.1))),
                 if (plus) ...[
                   const SizedBox(width: 8),
                   Container(

@@ -16,6 +16,7 @@ import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/widgets/skeleton.dart';
 import '../ui/widgets/trend_charts.dart';
+import '../ui/brand/palette.dart';
 
 /// Geçmiş günler (`GET /me/history`): her gün için gün içi kayıtlar ve check-in.
 /// Web'de karşılığı yok; mobilde profilden ve panelden açılır.
@@ -88,7 +89,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       theme: theme,
       maxWidth: 672,
       children: [
-        Text(i18n.t('mobileHistory.title'), style: tx(24, w: 7)),
+        Text(i18n.t('mobileHistory.title'), style: heading(30)),
         const SizedBox(height: 4),
         Text(i18n.t('mobileHistory.subtitle'), style: tx(14, c: Tw.gray500)),
         const SizedBox(height: 16),

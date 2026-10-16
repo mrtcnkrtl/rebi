@@ -128,7 +128,8 @@ ThemeData buildRebiTheme(Brightness brightness, {bool fonts = true}) {
         surface: Tw.surface,
       ),
       scaffoldBackgroundColor: Tw.background,
-      splashFactory: InkSparkle.splashFactory,
+      // Sakin dokunma geri bildirimi (parıldayan InkSparkle yerine soluk dalga).
+      splashFactory: InkRipple.splashFactory,
       // Web ile aynı yazı tipi: `assets/fonts/InterVariable.ttf` (değişken font; FontWeight `wght` eksenine eşlenir).
       // Arapça gibi Inter'de olmayan yazılar sistem yazı tipine düşer.
       fontFamily: fonts ? 'Inter' : null,
@@ -141,9 +142,35 @@ ThemeData buildRebiTheme(Brightness brightness, {bool fonts = true}) {
         side: BorderSide(color: Tw.gray300, width: 1.5),
       ),
       textSelectionTheme: TextSelectionThemeData(cursorColor: Tw.teal500, selectionHandleColor: Tw.teal500),
-      dialogTheme: DialogThemeData(backgroundColor: Tw.surfaceRaised),
-      bottomSheetTheme: BottomSheetThemeData(backgroundColor: Tw.surfaceRaised),
-      dividerColor: Tw.gray200,
+      dialogTheme: DialogThemeData(
+        backgroundColor: Tw.surfaceRaised,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: Tw.surfaceRaised,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.all(Colors.white),
+        trackColor: WidgetStateProperty.resolveWith((s) => s.contains(WidgetState.selected) ? Tw.teal600 : Tw.gray300),
+        trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+      ),
+      sliderTheme: SliderThemeData(
+        activeTrackColor: Tw.teal600,
+        inactiveTrackColor: Tw.gray200,
+        thumbColor: Tw.teal600,
+        overlayColor: Tw.teal600.withValues(alpha: .12),
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(color: Tw.teal600, linearTrackColor: Tw.gray100),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: Tw.gray900,
+        contentTextStyle: tx(14, c: Tw.background),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dividerColor: Tw.gray100,
     );
   } finally {
     Tw.dark = previous;

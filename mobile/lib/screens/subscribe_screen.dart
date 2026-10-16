@@ -12,7 +12,6 @@ import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
-import '../ui/widgets/theme_pattern_overlay.dart';
 
 /// Rebi Plus tanıtım + ödeme bağlantısı (web: `pages/Subscribe.jsx`).
 class SubscribeScreen extends StatelessWidget {
@@ -29,8 +28,6 @@ class SubscribeScreen extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         const ColoredBox(color: Colors.white),
-        DecoratedBox(decoration: BoxDecoration(gradient: theme.bg)),
-        ThemePatternOverlay(pattern: theme.pattern),
         Opacity(
           opacity: .9,
           child: DecoratedBox(

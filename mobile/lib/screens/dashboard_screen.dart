@@ -32,6 +32,8 @@ import 'today/today_header.dart';
 import 'today/today_sheets.dart';
 import 'today/tracking_tiles.dart';
 import 'today/weather_advice_card.dart';
+import '../ui/brand/palette.dart';
+import '../ui/brand/glyphs.dart';
 
 /// Ana panel (web: `pages/Dashboard.jsx`).
 /// `nav`: webdeki `location.state` — analiz / check-in sonrası taşınan rutin ve meta.
@@ -347,7 +349,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         if (_nav['flashNeedAccept'] == true) _flashNeedAccept(i18n),
         Center(child: GradientIconBox(icon: LucideIcons.leaf, from: theme.accent, to: theme.primary, size: 80, iconSize: 40, radius: 24)),
         const SizedBox(height: 24),
-        Text(i18n.t('dashboard.noAnalyzeTitle', {'name': userName}), textAlign: TextAlign.center, style: tx(24, w: 7)),
+        Text(i18n.t('dashboard.noAnalyzeTitle', {'name': userName}), textAlign: TextAlign.center, style: heading(28)),
         const SizedBox(height: 8),
         Text(i18n.t('dashboard.noAnalyzeDesc'), textAlign: TextAlign.center, style: tx(16, c: Tw.gray500)),
         const SizedBox(height: 24),
@@ -471,18 +473,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _Ctx c, {
     required bool numbered,
     required String keyPrefix,
+    required IconData icon,
   }) {
-    final space = label.indexOf(' ');
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text.rich(
-          TextSpan(children: [
-            TextSpan(text: label.substring(0, space), style: emojiStyle(12)),
-            TextSpan(text: label.substring(space)),
-          ]),
-          style: tx(12, w: 6, c: Tw.gray600),
-        ),
+        Row(children: [
+          Icon(icon, size: 15, color: Tw.gray600),
+          const SizedBox(width: 6),
+          Expanded(child: Text(label, style: tx(12, w: 6, c: Tw.gray600))),
+        ]),
         const SizedBox(height: 6),
         for (var i = 0; i < items.length; i++) ...[
           if (i > 0) const SizedBox(height: 6),
@@ -530,8 +530,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Demo oturumunda gün içi kayıt yoktur: rutin yalnızca okunur gösterilir.
     final readOnlyBlocks = <Widget>[
-      if (today.morning.isNotEmpty) _block('☀️ ${i18n.t('dashboard.morning')}', today.morning, c, numbered: true, keyPrefix: 't-m'),
-      if (today.evening.isNotEmpty) _block('🌙 ${i18n.t('dashboard.evening')}', today.evening, c, numbered: true, keyPrefix: 't-e'),
+      if (today.morning.isNotEmpty) _block(i18n.t('dashboard.morning'), today.morning, c, numbered: true, keyPrefix: 't-m', icon: LucideIcons.sun),
+      if (today.evening.isNotEmpty) _block(i18n.t('dashboard.evening'), today.evening, c, numbered: true, keyPrefix: 't-e', icon: LucideIcons.moon),
     ];
 
     final page = ThemedPage(
@@ -728,7 +728,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           TextSpan(text: '${i18n.t('dashboard.myRoutineTitle', {'name': userName})} '),
           WidgetSpan(alignment: PlaceholderAlignment.middle, child: Icon(LucideIcons.sparkles, size: 20, color: theme.accent)),
         ]),
-        style: tx(24, w: 7),
+        style: heading(26),
       ),
       const SizedBox(height: 4),
       Text(dateLine, style: tx(14, c: Tw.gray500)),
@@ -825,7 +825,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ],
       _DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: flowDebug, ctx: c),
       if (v.routineIngredientsList.isNotEmpty) ...[
-        _SectionHeader(icon: '🧪', title: i18n.t('dashboard.productListTitle'), subtitle: i18n.t('dashboard.productListSubtitle'), color: theme.primary, topGap: 8),
+        _SectionHeader(icon: LucideIcons.flaskConical, title: i18n.t('dashboard.productListTitle'), subtitle: i18n.t('dashboard.productListSubtitle'), color: theme.primary, topGap: 8),
         RCard(
           padding: const EdgeInsets.all(16),
           child: Wrap(
@@ -854,7 +854,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ],
       if (weather is Map && truthy(weather['temperature'])) ...[_weatherCard(i18n, weather), const SizedBox(height: 20)],
       if (activePlan.isNotEmpty) ...[_activePlanCard(c, activePlan), const SizedBox(height: 16)],
-      _SectionHeader(icon: '🧴', title: i18n.t('dashboard.routineByDayTitle'), subtitle: i18n.t('dashboard.routineByDaySubtitle'), color: theme.primary),
+      _SectionHeader(icon: LucideIcons.listChecks, title: i18n.t('dashboard.routineByDayTitle'), subtitle: i18n.t('dashboard.routineByDaySubtitle'), color: theme.primary),
       _howToChoose(c),
       const SizedBox(height: 16),
       if (v.dailyLifestyleItems.isNotEmpty) ...[
@@ -894,7 +894,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ] else
         for (var d = 0; d < c.weekDays.length && d < 7; d++) ..._dayCard(c, v, d, morning, evening),
       if (v.weeklyItems.isNotEmpty) ..._weeklySection(c, v),
-      _SectionHeader(icon: '🌿', title: i18n.t('dashboard.lifestyleSupportsTitle'), subtitle: i18n.t('dashboard.lifestyleSupportsSubtitle'), color: Tw.green600),
+      _SectionHeader(icon: LucideIcons.leaf, title: i18n.t('dashboard.lifestyleSupportsTitle'), subtitle: i18n.t('dashboard.lifestyleSupportsSubtitle'), color: Tw.green600),
       if (v.nutritionItems.isNotEmpty) ...[
         Row(children: [
           Icon(LucideIcons.apple, size: 16, color: Tw.green600),
@@ -1155,14 +1155,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final hasAny = plan.morning.isNotEmpty || plan.evening.isNotEmpty || v.wellnessMorningItems.isNotEmpty || v.wellnessEveningItems.isNotEmpty;
     if (!hasAny) return const [];
     final blocks = <Widget>[
-      if (plan.morning.isNotEmpty) _block('☀️ $morning', plan.morning, c, numbered: true, keyPrefix: '$d-m'),
+      if (plan.morning.isNotEmpty) _block(morning, plan.morning, c, numbered: true, keyPrefix: '$d-m', icon: LucideIcons.sun),
       if (v.wellnessMorningItems.isNotEmpty)
-        _block('☀️ ${c.i18n.t('dashboard.morningLifestyleLabel', {'time': morning})}', v.wellnessMorningItems, c,
-            numbered: false, keyPrefix: '$d-wm'),
-      if (plan.evening.isNotEmpty) _block('🌙 $evening', plan.evening, c, numbered: true, keyPrefix: '$d-e'),
+        _block(c.i18n.t('dashboard.morningLifestyleLabel', {'time': morning}), v.wellnessMorningItems, c,
+            numbered: false, keyPrefix: '$d-wm', icon: LucideIcons.sun),
+      if (plan.evening.isNotEmpty) _block(evening, plan.evening, c, numbered: true, keyPrefix: '$d-e', icon: LucideIcons.moon),
       if (v.wellnessEveningItems.isNotEmpty)
-        _block('🌙 ${c.i18n.t('dashboard.morningLifestyleLabel', {'time': evening})}', v.wellnessEveningItems, c,
-            numbered: false, keyPrefix: '$d-we'),
+        _block(c.i18n.t('dashboard.morningLifestyleLabel', {'time': evening}), v.wellnessEveningItems, c,
+            numbered: false, keyPrefix: '$d-we', icon: LucideIcons.moon),
     ];
     return [
       RCard(
@@ -1339,11 +1339,8 @@ class _AccountShortcut extends StatelessWidget {
           width: 44,
           height: 44,
           alignment: Alignment.center,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [theme.accent, theme.primary]),
-          ),
-          child: Text(initial, style: tx(17, w: 8, c: Colors.white)),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: theme.primary),
+          child: Text(initial, style: heading(20, c: Colors.white, w: 500)),
         ),
       ),
     );
@@ -1371,7 +1368,7 @@ class _SectionHeader extends StatelessWidget {
     this.topGap = 24,
   });
 
-  final String icon;
+  final IconData icon;
   final String title;
   final String subtitle;
   final Color color;
@@ -1387,7 +1384,7 @@ class _SectionHeader extends StatelessWidget {
               height: 32,
               alignment: Alignment.center,
               decoration: BoxDecoration(color: color.withValues(alpha: .08), borderRadius: BorderRadius.circular(12)),
-              child: emojiText(icon, 18),
+              child: Icon(icon, size: 18, color: color),
             ),
             const SizedBox(width: 10),
             Expanded(
@@ -1541,7 +1538,7 @@ class _ProductStepState extends State<_ProductStep> {
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Tw.gray200.withValues(alpha: .8)),
               ),
-              child: emojiText(truthy(item['icon']) ? str(item['icon']) : '🧴', 16),
+              child: Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.pipette), size: 17, color: Tw.gray700),
             ),
           const SizedBox(width: 12),
           Expanded(
@@ -1662,7 +1659,7 @@ class _LifestyleCardState extends State<_LifestyleCard> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          emojiText(truthy(item['icon']) ? str(item['icon']) : '🌿', 18),
+          Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.leaf), size: 19, color: Tw.green700),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

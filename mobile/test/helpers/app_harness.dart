@@ -443,6 +443,9 @@ Future<Harness> pumpApp(
   FakeReminderNotifier? notifier,
   PushClient? push,
   Size size = const Size(390, 844),
+
+  /// true: Inter yazı tipi isteğe bağlı (görsel testler `loadBrandFonts` ile gerçek yazı tiplerini yükler).
+  bool realFonts = false,
 }) async {
   tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
@@ -503,11 +506,12 @@ Future<Harness> pumpApp(
     ],
     child: Consumer<I18n>(
       builder: (context, i18n, _) => MaterialApp.router(
+        debugShowCheckedModeBanner: false,
         routerConfig: router,
         locale: Locale(i18n.lang),
         supportedLocales: [for (final l in supportedLangs) Locale(l)],
         localizationsDelegates: GlobalMaterialLocalizations.delegates,
-        theme: buildRebiTheme(Tw.dark ? Brightness.dark : Brightness.light, fonts: false),
+        theme: buildRebiTheme(Tw.dark ? Brightness.dark : Brightness.light, fonts: realFonts),
       ),
     ),
   ));

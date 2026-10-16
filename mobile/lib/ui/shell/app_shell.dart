@@ -11,6 +11,8 @@ import '../../state/auth_controller.dart';
 import '../../state/notifications_controller.dart';
 import '../../state/theme_controller.dart';
 import '../components/language_sheet.dart';
+import '../brand/brand_mark.dart';
+import '../brand/palette.dart';
 import '../components/modals.dart';
 import '../tw.dart';
 import '../widgets/common.dart';
@@ -100,6 +102,7 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthController>().user;
+    final theme = context.watch<ThemeController>().theme;
     final path = widget.location.path;
     final isDashboard = path.startsWith('/dashboard');
     final isAiSurface = isDashboard || path.startsWith('/rebi');
@@ -115,13 +118,17 @@ class _AppShellState extends State<AppShell> {
             backgroundColor: Tw.background,
             appBar: inApp || immersive ? null : _Navbar(menuOpen: _menuOpen, onToggleMenu: () => setState(() => _menuOpen = !_menuOpen)),
             body: inApp
-                ? SafeArea(
-                    bottom: false,
-                    child: Column(
-                      children: [
-                        if (isSubPage(path)) _SubBar(path: path),
-                        Expanded(child: widget.child),
-                      ],
+                // Krem kâğıt + temanın hafif yıkaması tek yerde çizilir: geri çubuğu ve sayfa aynı zeminde durur.
+                ? DecoratedBox(
+                    decoration: BoxDecoration(gradient: theme.bg),
+                    child: SafeArea(
+                      bottom: false,
+                      child: Column(
+                        children: [
+                          if (isSubPage(path)) _SubBar(path: path),
+                          Expanded(child: widget.child),
+                        ],
+                      ),
                     ),
                   )
                 : Stack(
@@ -163,8 +170,8 @@ class _Navbar extends StatelessWidget implements PreferredSizeWidget {
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: BoxDecoration(
-            color: Tw.surface.withValues(alpha: .8),
-            border: Border(bottom: BorderSide(color: Tw.gray100.withValues(alpha: .5))),
+            color: Tw.background.withValues(alpha: .9),
+            border: Border(bottom: BorderSide(color: Tw.gray100)),
           ),
           child: SafeArea(
             bottom: false,
@@ -179,24 +186,9 @@ class _Navbar extends StatelessWidget implements PreferredSizeWidget {
                       onTap: () => context.go('/'),
                       child: Row(
                         children: [
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Tw.teal500, Tw.teal600],
-                              ),
-                              boxShadow: [
-                                BoxShadow(color: Tw.teal500.withValues(alpha: .2), blurRadius: 15, offset: const Offset(0, 8)),
-                              ],
-                            ),
-                            child: const Icon(LucideIcons.leaf, size: 20, color: Colors.white),
-                          ),
-                          const SizedBox(width: 8),
-                          Text('Rebi', style: tx(20, w: 7)),
+                          const BrandMark(size: 34),
+                          const SizedBox(width: 10),
+                          Text('Rebi', style: heading(24)),
                         ],
                       ),
                     ),
@@ -309,7 +301,8 @@ class LanguageSelect extends StatelessWidget {
               value: i18n.lang,
               isDense: true,
               dropdownColor: Tw.surfaceRaised,
-              style: tx(11, w: 6, c: Tw.gray700),
+              // DropdownButton ortam yazı stilini ezer; Inter'i açıkça taşımazsa seçili metin sistem yazı tipine düşer.
+              style: tx(11, w: 6, c: Tw.gray700).copyWith(fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily),
               icon: Icon(LucideIcons.chevronDown, size: 14, color: Tw.gray500),
               items: [
                 for (final lng in supportedLangs)
@@ -372,8 +365,8 @@ class _BottomNav extends StatelessWidget {
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
           decoration: BoxDecoration(
-            color: Tw.surface.withValues(alpha: .95),
-            border: Border(top: BorderSide(color: Tw.gray200.withValues(alpha: .6))),
+            color: Tw.surface.withValues(alpha: .97),
+            border: Border(top: BorderSide(color: Tw.gray100)),
           ),
           child: SafeArea(
             top: false,
@@ -391,7 +384,7 @@ class _BottomNav extends StatelessWidget {
                             tab: tab,
                             label: i18n.t(tab.labelKey),
                             active: active == tab,
-                            color: theme.primary,
+                            color: theme.fg,
                             lightColor: theme.primaryLight,
                             onTap: () => context.go(tab.path),
                           ),

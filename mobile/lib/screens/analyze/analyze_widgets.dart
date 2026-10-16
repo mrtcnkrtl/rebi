@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
+import '../../ui/brand/palette.dart';
 
 class ChipOption<T> {
   const ChipOption(this.id, this.label);
@@ -172,7 +173,7 @@ class StepHeader extends StatelessWidget {
   Widget build(BuildContext context) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: tx(24, w: 7)),
+          Text(title, style: heading(26)),
           const SizedBox(height: 4),
           Text(subtitle, style: tx(14, c: Tw.gray500)),
         ],
