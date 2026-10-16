@@ -30,7 +30,8 @@
       "open": "Check-in'e git",
       "waterMore": "Diğer…",
       "change": "Değiştir",
-      "edit": "Düzenle"
+      "edit": "Düzenle",
+      "openShelf": "Rafım'a git"
     },
     "advice": {
       "title": "Bugünün havasına göre",
@@ -86,6 +87,10 @@
       "daily_checkin": {
         "title": "Günlük check-in",
         "body": "Cildin bugün nasıldı? Rutin buna göre uyarlanır."
+      },
+      "restock_check": {
+        "title": "Yenisini aldın mı?",
+        "body": "Birkaç gün önce biten bir ürünün var. Aldıysan Rafım'dan işaretle."
       }
     },
     "greet": {
@@ -198,7 +203,8 @@
       "nutrition": "Beslenme kaydedildi",
       "nutritionClean": "Abur cubur yok olarak kaydedildi",
       "spf": "Güneş kremi yenilendi",
-      "productsFinished": "{{n}} ürün bitti olarak kaydedildi"
+      "productsFinished": "{{n}} ürün bitti olarak kaydedildi",
+      "restocked": "Yenisini aldın: {{product}}"
     },
     "sheets": {
       "cleansing": {
@@ -219,11 +225,13 @@
       },
       "products": {
         "title": "Hangi ürün bitti?",
-        "subtitle": "Bitirdiğin ürünleri işaretle.",
+        "subtitle": "Bitirdiğin ürünleri işaretle; yenisini alana kadar Rafım'da bekler.",
         "empty": "Rutininde işaretlenecek bir bakım ürünü yok.",
-        "already": "Bugün bitti olarak işaretlendi",
+        "already": "Bitti olarak işaretli",
         "save": "Bitti olarak kaydet",
-        "saveCount": "Bitti olarak kaydet ({{n}})"
+        "saveCount": "Bitti olarak kaydet ({{n}})",
+        "restock": "Aldım",
+        "shelfLink": "Rafım'a git"
       },
       "save": "Kaydet",
       "done": "Tamam"
@@ -291,7 +299,10 @@
       "doneBody": "Güzel iş. İstersen adımlara yeniden bakabilirsin.",
       "showSteps": "Adımları göster",
       "hideSteps": "Adımları gizle",
-      "reopen": "Yeniden aç"
+      "reopen": "Yeniden aç",
+      "outBadge": "Bitti",
+      "restock": "Aldım",
+      "outHint": "Rutinine sayılmaz"
     },
     "flow": {
       "title": "Gün akışı",
@@ -487,6 +498,10 @@
       "checkin": {
         "title": "Günlük check-in",
         "desc": "Akşam cildinin nasıl olduğunu sorar."
+      },
+      "restock": {
+        "title": "Ürün yenileme",
+        "desc": "Ürün bittikten 3 gün sonra yenisini alıp almadığını sorar."
       }
     },
     "window": "{{start}} – {{end}}",
@@ -544,7 +559,10 @@
     },
     "plusBadge": "Plus",
     "logout": "Çıkış yap",
-    "noName": "Rebi kullanıcısı"
+    "noName": "Rebi kullanıcısı",
+    "shelf": {
+      "hint": "Biten ürünlerini ve yenilerini takip et"
+    }
   },
   "mobileCommon": {
     "loading": "Yükleniyor"
@@ -605,5 +623,25 @@
     "strengthStrong": "Güçlü",
     "strengthHint": "En az 6 karakter. Harf, rakam ve sembol karıştır.",
     "trust": "Verilerin KVKK kapsamında korunur."
+  },
+  "mobileShelf": {
+    "title": "Rafım",
+    "subtitle": "Bitirdiğin ürünler, yenisini alana kadar burada bekler.",
+    "emptyTitle": "Rafında biten ürün yok",
+    "emptyBody": "Bir ürün bittiğinde Bugün ekranındaki \"Ürün bitti\" ile işaretle. Yenisini alana kadar rutininde soluk görünür ve ilerlemene sayılmaz.",
+    "age": {
+      "today": "Bugün bitti",
+      "yesterday": "Dün bitti",
+      "days": "{{n}} gün önce bitti"
+    },
+    "restocked": "Aldım",
+    "alternative": "Yerine ne kullanabilirim?",
+    "alternativePrompt": "\"{{product}}\" ürünüm bitti. Yerine ne kullanabilirim? Cildime ve rutinime uygun alternatifleri söyler misin?",
+    "hint": "Bitti işaretli ürünler rutininde soluk görünür ve adım sayına dahil edilmez. Yenisini aldığında \"Aldım\" de.",
+    "countHint": "{{n}} ürün bitti",
+    "emptyHint": "Biten ürünlerini takip et",
+    "loadFailed": "Rafın yüklenemedi. Bağlantını kontrol et.",
+    "retry": "Tekrar dene",
+    "pending": "{{count}} kayıt gönderilmeyi bekliyor"
   }
 }

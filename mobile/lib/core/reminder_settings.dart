@@ -4,7 +4,7 @@ import 'api.dart';
 import 'today_plan.dart';
 
 /// Kullanıcının kapatıp açabildiği hatırlatıcı kategorileri (`backend/today_plan.py`).
-const reminderCategories = ['routine', 'water', 'makeup', 'nutrition', 'spf', 'lip_balm', 'checkin'];
+const reminderCategories = ['routine', 'water', 'makeup', 'nutrition', 'spf', 'lip_balm', 'checkin', 'restock'];
 
 /// Hatırlatıcı kimliği → kategori.
 const reminderCategoryOf = {
@@ -16,6 +16,7 @@ const reminderCategoryOf = {
   'nutrition_log': 'nutrition',
   'spf_refresh': 'spf',
   'lip_balm': 'lip_balm',
+  'restock_check': 'restock',
   'daily_checkin': 'checkin',
 };
 
@@ -136,6 +137,7 @@ const _windowOffsets = <String, (String, int, int)>{
   'makeup_log': ('wake', 150, 210),
   'spf_refresh': ('wake', 210, 510),
   'lip_balm': ('wake', 270, 330),
+  'restock_check': ('sleep', -300, -240),
   'routine_evening': ('sleep', -120, 0),
   'makeup_removal': ('sleep', -120, 0),
   'nutrition_log': ('sleep', -180, -150),

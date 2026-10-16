@@ -2,6 +2,7 @@ import 'api.dart';
 import 'day_log.dart';
 import 'reminder_settings.dart';
 import 'routine_logic.dart';
+import 'shelf.dart';
 import 'weather_decisions.dart';
 
 /// Varsayılan günlük su hedefi (ml). Kullanıcı ayardan değiştirebilir; gerçek hedef `TodayPlan.waterTarget`tır.
@@ -282,6 +283,7 @@ List<ReminderAction> reminderActions(Reminder r) => switch (r.id) {
           ReminderAction('junkNo', type: 'nutrition', payload: {'junk_food': false}),
         ],
       'daily_checkin' => const [ReminderAction('open', route: '/dashboard/checkin')],
+      'restock_check' => const [ReminderAction('openShelf', route: '/dashboard/shelf')],
       _ => const [],
     };
 
@@ -299,6 +301,7 @@ class TodayPlan {
     required this.checkinDone,
     this.settings = const ReminderSettings(),
     this.decisions,
+    this.productsOut = const [],
   });
 
   factory TodayPlan.fromJson(Map<String, dynamic> j) => TodayPlan(
@@ -316,6 +319,7 @@ class TodayPlan {
         checkinDone: j['checkin_done'] == true,
         settings: ReminderSettings.fromJson(j['reminder_settings']),
         decisions: WeatherDecisions.fromJson(j['weather_decisions']),
+        productsOut: parseShelf(j['products_out']),
       );
 
   final String logDate;
@@ -336,6 +340,9 @@ class TodayPlan {
   /// Havaya göre güneş kremi / nemlendirici / dudak balsamı kararları; eski sunucuda null (o zaman `environmentAdvice` gösterilir).
   final WeatherDecisions? decisions;
 
+  /// Rafım: bitti işaretlenip yenisi alınmamış ürünler (gün sınırı yok; en son biten başta).
+  final List<ShelfItem> productsOut;
+
   /// Hava verisi gerçek bir kaynaktan mı geldi (varsayılan değerler değil).
   bool get hasRealWeather => weatherSource != 'default';
 
@@ -354,7 +361,27 @@ class TodayPlan {
         checkinDone: checkinDone,
         settings: settings,
         decisions: decisions,
+        productsOut: productsOut,
       );
+
+  /// Rafım listesi değişmiş kopya.
+  TodayPlan withShelf(List<ShelfItem> next) => TodayPlan(
+        logDate: logDate,
+        hasRoutine: hasRoutine,
+        routine: routine,
+        weather: weather,
+        weatherSource: weatherSource,
+        environmentAdvice: environmentAdvice,
+        reminders: reminders,
+        progress: progress,
+        checkinDone: checkinDone,
+        settings: settings,
+        decisions: decisions,
+        productsOut: next,
+      );
+
+  /// Bu ürün şu an rafta bitmiş mi (ad eşleşmesi: büyük/küçük harf ve fazla boşluk fark yaratmaz).
+  bool isOut(String productName) => productsOut.any((i) => i.key == shelfKey(productName));
 }
 
 /// Konum verilirse canlı hava (konum izni gerekir); verilmezse sunucu bugünkü kayıttan,

@@ -21,6 +21,7 @@ IconData _reminderIcon(String id) => switch (id) {
       'spf_refresh' => LucideIcons.sunMedium,
       'nutrition_log' => LucideIcons.apple,
       'daily_checkin' => LucideIcons.clipboardCheck,
+      'restock_check' => LucideIcons.packageCheck,
       'lip_balm' => LucideIcons.heart,
       'makeup_log' || 'makeup_removal' => LucideIcons.sparkles,
       _ => LucideIcons.bell,

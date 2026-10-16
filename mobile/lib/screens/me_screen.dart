@@ -52,6 +52,14 @@ class MeScreen extends StatelessWidget {
         ),
         const SizedBox(height: 10),
         _MenuRow(
+          icon: LucideIcons.packageCheck,
+          color: theme.primary,
+          title: i18n.t('mobileShelf.title'),
+          hint: i18n.t('mobileMe.shelf.hint'),
+          onTap: () => context.go('/dashboard/shelf'),
+        ),
+        const SizedBox(height: 10),
+        _MenuRow(
           icon: LucideIcons.scan,
           color: theme.primary,
           title: i18n.t('mobileMe.reanalyze.title'),

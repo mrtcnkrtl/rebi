@@ -60,7 +60,11 @@ List<int> reminderSlots(Reminder r) {
   return [for (var m = start; m <= end; m += every) m];
 }
 
-String routeForReminder(String? reminderId) => reminderId == 'daily_checkin' ? '/dashboard/checkin' : '/dashboard';
+String routeForReminder(String? reminderId) => switch (reminderId) {
+      'daily_checkin' => '/dashboard/checkin',
+      'restock_check' => '/dashboard/shelf',
+      _ => '/dashboard',
+    };
 
 /// Bugünün kalan hatırlatıcılarından ve yarının koşulsuz hatırlatıcılarından bildirim listesi çıkarır.
 ///

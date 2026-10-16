@@ -35,7 +35,7 @@ enum AppTab {
 /// Bir yolun hangi sekmeye ait olduğu; sekme dışı (genel) sayfalar için null.
 AppTab? tabForPath(String path) {
   if (!path.startsWith('/dashboard')) return null;
-  if (path == '/dashboard' || path.startsWith('/dashboard/checkin')) return AppTab.today;
+  if (path == '/dashboard' || path.startsWith('/dashboard/checkin') || path.startsWith('/dashboard/shelf')) return AppTab.today;
   if (path.startsWith('/dashboard/routine') || path.startsWith('/dashboard/analyze')) return AppTab.routine;
   if (path.startsWith('/dashboard/chat')) return AppTab.chat;
   if (path.startsWith('/dashboard/history')) return AppTab.history;

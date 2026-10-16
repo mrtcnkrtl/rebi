@@ -604,7 +604,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           _aiNoteCard(c, checkinResult),
           const SizedBox(height: 14),
         ],
-        _withPlan((plan) => TodayMoreList(theme: theme, checkinDone: plan?.checkinDone == true)),
+        _withPlan((plan) => TodayMoreList(theme: theme, checkinDone: plan?.checkinDone == true, shelfCount: plan?.productsOut.length ?? 0)),
         const AiDisclaimer(padding: EdgeInsets.only(top: 20)),
       ],
     );

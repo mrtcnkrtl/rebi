@@ -12,6 +12,7 @@ import 'screens/legal_screen.dart';
 import 'screens/me_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/reminders_screen.dart';
+import 'screens/shelf_screen.dart';
 import 'screens/splash_screen.dart';
 import 'screens/subscribe_screen.dart';
 import 'screens/themes_screen.dart';
@@ -121,7 +122,12 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
             ),
           ),
           GoRoute(path: '/dashboard/checkin', builder: (context, state) => const CheckInScreen()),
-          GoRoute(path: '/dashboard/chat', builder: (context, state) => const ChatScreen()),
+          // `extra: {'prompt': '...'}` ile açılırsa mesaj sohbete hazır yazılıp gönderilir (ör. Rafım'dan "yerine ne kullanabilirim?").
+          GoRoute(
+            path: '/dashboard/chat',
+            builder: (context, state) => ChatScreen(initialPrompt: _extraMap(state.extra)?['prompt'] as String?),
+          ),
+          GoRoute(path: '/dashboard/shelf', builder: (context, state) => const ShelfScreen()),
           GoRoute(path: '/dashboard/themes', builder: (context, state) => const ThemesScreen()),
           GoRoute(path: '/dashboard/subscribe', builder: (context, state) => const SubscribeScreen()),
           GoRoute(path: '/dashboard/routine', builder: (context, state) => const DashboardScreen(planOnly: true)),

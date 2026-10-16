@@ -5,6 +5,7 @@ import '../../core/day_log.dart';
 import '../../core/i18n.dart';
 import '../../core/routine_logic.dart';
 import '../../core/routine_usage.dart';
+import '../../core/shelf.dart';
 import '../../core/today_plan.dart';
 import '../../state/theme_controller.dart';
 import '../../state/today_actions.dart';
@@ -71,28 +72,31 @@ class _RoutineHeroState extends State<RoutineHero> {
       listenable: Listenable.merge([widget.actions, widget.actions.plan, I18n.instance]),
       builder: (context, _) {
         final i18n = I18n.instance;
-        final progress = widget.actions.plan.plan?.progress ?? const DayProgress();
+        final plan = widget.actions.plan.plan;
+        final progress = plan?.progress ?? const DayProgress();
         final block = widget.actions.blockAt(todayPanelClock());
         final items = block == 'morning' ? widget.morning : widget.evening;
         final notes = block == 'morning' ? widget.morningNotes : widget.eveningNotes;
-        final steps = [for (final it in items) stepOrder(it).round()];
+        // Biten (Rafım) ürünlerin adımı rutinin ilerlemesine ve tamamlanmasına sayılmaz.
+        final live = [for (final it in items) if (!_isOut(plan, it)) it];
+        final steps = [for (final it in live) stepOrder(it).round()];
         final blockDone = progress.blockDone(block);
         final checked = steps.where((s) => blockDone || progress.stepsOf(block).contains(s)).length;
-        final fraction = items.isEmpty ? (blockDone ? 1.0 : 0.0) : checked / items.length;
+        final fraction = live.isEmpty ? (blockDone ? 1.0 : 0.0) : checked / live.length;
         final showSteps = !blockDone || _stepsShownWhenDone.contains(block);
 
         return Semantics(
           container: true,
-          label: '${i18n.t('mobileToday.hero.title.$block')}, ${i18n.t('mobileToday.hero.progress', {'done': checked, 'total': items.length})}',
+          label: '${i18n.t('mobileToday.hero.title.$block')}, ${i18n.t('mobileToday.hero.progress', {'done': checked, 'total': live.length})}',
           child: RCard(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
             radius: 24,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _header(i18n, block, fraction, checked, items.length, blockDone),
+                _header(i18n, block, fraction, checked, live.length, blockDone),
                 const SizedBox(height: 16),
-                _segments(i18n, progress),
+                _segments(i18n, progress, plan),
                 const SizedBox(height: 6),
                 if (blockDone) _doneSummary(i18n, block, steps),
                 if (showSteps) ...[
@@ -104,14 +108,18 @@ class _RoutineHeroState extends State<RoutineHero> {
                   else
                     for (var i = 0; i < items.length; i++) ...[
                       if (i > 0) const Hairline(indent: 40),
-                      _step(
-                        i18n,
-                        block: block,
-                        item: items[i],
-                        index: i,
-                        checked: blockDone || progress.stepsOf(block).contains(steps[i]),
-                        allSteps: steps,
-                      ),
+                      if (_isOut(plan, items[i]))
+                        _outStep(i18n, items[i])
+                      else
+                        _step(
+                          i18n,
+                          block: block,
+                          item: items[i],
+                          index: i,
+                          step: stepOrder(items[i]).round(),
+                          checked: blockDone || progress.stepsOf(block).contains(stepOrder(items[i]).round()),
+                          allSteps: steps,
+                        ),
                     ],
                 ],
                 if (notes.isNotEmpty) _notes(i18n, notes),
@@ -155,11 +163,11 @@ class _RoutineHeroState extends State<RoutineHero> {
   }
 
   /// Sabah / akşam seçici: seçili olan dolu, öbürü yalnızca metin.
-  Widget _segments(I18n i18n, DayProgress progress) {
+  Widget _segments(I18n i18n, DayProgress progress, TodayPlan? plan) {
     final theme = widget.theme;
     final current = widget.actions.blockAt(todayPanelClock());
     Widget segment(String b) {
-      final items = b == 'morning' ? widget.morning : widget.evening;
+      final items = [for (final it in (b == 'morning' ? widget.morning : widget.evening)) if (!_isOut(plan, it)) it];
       final done = progress.blockDone(b);
       final count = items.where((it) => done || progress.stepsOf(b).contains(stepOrder(it).round())).length;
       final selected = b == current;
@@ -277,6 +285,7 @@ class _RoutineHeroState extends State<RoutineHero> {
     required String block,
     required RoutineItem item,
     required int index,
+    required int step,
     required bool checked,
     required List<int> allSteps,
   }) {
@@ -295,7 +304,7 @@ class _RoutineHeroState extends State<RoutineHero> {
       label: title,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: _busy ? null : () => _guard(() => widget.actions.toggleStep(block: block, step: allSteps[index], allSteps: allSteps)),
+        onTap: _busy ? null : () => _guard(() => widget.actions.toggleStep(block: block, step: step, allSteps: allSteps)),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 14),
           child: Row(
@@ -373,6 +382,69 @@ class _RoutineHeroState extends State<RoutineHero> {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  bool _isOut(TodayPlan? plan, RoutineItem item) => plan?.isOut(str(item['action'])) ?? false;
+
+  /// Bitti işaretli ürünün adımı: soluk, "Bitti" rozeti ve "Aldım"; rutinin ilerlemesine sayılmaz.
+  Widget _outStep(I18n i18n, RoutineItem item) {
+    final name = str(item['action']).trim();
+    final step = stepOrder(item).round();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Tw.amber100),
+            child: Icon(LucideIcons.packageX, size: 15, color: Tw.amber800),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(pickAction(item, localized: widget.localized), style: tx(15, w: 6, c: Tw.gray500, h: snug)),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(color: Tw.amber100, borderRadius: BorderRadius.circular(999)),
+                      child: Text(i18n.t('mobileToday.hero.outBadge'), style: tx(11, w: 7, c: Tw.amber800)),
+                    ),
+                    Text(i18n.t('mobileToday.hero.outHint'), style: tx(11.5, c: Tw.gray500)),
+                    TextLink(
+                      i18n.t('mobileToday.hero.restock'),
+                      onTap: _busy
+                          ? () {}
+                          : () => _guard(() async {
+                                await widget.actions.record(
+                                  shelfRestockedEvent,
+                                  {'product': shelfName(name), 'step_order': step},
+                                  message: i18n.t('mobileToday.toast.restocked', {'product': name}),
+                                  undoPayload: {'product': shelfName(name), 'step_order': step},
+                                  undoType: shelfFinishedEvent,
+                                );
+                              }),
+                      style: tx(12.5, w: 7, c: widget.theme.fg),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

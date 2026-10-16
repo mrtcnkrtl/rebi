@@ -47,6 +47,9 @@ class TodayActions extends ChangeNotifier {
     Map<String, dynamic> payload, {
     String? message,
     Map<String, dynamic>? undoPayload,
+
+    /// Geri alma farklı bir olayla yapılıyorsa (ör. "aldım" → yeniden "bitti") tipi; verilmezse aynı tip.
+    String? undoType,
   }) async {
     final i18n = I18n.instance;
     final outcome = await log(type, payload);
@@ -62,7 +65,7 @@ class TodayActions extends ChangeNotifier {
       undo: undoPayload == null
           ? null
           : () async {
-              final undone = await log(type, undoPayload);
+              final undone = await log(undoType ?? type, undoPayload);
               showToast(i18n.t(undone == LogOutcome.failed ? 'mobileToday.toast.failed' : 'mobileToday.toast.undone'));
             },
     );

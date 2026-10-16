@@ -71,7 +71,10 @@ class _Usage {
 
 /// Rebi sohbeti (web: `pages/Chat.jsx`). `/rebi` (anonim) ve `/dashboard/chat` aynı ekranı kullanır.
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({super.key, this.initialPrompt});
+
+  /// Açılışta kendiliğinden gönderilecek mesaj (ör. Rafım'dan "yerine ne kullanabilirim?"); boşsa yok sayılır.
+  final String? initialPrompt;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -110,6 +113,12 @@ class _ChatScreenState extends State<ChatScreen> {
     _historyOwnerId = _effectiveUserId;
     _auth.addListener(_onAuthChanged);
     _loadForUser();
+    final prompt = widget.initialPrompt?.trim() ?? '';
+    if (prompt.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _send(prompt);
+      });
+    }
   }
 
   @override

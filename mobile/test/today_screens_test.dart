@@ -957,18 +957,14 @@ void main() {
     testWidgets('bugün bitti işaretlenen ürün tekrar seçilemez', (tester) async {
       final products = finishable();
       final name = str(products.first['action']).trim();
-      final backend = FakeBackend();
-      backend.todayPlan = {
-        ...backend.todayPlan,
-        'progress': {
-          'products_finished': [
-            {'product': name, 'step_order': 10},
-          ],
-        },
-      };
+      final backend = FakeBackend()
+        ..productsOut = [
+          {'product': name, 'step_order': 10, 'finished_at': '2026-10-08T10:00:00+00:00', 'log_date': '2026-10-08', 'days_out': 2},
+        ];
       await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backend);
       await tapText(tester, tr('mobileToday.productFinished'));
       expect(inSheet(tr('mobileToday.sheets.products.already')), findsOneWidget);
+      expect(inSheet(tr('mobileToday.sheets.products.restock')), findsOneWidget, reason: 'biten ürün "aldım" ile geri açılır');
     });
 
     testWidgets('tam plan görünümünde "ürün bitti" çubuğu yoktur', (tester) async {

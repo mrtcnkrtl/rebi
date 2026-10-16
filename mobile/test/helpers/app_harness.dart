@@ -113,6 +113,10 @@ class FakeBackend {
   /// Doluysa `GET /today/plan` bu tamamlanana kadar yanıt vermez (yükleniyor durumunu görmek için).
   Completer<void>? planGate;
 
+  /// Rafım (`products_out`): bitti işaretlenip yenisi alınmamış ürünler. `product_finished` / `product_restocked` kayıtlarıyla
+  /// sunucudaki türetme kuralıyla güncel tutulur (aynı ad iki kez eklenmez, aldım listeden çıkarır).
+  List<Map<String, dynamic>> productsOut = [];
+
   /// Sunucudaki bugünkü su toplamı; `water_intake` kayıtlarıyla artar.
   int waterMl = 0;
 
@@ -293,7 +297,7 @@ class FakeBackend {
           case 'GET /today/plan':
             await planGate?.future;
             if (planFails) return http.Response('{"detail":"hata"}', 502);
-            return ok({'reminder_settings': reminderSettings, ...todayPlan, 'progress': progress});
+            return ok({'reminder_settings': reminderSettings, ...todayPlan, 'progress': progress, 'products_out': productsOut});
           case 'GET /chat_usage':
             return ok({'kind': 'free_daily', 'remaining': 4, 'limit': 5, 'period': 'day'});
           case 'GET /chat/history':
@@ -344,6 +348,16 @@ class FakeBackend {
               final payload = (sent['payload'] as Map).cast<String, dynamic>();
               if (sent['type'] == 'water_intake') waterMl = math.max(0, waterMl + (payload['ml'] as num).toInt());
               storedEvents.add({'type': sent['type'], 'payload': payload});
+              final shelfName = '${payload['product'] ?? ''}'.trim();
+              String key(String n) => n.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+              if (sent['type'] == 'product_finished' && shelfName.isNotEmpty && !productsOut.any((p) => key('${p['product']}') == key(shelfName))) {
+                productsOut = [
+                  {'product': shelfName, 'step_order': payload['step_order'], 'finished_at': '2026-10-10T10:00:00+00:00', 'log_date': '2026-10-10', 'days_out': 0},
+                  ...productsOut,
+                ];
+              } else if (sent['type'] == 'product_restocked') {
+                productsOut = [for (final p in productsOut) if (key('${p['product']}') != key(shelfName)) p];
+              }
             }
             return ok({'ok': true, 'log_date': '2026-10-10', 'aggregated': progress});
           case 'POST /legal-consent/accept':

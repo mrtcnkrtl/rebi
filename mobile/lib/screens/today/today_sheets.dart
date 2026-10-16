@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/day_log.dart';
@@ -13,6 +14,7 @@ import '../../ui/widgets/common.dart';
 import '../../ui/widgets/progress_ring.dart';
 import 'today_widgets.dart';
 import '../../ui/brand/glyphs.dart';
+import '../../core/shelf.dart';
 import '../../ui/widgets/app_sheet.dart';
 
 /// "Bugün" ekranındaki seçim ekranlarından birini alt sayfa olarak açar.
@@ -61,6 +63,7 @@ class _OptionTile extends StatelessWidget {
     this.description,
     this.check = false,
     this.titleMaxLines,
+    this.trailing,
   });
 
   final IconData icon;
@@ -75,6 +78,9 @@ class _OptionTile extends StatelessWidget {
 
   /// Çoklu seçimde sağda onay kutusu gösterir.
   final bool check;
+
+  /// Sağda onay kutusu yerine gösterilecek öğe (ör. "Aldım" düğmesi).
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +129,8 @@ class _OptionTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (check) ...[
+                  if (trailing != null) ...[const SizedBox(width: 8), trailing!]
+                  else if (check) ...[
                     const SizedBox(width: 8),
                     Icon(selected ? LucideIcons.circleCheck : LucideIcons.circle, size: 22, color: selected ? color : Tw.gray300),
                   ],
@@ -409,8 +416,8 @@ class _ProductsBodyState extends State<_ProductsBody> {
     for (final index in _selected.toList()..sort()) {
       final item = widget.products[index];
       final name = str(item['action']).trim();
-      final outcome = await actions.log('product_finished', {
-        'product': name.length > 120 ? name.substring(0, 120) : name,
+      final outcome = await actions.log(shelfFinishedEvent, {
+        'product': shelfName(name),
         'step_order': stepOrder(item).round(),
       });
       if (outcome.saved) saved++;
@@ -426,9 +433,7 @@ class _ProductsBodyState extends State<_ProductsBody> {
   Widget build(BuildContext context) {
     final i18n = I18n.instance;
     final localized = i18n.prefersLocalized;
-    final finished = {
-      for (final name in widget.actions.plan.plan?.progress.finishedProducts ?? const <String>[]) name.toLowerCase(),
-    };
+    final plan = widget.actions.plan.plan;
     if (widget.products.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -441,17 +446,37 @@ class _ProductsBodyState extends State<_ProductsBody> {
         for (var i = 0; i < widget.products.length; i++)
           Builder(builder: (context) {
             final item = widget.products[i];
-            final already = finished.contains(str(item['action']).trim().toLowerCase());
+            final name = str(item['action']).trim();
+            final already = plan?.isOut(name) ?? false;
             final time = str(item['time']).toLowerCase();
             final isMorning = time == 'sabah' || time == 'morning';
             return _OptionTile(
-              icon: isMorning ? LucideIcons.sun : LucideIcons.moon,
+              icon: already ? LucideIcons.packageX : (isMorning ? LucideIcons.sun : LucideIcons.moon),
               title: pickAction(item, localized: localized),
               titleMaxLines: 3,
               description: already ? i18n.t('mobileToday.sheets.products.already') : null,
-              color: widget.theme.primary,
-              selected: already || _selected.contains(i),
-              check: true,
+              color: already ? Tw.amber700 : widget.theme.primary,
+              selected: !already && _selected.contains(i),
+              check: !already,
+              // Biten ürün tek dokunuşla rafa geri döner ("aldım"); kaydetme düğmesini beklemez.
+              trailing: already
+                  ? TodayPill(
+                      label: i18n.t('mobileToday.sheets.products.restock'),
+                      color: Tw.amber700,
+                      onTap: _saving
+                          ? null
+                          : () async {
+                              Navigator.of(context).pop();
+                              await widget.actions.record(
+                                shelfRestockedEvent,
+                                {'product': shelfName(name), 'step_order': stepOrder(item).round()},
+                                message: i18n.t('mobileToday.toast.restocked', {'product': name}),
+                                undoPayload: {'product': shelfName(name), 'step_order': stepOrder(item).round()},
+                                undoType: shelfFinishedEvent,
+                              );
+                            },
+                    )
+                  : null,
               onTap: already || _saving
                   ? null
                   : () => setState(() => _selected.contains(i) ? _selected.remove(i) : _selected.add(i)),
@@ -465,6 +490,19 @@ class _ProductsBodyState extends State<_ProductsBody> {
               ? i18n.t('mobileToday.sheets.products.save')
               : i18n.t('mobileToday.sheets.products.saveCount', {'n': _selected.length}),
           onPressed: _selected.isEmpty ? null : _save,
+        ),
+        const SizedBox(height: 4),
+        Center(
+          child: TextLink(
+            i18n.t('mobileToday.sheets.products.shelfLink'),
+            onTap: () {
+              // Sayfa kapanınca bağlam geçersiz olur: yönlendirici önce alınır.
+              final router = GoRouter.of(context);
+              Navigator.of(context).pop();
+              router.go('/dashboard/shelf');
+            },
+            style: tx(13, w: 6, c: widget.theme.fg),
+          ),
         ),
       ],
     );

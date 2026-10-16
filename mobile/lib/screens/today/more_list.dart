@@ -11,10 +11,13 @@ import 'today_widgets.dart';
 /// "Daha fazlası": Bugün'ün altındaki tek liste. Eskiden üst üste dört ince düğmeydi; artık check-in, fotoğraf,
 /// yeni analiz, haftanın tamamı ve geçmiş sakin satırlar hâlinde durur.
 class TodayMoreList extends StatelessWidget {
-  const TodayMoreList({super.key, required this.theme, required this.checkinDone});
+  const TodayMoreList({super.key, required this.theme, required this.checkinDone, this.shelfCount = 0});
 
   final RebiTheme theme;
   final bool checkinDone;
+
+  /// Rafta bitmiş ürün sayısı (satırın alt metni).
+  final int shelfCount;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +37,14 @@ class TodayMoreList extends StatelessWidget {
                 title: i18n.t('dashboard.dailyCheckinTitle'),
                 subtitle: i18n.t(checkinDone ? 'mobileToday.checkinDoneToday' : 'dashboard.dailyCheckinSubtitle'),
                 onTap: () => context.go('/dashboard/checkin'),
+              ),
+              const Hairline(indent: 64),
+              _MoreRow(
+                icon: LucideIcons.packageCheck,
+                color: shelfCount > 0 ? Tw.amber700 : theme.primary,
+                title: i18n.t('mobileShelf.title'),
+                subtitle: i18n.t(shelfCount > 0 ? 'mobileShelf.countHint' : 'mobileShelf.emptyHint', {'n': shelfCount}),
+                onTap: () => context.go('/dashboard/shelf'),
               ),
               const Hairline(indent: 64),
               _MoreRow(

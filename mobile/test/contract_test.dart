@@ -94,6 +94,16 @@ void main() {
       expect(spf.everyMinutes, 120);
     });
 
+    test('Rafım: biten ürünler sözleşmedeki alanlarla okunur', () {
+      final shelf = plan.productsOut.single;
+      expect(shelf.product, 'SPF 50 (geniş spektrumlu)');
+      expect(shelf.stepOrder, 40);
+      expect(shelf.daysOut, 0);
+      expect(shelf.finishedAt, isNotNull);
+      expect(plan.isOut('spf 50 (geniş   spektrumlu)'), isTrue);
+      expect(plan.settings.isEnabled('restock'), isTrue, reason: 'yeni hatırlatıcı kategorisi sunucuyla aynı');
+    });
+
     test('havaya göre üç karar', () {
       final d = plan.decisions!;
       expect(d.spf.spf, '50');

@@ -37,6 +37,11 @@ void main() {
     final plan = _contract('today_plan');
     b.todayPlan = {...plan, 'user_id': testUserId, 'log_date': '2026-10-10', 'routine': routine, 'has_routine': true};
     b.waterMl = 750;
+    // Rafım: rutindeki güneş kremi bitti, bir de rutin dışı ürün.
+    b.productsOut = [
+      {'product': 'SPF 30+ (mat bitişli, yağsız SPF)', 'step_order': 40, 'finished_at': '2026-10-08T10:00:00+00:00', 'log_date': '2026-10-08', 'days_out': 2},
+      {'product': 'Gece kremi', 'step_order': null, 'finished_at': '2026-10-02T10:00:00+00:00', 'log_date': '2026-10-02', 'days_out': 8},
+    ];
     b.snapshot = {
       ...b.snapshot,
       'has_routine': true,
@@ -65,6 +70,7 @@ void main() {
     ('ben', '/dashboard/profile', true),
     ('gorunum', '/dashboard/themes', true),
     ('hatirlaticilar', '/dashboard/reminders', true),
+    ('rafim', '/dashboard/shelf', true),
     ('checkin', '/dashboard/checkin', true),
     ('karsilama', '/', false),
     ('giris', '/auth', false),

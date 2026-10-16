@@ -30,7 +30,8 @@
       "open": "Go to check-in",
       "waterMore": "More…",
       "change": "Change",
-      "edit": "Edit"
+      "edit": "Edit",
+      "openShelf": "Open my shelf"
     },
     "advice": {
       "title": "For today's weather",
@@ -86,6 +87,10 @@
       "daily_checkin": {
         "title": "Daily check-in",
         "body": "How was your skin today? Your routine adapts to it."
+      },
+      "restock_check": {
+        "title": "Did you restock?",
+        "body": "A product ran out a few days ago. If you got a new one, mark it on your shelf."
       }
     },
     "greet": {
@@ -198,7 +203,8 @@
       "nutrition": "Nutrition saved",
       "nutritionClean": "Saved: no junk food",
       "spf": "Sunscreen reapplied",
-      "productsFinished": "{{n}} product(s) marked as finished"
+      "productsFinished": "{{n}} product(s) marked as finished",
+      "restocked": "Restocked: {{product}}"
     },
     "sheets": {
       "cleansing": {
@@ -219,11 +225,13 @@
       },
       "products": {
         "title": "Which product ran out?",
-        "subtitle": "Mark the products you finished.",
+        "subtitle": "Mark what you've finished; it waits on your shelf until you restock.",
         "empty": "There are no skincare products in your routine to mark.",
-        "already": "Already marked as finished today",
+        "already": "Marked as finished",
         "save": "Save as finished",
-        "saveCount": "Save as finished ({{n}})"
+        "saveCount": "Save as finished ({{n}})",
+        "restock": "Restocked",
+        "shelfLink": "Open my shelf"
       },
       "save": "Save",
       "done": "Done"
@@ -291,7 +299,10 @@
       "doneBody": "Nicely done. You can look back at the steps if you like.",
       "showSteps": "Show steps",
       "hideSteps": "Hide steps",
-      "reopen": "Reopen"
+      "reopen": "Reopen",
+      "outBadge": "Finished",
+      "restock": "Restocked",
+      "outHint": "Doesn't count toward your routine"
     },
     "flow": {
       "title": "Your day",
@@ -487,6 +498,10 @@
       "checkin": {
         "title": "Daily check-in",
         "desc": "Asks how your skin was in the evening."
+      },
+      "restock": {
+        "title": "Restock check",
+        "desc": "Asks 3 days after a product runs out whether you've restocked."
       }
     },
     "window": "{{start}} – {{end}}",
@@ -544,7 +559,10 @@
     },
     "plusBadge": "Plus",
     "logout": "Sign out",
-    "noName": "Rebi user"
+    "noName": "Rebi user",
+    "shelf": {
+      "hint": "Keep track of finished products and restocks"
+    }
   },
   "mobileCommon": {
     "loading": "Loading"
@@ -605,5 +623,25 @@
     "strengthStrong": "Strong",
     "strengthHint": "At least 6 characters. Mix letters, numbers and symbols.",
     "trust": "Your data is protected under KVKK."
+  },
+  "mobileShelf": {
+    "title": "My shelf",
+    "subtitle": "Products you've finished wait here until you restock.",
+    "emptyTitle": "Nothing has run out",
+    "emptyBody": "When a product runs out, mark it with \"Product finished\" on Today. It shows faded in your routine and doesn't count toward your progress until you restock.",
+    "age": {
+      "today": "Finished today",
+      "yesterday": "Finished yesterday",
+      "days": "Finished {{n}} days ago"
+    },
+    "restocked": "Restocked",
+    "alternative": "What can I use instead?",
+    "alternativePrompt": "I've run out of \"{{product}}\". What can I use instead? Can you suggest alternatives that suit my skin and routine?",
+    "hint": "Products marked finished show faded in your routine and don't count toward your steps. Tap \"Restocked\" once you have a new one.",
+    "countHint": "{{n}} finished",
+    "emptyHint": "Keep track of finished products",
+    "loadFailed": "Couldn't load your shelf. Check your connection.",
+    "retry": "Try again",
+    "pending": "{{count}} entries waiting to be sent"
   }
 }

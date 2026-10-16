@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../core/daily_tracking.dart';
 import '../core/device_location.dart';
 import '../core/event_outbox.dart';
+import '../core/shelf.dart';
 import '../core/today_plan.dart';
 
 /// Bir gün içi kaydın sonucu.
@@ -53,12 +54,15 @@ class TodayPlanController extends ChangeNotifier {
     if (base == null) return null;
     final today = DateTime.now();
     var progress = base.progress;
+    var shelf = base.productsOut;
     for (final event in _outbox.pending(userId)) {
       final at = event.at;
       final isToday = at != null && at.year == today.year && at.month == today.month && at.day == today.day;
       if (isToday) progress = progress.withEvent(event.type, event.payload);
+      // Rafım gün sınırı tanımaz: bekleyen "bitti" / "aldım" hangi gün işaretlendiyse geçerlidir.
+      shelf = shelfWith(shelf, event.type, event.payload, now: at);
     }
-    return base.withProgress(progress);
+    return base.withProgress(progress).withShelf(shelf);
   }
 
   /// [useLocation]: konum izni varsa canlı hava için cihaz konumu gönderilir.
@@ -107,7 +111,8 @@ class TodayPlanController extends ChangeNotifier {
     final aggregated = result.data['aggregated'];
     final current = _base;
     if (!_disposed && current != null && aggregated is Map && aggregated.isNotEmpty) {
-      _base = current.withProgress(DayProgress.fromJson(aggregated));
+      // Sunucu toplamı günün ilerlemesini verir; Rafım'ı plan yeniden okunana kadar olayın etkisiyle güncel tut.
+      _base = current.withProgress(DayProgress.fromJson(aggregated)).withShelf(shelfWith(current.productsOut, type, payload));
       _notify();
     }
     unawaited(reload());

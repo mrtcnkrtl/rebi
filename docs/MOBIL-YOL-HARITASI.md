@@ -186,7 +186,7 @@ genişlik, makyaj ve beslenme yan yana; dar ekran/büyük yazıda alt alta) → 
 
 **Kabul:** müşterinin 2. ve 3. maddeleri tek ekranda, kaydırmadan "şimdi ne yapmalıyım" okunuyor; küçük telefonda (320×568) ve %200 yazıda taşma yok.
 
-### Faz D — "Ürün bitti" gerçek bir akışa dönüşsün  *(boyut: orta)*
+### Faz D — "Ürün bitti" gerçek bir akışa dönüşsün  *(boyut: orta)* — **yapıldı (2026-10-16)**
 
 Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 
@@ -196,6 +196,18 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 | D2 | Mobil: "Ürün bitti" sayfası yeniden; rutin adımında "bitti" etiketi (adım soluk, atlanabilir); **Rafım** listesi (Ben sekmesinde) + "Aldım" ile geri açma. | Ben |
 | D3 | İsteğe bağlı tek hatırlatma: N gün sonra "hâlâ almadın mı?". | Ben |
 | D4 | Sohbete kısayol: "Bu ürünün yerine ne kullanabilirim?" (bugünün bağlamıyla). | Ben |
+
+**Durum (2026-10-16).** Uygulanan tasarım ("Rafım"):
+
+- **Backend (D1):** `product_restocked` olayı; Rafım ayrı tablo değil, olaylardan türetilir (son olay geçerli, ad eşleşmesi, gün sınırı yok) → `/today/plan` →
+  `products_out` (+ `days_out`). Yeni indeks `daily_events (user_id, type, event_time)` (migration açılışta kendiliğinden uygulanır).
+- **Mobil (D2):** "Ürün bitti" sayfasında biten ürün tek dokunuşla "Aldım"; kahraman kartta biten ürünün adımı soluk + "Bitti" rozeti + "Aldım",
+  rutinin ilerlemesine ve tamamlanmasına **sayılmaz**; yeni **Rafım** ekranı (`/dashboard/shelf`: yaş, "Aldım" + geri al, çevrimdışı kuyruk, "Yerine ne
+  kullanabilirim?"); girişler: Bugün → Daha fazlası (biten sayısıyla) ve Ben menüsü.
+- **Hatırlatma (D3):** ürün bittikten tam 3 gün sonra tek seferlik `restock_check` ("Yenisini aldın mı?", 18:00–19:00); kategori `restock` Hatırlatıcılar
+  ekranından kapatılır; bildirime dokunmak Rafım'ı açar.
+- **Sohbet (D4):** "Yerine ne kullanabilirim?" ürün adıyla hazırlanmış mesajı sohbete gönderir; sohbet bağlamı biten ürünleri de bilir.
+- **Karar:** satın alma bağlantısı yok (öneri: v1'de yalnız takip + hatırlatma).
 
 **Müşteriye soru:** biten ürün için sadece takip mi, yoksa satın alma yönlendirmesi de mi isteniyor? (Öneri: v1'de takip + hatırlatma; satın alma bağlantısı yok.)
 

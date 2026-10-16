@@ -37,6 +37,7 @@ const _categoryIcons = {
   'spf': LucideIcons.sunMedium,
   'lip_balm': LucideIcons.heart,
   'checkin': LucideIcons.clipboardCheck,
+  'restock': LucideIcons.packageCheck,
 };
 
 /// Hatırlatıcı ayarları (`GET/PUT /me/reminder-settings`): uyanma ve uyku saati, su aralığı ve
@@ -395,6 +396,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
       'nutrition' => range('nutrition_log'),
       'spf' => range('spf_refresh'),
       'lip_balm' => range('lip_balm'),
+      'restock' => range('restock_check'),
       _ => range('daily_checkin'),
     };
   }
