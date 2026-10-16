@@ -86,11 +86,11 @@ class _TodayActionBarState extends State<TodayActionBar> {
                 ),
                 Container(
                   decoration: BoxDecoration(
-                    color: Tw.surface.withValues(alpha: .97),
+                    color: Tw.surface.withValues(alpha: .98),
                     border: Border(top: BorderSide(color: Tw.gray100)),
-                    boxShadow: const [BoxShadow(color: Color(0x14000000), blurRadius: 16, offset: Offset(0, -4))],
+                    boxShadow: const [BoxShadow(color: Color(0x0F0B3D38), blurRadius: 20, offset: Offset(0, -6))],
                   ),
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                   child: Row(
                     children: [
                       Expanded(
@@ -99,7 +99,8 @@ class _TodayActionBarState extends State<TodayActionBar> {
                           label: i18n.t(done ? 'mobileToday.bar.done.$block' : 'mobileToday.bar.mark.$block'),
                           icon: done ? LucideIcons.circleCheck : LucideIcons.check,
                           filled: !done,
-                          color: done ? Tw.emerald700 : theme.primary,
+                          color: done ? Tw.emerald700 : theme.fg,
+                          fill: theme.primary,
                           loading: _busy,
                           onTap: () => _markDone(block, done),
                         ),
@@ -111,7 +112,7 @@ class _TodayActionBarState extends State<TodayActionBar> {
                           label: i18n.t('mobileToday.productFinished'),
                           icon: LucideIcons.packageCheck,
                           filled: false,
-                          color: theme.primary,
+                          color: theme.fg,
                           onTap: widget.onProductFinished,
                         ),
                       ),
@@ -134,13 +135,19 @@ class _BarButton extends StatelessWidget {
     required this.filled,
     required this.color,
     required this.onTap,
+    this.fill,
     this.loading = false,
   });
 
   final String label;
   final IconData icon;
   final bool filled;
+
+  /// Metin, ikon ve çerçeve rengi (koyu modda okunur ton).
   final Color color;
+
+  /// Dolu düğmenin zemini (verilmezse [color]); üstüne beyaz yazı yazılır.
+  final Color? fill;
   final VoidCallback onTap;
   final bool loading;
 
@@ -151,17 +158,17 @@ class _BarButton extends StatelessWidget {
       button: true,
       label: label,
       child: Material(
-        color: filled ? color : color.withValues(alpha: .08),
-        borderRadius: BorderRadius.circular(16),
+        color: filled ? (fill ?? color) : Colors.transparent,
+        borderRadius: BorderRadius.circular(999),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(999),
           onTap: loading ? null : onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 52),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            constraints: const BoxConstraints(minHeight: 54),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: filled ? null : Border.all(color: color.withValues(alpha: .3), width: 1.5),
+              borderRadius: BorderRadius.circular(999),
+              border: filled ? null : Border.all(color: color.withValues(alpha: .45), width: 1.5),
             ),
             child: Center(
               child: loading

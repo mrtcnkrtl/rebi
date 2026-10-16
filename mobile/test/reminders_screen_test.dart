@@ -135,6 +135,17 @@ void main() {
       expect(h.backend.reminderSettings['water_every_minutes'], 180);
     });
 
+    testWidgets('günlük su hedefi seçilir ve kaydedilir', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard/reminders');
+      expect(find.text(tr('mobileReminders.waterTarget.title')), findsOneWidget);
+
+      await tapText(tester, tr('mobileReminders.waterTarget.choice', {'liters': '2,5'}));
+      await tapText(tester, tr('mobileReminders.save'));
+
+      expect(h.backend.bodyOf('/me/reminder-settings')['water_target_ml'], 2500);
+      expect(h.backend.reminderSettings['water_target_ml'], 2500);
+    });
+
     testWidgets('değişiklik geri alınınca kaydet yine kapanır', (tester) async {
       await pumpApp(tester, location: '/dashboard/reminders');
       await tapText(tester, tr('mobileReminders.water.every.60'));

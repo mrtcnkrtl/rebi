@@ -2,10 +2,11 @@ import 'api.dart';
 import 'day_log.dart';
 import 'reminder_settings.dart';
 import 'routine_logic.dart';
+import 'weather_decisions.dart';
 
-/// Günlük su hedefi (ml). Sunucudaki `WATER_TARGET_ML` ile aynıdır; hedef dolunca
-/// sunucu su hatırlatıcısını da göndermez (`backend/today_plan.py`).
-const waterTargetMl = 2000;
+/// Varsayılan günlük su hedefi (ml). Kullanıcı ayardan değiştirebilir; gerçek hedef `TodayPlan.waterTarget`tır.
+/// Hedef dolunca sunucu su hatırlatıcısını da göndermez (`backend/today_plan.py`).
+const waterTargetMl = defaultWaterTargetMl;
 
 /// Bugünün ilerlemesi: `GET /today/plan` ve `GET /me/snapshot` içindeki `progress`.
 class DayProgress {
@@ -72,7 +73,10 @@ class DayProgress {
   /// Bugün "bitti" olarak işaretlenen ürünlerin adları.
   final List<String> finishedProducts;
 
-  double get waterFraction => (waterMl / waterTargetMl).clamp(0.0, 1.0);
+  double get waterFraction => waterFractionFor(waterTargetMl);
+
+  /// Verilen hedefe göre doluluk (0–1).
+  double waterFractionFor(int target) => (waterMl / target).clamp(0.0, 1.0);
 
   bool blockDone(String block) => block == 'morning' ? morningDone : eveningDone;
 
@@ -294,6 +298,7 @@ class TodayPlan {
     required this.progress,
     required this.checkinDone,
     this.settings = const ReminderSettings(),
+    this.decisions,
   });
 
   factory TodayPlan.fromJson(Map<String, dynamic> j) => TodayPlan(
@@ -310,6 +315,7 @@ class TodayPlan {
         progress: DayProgress.fromJson(j['progress']),
         checkinDone: j['checkin_done'] == true,
         settings: ReminderSettings.fromJson(j['reminder_settings']),
+        decisions: WeatherDecisions.fromJson(j['weather_decisions']),
       );
 
   final String logDate;
@@ -327,8 +333,14 @@ class TodayPlan {
   /// Kullanıcının gün düzeni ve kapattığı hatırlatıcı kategorileri.
   final ReminderSettings settings;
 
+  /// Havaya göre güneş kremi / nemlendirici / dudak balsamı kararları; eski sunucuda null (o zaman `environmentAdvice` gösterilir).
+  final WeatherDecisions? decisions;
+
   /// Hava verisi gerçek bir kaynaktan mı geldi (varsayılan değerler değil).
   bool get hasRealWeather => weatherSource != 'default';
+
+  /// Kullanıcının günlük su hedefi (ml).
+  int get waterTarget => settings.waterTargetMl;
 
   TodayPlan withProgress(DayProgress next) => TodayPlan(
         logDate: logDate,
@@ -341,6 +353,7 @@ class TodayPlan {
         progress: next,
         checkinDone: checkinDone,
         settings: settings,
+        decisions: decisions,
       );
 }
 

@@ -231,7 +231,90 @@
     "showFullPlan": "Show the whole week, details and lifestyle tips",
     "quickPhoto": "Upload a photo (quick)",
     "newAnalysis": "New analysis",
-    "settings": "Reminder settings"
+    "settings": "Reminder settings",
+    "weatherPill": "{{temp}}° · UV {{uv}} · humidity {{humidity}}%",
+    "weatherPillEstimated": "estimated",
+    "decisions": {
+      "spf": {
+        "headline": "SPF {{spf}}",
+        "reason": {
+          "extreme": "UV is very high ({{uv}}). Apply generously after your moisturizer.",
+          "high": "UV is high ({{uv}}). Apply it as the last step of your morning routine.",
+          "moderate": "UV is moderate ({{uv}}). Apply it as the last step every day.",
+          "low": "UV is low, but most rays pass through clouds. Use it every day."
+        },
+        "refreshWindow": "UV peaks {{start}}–{{end}}; reapply every 2 hours if you're outside.",
+        "refreshAny": "Reapply every 2 hours if you're outside."
+      },
+      "moisture": {
+        "headline": {
+          "intense": "Rich moisturizing",
+          "barrier": "Barrier-repair cream",
+          "boost": "Extra hydration layer",
+          "light": "Light gel moisturizer",
+          "light_hot": "Light formula",
+          "standard": "Your usual moisturizer"
+        },
+        "reason": {
+          "intense": "The air is very dry (humidity {{humidity}}%). Use a serum and a ceramide cream together.",
+          "barrier": "It's very cold ({{temperature}}°C). A cream with ceramides and cholesterol protects your barrier.",
+          "boost": "Humidity is low ({{humidity}}%). Layer a serum under your moisturizer.",
+          "light": "Humidity is high ({{humidity}}%). Choose a water-based gel over a heavy cream.",
+          "light_hot": "It's very hot ({{temperature}}°C). Skip heavy products and carry thermal water.",
+          "standard": "Humidity is balanced ({{humidity}}%); your usual moisturizer is enough."
+        },
+        "nightMask": "Add an occlusive hydrating mask tonight."
+      },
+      "lip": {
+        "headline": {
+          "needed": "Lip balm",
+          "notNeeded": "No lip balm needed"
+        },
+        "reason": {
+          "cold": "It's {{temperature}}°C; cold dries lips quickly. Reapply during the day.",
+          "dry": "Humidity is {{humidity}}%. Dry air cracks lips quickly; reapply during the day.",
+          "both": "Cold and dry air ({{temperature}}°C, humidity {{humidity}}%). Protect your lips often.",
+          "none": "Today's weather is easy on your lips."
+        }
+      }
+    },
+    "hero": {
+      "title": {
+        "morning": "Morning routine",
+        "evening": "Evening routine"
+      },
+      "progress": "{{done}} / {{total}} steps",
+      "doneTitle": {
+        "morning": "Morning routine done",
+        "evening": "Evening routine done"
+      },
+      "doneBody": "Nicely done. You can look back at the steps if you like.",
+      "showSteps": "Show steps",
+      "hideSteps": "Hide steps",
+      "reopen": "Reopen"
+    },
+    "flow": {
+      "title": "Your day",
+      "semantics": "Your day, wake {{wake}}, sleep {{sleep}}, now {{now}}",
+      "next": "Next: {{time}} · {{title}}",
+      "nowMarker": "now",
+      "allDone": "No more reminders for today.",
+      "legend": {
+        "routine": "Routine",
+        "water": "Water",
+        "spf": "Sunscreen",
+        "makeup": "Makeup",
+        "nutrition": "Nutrition",
+        "lip": "Lips",
+        "checkin": "Check-in"
+      }
+    },
+    "more": {
+      "title": "More"
+    },
+    "dayLog": {
+      "title": "Through the day"
+    }
   },
   "mobileNotifications": {
     "promptTitle": "Get reminders as notifications",
@@ -367,7 +450,7 @@
     },
     "water": {
       "title": "Water reminder",
-      "hint": "Daily goal is 2000 ml. Reminders stop once you reach it.",
+      "hint": "Reminders stop once you reach your goal.",
       "every": {
         "60": "Every hour",
         "90": "Every 1.5 hours",
@@ -413,6 +496,11 @@
     "saveFailed": "Couldn't save. Check your connection and try again.",
     "errors": {
       "span": "There must be at least 9 hours between waking up and going to sleep. Wake-up can be 04:00 at the earliest and sleep 23:59 at the latest."
+    },
+    "waterTarget": {
+      "title": "Daily water goal",
+      "hint": "Your ring and reminders follow this goal.",
+      "choice": "{{liters}} L"
     }
   },
   "mobileAppearance": {

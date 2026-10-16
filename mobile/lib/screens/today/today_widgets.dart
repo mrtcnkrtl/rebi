@@ -68,3 +68,35 @@ class TodayIconBadge extends StatelessWidget {
         child: Icon(icon, size: size * .5, color: color),
       );
 }
+
+/// Bölüm etiketi: küçük, aralıklı, soluk ("GÜN İÇİ"). Büyük harf çevirisi yapılmaz (Türkçe İ/ı sorunu); metin zaten yazıldığı gibi gelir.
+class SectionLabel extends StatelessWidget {
+  const SectionLabel(this.text, {super.key, this.trailing});
+
+  final String text;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+        child: Row(
+          children: [
+            Expanded(child: Text(text, style: tx(11.5, w: 7, c: Tw.gray500, ls: 1.1))),
+            ?trailing,
+          ],
+        ),
+      );
+}
+
+/// Kart içi ince ayırıcı çizgi.
+class Hairline extends StatelessWidget {
+  const Hairline({super.key, this.indent = 0});
+
+  final double indent;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: EdgeInsets.only(left: indent),
+        child: Container(height: 1, color: Tw.gray100),
+      );
+}

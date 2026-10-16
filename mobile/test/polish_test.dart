@@ -58,7 +58,7 @@ void main() {
     testWidgets('plan yüklenirken Şimdi kartı ve takip kartları iskelet gösterir; gelince kalkar', (tester) async {
       final backend = FakeBackend()..planGate = Completer<void>();
       await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backend);
-      expect(find.byType(SkeletonCard), findsNWidgets(3), reason: 'Şimdi kartı + iki takip kartı');
+      expect(find.byType(SkeletonCard), findsNWidgets(4), reason: 'Gün akışı kartı + su kartı + makyaj ile beslenme kartları');
       expect(find.text(tr('mobileToday.makeup.ask')), findsNothing);
 
       backend.planGate!.complete();

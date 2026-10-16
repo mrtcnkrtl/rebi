@@ -294,7 +294,8 @@ class _WaterBodyState extends State<_WaterBody> {
       listenable: widget.actions.plan,
       builder: (context, _) {
         final total = widget.actions.plan.plan?.progress.waterMl ?? 0;
-        final fraction = (total / waterTargetMl).clamp(0.0, 1.0);
+        final target = widget.actions.plan.plan?.waterTarget ?? waterTargetMl;
+        final fraction = (total / target).clamp(0.0, 1.0);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -303,7 +304,7 @@ class _WaterBodyState extends State<_WaterBody> {
                 value: fraction,
                 size: 72,
                 stroke: 8,
-                color: total >= waterTargetMl ? Tw.emerald500 : Tw.blue500,
+                color: total >= target ? Tw.emerald500 : Tw.blue500,
                 track: Tw.blue100,
                 child: Text('${(fraction * 100).round()}%', style: tx(14, w: 8, c: Tw.gray700)),
               ),
@@ -312,8 +313,8 @@ class _WaterBodyState extends State<_WaterBody> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(i18n.t('mobileToday.waterProgress', {'ml': total, 'target': waterTargetMl}), style: tx(18, w: 8, c: Tw.blueText)),
-                    if (total >= waterTargetMl)
+                    Text(i18n.t('mobileToday.waterProgress', {'ml': total, 'target': target}), style: tx(18, w: 8, c: Tw.blueText)),
+                    if (total >= target)
                       Text(i18n.t('mobileToday.waterGoalReached'), style: tx(12, w: 5, c: Tw.emerald700)),
                   ],
                 ),

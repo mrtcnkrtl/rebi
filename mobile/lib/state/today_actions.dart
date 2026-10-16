@@ -112,6 +112,20 @@ class TodayActions extends ChangeNotifier {
     await log('routine_step', {'done': false, 'block': block, 'step_order': step});
   }
 
+  /// Tamamlanmış bloğu yeniden açar. Adımlar tek tek işaretli kalır (blok toptan tamamlanmışsa hiçbir iş
+  /// kaybolmasın diye önce hepsi tek tek işaretlenir), böylece kullanıcı yalnızca yanlış olanı kaldırır.
+  Future<void> reopenBlock({required String block, required List<int> allSteps}) async {
+    final progress = plan.plan?.progress;
+    if (progress == null || !progress.blockDone(block)) return;
+    Haptics.selection();
+    final done = progress.stepsOf(block);
+    final outcome = await log('routine_completed_block', {block: false});
+    if (!outcome.saved) return;
+    for (final step in allSteps) {
+      if (!done.contains(step)) await log('routine_step', {'done': true, 'block': block, 'step_order': step});
+    }
+  }
+
   void _notify() {
     if (!_disposed) notifyListeners();
   }

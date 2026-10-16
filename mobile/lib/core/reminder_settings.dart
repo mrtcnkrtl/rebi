@@ -22,6 +22,10 @@ const reminderCategoryOf = {
 /// Su hatırlatıcısının seçilebilir aralıkları (dakika).
 const waterIntervalChoices = [60, 90, 120, 180];
 
+/// Günlük su hedefi: varsayılan ve seçilebilir değerler (ml). Sunucudaki `WATER_TARGET_ML` / `WATER_TARGET_CHOICES` ile aynıdır.
+const defaultWaterTargetMl = 2000;
+const waterTargetChoices = [1500, 1750, 2000, 2250, 2500, 3000];
+
 /// En erken uyanma, en geç uyku ve ikisi arasındaki en kısa süre (dakika). Sunucuyla aynıdır.
 const earliestWakeMinutes = 4 * 60;
 const latestSleepMinutes = 23 * 60 + 59;
@@ -51,6 +55,7 @@ class ReminderSettings {
     this.wakeTime = '07:30',
     this.sleepTime = '23:00',
     this.waterEveryMinutes = 120,
+    this.waterTargetMl = defaultWaterTargetMl,
     this.enabled = const {},
   });
 
@@ -62,11 +67,13 @@ class ReminderSettings {
     final sleep = parseClock('${j['sleep_time'] ?? ''}');
     final validDay = wake != null && sleep != null && isValidDay(wake, sleep);
     final every = j['water_every_minutes'];
+    final target = j['water_target_ml'];
     final stored = j['enabled'] is Map ? (j['enabled'] as Map).cast<String, dynamic>() : const <String, dynamic>{};
     return ReminderSettings(
       wakeTime: validDay ? formatClock(wake) : defaults.wakeTime,
       sleepTime: validDay ? formatClock(sleep) : defaults.sleepTime,
       waterEveryMinutes: every is int && waterIntervalChoices.contains(every) ? every : defaults.waterEveryMinutes,
+      waterTargetMl: target is int && waterTargetChoices.contains(target) ? target : defaults.waterTargetMl,
       enabled: {for (final c in reminderCategories) c: stored[c] is bool ? stored[c] as bool : true},
     );
   }
@@ -74,6 +81,9 @@ class ReminderSettings {
   final String wakeTime;
   final String sleepTime;
   final int waterEveryMinutes;
+
+  /// Günlük su hedefi (ml).
+  final int waterTargetMl;
 
   /// Kategori → açık mı. Olmayan kategori açık sayılır.
   final Map<String, bool> enabled;
@@ -90,11 +100,18 @@ class ReminderSettings {
     return wake != null && sleep != null && isValidDay(wake, sleep);
   }
 
-  ReminderSettings copyWith({String? wakeTime, String? sleepTime, int? waterEveryMinutes, Map<String, bool>? enabled}) =>
+  ReminderSettings copyWith({
+    String? wakeTime,
+    String? sleepTime,
+    int? waterEveryMinutes,
+    int? waterTargetMl,
+    Map<String, bool>? enabled,
+  }) =>
       ReminderSettings(
         wakeTime: wakeTime ?? this.wakeTime,
         sleepTime: sleepTime ?? this.sleepTime,
         waterEveryMinutes: waterEveryMinutes ?? this.waterEveryMinutes,
+        waterTargetMl: waterTargetMl ?? this.waterTargetMl,
         enabled: enabled ?? this.enabled,
       );
 
@@ -104,6 +121,7 @@ class ReminderSettings {
         'wake_time': wakeTime,
         'sleep_time': sleepTime,
         'water_every_minutes': waterEveryMinutes,
+        'water_target_ml': waterTargetMl,
         'enabled': {for (final c in reminderCategories) c: isEnabled(c)},
       };
 

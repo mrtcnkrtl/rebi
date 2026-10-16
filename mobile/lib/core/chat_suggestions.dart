@@ -64,7 +64,7 @@ List<ChatSuggestion> chatSuggestions(TodayPlan? plan, DateTime now, I18n i18n) {
     }
 
     // Akşama doğru hedefin çok gerisindeyse.
-    if (now.hour >= 15 && p.waterMl < waterTargetMl * .4) add('lowWater');
+    if (now.hour >= 15 && p.waterMl < plan.waterTarget * .4) add('lowWater');
   }
 
   for (final id in _genericIds) {

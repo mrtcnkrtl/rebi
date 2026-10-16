@@ -156,7 +156,7 @@ Dil belgesi: [`docs/MOBIL-TASARIM-DILI.md`](MOBIL-TASARIM-DILI.md).
 `skin_type_visual` çizimleri ve karşılama sahneleri (zaten yeni dilde ya da çizim). Ekranların **içerik düzeni** değişmedi; bu faz renk, tipografi,
 bileşen ve kabuk birliğini kurar.
 
-### Faz C — Bugün ekranı baştan  *(boyut: büyük)*
+### Faz C — Bugün ekranı baştan  *(boyut: büyük)* — **yapıldı (2026-10-16)**
 
 | # | İş | Kim |
 |---|----|-----|
@@ -167,6 +167,22 @@ bileşen ve kabuk birliğini kurar.
 | C5 | Gün içi kartlar ve alt sayfalar yeni dilde: su (şişe/bardak boyutu seçimi), makyaj (temizleme yöntemleri), beslenme (seçenekler). Su hedefini isteğe bağlı kişiselleştirme (ayarlardan). | Ben |
 | C6 | Sabit alt çubuk: "Yaptım" + "Ürün bitti" yeni stil, tamamlanınca durum değişimi. | Ben |
 | C7 | Boş / yükleniyor / hata / çevrimdışı / demo oturumu durumları. | Ben |
+
+**Durum (2026-10-16).** Bugün şu sırayla yeniden kuruldu: başlık + hava hapı → **kahraman rutin kartı** (`RoutineHero`: Fraunces başlık,
+ilerleme halkası, sabah/akşam seçici, adım listesi, tik animasyonu, tamamlanınca sakin "tamam" özeti + "yeniden aç") → **gün akışı**
+(`DayFlowStrip`: uyanma→uyku şeridi, hatırlatıcı pencereleri çubuk, su noktalar, "şimdi" işareti, renk açıklaması; altında "şimdi" ve "sıradaki"
+hatırlatmalar) → **havaya göre üç karar** (SPF, nemlendirici, dudak balsamı: karar + tek cümlelik gerekçe, "yeniledim") → **gün içi** (su tam
+genişlik, makyaj ve beslenme yan yana; dar ekran/büyük yazıda alt alta) → yaşam dengesi (uzun metin 3 satıra katlanır) → **"Daha fazlası"**
+(tek liste: check-in, fotoğraf, yeni analiz, tüm hafta, geçmiş) → alt sabit çubuk (Yaptım / Ürün bitti).
+
+- **C4 backend:** saatlik UV'den `weather.uv_window` ve `uv_now`; `weather_decisions` (yapılandırılmış, istemci kendi dilinde yazar);
+  güneş kremi hatırlatması artık yalnızca UV'nin gerçekten yüksek olduğu saatlerde (`uv_window`; yoksa eski sabit pencere). Eski sunucuda kararlar
+  yoksa ekran öneri listesine düşer.
+- **C5:** su hedefi kişiselleştirilebilir (`water_target_ml`: 1500–3000 ml; Hatırlatıcılar ekranında seçilir, ilerleme/halka/hatırlatıcı/sohbet özeti buna uyar).
+  Güneş kremi kaydı "havaya göre" kartına taşındı (ayrı kart yok).
+- **C7:** yükleniyor (iskelet), yüklenemedi (yeniden dene), çevrimdışı bekleyen kayıt, tamamlanmış gün, boş/demo durumları galeride (`bugun-*`).
+- **Bilerek değişenler:** sabah/akşam rutini hatırlatıcısı artık "şimdi" listesinde tekrar etmez (kahramanda ve alt çubukta yaşar); haftalık özet kartı Bugün'den
+  Rutin sekmesine kaldı. Su hedefi geçmiş grafiklerinde hâlâ varsayılan 2000 ml referansıdır.
 
 **Kabul:** müşterinin 2. ve 3. maddeleri tek ekranda, kaydırmadan "şimdi ne yapmalıyım" okunuyor; küçük telefonda (320×568) ve %200 yazıda taşma yok.
 

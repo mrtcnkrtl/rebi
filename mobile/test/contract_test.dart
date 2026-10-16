@@ -7,6 +7,7 @@ import 'package:rebi/core/today_plan.dart';
 import 'package:rebi/core/user_history.dart';
 import 'package:rebi/core/user_profile.dart';
 import 'package:rebi/core/user_snapshot.dart';
+import 'package:rebi/core/weather_decisions.dart';
 
 /// Backend sözleşmesi (`../contract/*.json`): fixture'lar sunucunun gerçek yanıtlarından üretilir
 /// (`backend/tests/test_contract.py`) ve backend testi yanıtların bu şekli koruduğunu doğrular.
@@ -58,6 +59,8 @@ void main() {
       expect(plan.settings.wakeTime, '07:00');
       expect(plan.settings.sleepTime, '23:00');
       expect(plan.settings.waterEveryMinutes, 90);
+      expect(plan.settings.waterTargetMl, 2500);
+      expect(plan.waterTarget, 2500);
       expect(plan.settings.isEnabled('nutrition'), isFalse);
       expect(plan.settings.isEnabled('water'), isTrue);
     });
@@ -74,11 +77,42 @@ void main() {
 
     test('mobilin yerel pencere hesabı sunucununkiyle aynı (bildirimler sunucudan sapmasın)', () {
       for (final r in plan.reminders) {
+        // Güneş kremi penceresi gerçek saatlik UV'ye bağlıdır; ayardan türetilen sabit pencere değil (aşağıda ayrıca denetlenir).
+        if (r.id == 'spf_refresh') continue;
         final local = reminderWindow(r.id, plan.settings);
         expect(local, isNotNull, reason: r.id);
         expect(local!.start, r.start, reason: '${r.id} başlangıç');
         expect(local.end, r.end, reason: '${r.id} bitiş');
       }
+    });
+
+    test('güneş kremi hatırlatması gerçek UV penceresine oturur', () {
+      final window = plan.decisions!.spf.window!;
+      final spf = plan.reminders.firstWhere((r) => r.id == 'spf_refresh');
+      expect(spf.start, window.start);
+      expect(spf.end, window.end);
+      expect(spf.everyMinutes, 120);
+    });
+
+    test('havaya göre üç karar', () {
+      final d = plan.decisions!;
+      expect(d.spf.spf, '50');
+      expect(d.spf.level, 'high');
+      expect(d.spf.uv, 6);
+      expect(d.spf.refresh, isTrue);
+      expect(d.spf.refreshEveryMinutes, 120);
+      expect((d.spf.window!.start, d.spf.window!.end, d.spf.window!.peak), ('11:00', '16:00', '13:00'));
+      expect(d.moisture.kind, 'boost');
+      expect(d.moisture.humidity, 38);
+      expect(d.moisture.nightMask, isFalse);
+      expect(d.lipBalm.needed, isFalse);
+      expect(d.lipBalm.reason, isNull);
+    });
+
+    test('eski sunucu (weather_decisions yok) kararları null bırakır, ekran öneri listesine düşer', () {
+      final old = Map<String, dynamic>.of(contract('today_plan'))..remove('weather_decisions');
+      expect(TodayPlan.fromJson(old).decisions, isNull);
+      expect(WeatherDecisions.fromJson({'spf': {}}), isNull, reason: 'yarım veri de geçersiz sayılır');
     });
   });
 
@@ -119,6 +153,7 @@ void main() {
     expect(settings.wakeTime, '07:00');
     expect(settings.sleepTime, '23:00');
     expect(settings.waterEveryMinutes, 90);
+    expect(settings.waterTargetMl, 2500);
     expect(settings.isEnabled('nutrition'), isFalse);
     expect(body['synced'], isTrue);
     for (final category in reminderCategories) {

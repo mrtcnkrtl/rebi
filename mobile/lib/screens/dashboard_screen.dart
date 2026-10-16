@@ -26,7 +26,9 @@ import '../ui/components/photo_picker.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import 'today/now_card.dart';
-import 'today/routine_checklist.dart';
+import 'today/routine_hero.dart';
+import 'today/more_list.dart';
+import 'today/today_widgets.dart';
 import 'today/today_action_bar.dart';
 import 'today/today_header.dart';
 import 'today/today_sheets.dart';
@@ -539,24 +541,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       maxWidth: 672,
       padding: EdgeInsets.fromLTRB(16, 24, 16, actions != null ? 132 : 32),
       children: [
-        TodayHeader(
-          name: userName,
-          dateLine: dateLine,
-          trailing: _AccountShortcut(name: userName, theme: theme),
-        ),
-        const AiDisclaimer(padding: EdgeInsets.only(top: 8)),
+        _withPlan((plan) => TodayHeader(
+              name: userName,
+              dateLine: dateLine,
+              plan: plan,
+              trailing: _AccountShortcut(name: userName, theme: theme),
+            )),
         const SizedBox(height: 20),
         NotificationPromptCard(theme: theme),
         if (actions != null) ...[
-          NowCard(
-            controller: actions.plan,
-            theme: theme,
-            onAction: _runReminderAction,
-            onRetryPending: () => context.read<OutboxSyncController>().flushNow(),
-            onOpenSettings: () => context.push('/dashboard/reminders'),
-          ),
-          const SizedBox(height: 12),
-          RoutineChecklistCard(
+          // Kahraman: günün rutini. Altında gün akışı, havaya göre kararlar ve gün içi kayıtlar.
+          RoutineHero(
             actions: actions,
             theme: theme,
             dayLabel: c.weekDays[todayIdx],
@@ -566,106 +561,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
             morningNotes: [...v.wellnessMorningItems, ...v.dailyLifestyleItems],
             eveningNotes: [...v.wellnessEveningItems, ...v.dailyLifestyleItems],
           ),
-          const SizedBox(height: 12),
-          TrackingTiles(actions: actions, theme: theme, onOpenSheet: _openSheet),
-          const SizedBox(height: 12),
-        ] else if (readOnlyBlocks.isNotEmpty) ...[
-          RCard(
-            padding: EdgeInsets.zero,
-            clip: true,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _dayHeader(theme, '${i18n.t('dashboard.todayTitle')} — ${c.weekDays[todayIdx]}'),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(readOnlyBlocks, 16)),
-                ),
-              ],
-            ),
+          const SizedBox(height: 14),
+          NowCard(
+            controller: actions.plan,
+            theme: theme,
+            onAction: _runReminderAction,
+            onRetryPending: () => context.read<OutboxSyncController>().flushNow(),
+            onOpenSettings: () => context.push('/dashboard/reminders'),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          _withPlan((plan) => plan == null
+              ? const SizedBox.shrink()
+              : Padding(padding: const EdgeInsets.only(bottom: 14), child: WeatherDecisionsCard(plan: plan, theme: theme, actions: actions))),
+          // Plan yoksa (yüklenemedi) altında kart olmayan yalnız bir etiket kalmasın.
+          _withPlan((plan) => plan != null || _today?.loading == true ? SectionLabel(i18n.t('mobileToday.dayLog.title')) : const SizedBox.shrink()),
+          TrackingTiles(actions: actions, theme: theme, onOpenSheet: _openSheet),
+          const SizedBox(height: 14),
+        ] else ...[
+          // Demo oturumunda gün içi kayıt yoktur: rutin yalnızca okunur gösterilir.
+          if (readOnlyBlocks.isNotEmpty) ...[
+            RCard(
+              padding: EdgeInsets.zero,
+              clip: true,
+              radius: 24,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _dayHeader(theme, '${i18n.t('dashboard.todayTitle')} — ${c.weekDays[todayIdx]}'),
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _spaced(readOnlyBlocks, 16)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+          ],
+          if (weather is Map && truthy(weather['temperature'])) ...[_weatherMini(c, weather), const SizedBox(height: 14)],
         ],
-        _withPlan((plan) {
-          if (plan != null) {
-            return Padding(padding: const EdgeInsets.only(bottom: 12), child: EnvironmentAdviceCard(plan: plan, theme: theme));
-          }
-          if (weather is Map && truthy(weather['temperature'])) {
-            return Padding(padding: const EdgeInsets.only(bottom: 12), child: _weatherMini(c, weather));
-          }
-          return const SizedBox.shrink();
-        }),
-        _withPlan((plan) => Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: _checkinCard(c, big: true, done: plan?.checkinDone == true),
-            )),
+        _DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: merged['flowDebug'], ctx: c, compact: true),
         if (checkinResult is Map && truthy(checkinResult['ai_note'])) ...[
           _aiNoteCard(c, checkinResult),
-          const SizedBox(height: 20),
+          const SizedBox(height: 14),
         ],
-        _DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: merged['flowDebug'], ctx: c),
-        if (v.weeklyItems.isNotEmpty) ...[
-          RCard(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(i18n.t('dashboard.weeklyTitle'), style: tx(12, w: 7, c: Tw.gray800)),
-                const SizedBox(height: 8),
-                for (final w in v.weeklyItems.take(4)) ...[
-                  Text.rich(
-                    TextSpan(children: [
-                      TextSpan(
-                        text: friendlyRoutineTitle(pickAction(w.item, localized: c.localized), c.fallbackStepTitle),
-                        style: tx(11, w: 6, c: Tw.gray800),
-                      ),
-                      TextSpan(
-                        text: ' · ${w.displayDays.isNotEmpty ? w.displayDays.map((i) => c.weekDays[i]).join(', ') : '—'}',
-                      ),
-                    ]),
-                    style: tx(11, c: Tw.gray600),
-                  ),
-                  StructuredBadges(item: w.item),
-                  const SizedBox(height: 8),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
-        SecondaryButton(
-          onPressed: () => context.go('/dashboard/routine'),
-          borderColor: theme.primaryLight,
-          textColor: theme.primary,
-          label: i18n.t('mobileToday.showFullPlan'),
-        ),
-        const SizedBox(height: 12),
-        SecondaryButton(
-          onPressed: () => context.go('/dashboard/history'),
-          borderColor: theme.primaryLight,
-          textColor: theme.primary,
-          icon: LucideIcons.calendarDays,
-          fontSize: 14,
-          label: i18n.t('mobileHistory.open'),
-        ),
-        const SizedBox(height: 8),
-        SecondaryButton(
-          onPressed: () => context.push('/dashboard/analyze?photo=1'),
-          borderColor: theme.primaryLight,
-          textColor: theme.primary,
-          icon: LucideIcons.circlePlus,
-          fontSize: 14,
-          label: i18n.t('mobileToday.quickPhoto'),
-        ),
-        const SizedBox(height: 8),
-        SecondaryButton(
-          onPressed: () => context.go('/dashboard/analyze'),
-          borderColor: theme.primaryLight,
-          textColor: theme.primary,
-          icon: LucideIcons.circlePlus,
-          fontSize: 14,
-          label: i18n.t('mobileToday.newAnalysis'),
-        ),
+        _withPlan((plan) => TodayMoreList(theme: theme, checkinDone: plan?.checkinDone == true)),
+        const AiDisclaimer(padding: EdgeInsets.only(top: 20)),
       ],
     );
 
@@ -1402,12 +1342,25 @@ class _SectionHeader extends StatelessWidget {
 }
 
 /// Günlük denge kartı: flow_debug risk seviyesine göre renklenir.
-class _DailyBalanceCard extends StatelessWidget {
-  const _DailyBalanceCard({required this.item, required this.flowDebug, required this.ctx});
+/// Günlük denge notu. [compact] iken (Bugün) uzun metin 3 satıra katlanır, "ayrıntılar" ile açılır.
+class _DailyBalanceCard extends StatefulWidget {
+  const _DailyBalanceCard({required this.item, required this.flowDebug, required this.ctx, this.compact = false});
 
   final RoutineItem? item;
   final Object? flowDebug;
   final _Ctx ctx;
+  final bool compact;
+
+  @override
+  State<_DailyBalanceCard> createState() => _DailyBalanceCardState();
+}
+
+class _DailyBalanceCardState extends State<_DailyBalanceCard> {
+  bool _open = false;
+
+  RoutineItem? get item => widget.item;
+  Object? get flowDebug => widget.flowDebug;
+  _Ctx get ctx => widget.ctx;
 
   @override
   Widget build(BuildContext context) {
@@ -1470,7 +1423,18 @@ class _DailyBalanceCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(detail, style: tx(12, c: Tw.gray700, h: relaxed)),
+                  Text(
+                    detail,
+                    maxLines: widget.compact && !_open ? 3 : null,
+                    overflow: widget.compact && !_open ? TextOverflow.ellipsis : null,
+                    style: tx(12, c: Tw.gray700, h: relaxed),
+                  ),
+                  if (widget.compact && detail.length > 150)
+                    TextLink(
+                      ctx.i18n.t(_open ? 'common.hide' : 'common.details'),
+                      onTap: () => setState(() => _open = !_open),
+                      style: tx(12, w: 6, c: ctx.theme.fg),
+                    ),
                 ],
               ),
             ),

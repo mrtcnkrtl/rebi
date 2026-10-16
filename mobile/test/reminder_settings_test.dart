@@ -235,4 +235,28 @@ void main() {
       expect(result.error, isEmpty, reason: 'ekran genel "kaydedilemedi" mesajını gösterir');
     });
   });
+
+  group('günlük su hedefi', () {
+    test('varsayılan 2000 ml; geçerli seçimler kabul edilir, bozuk değerler varsayılana döner', () {
+      expect(const ReminderSettings().waterTargetMl, 2000);
+      expect(ReminderSettings.fromJson(null).waterTargetMl, 2000);
+      expect(ReminderSettings.fromJson({'water_target_ml': 2500}).waterTargetMl, 2500);
+      for (final bad in [1234, '2500', null, true, -1, 99999]) {
+        expect(ReminderSettings.fromJson({'water_target_ml': bad}).waterTargetMl, 2000, reason: '$bad');
+      }
+    });
+
+    test('sunucuya gönderilir, kopyada korunur, değişiklik "kaydedilmemiş" sayılır', () {
+      final s = const ReminderSettings().copyWith(waterTargetMl: 3000);
+      expect(s.toJson()['water_target_ml'], 3000);
+      expect(s.copyWith(wakeTime: '06:30').waterTargetMl, 3000);
+      expect(s.sameAs(const ReminderSettings()), isFalse);
+      expect(s.sameAs(ReminderSettings.fromJson(s.toJson())), isTrue);
+    });
+
+    test('seçenekler sunucuyla aynı (ml)', () {
+      expect(waterTargetChoices, [1500, 1750, 2000, 2250, 2500, 3000]);
+      expect(waterTargetChoices, contains(defaultWaterTargetMl));
+    });
+  });
 }

@@ -231,7 +231,90 @@
     "showFullPlan": "Tüm haftayı, detayları ve yaşam önerilerini göster",
     "quickPhoto": "Fotoğraf yükle (hızlı)",
     "newAnalysis": "Yeni analiz",
-    "settings": "Hatırlatıcı ayarları"
+    "settings": "Hatırlatıcı ayarları",
+    "weatherPill": "{{temp}}° · UV {{uv}} · nem %{{humidity}}",
+    "weatherPillEstimated": "tahmini",
+    "decisions": {
+      "spf": {
+        "headline": "SPF {{spf}}",
+        "reason": {
+          "extreme": "UV çok yüksek ({{uv}}). Nemlendiriciden sonra bol miktarda sür.",
+          "high": "UV yüksek ({{uv}}). Sabah rutininin son adımı olarak sür.",
+          "moderate": "UV orta ({{uv}}). Her gün son adım olarak sür.",
+          "low": "UV düşük; bulutlu havada bile ışınların çoğu geçer. Her gün kullan."
+        },
+        "refreshWindow": "UV {{start}}–{{end}} arası en yüksek; dışarıdaysan 2 saatte bir yenile.",
+        "refreshAny": "Dışarıdaysan 2 saatte bir yenile."
+      },
+      "moisture": {
+        "headline": {
+          "intense": "Yoğun nemlendirme",
+          "barrier": "Bariyer onarım kremi",
+          "boost": "Ekstra nem katmanı",
+          "light": "Hafif jel nemlendirici",
+          "light_hot": "Hafif formül",
+          "standard": "Her zamanki nemlendiricin"
+        },
+        "reason": {
+          "intense": "Hava çok kuru (nem %{{humidity}}). Serum ve seramid kremini birlikte kullan.",
+          "barrier": "Hava çok soğuk ({{temperature}}°C). Seramid ve kolesterollü bir krem bariyeri korur.",
+          "boost": "Nem düşük (%{{humidity}}). Serum ve nemlendiriciyi üst üste kullan.",
+          "light": "Nem yüksek (%{{humidity}}). Ağır krem yerine su bazlı bir jel seç.",
+          "light_hot": "Hava çok sıcak ({{temperature}}°C). Yoğun ürünlerden kaçın, yanında termal su taşı.",
+          "standard": "Nem dengeli (%{{humidity}}); rutinindeki nemlendirici yeterli."
+        },
+        "nightMask": "Geceye oklüzif bir nem maskesi ekle."
+      },
+      "lip": {
+        "headline": {
+          "needed": "Dudak balsamı",
+          "notNeeded": "Dudak balsamı gerekmiyor"
+        },
+        "reason": {
+          "cold": "Hava {{temperature}}°C; soğuk, dudak derisini çabuk kurutur. Gün içinde tekrar sür.",
+          "dry": "Nem %{{humidity}}. Kuru havada dudaklar çabuk çatlar; gün içinde tekrar sür.",
+          "both": "Soğuk ve kuru hava ({{temperature}}°C, nem %{{humidity}}). Dudaklarını sık sık balsamla koru.",
+          "none": "Bugünkü hava dudaklar için rahat."
+        }
+      }
+    },
+    "hero": {
+      "title": {
+        "morning": "Sabah rutini",
+        "evening": "Akşam rutini"
+      },
+      "progress": "{{done}} / {{total}} adım",
+      "doneTitle": {
+        "morning": "Sabah rutinin tamam",
+        "evening": "Akşam rutinin tamam"
+      },
+      "doneBody": "Güzel iş. İstersen adımlara yeniden bakabilirsin.",
+      "showSteps": "Adımları göster",
+      "hideSteps": "Adımları gizle",
+      "reopen": "Yeniden aç"
+    },
+    "flow": {
+      "title": "Gün akışı",
+      "semantics": "Gün akışı, uyanma {{wake}}, uyku {{sleep}}, şu an {{now}}",
+      "next": "Sıradaki: {{time}} · {{title}}",
+      "nowMarker": "şimdi",
+      "allDone": "Bugünlük hatırlatma kalmadı.",
+      "legend": {
+        "routine": "Rutin",
+        "water": "Su",
+        "spf": "Güneş kremi",
+        "makeup": "Makyaj",
+        "nutrition": "Beslenme",
+        "lip": "Dudak",
+        "checkin": "Check-in"
+      }
+    },
+    "more": {
+      "title": "Daha fazlası"
+    },
+    "dayLog": {
+      "title": "Gün içi"
+    }
   },
   "mobileNotifications": {
     "promptTitle": "Hatırlatıcıları bildirim olarak al",
@@ -367,7 +450,7 @@
     },
     "water": {
       "title": "Su hatırlatması",
-      "hint": "Günlük hedef 2000 ml. Hedefe ulaşınca hatırlatma durur.",
+      "hint": "Hedefe ulaşınca hatırlatma durur.",
       "every": {
         "60": "Her saat",
         "90": "1,5 saatte bir",
@@ -413,6 +496,11 @@
     "saveFailed": "Kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
     "errors": {
       "span": "Uyanma ile uyku saati arası en az 9 saat olmalı. Uyanma en erken 04:00, uyku en geç 23:59 olabilir."
+    },
+    "waterTarget": {
+      "title": "Günlük su hedefi",
+      "hint": "Halkan ve hatırlatmalar bu hedefe göre çalışır.",
+      "choice": "{{liters}} L"
     }
   },
   "mobileAppearance": {

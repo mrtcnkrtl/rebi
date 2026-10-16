@@ -204,8 +204,8 @@ class NotificationsController extends ChangeNotifier {
           settings: plan.settings,
           userId: uid,
           textFor: (r) => r.title.isNotEmpty
-              ? (title: reminderTitle(i18n, r), body: reminderBody(i18n, r, plan.weather))
-              : (title: localReminderTitle(i18n, r.id), body: localReminderBody(i18n, r.id)),
+              ? (title: reminderTitle(i18n, r), body: reminderBody(i18n, r, plan.weather, waterTarget: plan.waterTarget))
+              : (title: localReminderTitle(i18n, r.id), body: localReminderBody(i18n, r.id, waterTarget: plan.waterTarget)),
           actionsFor: (r) => [
             for (final a in notificationQuickActions(r.id))
               NotificationActionSpec(notificationActionId(r.id, a), i18n.t('mobileToday.actions.${a.labelKey}')),

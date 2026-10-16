@@ -4,11 +4,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/i18n.dart';
 import '../../core/reminder_text.dart';
 import '../../core/today_plan.dart';
+import '../../ui/brand/palette.dart';
 import '../../state/theme_controller.dart';
 import '../../state/today_plan_controller.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import '../../ui/widgets/skeleton.dart';
+import 'day_flow.dart';
 import 'today_clock.dart';
 import 'today_widgets.dart';
 
@@ -24,8 +26,8 @@ IconData _reminderIcon(String id) => switch (id) {
       _ => LucideIcons.bell,
     };
 
-/// "Şimdi" kartı: saat penceresi açık olan hatırlatıcılar eylem düğmeleriyle, ardından sıradakiler.
-/// Su kendi kartında gösterildiği için burada yer almaz.
+/// "Gün akışı" kartı: uyanmadan uykuya zaman şeridi, altında şu an penceresi açık olan hatırlatıcılar eylem
+/// düğmeleriyle ve sıradakiler. Su hatırlatması şeritte noktalarla görünür, kendi kartında kaydedilir.
 class NowCard extends StatefulWidget {
   const NowCard({
     super.key,
@@ -112,20 +114,20 @@ class _NowCardState extends State<NowCard> {
   Widget _content(I18n i18n, TodayPlan plan) {
     final theme = widget.theme;
     final now = todayPanelClock();
+    // Su kendi kartında; sabah/akşam rutini kahraman kartta ve alt çubukta yaşar, "şimdi" listesinde tekrar etmez.
+    const handledElsewhere = {'water_intake', 'routine_morning', 'routine_evening'};
     final visible = plan.reminders.where((r) => r.id != 'water_intake').toList();
-    final current = [for (final r in visible) if (reminderPhase(r, now) == ReminderPhase.now) r];
+    final current = [for (final r in visible) if (!handledElsewhere.contains(r.id) && reminderPhase(r, now) == ReminderPhase.now) r];
     final upcoming = [for (final r in visible) if (reminderPhase(r, now) == ReminderPhase.upcoming) r];
 
     return RCard(
-      padding: const EdgeInsets.all(14),
-      radius: 20,
+      padding: const EdgeInsets.fromLTRB(20, 16, 14, 18),
+      radius: 24,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(children: [
-            TodayIconBadge(icon: LucideIcons.bellRing, color: theme.primary, size: 32),
-            const SizedBox(width: 10),
-            Expanded(child: Text(i18n.t('mobileToday.now'), style: tx(14, w: 7, c: Tw.gray800))),
+            Expanded(child: Text(i18n.t('mobileToday.flow.title'), style: heading(22))),
             if (widget.onOpenSettings != null)
               IconButton(
                 tooltip: i18n.t('mobileToday.settings'),
@@ -137,24 +139,43 @@ class _NowCardState extends State<NowCard> {
               ),
           ]),
           if (widget.controller.pendingCount > 0) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             _pendingRow(i18n, widget.controller.pendingCount),
           ],
           const SizedBox(height: 10),
-          if (current.isEmpty)
-            Text(i18n.t('mobileToday.nothingNow'), style: tx(12, c: Tw.gray500))
-          else
-            for (final r in current) ...[_reminderTile(i18n, plan, r), const SizedBox(height: 8)],
-          if (upcoming.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(i18n.t('mobileToday.later'), style: tx(11, w: 6, c: Tw.gray600)),
-            const SizedBox(height: 4),
-            for (final r in upcoming.take(3))
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text('${r.start} · ${reminderTitle(i18n, r)}', style: tx(12, c: Tw.gray500)),
-              ),
-          ],
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: DayFlowStrip(plan: plan, theme: theme, now: now.hour * 60 + now.minute),
+          ),
+          const SizedBox(height: 10),
+          Padding(padding: const EdgeInsets.only(right: 6), child: FlowLegend(plan: plan, theme: theme)),
+          const SizedBox(height: 14),
+          const Hairline(),
+          const SizedBox(height: 14),
+          Padding(
+            padding: const EdgeInsets.only(right: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(i18n.t('mobileToday.now'), style: tx(11.5, w: 7, c: Tw.gray500, ls: 1.1)),
+                const SizedBox(height: 8),
+                if (current.isEmpty)
+                  Text(i18n.t('mobileToday.nothingNow'), style: tx(13, c: Tw.gray600, h: relaxed))
+                else
+                  for (final r in current) ...[_reminderTile(i18n, plan, r), const SizedBox(height: 8)],
+                if (upcoming.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Text(i18n.t('mobileToday.later'), style: tx(11.5, w: 7, c: Tw.gray500, ls: 1.1)),
+                  const SizedBox(height: 6),
+                  for (final r in upcoming.take(3))
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Text('${r.start} · ${reminderTitle(i18n, r)}', style: tx(13, c: Tw.gray600)),
+                    ),
+                ],
+              ],
+            ),
+          ),
         ],
       ),
     );

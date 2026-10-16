@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/material.dart' show Size;
 import 'package:flutter/painting.dart' show debugDisableShadows;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/routine_tracking.dart';
@@ -119,5 +121,85 @@ void main() {
         }
       }, skip: !screenshotsEnabled);
     }
+  }
+
+  // Bugün'ün tamamı (kaydırmadan): yüksek bir ekranla tek görüntüde.
+  for (final dark in [false, true]) {
+    testWidgets('${dark ? 'koyu' : 'acik'} · bugun-uzun', (tester) async {
+      Tw.dark = dark;
+      debugDisableShadows = false;
+      try {
+        await pumpApp(
+          tester,
+          location: '/dashboard',
+          prefs: acceptedPrefs(),
+          backend: populated(),
+          realFonts: true,
+          size: const Size(390, 3100),
+        );
+        await shoot(tester, '${dark ? 'koyu' : 'acik'}-bugun-uzun', width: 585);
+      } finally {
+        debugDisableShadows = true;
+      }
+    }, skip: !screenshotsEnabled);
+  }
+
+  // Bugün'ün durumları (açık): tamamlanmış gün, yüklenemedi, yükleniyor, boş rutin.
+  final states = <(String, FakeBackend Function(), bool)>[
+    (
+      'tamam',
+      () {
+        final b = populated();
+        b.todayPlan = {
+          ...b.todayPlan,
+          'progress': {
+            ...(b.todayPlan['progress'] as Map).cast<String, dynamic>(),
+            'routine_morning_done': true,
+            'nutrition': {'junk_food': false},
+            'nutrition_logged': true,
+            'makeup': {'logged': true, 'used': true, 'removed': true, 'removal_method': 'double'},
+          },
+          'checkin_done': true,
+        };
+        b.waterMl = 2300;
+        return b;
+      },
+      false,
+    ),
+    ('hata', () => populated()..planFails = true, false),
+    ('yukleniyor', () => populated()..planGate = Completer<void>(), false),
+    (
+      'bos',
+      () {
+        final b = populated();
+        b.snapshot = {...b.snapshot, 'has_routine': false, 'routine': <dynamic>[]};
+        b.todayPlan = {...b.todayPlan, 'has_routine': false, 'routine': <dynamic>[]};
+        return b;
+      },
+      true,
+    ),
+  ];
+  for (final (name, make, noRoutinePrefs) in states) {
+    testWidgets('acik · bugun-$name', (tester) async {
+      Tw.dark = false;
+      debugDisableShadows = false;
+      try {
+        final backend = make();
+        await pumpApp(
+          tester,
+          location: '/dashboard',
+          prefs: noRoutinePrefs ? const {} : acceptedPrefs(),
+          backend: backend,
+          realFonts: true,
+          size: const Size(390, 1700),
+        );
+        await shoot(tester, 'acik-bugun-$name', width: 585);
+        // Yükleniyor durumunda bekleyen istek bırakılmasın (20 sn'lik zaman aşımı sayacı açık kalır).
+        backend.planGate?.complete();
+        await settle(tester);
+      } finally {
+        debugDisableShadows = true;
+      }
+    }, skip: !screenshotsEnabled);
   }
 }

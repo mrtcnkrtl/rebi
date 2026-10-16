@@ -66,6 +66,18 @@ Ham renk (`Color(0xFF…)`) yazma; `Tw`/`Brand` kullan. Ham Tailwind neon tonlar
 
 Sayfa zemini kabuktandır: `ThemedBackground` zemin boyamaz. Sayfada zemini yeniden boyamak, geri çubuğuyla sayfa arasında dikiş bırakır.
 
+## Bugün ekranı
+
+Tek odak "şimdi ne yapmalıyım": yukarıdan aşağı **başlık + hava hapı → kahraman rutin kartı → gün akışı → havaya göre üç karar →
+gün içi kayıtlar → "Daha fazlası"**; altta sabit "Yaptım / Ürün bitti" çubuğu. Kurallar:
+
+- Kahraman kart tek bir rutin bloğunu gösterir; tamamlanınca adımlar sakin bir özetin arkasına çekilir (istenirse açılır, "yeniden aç" ile geri alınır).
+- Gün akışı şeridi bir **zaman çizelgesidir**: çubuk = pencere (yapıldıysa dolu), nokta = su, dikey çizgi = şimdi. Renkler kategori renkleridir; altında renk açıklaması durur.
+- "Havaya göre" kartı her satırda **karar + tek cümle gerekçe** verir; metinler yapılandırılmış veriden uygulama dilinde kurulur (`mobileToday.decisions.*`).
+- Su geniş, makyaj ve beslenme yan yana; 340 px altında ya da yazı %125 üstünde alt alta dizilir (taşma testle korunur).
+- Aynı iş iki yerde tekrar etmez (rutin hatırlatıcısı "şimdi" listesinde yok; güneş kremi kaydı yalnız "havaya göre" kartında).
+- Yeni durumlar galeriye eklenir: `bugun-tamam`, `bugun-hata`, `bugun-yukleniyor`, `bugun-bos`.
+
 ## Vurgu rengi (tema)
 
 Uygulamanın dili tektir; kullanıcı yalnızca **vurgu rengini** seçer (düğme, seçim, vurgu): ücretsiz **Orman · Adaçayı · Pudra · Lavanta**,

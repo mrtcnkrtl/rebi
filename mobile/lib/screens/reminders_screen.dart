@@ -329,9 +329,33 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 onTap: () => _edit(_draft.copyWith(waterEveryMinutes: minutes)),
               ),
           ]),
+          const SizedBox(height: 18),
+          _sectionTitle(i18n.t('mobileReminders.waterTarget.title'), hint: i18n.t('mobileReminders.waterTarget.hint')),
+          const SizedBox(height: 12),
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (final ml in waterTargetChoices)
+              ChoiceChipBox(
+                label: i18n.t('mobileReminders.waterTarget.choice', {'liters': _liters(i18n, ml)}),
+                selected: _draft.waterTargetMl == ml,
+                radius: 12,
+                fontSize: 13,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                activeBorder: Tw.blue500,
+                activeBg: Tw.blue50,
+                activeText: Tw.blueText,
+                onTap: () => _edit(_draft.copyWith(waterTargetMl: ml)),
+              ),
+          ]),
         ],
       ),
     );
+  }
+
+  /// 1500 → "1,5" (Türkçe) / "1.5" (İngilizce).
+  String _liters(I18n i18n, int ml) {
+    final value = ml / 1000;
+    final text = value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toString();
+    return i18n.lang == 'tr' ? text.replaceAll('.', ',') : text;
   }
 
   Widget _categoriesCard(I18n i18n, RebiTheme theme) {

@@ -99,13 +99,15 @@ void main() {
 
       expect(h.backend.calls('/today/plan'), hasLength(1));
       expect(find.text(tr('mobileToday.now')), findsOneWidget);
-      expect(find.text('Sabah rutini'), findsOneWidget, reason: '09:15 sabah penceresinde');
+      // Sabah rutini kahraman kartın başlığıdır; "şimdi" listesinde ikinci kez yer almaz.
+      expect(find.text('Sabah rutini'), findsOneWidget, reason: 'yalnızca kahraman kartta');
+      expect(find.text(tr('mobileToday.actions.done')), findsNothing, reason: 'rutin eylemi alt çubukta');
       expect(find.text('10:00 · Bugün makyaj yaptın mı?'), findsOneWidget);
       expect(find.text('21:00 · Akşam rutini'), findsOneWidget);
       expect(find.text('Dudak balsamı'), findsNothing, reason: 'penceresi geçmiş');
       expect(find.text('Su içme zamanı'), findsNothing, reason: 'su ayrı satırda gösterilir');
 
-      await tapText(tester, tr('mobileToday.actions.done'));
+      await tapText(tester, tr('mobileToday.bar.mark.morning'));
       final body = h.backend.bodyOf('/daily_tracking/ingest');
       expect(body['type'], 'routine_completed_block');
       expect(body['payload'], {'morning': true});
@@ -227,6 +229,144 @@ void main() {
       expect(find.text(tr('mobileToday.advice.weatherLine', {'temp': 31, 'uv': 8, 'humidity': 30})), findsOneWidget);
       expect(find.text(tr('mobileToday.advice.source.live')), findsOneWidget);
       expect(find.text(tr('mobileToday.advice.locationHint')), findsNothing, reason: 'gerçek hava varken ipucu yok');
+    });
+
+    group('havaya göre üç karar', () {
+      Map<String, dynamic> decisions({
+        String level = 'high',
+        bool refresh = true,
+        Map<String, dynamic>? window = const {'start': '11:00', 'end': '16:00', 'peak': '13:00'},
+        String kind = 'boost',
+        bool nightMask = false,
+        bool lip = true,
+        String? lipReason = 'cold',
+      }) =>
+          {
+            'spf': {'spf': '50', 'level': level, 'uv': 6, 'refresh': refresh, 'refresh_every_minutes': refresh ? 120 : null, 'window': window},
+            'moisture': {'kind': kind, 'humidity': 38, 'temperature': 6, 'night_mask': nightMask},
+            'lip_balm': {'needed': lip, 'reason': lipReason},
+          };
+
+      FakeBackend backendWith(Map<String, dynamic> d, {String source = 'live'}) {
+        final b = FakeBackend();
+        b.todayPlan = {
+          ...b.todayPlan,
+          'weather': {'uv_index': 6, 'humidity': 38, 'temperature': 6},
+          'weather_source': source,
+          'weather_decisions': d,
+        };
+        return b;
+      }
+
+      testWidgets('güneş kremi, nemlendirici ve dudak balsamı karar + gerekçeyle görünür', (tester) async {
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backendWith(decisions()));
+
+        expect(find.text(tr('mobileToday.advice.title')), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.spf.headline', {'spf': '50'})), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.spf.reason.high', {'uv': 6})), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.spf.refreshWindow', {'start': '11:00', 'end': '16:00'})), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.moisture.headline.boost')), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.moisture.reason.boost', {'humidity': 38, 'temperature': 6})), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.lip.headline.needed')), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.lip.reason.cold', {'temperature': '6', 'humidity': '38'})), findsOneWidget);
+        expect(find.text(tr('mobileToday.advice.source.live')), findsOneWidget);
+      });
+
+      testWidgets("UV aralığı bilinmiyorsa genel tazeleme cümlesi çıkar", (tester) async {
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backendWith(decisions(window: null)));
+        expect(find.text(tr('mobileToday.decisions.spf.refreshAny')), findsOneWidget);
+        expect(find.textContaining('–16:00'), findsNothing);
+      });
+
+      testWidgets('tazeleme gerekmiyorsa cümle çıkmaz; balsam gerekmiyorsa soluk "gerekmiyor" satırı', (tester) async {
+        final d = decisions(level: 'moderate', refresh: false, window: null, lip: false, lipReason: null);
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backendWith(d));
+
+        expect(find.text(tr('mobileToday.decisions.spf.refreshAny')), findsNothing);
+        expect(find.text(tr('mobileToday.decisions.lip.headline.notNeeded')), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.lip.reason.none')), findsOneWidget);
+      });
+
+      testWidgets('çok kuru havada gece maskesi önerilir', (tester) async {
+        await pumpApp(
+          tester,
+          location: '/dashboard',
+          prefs: acceptedPrefs(),
+          backend: backendWith(decisions(kind: 'intense', nightMask: true)),
+        );
+        expect(find.text(tr('mobileToday.decisions.moisture.headline.intense')), findsOneWidget);
+        expect(find.text(tr('mobileToday.decisions.moisture.nightMask')), findsOneWidget);
+      });
+
+      testWidgets('"Yeniledim" güneş kremi kaydı gönderir ve sayaç artar', (tester) async {
+        final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backendWith(decisions()));
+
+        await tapText(tester, tr('mobileToday.spf.done'));
+
+        expect(h.backend.bodyOf('/daily_tracking/ingest')['type'], 'spf_refresh');
+        expect(find.text(tr('mobileToday.spfRefreshed', {'n': 1})), findsOneWidget);
+      });
+
+      testWidgets('tahmini hava: kaynak ve konum ipucu görünür, başlıktaki hap "tahmini" der', (tester) async {
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backendWith(decisions(), source: 'default'));
+
+        expect(find.text(tr('mobileToday.advice.locationHint')), findsOneWidget);
+        expect(find.textContaining(tr('mobileToday.weatherPillEstimated')), findsOneWidget);
+      });
+
+      testWidgets('İngilizce arayüzde cümleler İngilizce kurulur', (tester) async {
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backendWith(decisions()), lang: 'en');
+
+        expect(find.text('Light gel moisturizer'), findsNothing);
+        expect(find.text('Extra hydration layer'), findsOneWidget);
+        expect(find.text("UV peaks 11:00–16:00; reapply every 2 hours if you're outside."), findsOneWidget);
+      });
+    });
+
+    group('su hedefi kullanıcının ayarından gelir', () {
+      FakeBackend withTarget(int target, {int ml = 750}) {
+        final b = FakeBackend()..waterMl = ml;
+        b.todayPlan = {
+          ...b.todayPlan,
+          'reminder_settings': {'water_target_ml': target},
+        };
+        return b;
+      }
+
+      testWidgets('ilerleme ve halka kendi hedefine göre', (tester) async {
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: withTarget(2500));
+
+        expect(find.text(tr('mobileToday.waterProgress', {'ml': 750, 'target': 2500})), findsOneWidget);
+        expect(find.text(tr('mobileToday.waterProgress', {'ml': 750, 'target': 2000})), findsNothing);
+      });
+
+      testWidgets('hedefe ulaşınca "hedefe ulaştın" çıkar', (tester) async {
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: withTarget(1500, ml: 1600));
+        expect(find.text(tr('mobileToday.waterGoalReached')), findsOneWidget);
+        expect(find.text(tr('mobileToday.actions.water250')), findsNothing, reason: 'hedef dolunca hızlı ekleme kalkar');
+      });
+
+      testWidgets('aynı su, daha yüksek hedefte yetmez: hedef çıkmaz', (tester) async {
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: withTarget(3000, ml: 1600));
+        expect(find.text(tr('mobileToday.waterGoalReached')), findsNothing);
+        expect(find.text(tr('mobileToday.actions.water250')), findsOneWidget);
+      });
+
+      testWidgets('ayar yoksa varsayılan 2000 ml', (tester) async {
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
+        expect(find.text(tr('mobileToday.waterProgress', {'ml': 0, 'target': 2000})), findsOneWidget);
+      });
+    });
+
+    testWidgets('başlıkta tek satırlık hava özeti görünür', (tester) async {
+      final b = FakeBackend();
+      b.todayPlan = {
+        ...b.todayPlan,
+        'weather': {'uv_index': 6, 'humidity': 38, 'temperature': 18},
+        'weather_source': 'live',
+      };
+      await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: b);
+      expect(find.text(tr('mobileToday.weatherPill', {'temp': '18', 'uv': '6', 'humidity': '38'})), findsOneWidget);
     });
 
     testWidgets('varsayılan hava kullanılıyorsa konum ipucu görünür', (tester) async {
@@ -502,6 +642,11 @@ void main() {
       await tapText(tester, tr('mobileToday.bar.mark.morning'));
       expect(h.backend.progress['routine_morning_done'], isTrue);
 
+      // Tamamlanan blokta adımlar sakin bir özetin arkasına çekilir; istenirse açılır.
+      expect(find.text(tr('mobileToday.hero.doneTitle.morning')), findsOneWidget);
+      expect(find.text(pickAction(steps.first, localized: false)), findsNothing);
+      await tapText(tester, tr('mobileToday.hero.showSteps'));
+
       // Tamamlanmış blokta bir adımın işaretini kaldırmak bloğu açar, diğer adımlar tek tek işaretli kalır.
       await tapText(tester, pickAction(steps.first, localized: false));
       expect(h.backend.progress['routine_morning_done'], isFalse);
@@ -539,8 +684,28 @@ void main() {
       expect(h.backend.calls('/daily_tracking/ingest'), hasLength(before), reason: 'dokunmak tek başına kayıt göndermez');
       expect(find.text(tr('mobileToday.toast.blockAlreadyDone')), findsOneWidget);
 
-      await tapText(tester, tr('mobileToday.toast.reopen'));
+      // "Yeniden aç" hem kahraman kartta hem uyarıda durur; uyarıdakine dokun (sonuncu).
+      await tapFinder(tester, find.text(tr('mobileToday.toast.reopen')).last);
       expect(lastIngest(h)['payload'], {'morning': false});
+    });
+
+    testWidgets('tamamlanan rutin kahraman kartta özet olur; "yeniden aç" adımları tek tek işaretli bırakır', (tester) async {
+      final steps = todaysMorning();
+      final backend = FakeBackend();
+      backend.todayPlan = {
+        ...backend.todayPlan,
+        'progress': {'routine_morning_done': true},
+      };
+      final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backend);
+
+      expect(find.text(tr('mobileToday.hero.doneTitle.morning')), findsOneWidget);
+      expect(find.text(tr('mobileToday.hero.doneBody')), findsOneWidget);
+
+      await tapFinder(tester, find.text(tr('mobileToday.hero.reopen')).first);
+      expect(h.backend.progress['routine_morning_done'], isFalse, reason: 'blok yeniden açıldı');
+      final done = ((h.backend.progress['routine_steps'] as Map)['morning'] as List).cast<int>();
+      expect(done, [for (final s in steps) stepOrder(s).round()]..sort(), reason: 'hiçbir iş kaybolmaz');
+      expect(find.text(tr('mobileToday.hero.doneTitle.morning')), findsNothing);
     });
 
     testWidgets('akşam saatinde akşam rutini öne çıkar, sekmeyle değiştirilir', (tester) async {
