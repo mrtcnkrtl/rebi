@@ -11,8 +11,12 @@ import 'local_store.dart';
 import 'notification_actions.dart';
 import 'notification_ports.dart';
 import 'reminder_schedule.dart';
+import 'silence_budget.dart';
 
 const _channelId = 'rebi_reminders';
+
+/// Test bildirimi: gerçek hatırlatıcı kimlikleriyle (1..56) çakışmaz.
+const _testNotificationId = 9001;
 
 /// Bildirimdeki eylem düğmeleri olan hatırlatıcılar (iOS'ta kategori olarak baştan tanıtılır).
 const _actionReminderIds = [
@@ -38,11 +42,27 @@ Future<void> rebiNotificationBackground(NotificationResponse response) async {
   try {
     DartPluginRegistrant.ensureInitialized();
     await LocalStore.init();
-    await queueNotificationAction(
-      NotificationActionTap(reminderId: payload.reminderId, actionId: actionId, userId: payload.userId),
-    );
+    final tap = NotificationActionTap(reminderId: payload.reminderId, actionId: actionId, userId: payload.userId);
+    await queueNotificationAction(tap);
+    // Hedef doldu mu (su) ya da günlük sınıra ulaşıldı mı (güneş kremi)? O günün kalan bildirimleri gelmesin.
+    final silenced = await silenceAfterAction(tap, day: payload.day);
+    if (silenced.isNotEmpty) await _cancelPending(userId: payload.userId, day: payload.day, reminderIds: silenced);
   } catch (e) {
     debugPrint('Bildirim düğmesi kuyruğa alınamadı: $e');
+  }
+}
+
+/// Bekleyen bildirimlerden, verilen kullanıcının o günkü [reminderIds] hatırlatıcılarına ait olanları iptal eder.
+Future<void> _cancelPending({required String userId, required String day, required Set<String> reminderIds}) async {
+  try {
+    final plugin = FlutterLocalNotificationsPlugin();
+    for (final pending in await plugin.pendingNotificationRequests()) {
+      final payload = NotificationPayload.decode(pending.payload);
+      if (payload == null || payload.userId != userId || payload.day != day) continue;
+      if (reminderIds.contains(payload.reminderId)) await plugin.cancel(id: pending.id);
+    }
+  } catch (e) {
+    debugPrint('Kalan bildirimler susturulamadı: $e');
   }
 }
 
@@ -190,16 +210,51 @@ class LocalNotificationsNotifier implements ReminderNotifier {
   @override
   Future<void> replaceAll(List<PlannedNotification> items) async {
     await _plugin.cancelAll();
+    var failed = 0;
     for (final n in items) {
-      await _plugin.zonedSchedule(
-        id: n.id,
-        scheduledDate: tz.TZDateTime.from(n.at, tz.UTC),
-        notificationDetails: _details(n),
-        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
-        title: n.title,
-        body: n.body,
-        payload: n.payload.encode(),
+      // Biri kurulamazsa (ör. geçersiz kanal) geri kalanı yine kurulur; hata sonda bildirilir.
+      try {
+        await _plugin.zonedSchedule(
+          id: n.id,
+          scheduledDate: tz.TZDateTime.from(n.at, tz.UTC),
+          notificationDetails: _details(n),
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          title: n.title,
+          body: n.body,
+          payload: n.payload.encode(),
+        );
+      } catch (e) {
+        failed++;
+        debugPrint('Bildirim kurulamadı (${n.reminderId} ${n.at}): $e');
+      }
+    }
+    if (failed > 0) throw ScheduleIncomplete(failed, items.length);
+  }
+
+  @override
+  Future<bool> scheduleTest({required String title, required String body, Duration delay = const Duration(minutes: 1)}) async {
+    try {
+      final test = PlannedNotification(
+        id: _testNotificationId,
+        at: DateTime.now().add(delay),
+        title: title,
+        body: body,
+        reminderId: 'test',
+        route: '/dashboard',
       );
+      await _plugin.zonedSchedule(
+        id: test.id,
+        scheduledDate: tz.TZDateTime.from(test.at, tz.UTC),
+        notificationDetails: _details(test),
+        androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        title: title,
+        body: body,
+        payload: test.payload.encode(),
+      );
+      return true;
+    } catch (e) {
+      debugPrint('Test bildirimi kurulamadı: $e');
+      return false;
     }
   }
 

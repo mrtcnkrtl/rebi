@@ -13,8 +13,13 @@ abstract class ReminderNotifier {
   /// İzin ister. Daha önce reddedilmişse sistem tekrar sormaz; false döner.
   Future<bool> requestPermission();
 
-  /// Bekleyen tüm bildirimleri silip [items]ı kurar.
+  /// Bekleyen tüm bildirimleri silip [items]ı kurar. Birini kuramazsa da geri kalanını kurar; bir ya da
+  /// daha çok bildirim kurulamadıysa sonunda [ScheduleIncomplete] fırlatır (çağıran sonra yeniden dener).
   Future<void> replaceAll(List<PlannedNotification> items);
+
+  /// Bildirimlerin bu telefonda gerçekten gelip gelmediğini denemek için [delay] sonra tek bir bildirim
+  /// kurar (hatırlatıcılarla aynı yoldan: kapalı uygulamada ve pil tasarrufunda da gelir mi). Kuruldu mu.
+  Future<bool> scheduleTest({required String title, required String body, Duration delay = const Duration(minutes: 1)});
 
   Future<void> cancelAll();
 
@@ -28,6 +33,17 @@ abstract class ReminderNotifier {
   /// kapalıyken dokunulan düğme bu akıma gelmez; kayıt doğrudan kuyruğa alınır
   /// ([queueNotificationAction]).
   Stream<NotificationActionTap> get actions;
+}
+
+/// [ReminderNotifier.replaceAll] bazı bildirimleri kuramadı.
+class ScheduleIncomplete implements Exception {
+  const ScheduleIncomplete(this.failed, this.total);
+
+  final int failed;
+  final int total;
+
+  @override
+  String toString() => 'ScheduleIncomplete($failed/$total bildirim kurulamadı)';
 }
 
 /// Sunucudan gönderilen (FCM) bildirimleri alan taraf. Firebase yapılandırılmadıysa
@@ -87,6 +103,10 @@ class UnsupportedNotifier implements ReminderNotifier {
 
   @override
   Future<void> replaceAll(List<PlannedNotification> items) async {}
+
+  @override
+  Future<bool> scheduleTest({required String title, required String body, Duration delay = const Duration(minutes: 1)}) async =>
+      false;
 
   @override
   Future<void> cancelAll() async {}

@@ -51,7 +51,7 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingObserver {
   late Map<String, dynamic> _nav = widget.nav ?? const {};
   List<RoutineItem>? _fetchedRoutine;
   bool _fetchingDbRoutine = false;
@@ -66,11 +66,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   late final NotificationsController _notifications = context.read<NotificationsController>();
   TodayPlanController? _today;
   TodayActions? _actions;
+  StreamSubscription<String>? _recordedSub;
   String? _uid;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _uid = _auth.user?.id;
     _auth.addListener(_onAuth);
     _fetchDbRoutine();
@@ -88,10 +90,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _recordedSub?.cancel();
     _auth.removeListener(_onAuth);
     _actions?.dispose();
     _today?.dispose();
     super.dispose();
+  }
+
+  /// Uygulama öne gelince bayat plan (uzun arka plan, gece yarısı, saat dilimi) yeniden okunur; yeni plan
+  /// bildirimleri de yeniden kurar.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_today?.reloadIfStale());
   }
 
   void _onAuth() {
@@ -99,6 +110,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (next == _uid) return;
     _uid = next;
     _fetchedRoutine = null;
+    _recordedSub?.cancel();
     _actions?.dispose();
     _actions = null;
     _today?.dispose();
@@ -119,6 +131,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _actions = TodayActions(today);
     // Plan değiştikçe (yüklenince, bir iş kaydedilince) hatırlatma bildirimleri yeniden kurulur.
     today.addListener(() => _notifications.syncReminders(today.plan));
+    // Bildirimdeki düğmeyle (+250 ml, Yaptım) kaydedilen iş panele de hemen yansısın.
+    _recordedSub?.cancel();
+    _recordedSub = _notifications.recordedActions.listen((_) => unawaited(today.reload()));
     setState(() => _fetchingDbRoutine = true);
     try {
       final snap = await _sync.refresh();

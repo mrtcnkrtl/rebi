@@ -57,8 +57,15 @@ DEFAULT_REMINDER_SETTINGS: dict = {
     "sleep_time": "23:00",
     "water_every_minutes": 120,
     "water_target_ml": WATER_TARGET_ML,
+    # Kullanıcının kendi ayarladığı pencereler: yalnızca değiştirdiği hatırlatıcılar ({"lip_balm": {"start": "12:00", "end": "13:00"}}).
+    "windows": {},
+    # Sessiz saatler: bu aralığa denk gelen bildirim gönderilmez ({"start": "13:00", "end": "14:00"}; gece yarısını aşabilir).
+    "quiet": None,
     "enabled": {name: True for name in CATEGORY_NAMES},
 }
+
+# Bir pencerenin en az uzunluğu (dakika); daha kısası düzenlemede reddedilir.
+MIN_WINDOW_MINUTES = 15
 
 _HHMM = re.compile(r"^(\d{1,2}):(\d{2})$")
 
@@ -119,8 +126,48 @@ def normalize_reminder_settings(raw) -> dict:
         "sleep_time": format_hhmm(sleep),
         "water_every_minutes": every,
         "water_target_ml": target,
+        "windows": _clean_windows(source.get("windows")),
+        "quiet": _clean_quiet(source.get("quiet")),
         "enabled": enabled,
     }
+
+
+def _clean_range(raw) -> tuple[int, int] | None:
+    """`{"start": "12:00", "end": "13:00"}` → (dakika, dakika); biçim bozuksa None."""
+    if not isinstance(raw, dict):
+        return None
+    start, end = parse_hhmm(raw.get("start")), parse_hhmm(raw.get("end"))
+    if start is None or end is None:
+        return None
+    return start, end
+
+
+def _clean_windows(raw) -> dict[str, dict[str, str]]:
+    """Kayıtlı pencere düzenlemeleri: bilinmeyen kimlik, bozuk saat ve çok kısa/ters pencere atılır."""
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, dict[str, str]] = {}
+    for reminder_id in WINDOW_IDS:
+        parsed = _clean_range(raw.get(reminder_id))
+        if parsed and parsed[1] - parsed[0] >= MIN_WINDOW_MINUTES:
+            out[reminder_id] = {"start": format_hhmm(parsed[0]), "end": format_hhmm(parsed[1])}
+    return out
+
+
+def _clean_quiet(raw) -> dict[str, str] | None:
+    parsed = _clean_range(raw)
+    if not parsed or parsed[0] == parsed[1]:
+        return None
+    return {"start": format_hhmm(parsed[0]), "end": format_hhmm(parsed[1])}
+
+
+def in_quiet(minute: int, quiet: dict | None) -> bool:
+    """Dakika sessiz saat aralığında mı? Başlangıç bitişten büyükse aralık gece yarısını aşar (22:00–07:00)."""
+    parsed = _clean_range(quiet)
+    if not parsed or parsed[0] == parsed[1]:
+        return False
+    start, end = parsed
+    return start <= minute < end if start < end else (minute >= start or minute < end)
 
 
 # Uyanma (wake) ya da uyku (sleep) saatine göre pencere: (çapa, başlangıç, bitiş) dakika farkı.
@@ -139,8 +186,15 @@ _WINDOW_OFFSETS: dict[str, tuple[str, int, int]] = {
 }
 
 
+# Pencereleri düzenlenebilen tüm hatırlatıcı kimlikleri.
+WINDOW_IDS = (*_WINDOW_OFFSETS, "water_intake")
+
+
 def reminder_windows(settings: dict | None = None) -> dict[str, tuple[str, str]]:
-    """Hatırlatıcı kimliği → (başlangıç, bitiş) yerel saat penceresi."""
+    """
+    Hatırlatıcı kimliği → (başlangıç, bitiş) yerel saat penceresi. Varsayılan pencereler uyanma/uyku saatinden
+    türer; kullanıcının kendi düzenlediği pencere (`windows`) onun yerine geçer ve uyanma–uyku gününe kırpılır.
+    """
     s = normalize_reminder_settings(settings)
     wake = parse_hhmm(s["wake_time"])
     sleep = parse_hhmm(s["sleep_time"])
@@ -153,6 +207,12 @@ def reminder_windows(settings: dict | None = None) -> dict[str, tuple[str, str]]
         end = max(wake, min(sleep, base + end_offset))
         windows[reminder_id] = (format_hhmm(start), format_hhmm(end))
     windows["water_intake"] = (format_hhmm(wake + 90), format_hhmm(sleep - 120))
+
+    for reminder_id, custom in s["windows"].items():
+        start = max(wake, min(sleep, parse_hhmm(custom["start"])))
+        end = max(wake, min(sleep, parse_hhmm(custom["end"])))
+        if end > start:  # kırpma pencereyi sıfırlarsa (gün düzeni sonradan daraltıldıysa) varsayılan kalır
+            windows[reminder_id] = (format_hhmm(start), format_hhmm(end))
     return windows
 
 
@@ -350,8 +410,9 @@ def build_reminders(
             f"UV {int(uv)}. Dışarıdaysan 2 saatte bir tazele.",
             log_event="spf_refresh",
             every_minutes=120,
-            # Saatlik UV biliniyorsa yalnızca UV'nin gerçekten yüksek olduğu saatlerde hatırlat.
-            window=_spf_window(w, parse_hhmm(s["wake_time"]), parse_hhmm(s["sleep_time"])),
+            # Saatlik UV biliniyorsa yalnızca UV'nin gerçekten yüksek olduğu saatlerde hatırlat;
+            # kullanıcı pencereyi kendisi ayarladıysa onun saati geçerlidir.
+            window=None if "spf_refresh" in s["windows"] else _spf_window(w, parse_hhmm(s["wake_time"]), parse_hhmm(s["sleep_time"])),
         )
 
     if temperature <= LIP_BALM_MAX_TEMPERATURE or humidity < LIP_BALM_MAX_HUMIDITY:
@@ -412,29 +473,41 @@ def _to_minutes(hhmm: str) -> int:
     return int(hours) * 60 + int(minutes)
 
 
-def _slots(reminder: dict) -> list[int]:
-    """Hatırlatıcının pencere içindeki gönderim dakikaları."""
+def _slots(reminder: dict, quiet: dict | None = None) -> list[int]:
+    """
+    Hatırlatıcının pencere içindeki gönderim dakikaları. Sessiz saate denk gelen dakikalar düşer; tek seferlik
+    bir hatırlatıcının dakikası sessiz saate düşüyorsa, pencere izin veriyorsa sessiz saatin bitişine ertelenir.
+    (Mobildeki `reminderSlots` ile aynı kural; `contract/reminder_slots.json` iki tarafı birlikte sınar.)
+    """
     start = _to_minutes(reminder["start"])
     end = _to_minutes(reminder["end"])
     every = reminder.get("every_minutes")
-    if not every:
-        return [start]
-    return list(range(start, end + 1, int(every)))
+    slots = [start] if not every else list(range(start, end + 1, int(every)))
+    if not quiet:
+        return slots
+    kept = [m for m in slots if not in_quiet(m, quiet)]
+    if not kept and not every:
+        quiet_end = parse_hhmm(quiet.get("end"))
+        if quiet_end is not None and start < quiet_end <= end and not in_quiet(quiet_end, quiet):
+            kept = [quiet_end]
+    return kept
 
 
-def due_reminders(reminders: list[dict], local_time: str, tolerance_minutes: int = 10) -> list[dict]:
+def due_reminders(
+    reminders: list[dict], local_time: str, tolerance_minutes: int = 10, quiet: dict | None = None
+) -> list[dict]:
     """
     Verilen yerel saatte gönderilmesi gereken hatırlatıcılar.
 
     `tolerance_minutes` dağıtıcının çalışma aralığıdır: cron 10 dakikada bir
     çalışıyorsa saatini kaçırmış hatırlatıcı da bu pencerede yakalanır.
     `slot` alanı aynı hatırlatıcının aynı pencerede tekrar gönderilmemesi için
-    defter anahtarı olarak kullanılır.
+    defter anahtarı olarak kullanılır. `quiet`: kullanıcının sessiz saatleri.
     """
     now = _to_minutes(local_time)
     due = []
     for reminder in reminders or []:
-        for slot in _slots(reminder):
+        for slot in _slots(reminder, quiet):
             if 0 <= now - slot < tolerance_minutes:
                 due.append({**reminder, "slot": f"{slot // 60:02d}:{slot % 60:02d}"})
                 break

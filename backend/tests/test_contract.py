@@ -105,6 +105,9 @@ def _seed(monkeypatch) -> FakeSupabase:
             "settings": {
                 "wake_time": "07:00", "sleep_time": "23:00", "water_every_minutes": 90, "water_target_ml": 2500,
                 "enabled": {"nutrition": False},
+                # Faz E: kullanıcının kendi saat aralığı ve sessiz saatleri.
+                "windows": {"routine_evening": {"start": "21:30", "end": "22:30"}},
+                "quiet": {"start": "13:00", "end": "14:00"},
             },
         }],
         chat_history=[{
@@ -220,6 +223,50 @@ def test_ingest_contract(monkeypatch, client, headers):
     _check("daily_tracking_ingest", r.json())
 
 
+# Gönderim yuvası kuralı: sunucudaki `_slots` ile mobildeki `reminderSlots` aynı girdiden aynı dakikaları üretmeli.
+# Bu fixture şekil değil, sayıları sabitler (`mobile/test/contract_test.dart` aynı dosyayı okur).
+SLOT_CASES = [
+    ("tek seferlik, sessiz saat yok", {"start": "07:30", "end": "09:30", "every_minutes": None}, None),
+    ("su, sessiz saat yok", {"start": "09:00", "end": "21:00", "every_minutes": 120}, None),
+    ("su, öğle sessiz saati yuvayı düşürür", {"start": "09:00", "end": "21:00", "every_minutes": 120},
+     {"start": "12:30", "end": "13:30"}),
+    ("su, gece sessiz saati gündüzü etkilemez", {"start": "09:00", "end": "21:00", "every_minutes": 120},
+     {"start": "22:00", "end": "07:00"}),
+    ("su, gece yarısını aşan sessiz saat akşam yuvasını düşürür",
+     {"start": "09:00", "end": "23:00", "every_minutes": 120}, {"start": "22:00", "end": "07:00"}),
+    ("su, 60 dakikada bir; sessiz saatin başlangıcı dahil, bitişi hariç",
+     {"start": "09:00", "end": "13:00", "every_minutes": 60}, {"start": "10:00", "end": "11:00"}),
+    ("tek seferlik, sessiz saat başlangıcı kapsar ve pencere izin verirse bitişe ertelenir",
+     {"start": "12:00", "end": "13:00", "every_minutes": None}, {"start": "11:30", "end": "12:30"}),
+    ("tek seferlik, sessiz saat bitişi pencerenin bitişiyle çakışır",
+     {"start": "12:00", "end": "12:30", "every_minutes": None}, {"start": "11:00", "end": "12:30"}),
+    ("tek seferlik, pencere tümüyle sessiz saatte kalır",
+     {"start": "20:00", "end": "20:30", "every_minutes": None}, {"start": "19:00", "end": "22:00"}),
+    ("tek seferlik, gece sessiz saati sabah penceresinin başını keser",
+     {"start": "06:00", "end": "09:00", "every_minutes": None}, {"start": "22:00", "end": "07:00"}),
+    ("tek seferlik, sessiz saat pencereye değmez",
+     {"start": "07:30", "end": "09:30", "every_minutes": None}, {"start": "13:00", "end": "14:00"}),
+]
+
+
+def test_reminder_slots_contract():
+    from today_plan import _slots
+
+    cases = [
+        {"name": name, "reminder": reminder, "quiet": quiet, "slots": _slots(reminder, quiet)}
+        for name, reminder, quiet in SLOT_CASES
+    ]
+    path = CONTRACT_DIR / "reminder_slots.json"
+    if UPDATE:
+        CONTRACT_DIR.mkdir(exist_ok=True)
+        path.write_text(json.dumps({"cases": cases}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        return
+    assert path.exists(), "reminder_slots.json yok; üretmek için REBI_UPDATE_CONTRACT=1 ile çalıştırın."
+    assert json.loads(path.read_text(encoding="utf-8"))["cases"] == cases, (
+        "Yuva kuralı değişti; fixture'ı yeniden üretin ve mobildeki `reminderSlots` ile birlikte güncelleyin."
+    )
+
+
 # ── Sözleşmenin kendi güvenceleri ───────────────────────────────────────────
 
 def test_shape_check_catches_a_removed_or_retyped_field():
@@ -246,5 +293,6 @@ def test_every_contract_fixture_is_exercised_by_a_test():
     names = {p.stem for p in CONTRACT_DIR.glob("*.json")} if CONTRACT_DIR.exists() else set()
     covered = {
         "me_snapshot", "today_plan", "reminder_settings", "me_history", "me_profile", "daily_tracking_ingest",
+        "reminder_slots",
     }
     assert names <= covered, f"Testi olmayan sözleşme dosyası: {sorted(names - covered)}"

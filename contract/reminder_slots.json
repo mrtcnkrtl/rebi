@@ -1,0 +1,187 @@
+{
+  "cases": [
+    {
+      "name": "tek seferlik, sessiz saat yok",
+      "reminder": {
+        "start": "07:30",
+        "end": "09:30",
+        "every_minutes": null
+      },
+      "quiet": null,
+      "slots": [
+        450
+      ]
+    },
+    {
+      "name": "su, sessiz saat yok",
+      "reminder": {
+        "start": "09:00",
+        "end": "21:00",
+        "every_minutes": 120
+      },
+      "quiet": null,
+      "slots": [
+        540,
+        660,
+        780,
+        900,
+        1020,
+        1140,
+        1260
+      ]
+    },
+    {
+      "name": "su, öğle sessiz saati yuvayı düşürür",
+      "reminder": {
+        "start": "09:00",
+        "end": "21:00",
+        "every_minutes": 120
+      },
+      "quiet": {
+        "start": "12:30",
+        "end": "13:30"
+      },
+      "slots": [
+        540,
+        660,
+        900,
+        1020,
+        1140,
+        1260
+      ]
+    },
+    {
+      "name": "su, gece sessiz saati gündüzü etkilemez",
+      "reminder": {
+        "start": "09:00",
+        "end": "21:00",
+        "every_minutes": 120
+      },
+      "quiet": {
+        "start": "22:00",
+        "end": "07:00"
+      },
+      "slots": [
+        540,
+        660,
+        780,
+        900,
+        1020,
+        1140,
+        1260
+      ]
+    },
+    {
+      "name": "su, gece yarısını aşan sessiz saat akşam yuvasını düşürür",
+      "reminder": {
+        "start": "09:00",
+        "end": "23:00",
+        "every_minutes": 120
+      },
+      "quiet": {
+        "start": "22:00",
+        "end": "07:00"
+      },
+      "slots": [
+        540,
+        660,
+        780,
+        900,
+        1020,
+        1140,
+        1260
+      ]
+    },
+    {
+      "name": "su, 60 dakikada bir; sessiz saatin başlangıcı dahil, bitişi hariç",
+      "reminder": {
+        "start": "09:00",
+        "end": "13:00",
+        "every_minutes": 60
+      },
+      "quiet": {
+        "start": "10:00",
+        "end": "11:00"
+      },
+      "slots": [
+        540,
+        660,
+        720,
+        780
+      ]
+    },
+    {
+      "name": "tek seferlik, sessiz saat başlangıcı kapsar ve pencere izin verirse bitişe ertelenir",
+      "reminder": {
+        "start": "12:00",
+        "end": "13:00",
+        "every_minutes": null
+      },
+      "quiet": {
+        "start": "11:30",
+        "end": "12:30"
+      },
+      "slots": [
+        750
+      ]
+    },
+    {
+      "name": "tek seferlik, sessiz saat bitişi pencerenin bitişiyle çakışır",
+      "reminder": {
+        "start": "12:00",
+        "end": "12:30",
+        "every_minutes": null
+      },
+      "quiet": {
+        "start": "11:00",
+        "end": "12:30"
+      },
+      "slots": [
+        750
+      ]
+    },
+    {
+      "name": "tek seferlik, pencere tümüyle sessiz saatte kalır",
+      "reminder": {
+        "start": "20:00",
+        "end": "20:30",
+        "every_minutes": null
+      },
+      "quiet": {
+        "start": "19:00",
+        "end": "22:00"
+      },
+      "slots": []
+    },
+    {
+      "name": "tek seferlik, gece sessiz saati sabah penceresinin başını keser",
+      "reminder": {
+        "start": "06:00",
+        "end": "09:00",
+        "every_minutes": null
+      },
+      "quiet": {
+        "start": "22:00",
+        "end": "07:00"
+      },
+      "slots": [
+        420
+      ]
+    },
+    {
+      "name": "tek seferlik, sessiz saat pencereye değmez",
+      "reminder": {
+        "start": "07:30",
+        "end": "09:30",
+        "every_minutes": null
+      },
+      "quiet": {
+        "start": "13:00",
+        "end": "14:00"
+      },
+      "slots": [
+        450
+      ]
+    }
+  ]
+}

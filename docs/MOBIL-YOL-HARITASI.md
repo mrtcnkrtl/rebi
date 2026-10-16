@@ -213,7 +213,7 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 
 **Kabul:** ürünü "bitti" işaretleyince rutinde görünüyor, yeniden alınınca eski haline dönüyor, web/backend verisi tutarlı.
 
-### Faz E — Hatırlatıcılar: güvenilir ve kontrol kullanıcıda  *(boyut: orta-büyük)*
+### Faz E — Hatırlatıcılar: güvenilir ve kontrol kullanıcıda  *(boyut: orta-büyük)* — **kod yapıldı (2026-10-16); cihaz testi sende**
 
 | # | İş | Kim |
 |---|----|-----|
@@ -223,6 +223,28 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 | E4 | Push: Firebase dosyaları geldiğinde `FIREBASE_ENABLED=true`; yerel + push **çift bildirimi** önleme kuralı. | Ben, Sen (dosyalar) |
 | E5 | Bildirim eylemleri (Yaptım, +250 ml, Hayır) için cihaz test senaryosu; arka plan izolatı. | Ben (senaryo), Sen (telefonda dene) |
 | E6 | Saat dilimi / yaz saati / yolculukta gün sınırı davranışı testleri. | Ben |
+
+**Durum (2026-10-16).** Kodda yapılanlar ve bilinçli sınırlar:
+
+- **E1 (saat aralığı):** Hatırlatıcılar ekranında her kategori satırına dokunmak o kategorinin aralıklarını düzenleten bir sayfa açar
+  (başlangıç/bitiş, "Varsayılana dön"; en az 15 dk, uyanma–uyku içinde). Yeni **Sessiz saatler** kartı (gece yarısını aşabilir).
+  Backend `reminder_settings.windows` / `quiet`; kurallar sunucu, push dağıtımı ve mobilde aynı (`contract/reminder_slots.json`).
+- **E2 (güvenilirlik):** yerel bildirimler artık bugün + **2 gün** için kurulur (uygulama 2–3 gün açılmasa da sürer), en yakın 56 bildirim
+  (iOS sınırı 64). Uygulama öne gelince izin yeniden denetlenir, kurulum tam başarılı olmadıysa yeniden denenir, kapalı alarm/pil durumunu
+  denemek için **"Test bildirimi gönder"** (1 dk sonra) ve Android için pil tasarrufu rehberi eklendi. Yeniden başlatma sonrası kurma eklentinin
+  boot alıcısıyla (manifestte tanımlı) yapılır. **Tam zamanlı alarm bilerek kullanılmıyor** (özel izin istemez; bildirim birkaç dakika kayabilir).
+  Uygulama bir hafta hiç açılmazsa yerel bildirimler biter; bunu push kapatır (E4).
+- **E3 (akıllı susma):** planın hatırlatıcıları, bekleyen kayıtlar dahil güncel ilerlemeye göre süzülür (hedefi dolan su, yapılan rutin, cevaplanan
+  soru için bildirim kalmaz; "makyaj yaptım" denince temizleme hatırlatıcısı eklenir). Bildirim düğmesiyle kaydedilen iş plana **hemen** işlenir ve
+  panele yansır. Uygulama **kapalıyken** düğmeye basılırsa su hedefi dolunca/ günlük SPF sınırında o günün kalan bildirimleri iptal edilir
+  (günün kalan miktarı diskte tutulur). *Sınır:* uygulama kapalıyken yerel modda "makyaj yaptım" düğmesine basılırsa temizleme bildirimi, uygulama
+  bir kez daha açılana kadar kurulmaz (push modunda sunucu bunu kendisi yapar).
+- **E4 (push + yerel):** çift bildirim kuralı netleşti ve sunucu desteğe bağlandı: push yalnızca FCM açık **ve** `dispatch_alive` iken; aksi halde
+  yerel (bkz. `docs/MOBIL-API.md` → Cihaz kaydı). `FIREBASE_ENABLED=true` + Firebase dosyaları + `PUSH_DISPATCH_SECRET` hâlâ sende.
+- **E5 (eylemler):** cihaz senaryosu `docs/MOBIL-BILDIRIM-TEST.md`; arka plan izolatı kodda hazır, **telefonda denenmedi**.
+- **E6 (saat dilimi):** saat farkı değişince/12 saatten sonra yeniden kayıt, öne gelince planın yeniden okunması ve bildirimlerin geçen zamana göre
+  yeniden kurulması, gece yarısı/ay/yıl/artık yıl geçişleri testli. Gün sınırı sunucuda her zaman cihazın bildirdiği farkla hesaplanır.
+  *Sınır:* telefon saat dilimini uygulama kapalıyken değiştirirse, yerel bildirimler uygulama bir kez açılana kadar eski dilimin duvar saatinde kalır.
 
 **Kabul:** 24 saatlik gerçek telefon denemesinde bildirimler doğru saat aralığında geliyor, yapılan iş için tekrar gelmiyor, bildirimden işlem uygulamaya yansıyor.
 

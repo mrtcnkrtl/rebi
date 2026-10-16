@@ -138,6 +138,7 @@ void main() {
         now: now,
         textFor: _text,
         settings: const ReminderSettings(wakeTime: '06:00', sleepTime: '22:00', waterEveryMinutes: 180),
+        futureDays: 1,
       );
       final morning = items.firstWhere((n) => n.reminderId == 'routine_morning');
       expect(morning.at, DateTime(2026, 10, 11, 6));
@@ -223,6 +224,29 @@ void main() {
       expect((body['enabled'] as Map)['water'], isTrue);
     });
 
+    test('kaydetme pencereleri hatırlatıcı başına gönderir: varsayılana dönenler null, sessiz saat yoksa null', () async {
+      final backend = FakeBackend();
+      apiHttpClient = backend.client;
+
+      await saveReminderSettings(
+        testUserId,
+        const ReminderSettings()
+            .withWindow('lip_balm', const ClockRange('15:00', '16:00'))
+            .withQuiet(const ClockRange('22:00', '07:00')),
+      );
+
+      final body = backend.bodyOf('/me/reminder-settings');
+      final windows = body['windows'] as Map;
+      expect(windows['lip_balm'], {'start': '15:00', 'end': '16:00'});
+      expect(windows.containsKey('routine_morning'), isTrue, reason: 'null göndermek sunucuda eski düzenlemeyi siler');
+      expect(windows['routine_morning'], isNull);
+      expect(body['quiet'], {'start': '22:00', 'end': '07:00'});
+
+      await saveReminderSettings(testUserId, const ReminderSettings());
+      expect(backend.bodyOf('/me/reminder-settings')['quiet'], isNull);
+      expect((backend.reminderSettings['windows'] as Map), isEmpty, reason: 'null pencereyi sunucuda sildi');
+    });
+
     test('sunucu 422 verirse nedeni döner, başka hatada boş mesaj', () async {
       final backend = FakeBackend()..reminderSettingsPutStatus = 422;
       apiHttpClient = backend.client;
@@ -258,6 +282,114 @@ void main() {
     test('seçenekler sunucuyla aynı (ml)', () {
       expect(waterTargetChoices, [1500, 1750, 2000, 2250, 2500, 3000]);
       expect(waterTargetChoices, contains(defaultWaterTargetMl));
+    });
+  });
+
+  group('kullanıcının kendi pencereleri ve sessiz saatler', () {
+    const lip = ClockRange('15:00', '16:00');
+
+    test('varsayılan ayarda pencere de sessiz saat de yoktur', () {
+      const s = ReminderSettings();
+      expect(s.windows, isEmpty);
+      expect(s.quiet, isNull);
+      expect(s.toJson()['windows'], isEmpty);
+      expect(s.toJson()['quiet'], isNull);
+    });
+
+    test('kendi penceresi varsayılanın yerine geçer, ötekiler değişmez', () {
+      final s = const ReminderSettings().withWindow('lip_balm', lip);
+
+      expect(reminderWindow('lip_balm', s), (start: '15:00', end: '16:00'));
+      expect(reminderWindow('spf_refresh', s), (start: '11:00', end: '16:00'));
+      expect(s.hasCustomWindow('lip_balm'), isTrue);
+      expect(s.hasCustomWindow('spf_refresh'), isFalse);
+      expect(defaultReminderWindow('lip_balm', s), (start: '12:00', end: '13:00'), reason: 'varsayılan hep hesaplanabilir');
+    });
+
+    test('pencere uyanma–uyku gününe kırpılır; kırpma sıfırlarsa varsayılan kalır (sunucuyla aynı)', () {
+      const narrowed = ReminderSettings(wakeTime: '08:00', sleepTime: '22:00');
+      expect(
+        reminderWindow('routine_morning', narrowed.withWindow('routine_morning', const ClockRange('06:00', '09:00'))),
+        (start: '08:00', end: '09:00'),
+      );
+      const late = ReminderSettings(wakeTime: '09:00', sleepTime: '22:00');
+      expect(
+        reminderWindow('routine_morning', late.withWindow('routine_morning', const ClockRange('06:00', '08:00'))),
+        (start: '09:00', end: '11:00'),
+      );
+    });
+
+    test('bilinmeyen kimlik için pencere yoktur, pencere eklemek bunu değiştirmez', () {
+      expect(reminderWindow('uydurma', const ReminderSettings().withWindow('uydurma', lip)), isNull);
+    });
+
+    test('sunucudan gelen bozuk pencereler atılır (sunucudaki _clean_windows ile aynı)', () {
+      final s = ReminderSettings.fromJson({
+        'windows': {
+          'uydurma': {'start': '10:00', 'end': '11:00'},
+          'lip_balm': {'start': '13:00', 'end': '12:00'},
+          'makeup_log': {'start': '10:00', 'end': '10:10'},
+          'nutrition_log': {'start': 'yirmi', 'end': '21:00'},
+          'daily_checkin': '21:00',
+          'water_intake': {'start': '10:00', 'end': '18:00'},
+        },
+        'quiet': {'start': '13:00', 'end': '13:00'},
+      });
+
+      expect(s.windows.keys, ['water_intake']);
+      expect(s.windows['water_intake'], const ClockRange('10:00', '18:00'));
+      expect(s.quiet, isNull, reason: 'başlangıç = bitiş sessiz saat sayılmaz');
+      expect(ReminderSettings.fromJson({'windows': 'x', 'quiet': 3}).windows, isEmpty);
+    });
+
+    test('sessiz saat okunur, yazılır ve kopyalarda korunur', () {
+      final s = ReminderSettings.fromJson({'quiet': {'start': '22:00', 'end': '07:00'}});
+      expect(s.quiet, const ClockRange('22:00', '07:00'));
+      expect(s.copyWith(wakeTime: '06:30').quiet, s.quiet);
+      expect(s.withWindow('lip_balm', lip).quiet, s.quiet);
+      expect(s.withQuiet(null).quiet, isNull);
+      expect(s.withQuiet(null).withWindow('lip_balm', lip).hasCustomWindow('lip_balm'), isTrue);
+      expect(s.toJson()['quiet'], {'start': '22:00', 'end': '07:00'});
+    });
+
+    test('pencere ya da sessiz saat değişikliği "kaydedilmemiş" sayılır; geri alınca kapanır', () {
+      const base = ReminderSettings();
+      expect(base.withWindow('lip_balm', lip).sameAs(base), isFalse);
+      expect(base.withQuiet(const ClockRange('12:00', '13:00')).sameAs(base), isFalse);
+      expect(base.withWindow('lip_balm', lip).withWindow('lip_balm', null).sameAs(base), isTrue);
+      expect(base.withQuiet(const ClockRange('12:00', '13:00')).withQuiet(null).sameAs(base), isTrue);
+      final json = base.withWindow('lip_balm', lip).withQuiet(const ClockRange('12:00', '13:00')).toJson();
+      expect(ReminderSettings.fromJson(json).sameAs(base.withWindow('lip_balm', lip).withQuiet(const ClockRange('12:00', '13:00'))), isTrue);
+    });
+
+    test('inQuietHours: başlangıç dahil, bitiş hariç; gece yarısını aşan aralık', () {
+      const day = ClockRange('13:00', '14:00');
+      expect([for (final m in [12 * 60, 13 * 60, 13 * 60 + 59, 14 * 60]) inQuietHours(m, day)], [false, true, true, false]);
+
+      const night = ClockRange('22:00', '07:00');
+      expect(
+        [for (final m in [22 * 60, 23 * 60 + 59, 0, 6 * 60 + 59, 7 * 60, 12 * 60, 21 * 60 + 59]) inQuietHours(m, night)],
+        [true, true, true, true, false, false, false],
+      );
+      expect(inQuietHours(12 * 60, null), isFalse);
+      expect(inQuietHours(12 * 60, const ClockRange('12:00', '12:00')), isFalse);
+    });
+
+    test('windowProblem: çok kısa ya da gün dışı pencere reddedilir (sunucuyla aynı kural)', () {
+      const s = ReminderSettings(wakeTime: '07:00', sleepTime: '23:00');
+      expect(windowProblem(const ClockRange('12:00', '12:15'), s), isNull);
+      expect(windowProblem(const ClockRange('12:00', '12:14'), s), WindowProblem.tooShort);
+      expect(windowProblem(const ClockRange('13:00', '12:00'), s), WindowProblem.tooShort);
+      expect(windowProblem(const ClockRange('06:00', '08:00'), s), WindowProblem.outsideDay);
+      expect(windowProblem(const ClockRange('21:00', '23:30'), s), WindowProblem.outsideDay);
+      expect(windowProblem(const ClockRange('07:00', '23:00'), s), isNull);
+    });
+
+    test('her kategorinin pencereli hatırlatıcıları ayarlanabilir kimliklerin içindedir', () {
+      expect(categoryWindowIds.keys.toSet(), reminderCategories.toSet());
+      final ids = categoryWindowIds.values.expand((v) => v).toList();
+      expect(ids.toSet(), reminderWindowIds.toSet());
+      expect(ids, hasLength(reminderWindowIds.length), reason: 'her kimlik tek kategoride');
     });
   });
 }

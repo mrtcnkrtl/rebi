@@ -20,16 +20,20 @@ class NotificationActionTap {
   final String userId;
 }
 
-/// Bir bildirime iliştirilen yük: açılacak ekran, hangi hatırlatıcı ve hangi kullanıcı için kurulduğu.
-/// Kullanıcı kimliği, hesap değişince eski hesabın bildiriminden kayıt gitmesin diye vardır.
+/// Bir bildirime iliştirilen yük: açılacak ekran, hangi hatırlatıcı, hangi kullanıcı ve hangi gün için
+/// kurulduğu. Kullanıcı kimliği, hesap değişince eski hesabın bildiriminden kayıt gitmesin diye vardır;
+/// gün, uygulama kapalıyken düğmeye basılınca o günün kalan bildirimlerini susturabilmek için.
 class NotificationPayload {
-  const NotificationPayload({required this.route, this.reminderId = '', this.userId = ''});
+  const NotificationPayload({required this.route, this.reminderId = '', this.userId = '', this.day = ''});
 
   final String route;
   final String reminderId;
   final String userId;
 
-  String encode() => jsonEncode({'route': route, 'reminder_id': reminderId, 'user_id': userId});
+  /// Bildirimin düştüğü yerel gün (`2026-10-10`); eski bildirimlerde boş.
+  final String day;
+
+  String encode() => jsonEncode({'route': route, 'reminder_id': reminderId, 'user_id': userId, 'day': day});
 
   /// Eski biçim yalnızca ekran yoludur (`/dashboard`); onu da okur. Okunamazsa null.
   static NotificationPayload? decode(String? raw) {
@@ -44,6 +48,7 @@ class NotificationPayload {
         route: route,
         reminderId: '${j['reminder_id'] ?? ''}',
         userId: '${j['user_id'] ?? ''}',
+        day: '${j['day'] ?? ''}',
       );
     } catch (_) {
       return null;

@@ -444,7 +444,13 @@ class _TabButton extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 2),
               child: FittedBox(
                 fit: BoxFit.scaleDown,
-                child: Text(label, maxLines: 1, style: tx(11, w: active ? 7 : 5, c: active ? color : Tw.gray500)),
+                // Sekme çubuğunun yüksekliği sabit (64): çok büyük sistem yazısında etiket onu aşmasın.
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  textScaler: MediaQuery.textScalerOf(context).clamp(maxScaleFactor: 1.5),
+                  style: tx(11, w: active ? 7 : 5, c: active ? color : Tw.gray500),
+                ),
               ),
             ),
           ],

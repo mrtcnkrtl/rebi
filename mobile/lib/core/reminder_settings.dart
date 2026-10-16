@@ -50,6 +50,47 @@ String formatClock(int minutes) {
 bool isValidDay(int wake, int sleep) =>
     wake >= earliestWakeMinutes && sleep <= latestSleepMinutes && sleep - wake >= minAwakeMinutes;
 
+/// Kullanıcının ayarladığı bir pencerenin en az uzunluğu (dakika). Sunucudaki `MIN_WINDOW_MINUTES` ile aynıdır.
+const minWindowMinutes = 15;
+
+/// Yerel saat aralığı (`"12:00"`–`"13:00"`): kullanıcının kendi hatırlatıcı penceresi ve sessiz saatleri.
+class ClockRange {
+  const ClockRange(this.start, this.end);
+
+  /// Biçimi bozuk aralık null olur.
+  static ClockRange? tryParse(Object? json) {
+    if (json is! Map) return null;
+    final start = parseClock("${json['start'] ?? ''}");
+    final end = parseClock("${json['end'] ?? ''}");
+    if (start == null || end == null) return null;
+    return ClockRange(formatClock(start), formatClock(end));
+  }
+
+  final String start;
+  final String end;
+
+  int get startMinutes => parseClock(start) ?? 0;
+  int get endMinutes => parseClock(end) ?? 0;
+
+  Map<String, String> toJson() => {'start': start, 'end': end};
+
+  @override
+  bool operator ==(Object other) => other is ClockRange && other.start == start && other.end == end;
+
+  @override
+  int get hashCode => Object.hash(start, end);
+}
+
+/// Dakika sessiz saat aralığında mı? Başlangıç bitişten büyükse aralık gece yarısını aşar (22:00–07:00).
+/// Başlangıç dahil, bitiş hariçtir (sunucudaki `in_quiet` ile aynı).
+bool inQuietHours(int minute, ClockRange? quiet) {
+  if (quiet == null) return false;
+  final start = quiet.startMinutes;
+  final end = quiet.endMinutes;
+  if (start == end) return false;
+  return start < end ? (minute >= start && minute < end) : (minute >= start || minute < end);
+}
+
 /// Uyanma / uyku saati, su aralığı ve kapatılan kategoriler. Sunucudaki `reminder_settings` ile aynı şekil.
 class ReminderSettings {
   const ReminderSettings({
@@ -58,6 +99,8 @@ class ReminderSettings {
     this.waterEveryMinutes = 120,
     this.waterTargetMl = defaultWaterTargetMl,
     this.enabled = const {},
+    this.windows = const {},
+    this.quiet,
   });
 
   /// Sunucu gibi hoşgörülüdür: bozuk alan varsayılana döner, tutarsız gün düzeni ikisini de sıfırlar.
@@ -76,6 +119,8 @@ class ReminderSettings {
       waterEveryMinutes: every is int && waterIntervalChoices.contains(every) ? every : defaults.waterEveryMinutes,
       waterTargetMl: target is int && waterTargetChoices.contains(target) ? target : defaults.waterTargetMl,
       enabled: {for (final c in reminderCategories) c: stored[c] is bool ? stored[c] as bool : true},
+      windows: _cleanWindows(j['windows']),
+      quiet: _cleanQuiet(j['quiet']),
     );
   }
 
@@ -88,6 +133,13 @@ class ReminderSettings {
 
   /// Kategori → açık mı. Olmayan kategori açık sayılır.
   final Map<String, bool> enabled;
+
+  /// Kullanıcının kendi ayarladığı pencereler: hatırlatıcı kimliği → aralık. Yalnızca değiştirdikleri
+  /// vardır; olmayanlar uyanma/uyku saatinden türeyen varsayılan pencereyi kullanır.
+  final Map<String, ClockRange> windows;
+
+  /// Sessiz saatler: bu aralıkta bildirim gelmez. Gece yarısını aşabilir (22:00–07:00); null = yok.
+  final ClockRange? quiet;
 
   bool isEnabled(String category) => enabled[category] != false;
 
@@ -107,6 +159,7 @@ class ReminderSettings {
     int? waterEveryMinutes,
     int? waterTargetMl,
     Map<String, bool>? enabled,
+    Map<String, ClockRange>? windows,
   }) =>
       ReminderSettings(
         wakeTime: wakeTime ?? this.wakeTime,
@@ -114,16 +167,55 @@ class ReminderSettings {
         waterEveryMinutes: waterEveryMinutes ?? this.waterEveryMinutes,
         waterTargetMl: waterTargetMl ?? this.waterTargetMl,
         enabled: enabled ?? this.enabled,
+        windows: windows ?? this.windows,
+        quiet: quiet,
       );
 
   ReminderSettings withCategory(String category, bool on) => copyWith(enabled: {...enabled, category: on});
+
+  /// [range] null ise hatırlatıcı varsayılan penceresine döner.
+  ReminderSettings withWindow(String reminderId, ClockRange? range) {
+    final next = {...windows};
+    if (range == null) {
+      next.remove(reminderId);
+    } else {
+      next[reminderId] = range;
+    }
+    return copyWith(windows: next);
+  }
+
+  /// [range] null ise sessiz saatler kapanır.
+  ReminderSettings withQuiet(ClockRange? range) => ReminderSettings(
+        wakeTime: wakeTime,
+        sleepTime: sleepTime,
+        waterEveryMinutes: waterEveryMinutes,
+        waterTargetMl: waterTargetMl,
+        enabled: enabled,
+        windows: windows,
+        quiet: range,
+      );
+
+  /// Hatırlatıcının penceresini kullanıcı mı ayarlamış.
+  bool hasCustomWindow(String reminderId) => windows.containsKey(reminderId);
 
   Map<String, dynamic> toJson() => {
         'wake_time': wakeTime,
         'sleep_time': sleepTime,
         'water_every_minutes': waterEveryMinutes,
         'water_target_ml': waterTargetMl,
+        'windows': {
+          for (final id in reminderWindowIds)
+            if (windows[id] != null) id: windows[id]!.toJson(),
+        },
+        'quiet': quiet?.toJson(),
         'enabled': {for (final c in reminderCategories) c: isEnabled(c)},
+      };
+
+  /// `PUT` gövdesi: sunucu pencereleri hatırlatıcı başına birleştirir, bu yüzden varsayılana dönenler
+  /// açıkça `null` gönderilir.
+  Map<String, dynamic> toUpdateJson() => {
+        ...toJson(),
+        'windows': {for (final id in reminderWindowIds) id: windows[id]?.toJson()},
       };
 
   /// Ayarlar aynı mı (kaydedilmemiş değişiklik var mı).
@@ -144,8 +236,11 @@ const _windowOffsets = <String, (String, int, int)>{
   'daily_checkin': ('sleep', -120, -30),
 };
 
-/// Hatırlatıcının yerel saat penceresi (`"07:30"`, `"09:30"`); kimlik bilinmiyorsa null.
-({String start, String end})? reminderWindow(String reminderId, ReminderSettings s) {
+/// Penceresi ayarlanabilen tüm hatırlatıcı kimlikleri (sunucudaki `WINDOW_IDS`).
+final reminderWindowIds = [..._windowOffsets.keys, 'water_intake'];
+
+/// Uyanma/uyku saatinden türeyen varsayılan pencere (kullanıcının düzenlemesi sayılmadan).
+({String start, String end})? defaultReminderWindow(String reminderId, ReminderSettings s) {
   final wake = s.wakeMinutes;
   final sleep = s.sleepMinutes;
   if (reminderId == 'water_intake') return (start: formatClock(wake + 90), end: formatClock(sleep - 120));
@@ -154,6 +249,63 @@ const _windowOffsets = <String, (String, int, int)>{
   final base = offsets.$1 == 'wake' ? wake : sleep;
   int clamp(int v) => v.clamp(wake, sleep);
   return (start: formatClock(clamp(base + offsets.$2)), end: formatClock(clamp(base + offsets.$3)));
+}
+
+/// Bir kategorinin penceresi ayarlanabilen hatırlatıcıları (Hatırlatıcılar ekranındaki "saatleri ayarla" sayfası).
+const categoryWindowIds = {
+  'routine': ['routine_morning', 'routine_evening'],
+  'water': ['water_intake'],
+  'makeup': ['makeup_log', 'makeup_removal'],
+  'nutrition': ['nutrition_log'],
+  'spf': ['spf_refresh'],
+  'lip_balm': ['lip_balm'],
+  'checkin': ['daily_checkin'],
+  'restock': ['restock_check'],
+};
+
+/// Kullanıcının seçtiği pencerenin neden geçersiz olduğu.
+enum WindowProblem {
+  /// Bitiş, başlangıçtan en az [minWindowMinutes] dakika sonra değil.
+  tooShort,
+
+  /// Pencere uyanma–uyku saatleri arasında değil (sunucu da reddeder).
+  outsideDay,
+}
+
+/// [range] ayar olarak kaydedilebilir mi; değilse nedeni. Sunucunun `_merge_windows` kuralıyla aynıdır.
+WindowProblem? windowProblem(ClockRange range, ReminderSettings s) {
+  if (range.endMinutes - range.startMinutes < minWindowMinutes) return WindowProblem.tooShort;
+  if (range.startMinutes < s.wakeMinutes || range.endMinutes > s.sleepMinutes) return WindowProblem.outsideDay;
+  return null;
+}
+
+/// Hatırlatıcının yerel saat penceresi (`"07:30"`, `"09:30"`); kimlik bilinmiyorsa null. Kullanıcının
+/// kendi penceresi varsa o geçerlidir (uyanma–uyku gününe kırpılır; kırpma onu sıfırlarsa varsayılan kalır).
+({String start, String end})? reminderWindow(String reminderId, ReminderSettings s) {
+  final fallback = defaultReminderWindow(reminderId, s);
+  final custom = s.windows[reminderId];
+  if (fallback == null || custom == null) return fallback;
+  final wake = s.wakeMinutes;
+  final sleep = s.sleepMinutes;
+  final start = custom.startMinutes.clamp(wake, sleep);
+  final end = custom.endMinutes.clamp(wake, sleep);
+  return end > start ? (start: formatClock(start), end: formatClock(end)) : fallback;
+}
+
+/// Kayıtlı pencereler: bilinmeyen kimlik, bozuk saat ve çok kısa/ters pencere atılır (sunucudaki `_clean_windows`).
+Map<String, ClockRange> _cleanWindows(Object? raw) {
+  if (raw is! Map) return const {};
+  final out = <String, ClockRange>{};
+  for (final id in reminderWindowIds) {
+    final range = ClockRange.tryParse(raw[id]);
+    if (range != null && range.endMinutes - range.startMinutes >= minWindowMinutes) out[id] = range;
+  }
+  return out;
+}
+
+ClockRange? _cleanQuiet(Object? raw) {
+  final range = ClockRange.tryParse(raw);
+  return range == null || range.start == range.end ? null : range;
 }
 
 /// Havaya ve yapılan işe bağlı olmayan, her gün tekrar eden hatırlatıcılar. Yarın için
@@ -199,7 +351,7 @@ class ReminderSettingsSave {
 /// `PUT /me/reminder-settings`: ayarların hepsi gönderilir.
 Future<ReminderSettingsSave> saveReminderSettings(String userId, ReminderSettings settings) async {
   try {
-    final res = await apiPut('/me/reminder-settings', {'user_id': userId, ...settings.toJson()});
+    final res = await apiPut('/me/reminder-settings', {'user_id': userId, ...settings.toUpdateJson()});
     if (res.ok) return ReminderSettingsSave(settings: ReminderSettings.fromJson(res.data['settings']));
     return ReminderSettingsSave(error: res.status == 422 ? formatApiErrorDetail(res.data) : '');
   } catch (_) {

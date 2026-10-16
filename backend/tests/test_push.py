@@ -107,7 +107,7 @@ def test_device_registration_upserts_on_token(monkeypatch, client, headers):
     )
 
     assert r.status_code == 200, r.text
-    assert r.json() == {"ok": True, "push_configured": True, "synced": True}
+    assert r.json() == {"ok": True, "push_configured": True, "synced": True, "dispatch_alive": False}
     devices = db.tables["device_tokens"]
     assert devices.last_conflict == "token"
     written = devices.upserted[-1]
@@ -218,7 +218,7 @@ def test_dispatch_sends_due_reminder_once_per_day(monkeypatch, client):
     # Tekrar göndermeyi engelleyen şey veritabanındaki unique kısıttır.
     db.tables["push_sends"].unique_on = ("user_id", "reminder_id", "log_date", "slot")
     # Yerel saat 09:05 → su hatırlatıcısının 09:00 penceresi.
-    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol: [
+    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol, **_: [
         {
             "id": "water_intake",
             "title": "Su içme zamanı",
@@ -269,7 +269,7 @@ def _one_device(monkeypatch, sender, **extra_tables):
         **extra_tables,
     )
     db.tables["push_sends"].unique_on = ("user_id", "reminder_id", "log_date", "slot")
-    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol: [dict(_WATER_DUE)])
+    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol, **_: [dict(_WATER_DUE)])
     return db
 
 
@@ -397,7 +397,7 @@ def test_dispatch_removes_invalid_device_tokens(monkeypatch, client):
             "last_seen_at": "2026-10-04T10:00:00+00:00",
         },
     ])
-    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol: [
+    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol, **_: [
         {"id": "daily_checkin", "title": "Check-in", "body": "Cildin nasıldı?", "slot": "21:00"}
     ])
 

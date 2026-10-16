@@ -338,7 +338,21 @@
     "modeLocal": "Reminders are scheduled on this phone.",
     "modePush": "Reminders are sent from the server.",
     "channelName": "Reminders",
-    "channelDescription": "Routine, water, sunscreen and check-in reminders"
+    "channelDescription": "Routine, water, sunscreen and check-in reminders",
+    "test": {
+      "notificationTitle": "Test notification",
+      "notificationBody": "Notifications work on this phone. This is how your reminders will arrive."
+    },
+    "delivery": {
+      "title": "Notifications not showing up?",
+      "body": "You can check that your reminders really arrive on this phone.",
+      "test": "Send a test notification",
+      "testScheduled": "A notification will arrive within a minute. Close the app and wait; if it doesn't show, check the battery setting below.",
+      "testBlocked": "Notification permission is off. First allow notifications for Rebi in your phone settings.",
+      "testFailed": "Couldn't schedule the test notification. Try again in a moment.",
+      "batteryTitle": "Battery saving can block notifications",
+      "batteryBody": "Some phones (Xiaomi, Huawei, Oppo, Vivo, Samsung) stop closed apps. In Phone Settings → Apps → Rebi → Battery, choose \"Unrestricted\" or \"Don't optimize\"."
+    }
   },
   "mobileProfile": {
     "title": "My skin profile",
@@ -516,6 +530,41 @@
       "title": "Daily water goal",
       "hint": "Your ring and reminders follow this goal.",
       "choice": "{{liters}} L"
+    },
+    "windowSheet": {
+      "title": "Set the times",
+      "hint": "Choose the time range this reminder can arrive in. It has to fall between your wake and sleep times.",
+      "start": "From",
+      "end": "To",
+      "reset": "Back to default",
+      "done": "Done",
+      "custom": "Your setting",
+      "spfNote": "If you don't pick your own times, the sunscreen reminder follows the day's UV hours.",
+      "errors": {
+        "short": "The end must be at least {{minutes}} minutes after the start.",
+        "outsideDay": "The range must fall between your wake ({{wake}}) and sleep ({{sleep}}) times."
+      },
+      "ids": {
+        "routine_morning": "Morning routine",
+        "routine_evening": "Evening routine",
+        "water_intake": "Drinking water",
+        "makeup_log": "Makeup question",
+        "makeup_removal": "Makeup removal",
+        "nutrition_log": "Nutrition log",
+        "spf_refresh": "Sunscreen",
+        "lip_balm": "Lip balm",
+        "daily_checkin": "Daily check-in",
+        "restock_check": "Restock check"
+      }
+    },
+    "quiet": {
+      "title": "Quiet hours",
+      "hint": "No notifications arrive in this range. It can cross midnight too (e.g. 22:00 – 07:00).",
+      "from": "From",
+      "to": "To",
+      "errors": {
+        "same": "The start and end can't be the same."
+      }
     }
   },
   "mobileAppearance": {

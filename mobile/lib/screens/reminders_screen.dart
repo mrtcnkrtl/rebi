@@ -17,17 +17,13 @@ import '../ui/components/notification_widgets.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/brand/palette.dart';
+import 'reminders/delivery_card.dart';
+import 'reminders/quiet_card.dart';
+import 'reminders/time_picker.dart';
+import 'reminders/window_sheet.dart';
 
-/// Saat seçici. Testlerde gerçek iletişim kutusu yerine sabit bir saat vermek için değiştirilir.
-Future<TimeOfDay?> Function(BuildContext context, TimeOfDay initial) reminderTimePicker = (context, initial) =>
-    showTimePicker(
-      context: context,
-      initialTime: initial,
-      builder: (context, child) => MediaQuery(
-        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-        child: child ?? const SizedBox.shrink(),
-      ),
-    );
+// Testler saat seçiciyi bu dosyadan değiştirir.
+export 'reminders/time_picker.dart' show reminderTimePicker;
 
 const _categoryIcons = {
   'routine': LucideIcons.listChecks,
@@ -111,10 +107,9 @@ class _RemindersScreenState extends State<RemindersScreen> {
       });
 
   Future<void> _pickTime({required bool wake}) async {
-    final current = wake ? _draft.wakeMinutes : _draft.sleepMinutes;
-    final picked = await reminderTimePicker(context, TimeOfDay(hour: current ~/ 60, minute: current % 60));
+    final picked = await pickClockMinutes(context, wake ? _draft.wakeMinutes : _draft.sleepMinutes);
     if (picked == null || !mounted) return;
-    final value = formatClock(picked.hour * 60 + picked.minute);
+    final value = formatClock(picked);
     _edit(wake ? _draft.copyWith(wakeTime: value) : _draft.copyWith(sleepTime: value));
   }
 
@@ -178,6 +173,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
         Text(i18n.t('mobileReminders.subtitle'), style: tx(14, c: Tw.gray500)),
         const SizedBox(height: 16),
         NotificationSettingsCard(theme: theme),
+        DeliveryCard(theme: theme),
         const SizedBox(height: 16),
         if (_loading && saved == null)
           const Padding(padding: EdgeInsets.symmetric(vertical: 48), child: Center(child: RingSpinner()))
@@ -198,6 +194,8 @@ class _RemindersScreenState extends State<RemindersScreen> {
           _waterCard(i18n, theme),
           const SizedBox(height: 16),
           _categoriesCard(i18n, theme),
+          const SizedBox(height: 16),
+          QuietHoursCard(settings: _draft, onChanged: _edit, theme: theme),
           const SizedBox(height: 16),
           if (_error != null) ...[
             NoticeBox(
@@ -401,34 +399,79 @@ class _RemindersScreenState extends State<RemindersScreen> {
     };
   }
 
+  /// Kategoride kullanıcının kendi ayarladığı bir pencere var mı.
+  bool _hasCustomWindow(String category) =>
+      (categoryWindowIds[category] ?? const <String>[]).any(_draft.hasCustomWindow);
+
+  void _editWindows(RebiTheme theme, String category) => showWindowSheet(
+        context,
+        category: category,
+        settings: _draft,
+        onChanged: _edit,
+        theme: theme,
+      );
+
   Widget _categoryRow(I18n i18n, RebiTheme theme, String category) {
     final on = _draft.isEnabled(category);
     final title = i18n.t('mobileReminders.categories.$category.title');
+    final windows = _windows(i18n, category);
+    final custom = _hasCustomWindow(category);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: (on ? theme.primary : Tw.gray400).withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(_categoryIcons[category], size: 18, color: on ? theme.primary : Tw.gray400),
-          ),
-          const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: tx(14, w: 6, c: on ? Tw.gray800 : Tw.gray400)),
-                const SizedBox(height: 2),
-                Text(i18n.t('mobileReminders.categories.$category.desc'), style: tx(12, c: Tw.gray500, h: snug)),
-                const SizedBox(height: 2),
-                Text(_windows(i18n, category), style: tx(11, w: 5, c: on ? theme.primary : Tw.gray400)),
-              ],
+            child: Semantics(
+              button: true,
+              label: '$title. $windows. ${i18n.t('mobileReminders.windowSheet.title')}',
+              excludeSemantics: true,
+              onTap: () => _editWindows(theme, category),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => _editWindows(theme, category),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: (on ? theme.primary : Tw.gray400).withValues(alpha: .12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(_categoryIcons[category], size: 18, color: on ? theme.primary : Tw.gray400),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title, style: tx(14, w: 6, c: on ? Tw.gray800 : Tw.gray400)),
+                          const SizedBox(height: 2),
+                          Text(i18n.t('mobileReminders.categories.$category.desc'), style: tx(12, c: Tw.gray500, h: snug)),
+                          const SizedBox(height: 2),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  custom ? '$windows · ${i18n.t('mobileReminders.windowSheet.custom')}' : windows,
+                                  style: tx(11, w: 5, c: on ? theme.primary : Tw.gray400),
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4, top: 1),
+                                child: Icon(LucideIcons.pencil, size: 11, color: on ? theme.primary : Tw.gray400),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           Switch(

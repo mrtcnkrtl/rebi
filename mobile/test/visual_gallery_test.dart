@@ -10,6 +10,7 @@ import 'package:rebi/screens/today/today_clock.dart';
 import 'package:rebi/ui/tw.dart';
 
 import 'helpers/app_harness.dart';
+import 'helpers/notification_fakes.dart';
 import 'helpers/visual.dart';
 
 /// Ana ekranların açık/koyu görünümü, gerçek yazı tipleriyle `build/screenshots/` altına yazılır.
@@ -127,6 +128,61 @@ void main() {
         }
       }, skip: !screenshotsEnabled);
     }
+  }
+
+  // Hatırlatıcılar (Faz E): kendi saat aralığı, sessiz saatler, "bildirimler gelmiyor mu" kartı ve saat sayfası.
+  FakeBackend withCustomWindows() {
+    final b = populated();
+    b.reminderSettings = {
+      ...b.reminderSettings,
+      'windows': {
+        'routine_morning': {'start': '08:00', 'end': '09:30'},
+        'lip_balm': {'start': '15:00', 'end': '16:00'},
+      },
+      'quiet': {'start': '13:00', 'end': '14:30'},
+    };
+    return b;
+  }
+
+  for (final dark in [false, true]) {
+    testWidgets('${dark ? 'koyu' : 'acik'} · hatirlaticilar-uzun', (tester) async {
+      Tw.dark = dark;
+      debugDisableShadows = false;
+      try {
+        final h = await pumpApp(
+          tester,
+          location: '/dashboard/reminders',
+          prefs: acceptedPrefs(),
+          backend: withCustomWindows(),
+          notifier: FakeReminderNotifier(),
+          realFonts: true,
+          size: const Size(390, 2500),
+        );
+        unawaited(h.notifications.enable());
+        await settle(tester);
+        await shoot(tester, '${dark ? 'koyu' : 'acik'}-hatirlaticilar-uzun', width: 585);
+      } finally {
+        debugDisableShadows = true;
+      }
+    }, skip: !screenshotsEnabled);
+
+    testWidgets('${dark ? 'koyu' : 'acik'} · sayfa saat-araligi', (tester) async {
+      Tw.dark = dark;
+      debugDisableShadows = false;
+      try {
+        await pumpApp(
+          tester,
+          location: '/dashboard/reminders',
+          prefs: acceptedPrefs(),
+          backend: withCustomWindows(),
+          realFonts: true,
+        );
+        await tapText(tester, tr('mobileReminders.categories.routine.title'));
+        await shoot(tester, '${dark ? 'koyu' : 'acik'}-sayfa-saat-araligi');
+      } finally {
+        debugDisableShadows = true;
+      }
+    }, skip: !screenshotsEnabled);
   }
 
   // Bugün'ün tamamı (kaydırmadan): yüksek bir ekranla tek görüntüde.

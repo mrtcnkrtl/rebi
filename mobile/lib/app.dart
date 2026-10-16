@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -27,7 +29,7 @@ class RebiApp extends StatefulWidget {
   State<RebiApp> createState() => _RebiAppState();
 }
 
-class _RebiAppState extends State<RebiApp> {
+class _RebiAppState extends State<RebiApp> with WidgetsBindingObserver {
   late final AuthController _auth = AuthController();
   late final ThemeController _theme = ThemeController(_auth);
   late final HomeSyncController _sync = HomeSyncController(_auth);
@@ -50,8 +52,15 @@ class _RebiAppState extends State<RebiApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _notifications.openRoute.addListener(_openFromNotification);
     _openFromNotification();
+  }
+
+  /// Uygulama öne gelince: bildirim izni, saat dilimi ve sunucu push durumu yeniden denetlenir.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_notifications.onAppResumed());
   }
 
   /// Bildirime dokunulunca ilgili ekrana gider (uygulama kapalıyken açıldıysa ilk ekran o olur).
@@ -65,6 +74,7 @@ class _RebiAppState extends State<RebiApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _router.dispose();
     _notifications.dispose();
     _outbox.dispose();

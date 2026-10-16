@@ -338,7 +338,21 @@
     "modeLocal": "Hatırlatmalar bu telefonda planlanır.",
     "modePush": "Hatırlatmalar sunucudan gönderilir.",
     "channelName": "Hatırlatıcılar",
-    "channelDescription": "Rutin, su, güneş kremi ve check-in hatırlatmaları"
+    "channelDescription": "Rutin, su, güneş kremi ve check-in hatırlatmaları",
+    "test": {
+      "notificationTitle": "Test bildirimi",
+      "notificationBody": "Bildirimler bu telefonda çalışıyor. Hatırlatmalarını böyle alacaksın."
+    },
+    "delivery": {
+      "title": "Bildirimler gelmiyor mu?",
+      "body": "Hatırlatmaların bu telefonda gerçekten gelip gelmediğini deneyebilirsin.",
+      "test": "Test bildirimi gönder",
+      "testScheduled": "Bir dakika içinde bir bildirim gelecek. Uygulamayı kapatıp bekle; gelmezse aşağıdaki pil ayarını kontrol et.",
+      "testBlocked": "Bildirim izni kapalı. Önce telefon ayarlarından Rebi için bildirimlere izin ver.",
+      "testFailed": "Test bildirimi kurulamadı. Biraz sonra tekrar dene.",
+      "batteryTitle": "Pil tasarrufu bildirimleri engelleyebilir",
+      "batteryBody": "Bazı telefonlar (Xiaomi, Huawei, Oppo, Vivo, Samsung) kapalı uygulamaları durdurur. Telefon Ayarları → Uygulamalar → Rebi → Pil bölümünde \"Kısıtlama yok\" ya da \"Optimize etme\" seçeneğini seç."
+    }
   },
   "mobileProfile": {
     "title": "Cilt profilim",
@@ -516,6 +530,41 @@
       "title": "Günlük su hedefi",
       "hint": "Halkan ve hatırlatmalar bu hedefe göre çalışır.",
       "choice": "{{liters}} L"
+    },
+    "windowSheet": {
+      "title": "Saatleri ayarla",
+      "hint": "Hatırlatmanın geleceği saat aralığını seç. Aralık, uyanma ve uyku saatinin içinde olmalı.",
+      "start": "Başlangıç",
+      "end": "Bitiş",
+      "reset": "Varsayılana dön",
+      "done": "Tamam",
+      "custom": "Senin ayarın",
+      "spfNote": "Kendi saatini seçmezsen güneş kremi hatırlatması o günkü UV saatlerine göre gelir.",
+      "errors": {
+        "short": "Bitiş, başlangıçtan en az {{minutes}} dakika sonra olmalı.",
+        "outsideDay": "Aralık uyanma ({{wake}}) ile uyku ({{sleep}}) saatin arasında olmalı."
+      },
+      "ids": {
+        "routine_morning": "Sabah rutini",
+        "routine_evening": "Akşam rutini",
+        "water_intake": "Su içme",
+        "makeup_log": "Makyaj sorusu",
+        "makeup_removal": "Makyaj temizliği",
+        "nutrition_log": "Beslenme kaydı",
+        "spf_refresh": "Güneş kremi",
+        "lip_balm": "Dudak balsamı",
+        "daily_checkin": "Günlük check-in",
+        "restock_check": "Ürün yenileme"
+      }
+    },
+    "quiet": {
+      "title": "Sessiz saatler",
+      "hint": "Bu aralıkta bildirim gelmez. Aralık gece yarısını da geçebilir (ör. 22:00 – 07:00).",
+      "from": "Başlangıç",
+      "to": "Bitiş",
+      "errors": {
+        "same": "Başlangıç ile bitiş aynı olamaz."
+      }
     }
   },
   "mobileAppearance": {

@@ -123,6 +123,12 @@ class FakeBackend {
   /// `POST /devices/register` yanıtındaki `push_configured` (sunucuda FCM açık mı).
   bool pushConfigured = false;
 
+  /// `POST /devices/register` yanıtındaki `dispatch_alive`: sunucunun push dağıtıcısı çalışıyor mu.
+  bool dispatchAlive = true;
+
+  /// Eski sunucu gibi `dispatch_alive` alanını hiç göndermesin.
+  bool omitDispatchAlive = false;
+
   /// Cihaz kaydı uçlarına ağ yokmuş gibi davranır.
   bool devicesOffline = false;
 
@@ -270,9 +276,15 @@ class FakeBackend {
                   reminderSettingsPutStatus!, headers: {'content-type': 'application/json'});
             }
             final put = (jsonDecode(req.body) as Map).cast<String, dynamic>()..remove('user_id');
+            // Pencereler hatırlatıcı başına birleşir; null o hatırlatıcıyı varsayılana döndürür (sunucu gibi).
+            final windows = {...((reminderSettings['windows'] as Map?)?.cast<String, dynamic>() ?? const {})};
+            ((put['windows'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{}).forEach((id, range) {
+              range == null ? windows.remove(id) : windows[id] = range;
+            });
             reminderSettings = {
               ...reminderSettings,
               ...put,
+              'windows': windows,
               'enabled': {
                 ...(reminderSettings['enabled'] as Map).cast<String, dynamic>(),
                 ...((put['enabled'] as Map?)?.cast<String, dynamic>() ?? const {}),
@@ -287,7 +299,12 @@ class FakeBackend {
             return ok(history);
           case 'POST /devices/register':
             if (devicesOffline) throw const SocketException('çevrimdışı');
-            return ok({'ok': true, 'push_configured': pushConfigured, 'synced': true});
+            return ok({
+              'ok': true,
+              'push_configured': pushConfigured,
+              'synced': true,
+              if (!omitDispatchAlive) 'dispatch_alive': dispatchAlive,
+            });
           case 'DELETE /devices/register':
             if (devicesOffline) throw const SocketException('çevrimdışı');
             return ok({'ok': true});

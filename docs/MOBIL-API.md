@@ -62,7 +62,7 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
   "products_out": [
     { "product": "SPF 50", "step_order": 40, "finished_at": "2026-10-13T10:00:00+00:00", "log_date": "2026-10-13", "days_out": 3 }
   ],
-  "reminder_settings": { "wake_time": "07:30", "sleep_time": "23:00", "water_every_minutes": 120, "water_target_ml": 2000, "enabled": { "water": true } },
+  "reminder_settings": { "wake_time": "07:30", "sleep_time": "23:00", "water_every_minutes": 120, "water_target_ml": 2000, "windows": {}, "quiet": null, "enabled": { "water": true } },
   "reminders": [
     {
       "id": "water_intake",
@@ -127,9 +127,23 @@ uyku 23:00) sonucudur.
 | `water_every_minutes` | `60`, `90`, `120` ya da `180` |
 | `water_target_ml` | günlük su hedefi: `1500`, `1750`, `2000` (varsayılan), `2250`, `2500` ya da `3000` |
 | `enabled` | `routine`, `water`, `makeup`, `nutrition`, `spf`, `lip_balm`, `checkin`, `restock` → `true`/`false` |
+| `windows` | kullanıcının kendi saat aralıkları: `{ "lip_balm": { "start": "15:00", "end": "16:00" } }`. **Yalnızca değiştirilenler** vardır; olmayan hatırlatıcı uyanma/uyku saatinden türeyen varsayılanı kullanır. `PUT`ta hatırlatıcı başına birleşir; bir kimlik için `null` o hatırlatıcıyı varsayılana döndürür, `"windows": null` hepsini sıfırlar, alan hiç gönderilmezse dokunulmaz. Kimlikler: `routine_morning`, `routine_evening`, `makeup_log`, `makeup_removal`, `nutrition_log`, `spf_refresh`, `lip_balm`, `daily_checkin`, `restock_check`, `water_intake` |
+| `quiet` | sessiz saatler `{ "start": "13:00", "end": "14:30" }`; bu aralıkta hiçbir hatırlatıcı bildirimi gelmez. Başlangıç bitişten büyükse aralık gece yarısını aşar (`22:00`–`07:00`). `PUT`ta `"quiet": null` kapatır, alan hiç gönderilmezse dokunulmaz |
 
 Geçersiz değer 422 döner ve hiçbir şey kaydedilmez. Kapatılan kategorinin hatırlatıcıları ne plana ne
-push'a girer. Pencereler: sabah rutini uyanma + 0–2 sa; makyaj sorusu +2,5–3,5 sa; güneş kremi +3,5–8,5 sa;
+push'a girer.
+
+**Kendi saat aralığı (`windows`) kuralları.** Her pencere en az **15 dakika** olmalı (bitiş başlangıçtan sonra) ve
+uyanma–uyku saatinin **içinde** kalmalı; aksi 422. Gün düzeni sonradan daraltılırsa kayıtlı pencere uyanma–uyku gününe
+kırpılır, kırpma onu sıfırlarsa varsayılan geçerli olur (kayıt silinmez). Kullanıcı güneş kremi penceresini kendisi
+seçtiyse o geçerlidir; seçmediyse saatlik UV'ye bağlı pencere (`weather.uv_window`) kullanılır. Plan yanıtındaki her
+hatırlatıcının `start`/`end` değeri zaten bu kuralların sonucudur.
+
+**Sessiz saatler (`quiet`).** Sunucunun push dağıtımı ve mobilin yerel bildirimi aynı kuralı uygular: aralığa düşen
+gönderim dakikaları atlanır (başlangıç dahil, bitiş hariç). Tek seferlik bir hatırlatıcının dakikası sessiz saate
+düşerse, pencere izin veriyorsa sessiz saatin bitişine ertelenir; sığmıyorsa o gün hiç gelmez. Bu kural
+`contract/reminder_slots.json` ile iki tarafta birden sınanır. `GET /today/plan` hatırlatıcıları sessiz saati
+**süzmeden** verir (ekran gerçek durumu gösterebilsin); süzme gönderim anında yapılır. Pencereler: sabah rutini uyanma + 0–2 sa; makyaj sorusu +2,5–3,5 sa; güneş kremi +3,5–8,5 sa;
 dudak balsamı +4,5–5,5 sa; su +1,5 sa ile uykudan 2 sa önce arası; akşam rutini ve makyaj temizliği uykudan
 2 sa önce–uyku; check-in uykudan 2 sa–30 dk önce; beslenme kaydı uykudan 3–2,5 sa önce.
 
@@ -255,12 +269,21 @@ POST /devices/register
 ```
 
 `utc_offset_minutes` zorunludur: hatırlatıcı saatleri yerel olduğu için sunucu cihazın
-saat dilimini bilmek zorundadır. Uygulama her açılışta bu ucu çağırmalı (kayıt `token`
+saat dilimini bilmek zorundadır. Uygulama açılışta, **saat farkı değişince** (yolculuk, yaz saati), **12 saatten uzun
+aradan sonra öne gelince** ve sunucu push'u şu an kullanılamıyorsa her öne gelişte bu ucu çağırır (kayıt `token`
 üzerinde upsert edilir ve `last_seen_at` güncellenir). Kullanıcı bildirimleri kapatırsa
 `push_enabled: false` gönderin veya `DELETE /devices/register?user_id=…&token=…` çağırın.
 
-Yanıttaki `push_configured`, sunucuda FCM yapılandırmasının açık olup olmadığını söyler;
-`false` ise bildirimler istemci tarafı yerel bildirim olarak kurulmalıdır.
+Yanıt: `{ "ok": true, "push_configured": true, "synced": true, "dispatch_alive": true }`.
+
+- `push_configured`: sunucuda FCM yapılandırması açık mı.
+- `dispatch_alive`: push dağıtıcısı son **20 dakika** içinde tur attı mı (`/health → push_dispatch.at` ile aynı kaynak;
+  API yeniden başlayınca ilk turdan sonra yeniden doğru olur). Dağıtıcı tek süreçte çalıştığı için bellekte tutulur.
+
+**Çift bildirim kuralı.** Mobil, hatırlatmaları sunucuya yalnızca `push_configured && synced && dispatch_alive`
+olduğunda bırakır; o zaman yerel bildirimleri siler. Biri eksikse (FCM kapalı, cron durmuş, API yeni açılmış) hatırlatmalar
+**yerel bildirimle** kurulur, böylece hiç hatırlatma kaybolmaz. Dağıtıcı sonradan dirilirse mobil bunu bir sonraki öne gelişte
+görüp yerel bildirimleri siler. `dispatch_alive` alanını bilmeyen eski sunucuda mobil `true` sayar (eski davranış).
 
 ### Sunucudan gönderim
 

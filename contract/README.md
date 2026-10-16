@@ -10,6 +10,7 @@ Bu klasördeki JSON dosyaları mobilin dayandığı uçların **gerçek yanıt �
 | `me_history.json` | `GET /me/history` |
 | `me_profile.json` | `GET /me/profile` |
 | `daily_tracking_ingest.json` | `POST /daily_tracking/ingest` |
+| `reminder_slots.json` | uç değil: gönderim yuvası kuralı (sessiz saat dahil); sunucudaki `_slots` ve mobildeki `reminderSlots` aynı girdiden aynı dakikaları üretmeli |
 
 - **Backend** (`backend/tests/test_contract.py`): gerçek yanıt fixture'daki her anahtarı aynı JSON türüyle taşımalı. Yeni alan eklemek serbest; mobilin okuduğu bir alanı silmek ya da türünü değiştirmek testi kırar.
 - **Mobil** (`mobile/test/contract_test.dart`): aynı dosyalar mobilin gerçek ayrıştırıcılarından geçer ve değerler tek tek doğrulanır (ayrıştırıcılar hoşgörülü olduğundan, alan adı değişirse ekran sessizce 0 göstermesin diye).

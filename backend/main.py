@@ -25,14 +25,17 @@ from today_plan import (
     EARLIEST_WAKE_MINUTES,
     LATEST_SLEEP_MINUTES,
     MIN_AWAKE_MINUTES,
+    MIN_WINDOW_MINUTES,
     WATER_INTERVAL_CHOICES,
     WATER_TARGET_CHOICES,
+    WINDOW_IDS,
     build_environment_advice,
     build_reminders,
     build_weather_decisions,
     day_span_is_valid,
     due_reminders,
     normalize_reminder_settings,
+    format_hhmm,
     parse_hhmm,
     reminder_windows,
 )
@@ -1194,6 +1197,11 @@ class ReminderSettingsUpdateRequest(BaseModel):
     water_every_minutes: Optional[int] = None
     water_target_ml: Optional[int] = None
     enabled: Optional[dict[str, bool]] = None
+    # Pencere düzenlemeleri: kimlik -> {start, end}; kimlik için null o hatırlatıcıyı varsayılana döndürür.
+    # `windows: null` hepsini sıfırlar. Alan hiç gönderilmezse dokunulmaz.
+    windows: Optional[dict[str, Optional[dict]]] = None
+    # Sessiz saatler {start, end}; `quiet: null` kapatır. Alan hiç gönderilmezse dokunulmaz.
+    quiet: Optional[dict] = None
 
 
 class ReminderSettingsResponse(BaseModel):
@@ -1244,6 +1252,9 @@ class DeviceRegisterResponse(BaseModel):
     ok: bool = True
     push_configured: bool
     synced: bool
+    # Sunucu push dağıtıcısı yakın zamanda çalıştı mı (son tur ≤ 20 dk). Mobil, push'a yalnızca dağıtıcı canlıysa güvenir;
+    # aksi hâlde hatırlatmalar yerel bildirimle kurulur (FCM açık ama push-cron çalışmıyorsa hiç hatırlatma gelmemesin).
+    dispatch_alive: bool = False
 
 
 class PushDispatchResponse(BaseModel):
@@ -1258,6 +1269,21 @@ class PushDispatchResponse(BaseModel):
 
 # Son dağıtım turunun özeti (bellekte): /health izleyicisi dağıtımın çalışıp çalışmadığını görsün.
 _PUSH_LAST_RUN: dict = {}
+
+# Dağıtıcı 5 dakikada bir çalışır; bu süreden eski son tur "çalışmıyor" sayılır. Özet bellekte tutulur
+# (API tek süreç: uvicorn varsayılanı); çok işçili çalıştırılırsa Redis'e taşınmalı.
+_PUSH_DISPATCH_ALIVE_MINUTES = 20
+
+
+def _dispatch_alive() -> bool:
+    """Push dağıtıcısı yakın zamanda tur attı mı? (Süreç yeniden başlayınca ilk turdan sonra yeniden doğru olur.)"""
+    try:
+        at = datetime.fromisoformat(str(_PUSH_LAST_RUN.get("at")))
+    except (TypeError, ValueError):
+        return False
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - at <= timedelta(minutes=_PUSH_DISPATCH_ALIVE_MINUTES)
 
 
 class UserSnapshotResponse(BaseModel):
@@ -1862,6 +1888,52 @@ async def me_reminder_settings_get(request: Request, user_id: str = Query(..., m
     )
 
 
+def _parse_range_or_422(raw, label: str) -> tuple[int, int]:
+    parsed = None
+    if isinstance(raw, dict):
+        start, end = parse_hhmm(raw.get("start")), parse_hhmm(raw.get("end"))
+        parsed = (start, end) if start is not None and end is not None else None
+    if parsed is None:
+        raise HTTPException(status_code=422, detail=f"{label}: başlangıç ve bitiş SS:DD biçiminde olmalı.")
+    return parsed
+
+
+def _merge_windows(current: dict, incoming: Optional[dict], merged: dict) -> dict:
+    """Pencere düzenlemelerini birleştirir; geçersiz kimlik/saat/çok kısa ya da gün dışı pencere 422 verir."""
+    if incoming is None:  # açıkça null: hepsini varsayılana döndür
+        return {}
+    wake, sleep = parse_hhmm(merged["wake_time"]), parse_hhmm(merged["sleep_time"])
+    result = {k: dict(v) for k, v in current.items()}
+    for reminder_id, custom in incoming.items():
+        if reminder_id not in WINDOW_IDS:
+            raise HTTPException(status_code=422, detail=f"Bilinmeyen hatırlatıcı: {reminder_id}")
+        if custom is None:
+            result.pop(reminder_id, None)
+            continue
+        start, end = _parse_range_or_422(custom, reminder_id)
+        if end - start < MIN_WINDOW_MINUTES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{reminder_id}: pencere en az {MIN_WINDOW_MINUTES} dakika olmalı ve bitiş başlangıçtan sonra gelmeli.",
+            )
+        if start < wake or end > sleep:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{reminder_id}: pencere uyanma ({merged['wake_time']}) ile uyku ({merged['sleep_time']}) saati arasında olmalı.",
+            )
+        result[reminder_id] = {"start": format_hhmm(start), "end": format_hhmm(end)}
+    return result
+
+
+def _validated_quiet(raw: Optional[dict]) -> Optional[dict]:
+    if raw is None:
+        return None
+    start, end = _parse_range_or_422(raw, "Sessiz saatler")
+    if start == end:
+        raise HTTPException(status_code=422, detail="Sessiz saatlerin başlangıcı ile bitişi aynı olamaz.")
+    return {"start": format_hhmm(start), "end": format_hhmm(end)}
+
+
 def _merge_reminder_settings(current: dict, req: ReminderSettingsUpdateRequest) -> dict:
     """Gönderilen alanları mevcut ayara işler; geçersiz değerde 422 verir."""
     merged = {**current, "enabled": {**current["enabled"]}}
@@ -1901,6 +1973,11 @@ def _merge_reminder_settings(current: dict, req: ReminderSettingsUpdateRequest) 
                 detail=f"Su hedefi şunlardan biri olmalı: {', '.join(str(v) for v in WATER_TARGET_CHOICES)} ml.",
             )
         merged["water_target_ml"] = req.water_target_ml
+
+    if "windows" in req.model_fields_set:
+        merged["windows"] = _merge_windows(current.get("windows") or {}, req.windows, merged)
+    if "quiet" in req.model_fields_set:
+        merged["quiet"] = _validated_quiet(req.quiet)
 
     if req.enabled is not None:
         unknown = sorted(set(req.enabled) - set(CATEGORY_NAMES))
@@ -2025,7 +2102,7 @@ async def device_register(request: Request, req: DeviceRegisterRequest):
     enforce_supabase_user(request, req.user_id)
     supabase = get_supabase()
     if not should_use_supabase_db(supabase, req.user_id):
-        return DeviceRegisterResponse(push_configured=push_configured(), synced=False)
+        return DeviceRegisterResponse(push_configured=push_configured(), synced=False, dispatch_alive=_dispatch_alive())
     try:
         supabase.table("device_tokens").upsert({
             "user_id": req.user_id,
@@ -2040,7 +2117,7 @@ async def device_register(request: Request, req: DeviceRegisterRequest):
     except Exception as e:
         log.error("Cihaz kaydı yazılamadı: %s", type(e).__name__)
         raise HTTPException(status_code=502, detail="Cihaz kaydı şu an yapılamadı.")
-    return DeviceRegisterResponse(push_configured=push_configured(), synced=True)
+    return DeviceRegisterResponse(push_configured=push_configured(), synced=True, dispatch_alive=_dispatch_alive())
 
 
 @app.delete(
@@ -2153,7 +2230,10 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
             products_out,
         )
         for reminder in due_reminders(
-            plan, local_now.strftime("%H:%M"), _PUSH_DISPATCH_TOLERANCE_MINUTES
+            plan,
+            local_now.strftime("%H:%M"),
+            _PUSH_DISPATCH_TOLERANCE_MINUTES,
+            quiet=(user_settings or {}).get("quiet"),
         ):
             if not _claim_push_slot(supabase, uid, reminder["id"], log_date, reminder["slot"]):
                 continue

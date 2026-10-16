@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rebi/core/reminder_schedule.dart';
 import 'package:rebi/core/reminder_settings.dart';
 import 'package:rebi/core/today_plan.dart';
 import 'package:rebi/core/user_history.dart';
@@ -53,6 +54,15 @@ void main() {
       expect(p.nutrition['junk_food'], isTrue);
       expect(p.finishedProducts, ['SPF 50 (geniş spektrumlu)']);
       expect(p.morningDone, isFalse);
+    });
+
+    test('kullanıcının kendi saat aralığı ve sessiz saatleri', () {
+      expect(plan.settings.windows.keys, ['routine_evening']);
+      expect(plan.settings.windows['routine_evening'], const ClockRange('21:30', '22:30'));
+      expect(plan.settings.quiet, const ClockRange('13:00', '14:00'));
+      final evening = plan.reminders.firstWhere((r) => r.id == 'routine_evening');
+      expect((evening.start, evening.end), ('21:30', '22:30'), reason: 'sunucu kendi penceresiyle üretti');
+      expect(reminderWindow('routine_evening', plan.settings), (start: '21:30', end: '22:30'));
     });
 
     test('kullanıcının hatırlatıcı ayarı', () {
@@ -156,9 +166,33 @@ void main() {
     });
   });
 
+  test('yuva kuralı: sunucudaki _slots ile mobildeki reminderSlots aynı girdiden aynı dakikaları üretir', () {
+    final cases = contract('reminder_slots')['cases'] as List;
+    expect(cases.length, greaterThanOrEqualTo(10));
+    for (final raw in cases) {
+      final c = raw as Map<String, dynamic>;
+      final reminder = (c['reminder'] as Map).cast<String, dynamic>();
+      final quiet = ClockRange.tryParse(c['quiet']);
+      final slots = reminderSlots(
+        Reminder(
+          id: 'x',
+          title: '',
+          body: '',
+          start: '${reminder['start']}',
+          end: '${reminder['end']}',
+          everyMinutes: reminder['every_minutes'] as int?,
+        ),
+        quiet: quiet,
+      );
+      expect(slots, (c['slots'] as List).cast<int>(), reason: '${c['name']}');
+    }
+  });
+
   test('GET /me/reminder-settings', () {
     final body = contract('reminder_settings');
     final settings = ReminderSettings.fromJson(body['settings']);
+    expect(settings.windows['routine_evening'], const ClockRange('21:30', '22:30'));
+    expect(settings.quiet, const ClockRange('13:00', '14:00'));
 
     expect(settings.wakeTime, '07:00');
     expect(settings.sleepTime, '23:00');

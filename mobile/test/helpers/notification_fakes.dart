@@ -20,6 +20,11 @@ class FakeReminderNotifier implements ReminderNotifier {
   String? launch;
   int permissionRequests = 0;
   int cancelCalls = 0;
+
+  /// Doluysa `replaceAll` bu kadar bildirimi kuramamış gibi davranır (sonda [ScheduleIncomplete] fırlatır).
+  int failOnReplace = 0;
+  final List<({String title, String body, Duration delay})> tests = [];
+  bool testSucceeds = true;
   final List<List<PlannedNotification>> replaced = [];
   final StreamController<String> _taps = StreamController<String>.broadcast();
   final StreamController<NotificationActionTap> _actions = StreamController<NotificationActionTap>.broadcast();
@@ -44,6 +49,17 @@ class FakeReminderNotifier implements ReminderNotifier {
   @override
   Future<void> replaceAll(List<PlannedNotification> items) async {
     replaced.add(items);
+    if (failOnReplace > 0) {
+      final failed = failOnReplace;
+      failOnReplace = 0;
+      throw ScheduleIncomplete(failed, items.length);
+    }
+  }
+
+  @override
+  Future<bool> scheduleTest({required String title, required String body, Duration delay = const Duration(minutes: 1)}) async {
+    tests.add((title: title, body: body, delay: delay));
+    return testSucceeds;
   }
 
   @override

@@ -11,16 +11,25 @@ import '../core/notification_ports.dart';
 import '../core/notification_prefs.dart';
 import '../core/reminder_schedule.dart';
 import '../core/reminder_text.dart';
+import '../core/silence_budget.dart';
 import '../core/today_plan.dart';
 import 'auth_controller.dart';
+
+/// Cihaz kaydı bu kadar süre yenilenmediyse uygulama öne gelince yenilenir (saat farkı, push durumu taze kalsın).
+const reRegisterAfter = Duration(hours: 12);
+
+/// "Test bildirimi" düğmesinin sonucu.
+enum TestNotificationResult { scheduled, blocked, unavailable }
 
 /// Hatırlatma bildirimleri (`docs/MOBIL-API.md` → "Bildirimler").
 ///
 /// İki yol vardır ve aynı anda çalışmaz (aynı hatırlatıcı iki kez gelmesin):
 /// - **Sunucu push'u:** cihaz FCM anahtarıyla `/devices/register`a kaydolur; sunucuda FCM açıksa
-///   (`push_configured`) hatırlatıcıları sunucu gönderir.
-/// - **Yerel bildirim:** sunucuda FCM yoksa (ya da Firebase bu derlemede kapalıysa) bugünün kalan
-///   hatırlatıcıları ve yarının koşulsuz olanları telefona kurulur. Plan her değiştiğinde yeniden kurulur.
+///   (`push_configured`) **ve** push dağıtıcısı yakın zamanda çalıştıysa (`dispatch_alive`) hatırlatıcıları
+///   sunucu gönderir.
+/// - **Yerel bildirim:** sunucuda FCM yoksa, dağıtıcı sustuysa ya da Firebase bu derlemede kapalıysa bugünün
+///   kalan hatırlatıcıları ve sonraki birkaç günün koşulsuz olanları telefona kurulur. Plan her değiştiğinde
+///   (iş kaydedilince, ayar değişince, uygulama öne gelince) yeniden kurulur.
 ///
 /// Bildirimler kullanıcı kendisi açana kadar kapalıdır.
 class NotificationsController extends ChangeNotifier {
@@ -31,9 +40,11 @@ class NotificationsController extends ChangeNotifier {
     Future<String?> Function()? appVersion,
     String Function()? platform,
     DateTime Function()? clock,
+    int Function()? utcOffsetMinutes,
   })  : _appVersion = appVersion ?? (() async => null),
         _platform = platform ?? (() => defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android'),
-        _clock = clock ?? DateTime.now {
+        _clock = clock ?? DateTime.now,
+        _utcOffsetOverride = utcOffsetMinutes {
     _auth.addListener(_onAuth);
     _subs.add(_notifier.taps.listen(_open));
     _subs.add(_notifier.actions.listen((tap) => unawaited(_onAction(tap))));
@@ -49,7 +60,15 @@ class NotificationsController extends ChangeNotifier {
   final Future<String?> Function() _appVersion;
   final String Function() _platform;
   final DateTime Function() _clock;
+  final int Function()? _utcOffsetOverride;
   final List<StreamSubscription<Object?>> _subs = [];
+  final StreamController<String> _recorded = StreamController<String>.broadcast();
+
+  /// Cihazın şu anki UTC farkı (dakika). Yolculukta ve yaz saati geçişinde değişir.
+  int get _utcOffset => _utcOffsetOverride?.call() ?? _clock().timeZoneOffset.inMinutes;
+
+  /// Bildirimdeki düğmeyle bir olay kaydedildi (olay tipi). Panel planını yeniden okur.
+  Stream<String> get recordedActions => _recorded.stream;
 
   /// Bildirime dokunulunca açılacak ekran; uygulama dinler, gidince null yapar.
   final ValueNotifier<String?> openRoute = ValueNotifier<String?>(null);
@@ -60,6 +79,12 @@ class NotificationsController extends ChangeNotifier {
   String? _lastSignature;
   Future<void> _serial = Future.value();
   bool _disposed = false;
+  DateTime? _registeredAt;
+  int? _registeredOffset;
+
+  /// Sunucuda FCM açık ama push dağıtıcısı çalışmıyor: hatırlatmalar yerelden kurulur, uygulama öne gelince
+  /// dağıtıcının dirilip dirilmediğine yeniden bakılır.
+  bool _pushIdle = false;
 
   /// Sunucu bu cihaza push gönderiyor: yerel bildirim kurulmaz.
   bool pushActive = false;
@@ -83,6 +108,9 @@ class NotificationsController extends ChangeNotifier {
     _token = null;
     _plan = null;
     _lastSignature = null;
+    _registeredAt = null;
+    _registeredOffset = null;
+    _pushIdle = false;
     pushActive = false;
     permissionBlocked = false;
     if (next == null) {
@@ -140,6 +168,54 @@ class NotificationsController extends ChangeNotifier {
     unawaited(_applySchedule());
   }
 
+  /// Uygulama öne geldi: izin geri alındı mı, saat dilimi değişti mi, sunucu push durumu ne, hangi bildirimler
+  /// kurulu? Telefon uyurken değişen her şey burada yakalanır; plan [syncReminders] ile tazelenir.
+  Future<void> onAppResumed() async {
+    final uid = _uid;
+    if (uid == null || !supported || _disposed) return;
+    if (enabled) await _recheckPermission();
+    if (_disposed || uid != _uid) return;
+    if (_push.available && notificationsEnabledFor(uid) != null && _needsRegistration()) {
+      await _register();
+    } else {
+      await _applySchedule();
+    }
+  }
+
+  bool _needsRegistration() {
+    final at = _registeredAt;
+    if (at == null || _registeredOffset != _utcOffset) return true;
+    return _pushIdle || _clock().difference(at) >= reRegisterAfter;
+  }
+
+  /// Sistem ayarlarından izin geri alındıysa (ya da geri verildiyse) durumu yansıtır.
+  Future<void> _recheckPermission() async {
+    final granted = await _notifier.hasPermission();
+    if (_disposed) return;
+    if (granted == !permissionBlocked) return;
+    permissionBlocked = !granted;
+    // İzin yokken kurulan liste boşa gider: geri gelince baştan kurulsun.
+    _lastSignature = null;
+    _notify();
+  }
+
+  /// "Test bildirimi": [ReminderNotifier.scheduleTest] ile 1 dakika sonra bir bildirim kurar. Uygulamayı kapatıp
+  /// beklemek, bu telefonun (pil tasarrufu dahil) bildirimleri gerçekten iletip iletmediğini gösterir.
+  Future<TestNotificationResult> sendTestNotification() async {
+    if (!supported) return TestNotificationResult.unavailable;
+    if (!await _notifier.hasPermission()) {
+      permissionBlocked = true;
+      _notify();
+      return TestNotificationResult.blocked;
+    }
+    final i18n = I18n.instance;
+    final ok = await _notifier.scheduleTest(
+      title: i18n.t('mobileNotifications.test.notificationTitle'),
+      body: i18n.t('mobileNotifications.test.notificationBody'),
+    );
+    return ok ? TestNotificationResult.scheduled : TestNotificationResult.unavailable;
+  }
+
   /// Çıkıştan hemen önce: yerel bildirimleri siler ve cihazı sunucudan kaldırır.
   /// Oturum kapanınca kimlik doğrulama gittiği için sonrasında yapılamaz.
   Future<void> prepareSignOut() async {
@@ -166,17 +242,26 @@ class NotificationsController extends ChangeNotifier {
       final token = await _push.token();
       if (token == null || _disposed || uid != _uid) return;
       _token = token;
+      final offset = _utcOffset;
       final registration = await registerDevice(
         userId: uid,
         token: token,
         platform: _platform(),
-        utcOffsetMinutes: _clock().timeZoneOffset.inMinutes,
+        utcOffsetMinutes: offset,
         pushEnabled: choice,
         locale: I18n.instance.lang,
         appVersion: await _appVersion(),
       );
       if (_disposed || uid != _uid) return;
-      pushActive = choice && registration != null && registration.pushConfigured && registration.synced;
+      final serverPush = choice && registration != null && registration.pushConfigured && registration.synced;
+      final alive = registration?.dispatchAlive ?? false;
+      // FCM açık olsa da dağıtıcı çalışmıyorsa kimse hatırlatma göndermez: yerel bildirime düşülür.
+      _pushIdle = serverPush && !alive;
+      pushActive = serverPush && alive;
+      if (registration != null) {
+        _registeredAt = _clock();
+        _registeredOffset = offset;
+      }
     } catch (_) {
       pushActive = false;
     }
@@ -198,9 +283,10 @@ class NotificationsController extends ChangeNotifier {
         final plan = _plan;
         if (plan == null) return;
         final i18n = I18n.instance;
+        final now = _clock();
         final items = planNotifications(
-          today: plan.reminders,
-          now: _clock(),
+          today: remindersFor(plan),
+          now: now,
           settings: plan.settings,
           userId: uid,
           textFor: (r) => r.title.isNotEmpty
@@ -215,6 +301,7 @@ class NotificationsController extends ChangeNotifier {
         if (signature == _lastSignature) return;
         if (!await _notifier.hasPermission()) {
           // Kullanıcı izni sistem ayarlarından geri almış.
+          _lastSignature = null;
           if (!permissionBlocked) {
             permissionBlocked = true;
             _notify();
@@ -225,8 +312,19 @@ class NotificationsController extends ChangeNotifier {
           permissionBlocked = false;
           _notify();
         }
-        _lastSignature = signature;
-        await _notifier.replaceAll(items);
+        try {
+          await _notifier.replaceAll(items);
+          _lastSignature = signature;
+        } on ScheduleIncomplete {
+          // Bazı bildirimler kurulamadı: aynı liste bir sonraki senkronda yeniden denensin.
+          _lastSignature = null;
+          return;
+        }
+        try {
+          await SilenceBudget.fromPlan(uid, plan, now).save();
+        } catch (_) {
+          /* özet yazılamadı: uygulama kapalıyken düğme basılınca kalan bildirimler susmaz, başka bir şey olmaz */
+        }
       });
 
   /// Zamanlama işleri sırayla çalışır: iki eşzamanlı "hepsini sil + kur" birbirini bozmasın.
@@ -244,7 +342,16 @@ class NotificationsController extends ChangeNotifier {
     final action = resolveNotificationAction(tap.reminderId, tap.actionId);
     final type = action?.type;
     if (action == null || type == null) return;
-    await ingestDailyTrackingEvent(uid, type, action.payload);
+    final result = await ingestDailyTrackingEvent(uid, type, action.payload);
+    if (_disposed || uid != _uid || result.skipped || !result.ok) return;
+    // Akıllı susma: yapılan iş hemen plana işlenir; hedefi dolan su / bitirilen rutin için kalan
+    // bildirimler geri alınır. Panel de planını yeniden okur ([recordedActions]).
+    final plan = _plan;
+    if (plan != null) {
+      _plan = plan.withProgress(plan.progress.withEvent(type, action.payload));
+      unawaited(_applySchedule());
+    }
+    if (!_recorded.isClosed) _recorded.add(type);
   }
 
   Future<void> _openFromLaunch() async {
@@ -271,6 +378,7 @@ class NotificationsController extends ChangeNotifier {
       s.cancel();
     }
     _auth.removeListener(_onAuth);
+    unawaited(_recorded.close());
     openRoute.dispose();
     super.dispose();
   }

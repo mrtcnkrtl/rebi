@@ -26,13 +26,19 @@ enum LogOutcome {
 /// Kayıtların hepsi [ingestDailyTrackingEvent] üzerinden geçer; sunucuya ulaşamayanlar
 /// [EventOutbox]ta bekler ve gösterilen ilerlemeye eklenir: ekran = sunucu durumu + bekleyenler.
 class TodayPlanController extends ChangeNotifier {
-  TodayPlanController({required this.userId, EventOutbox? outbox}) : _outbox = outbox ?? EventOutbox.instance {
+  TodayPlanController({required this.userId, EventOutbox? outbox, DateTime Function()? clock})
+      : _outbox = outbox ?? EventOutbox.instance,
+        _clock = clock ?? DateTime.now {
     _seenDeliveries = _outbox.deliveries;
     _outbox.addListener(_onOutbox);
   }
 
   final String userId;
   final EventOutbox _outbox;
+  final DateTime Function() _clock;
+
+  /// Planın en son başarıyla okunduğu an; uygulama uzun süre arka plandaysa bayatlığı buradan anlaşılır.
+  DateTime? _loadedAt;
 
   TodayPlan? _base;
   bool loading = false;
@@ -52,7 +58,7 @@ class TodayPlanController extends ChangeNotifier {
   TodayPlan? get plan {
     final base = _base;
     if (base == null) return null;
-    final today = DateTime.now();
+    final today = _clock();
     var progress = base.progress;
     var shelf = base.productsOut;
     for (final event in _outbox.pending(userId)) {
@@ -73,6 +79,15 @@ class TodayPlanController extends ChangeNotifier {
 
   Future<void> reload() => _fetch(showSpinner: false);
 
+  /// Uygulama öne geldiğinde: plan [maxAge]den eskiyse ya da gün değiştiyse (gece yarısı geçti: dünün planı,
+  /// dünün hatırlatıcıları) yeniden okur. Taze plana dokunmaz.
+  Future<void> reloadIfStale({Duration maxAge = const Duration(minutes: 10)}) {
+    final at = _loadedAt;
+    final now = _clock();
+    final stale = at == null || now.difference(at) >= maxAge || at.day != now.day || at.month != now.month;
+    return _base == null || !stale ? Future.value() : reload();
+  }
+
   Future<void> _fetch({required bool showSpinner}) async {
     final version = ++_version;
     if (showSpinner) {
@@ -92,6 +107,7 @@ class TodayPlanController extends ChangeNotifier {
     loading = false;
     if (next != null) {
       _base = next;
+      _loadedAt = _clock();
       failed = false;
     } else {
       failed = _base == null;
