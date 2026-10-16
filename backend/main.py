@@ -26,8 +26,10 @@ from today_plan import (
     LATEST_SLEEP_MINUTES,
     MIN_AWAKE_MINUTES,
     WATER_INTERVAL_CHOICES,
+    WATER_TARGET_CHOICES,
     build_environment_advice,
     build_reminders,
+    build_weather_decisions,
     day_span_is_valid,
     due_reminders,
     normalize_reminder_settings,
@@ -654,7 +656,10 @@ async def _chat_today_summary(supabase, user_id: str, utc_offset_minutes: Option
         today = str(_local_today(utc_offset_minutes))
         aggregated = _aggregate_daily_events(_load_daily_events(supabase, user_id, today))
         weather = aggregated.get("weather") or await _weather_from_profile(supabase, user_id)
-        return build_today_summary(aggregated, weather, _checkin_done_today(supabase, user_id, today))
+        settings = _load_reminder_settings(supabase, user_id)
+        return build_today_summary(
+            aggregated, weather, _checkin_done_today(supabase, user_id, today), settings["water_target_ml"]
+        )
     except Exception as e:
         log.error("Sohbet günlük özeti hazırlanamadı: %s", type(e).__name__)
         return ""
@@ -1140,6 +1145,7 @@ class ReminderSettingsUpdateRequest(BaseModel):
     wake_time: Optional[str] = None
     sleep_time: Optional[str] = None
     water_every_minutes: Optional[int] = None
+    water_target_ml: Optional[int] = None
     enabled: Optional[dict[str, bool]] = None
 
 
@@ -1233,6 +1239,8 @@ class TodayPlanResponse(BaseModel):
     weather: dict
     weather_source: Literal["live", "tracking", "profile", "default"]
     environment_advice: list[dict] = []
+    # Güneş kremi, nemlendirici ve dudak balsamı kararları (yapılandırılmış, istemci kendi dilinde yazar).
+    weather_decisions: dict = {}
     reminders: list[dict] = []
     reminder_settings: dict = {}
     progress: dict
@@ -1578,6 +1586,7 @@ async def today_plan_endpoint(
         weather=weather,
         weather_source=weather_source,
         environment_advice=build_environment_advice(weather, _profile_skin_type(supabase, user_id)),
+        weather_decisions=build_weather_decisions(weather, settings),
         reminders=build_reminders(weather, aggregated, checkin_done, settings),
         reminder_settings=settings,
         progress=aggregated,
@@ -1833,6 +1842,14 @@ def _merge_reminder_settings(current: dict, req: ReminderSettingsUpdateRequest) 
                 detail=f"Su aralığı şunlardan biri olmalı: {', '.join(str(v) for v in WATER_INTERVAL_CHOICES)} dakika.",
             )
         merged["water_every_minutes"] = req.water_every_minutes
+
+    if req.water_target_ml is not None:
+        if req.water_target_ml not in WATER_TARGET_CHOICES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Su hedefi şunlardan biri olmalı: {', '.join(str(v) for v in WATER_TARGET_CHOICES)} ml.",
+            )
+        merged["water_target_ml"] = req.water_target_ml
 
     if req.enabled is not None:
         unknown = sorted(set(req.enabled) - set(CATEGORY_NAMES))

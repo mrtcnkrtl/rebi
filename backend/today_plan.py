@@ -15,8 +15,9 @@ import re
 
 from flow_engine import SKIN_TYPE_PROFILES, compute_environment_branches
 
-# Günlük su hedefi (ml). Hatırlatıcı bu hedefe ulaşılınca susar.
+# Günlük su hedefi (ml). Hatırlatıcı bu hedefe ulaşılınca susar. Varsayılan; kullanıcı ayardan değiştirebilir.
 WATER_TARGET_ML = 2000
+WATER_TARGET_CHOICES = (1500, 1750, 2000, 2250, 2500, 3000)
 
 # Güneş kremi tazelemesi bu UV değerinden itibaren hatırlatılır.
 SPF_REFRESH_UV_THRESHOLD = 5
@@ -53,6 +54,7 @@ DEFAULT_REMINDER_SETTINGS: dict = {
     "wake_time": "07:30",
     "sleep_time": "23:00",
     "water_every_minutes": 120,
+    "water_target_ml": WATER_TARGET_ML,
     "enabled": {name: True for name in CATEGORY_NAMES},
 }
 
@@ -101,6 +103,10 @@ def normalize_reminder_settings(raw) -> dict:
     if isinstance(every, bool) or every not in WATER_INTERVAL_CHOICES:
         every = defaults["water_every_minutes"]
 
+    target = source.get("water_target_ml")
+    if isinstance(target, bool) or target not in WATER_TARGET_CHOICES:
+        target = defaults["water_target_ml"]
+
     stored_enabled = source.get("enabled") if isinstance(source.get("enabled"), dict) else {}
     enabled = {
         name: stored_enabled[name] if isinstance(stored_enabled.get(name), bool) else True
@@ -110,6 +116,7 @@ def normalize_reminder_settings(raw) -> dict:
         "wake_time": format_hhmm(wake),
         "sleep_time": format_hhmm(sleep),
         "water_every_minutes": every,
+        "water_target_ml": target,
         "enabled": enabled,
     }
 
@@ -192,6 +199,84 @@ def build_environment_advice(weather: dict, skin_type: str = "normal") -> list[d
     return items
 
 
+def _spf_label(uv: float) -> tuple[str, str]:
+    """(SPF değeri, seviye): `build_environment_advice` ile aynı eşikler."""
+    if uv >= 8:
+        return "50+", "extreme"
+    if uv >= 5:
+        return "50", "high"
+    if uv >= 3:
+        return "30+", "moderate"
+    return "30", "low"
+
+
+def build_weather_decisions(weather: dict, settings: dict | None = None) -> dict:
+    """
+    Bugünün havasına göre üç karar: güneş kremi, nemlendirici ve dudak balsamı.
+
+    Yapılandırılmış veri döner (metin yok): istemci cümleleri kendi dilinde kurar. `build_environment_advice`
+    ile aynı eşikleri kullanır; ayrıntılı ürün satırları orada, buradaki ise tek bakışta okunacak özet.
+    """
+    w = weather or {}
+    uv = float(w.get("uv_index", 3) or 0)
+    humidity = float(w.get("humidity", 50) or 0)
+    temperature = float(w.get("temperature", 20) or 0)
+
+    spf, level = _spf_label(uv)
+    window = w.get("uv_window") if isinstance(w.get("uv_window"), dict) else None
+    refresh = uv >= SPF_REFRESH_UV_THRESHOLD
+    spf_decision = {
+        "spf": spf,
+        "level": level,
+        "uv": int(uv),
+        "refresh": refresh,
+        "refresh_every_minutes": 120 if refresh else None,
+        "window": {"start": window["start"], "end": window["end"], "peak": window.get("peak")} if window else None,
+    }
+
+    # Nem ve sıcaklık: en baskın koşul tek bir tür olarak seçilir (öncelik sırası kuralın kendisidir).
+    if humidity < 25:
+        kind = "intense"
+    elif temperature < 5:
+        kind = "barrier"
+    elif humidity < 40:
+        kind = "boost"
+    elif humidity > 75:
+        kind = "light"
+    elif temperature > 35:
+        kind = "light_hot"
+    else:
+        kind = "standard"
+    moisture_decision = {
+        "kind": kind,
+        "humidity": int(humidity),
+        "temperature": int(temperature),
+        "night_mask": humidity < 25,
+    }
+
+    cold = temperature <= LIP_BALM_MAX_TEMPERATURE
+    dry = humidity < LIP_BALM_MAX_HUMIDITY
+    lip_decision = {
+        "needed": cold or dry,
+        "reason": "both" if cold and dry else ("cold" if cold else ("dry" if dry else None)),
+    }
+    return {"spf": spf_decision, "moisture": moisture_decision, "lip_balm": lip_decision}
+
+
+def _spf_window(weather: dict, wake: int, sleep: int) -> tuple[str, str] | None:
+    """Gerçek saatlik UV'ye göre güneş kremi tazeleme penceresi; veri yoksa ya da pencere sığmıyorsa None."""
+    window = (weather or {}).get("uv_window")
+    if not isinstance(window, dict):
+        return None
+    start, end = parse_hhmm(window.get("start")), parse_hhmm(window.get("end"))
+    if start is None or end is None:
+        return None
+    start, end = max(wake, start), min(sleep, end)
+    if end - start < 30:
+        return None
+    return format_hhmm(start), format_hhmm(end)
+
+
 def build_reminders(
     weather: dict,
     aggregated: dict,
@@ -214,10 +299,17 @@ def build_reminders(
     makeup = agg.get("makeup") or {}
     reminders: list[dict] = []
 
-    def add(reminder_id: str, title: str, body: str, log_event: str | None = None, every_minutes: int | None = None):
+    def add(
+        reminder_id: str,
+        title: str,
+        body: str,
+        log_event: str | None = None,
+        every_minutes: int | None = None,
+        window: tuple[str, str] | None = None,
+    ):
         if not enabled.get(REMINDER_CATEGORIES[reminder_id], True):
             return
-        start, end = windows[reminder_id]
+        start, end = window or windows[reminder_id]
         reminders.append(_reminder(reminder_id, title, body, start, end, log_event, every_minutes))
 
     if not agg.get("routine_morning_done"):
@@ -236,11 +328,12 @@ def build_reminders(
             log_event="makeup",
         )
 
-    if int(agg.get("water_ml_total") or 0) < WATER_TARGET_ML:
+    water_target = s["water_target_ml"]
+    if int(agg.get("water_ml_total") or 0) < water_target:
         add(
             "water_intake",
             "Su içme zamanı",
-            f"Günlük hedef {WATER_TARGET_ML} ml. İçtikçe kaydet.",
+            f"Günlük hedef {water_target} ml. İçtikçe kaydet.",
             log_event="water_intake",
             every_minutes=s["water_every_minutes"],
         )
@@ -252,6 +345,8 @@ def build_reminders(
             f"UV {int(uv)}. Dışarıdaysan 2 saatte bir tazele.",
             log_event="spf_refresh",
             every_minutes=120,
+            # Saatlik UV biliniyorsa yalnızca UV'nin gerçekten yüksek olduğu saatlerde hatırlat.
+            window=_spf_window(w, parse_hhmm(s["wake_time"]), parse_hhmm(s["sleep_time"])),
         )
 
     if temperature <= LIP_BALM_MAX_TEMPERATURE or humidity < LIP_BALM_MAX_HUMIDITY:

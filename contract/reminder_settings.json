@@ -4,6 +4,7 @@
     "wake_time": "07:00",
     "sleep_time": "23:00",
     "water_every_minutes": 90,
+    "water_target_ml": 2500,
     "enabled": {
       "routine": true,
       "water": true,

@@ -87,7 +87,10 @@ def _seed(monkeypatch) -> FakeSupabase:
             _event(today, "11:00", "nutrition", {"junk_food": True}),
             _event(today, "12:00", "spf_refresh", {}),
             _event(today, "12:30", "product_finished", {"product": "SPF 50 (geniş spektrumlu)", "step_order": 40}),
-            _event(today, "07:00", "weather", {"uv_index": 6, "humidity": 38, "temperature": 18, "description": "Açık"}),
+            _event(today, "07:00", "weather", {
+                "uv_index": 6, "humidity": 38, "temperature": 18, "description": "Açık",
+                "uv_window": {"start": "11:00", "end": "16:00", "peak": "13:00", "max": 6}, "uv_now": 2,
+            }),
         ],
         daily_logs=[{
             "user_id": USER_ID, "log_date": today, "applied_routine": True,
@@ -100,7 +103,7 @@ def _seed(monkeypatch) -> FakeSupabase:
         reminder_settings=[{
             "user_id": USER_ID,
             "settings": {
-                "wake_time": "07:00", "sleep_time": "23:00", "water_every_minutes": 90,
+                "wake_time": "07:00", "sleep_time": "23:00", "water_every_minutes": 90, "water_target_ml": 2500,
                 "enabled": {"nutrition": False},
             },
         }],

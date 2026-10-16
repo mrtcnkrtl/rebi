@@ -29,6 +29,7 @@ async def fetch_weather_live(lat: float, lon: float) -> dict | None:
             "longitude": lon,
             "current": "temperature_2m,relative_humidity_2m,weather_code",
             "daily": "uv_index_max",
+            "hourly": "uv_index",
             "timezone": "auto",
             "forecast_days": 1,
         }
@@ -46,6 +47,18 @@ async def fetch_weather_live(lat: float, lon: float) -> dict | None:
             "temperature": round(current.get("temperature_2m", 20)),
             "description": _weather_code_to_text(current.get("weather_code", 0)),
         }
+        # Saatlik UV (günün yüksek UV aralığı ve şu anki değer): kaynak vermezse alanlar hiç eklenmez.
+        try:
+            hourly = data.get("hourly", {})
+            window = uv_window(hourly.get("time"), hourly.get("uv_index"))
+            now_uv = uv_at(current.get("time"), hourly.get("time"), hourly.get("uv_index"))
+        except Exception as e:  # bozuk saatlik veri anlık hava bilgisini düşürmesin
+            log.warning("Saatlik UV okunamadı: %s", type(e).__name__)
+            window, now_uv = None, None
+        if window:
+            result["uv_window"] = window
+        if now_uv is not None:
+            result["uv_now"] = now_uv
         log.info("Open-Meteo OK: %s°C, UV %s, nem %%%s", result["temperature"], result["uv_index"], result["humidity"])
         return result
 
@@ -80,6 +93,52 @@ async def fetch_weather_live(lat: float, lon: float) -> dict | None:
             log.warning("OpenWeatherMap hatası: %s", e)
 
     log.warning("Tüm hava servisleri başarısız")
+    return None
+
+
+# Güneş kremi tazelemesinin gerektiği UV eşiği (`today_plan.SPF_REFRESH_UV_THRESHOLD` ile aynı).
+UV_WINDOW_THRESHOLD = 5
+
+
+def _hhmm(iso: str) -> str:
+    """`"2026-10-16T11:00"` → `"11:00"`."""
+    return str(iso).split("T", 1)[1][:5]
+
+
+def uv_window(times, values, threshold: float = UV_WINDOW_THRESHOLD) -> dict | None:
+    """
+    Günün yüksek UV aralığı: UV'nin eşiğe ulaştığı, en yüksek saati içeren kesintisiz saatler.
+    `{"start": "11:00", "end": "16:00", "peak": "13:00", "max": 6}`; gün boyu eşiğin altındaysa None.
+    Saatler konumun yerel duvar saatidir (hatırlatıcı saatleriyle aynı biçim); `end` son yüksek saatin sonudur.
+    """
+    if not times or not values or len(times) != len(values):
+        return None
+    uv = [float(v or 0) for v in values]
+    peak = max(range(len(uv)), key=lambda i: uv[i])
+    if uv[peak] < threshold:
+        return None
+    first = last = peak
+    while first > 0 and uv[first - 1] >= threshold:
+        first -= 1
+    while last < len(uv) - 1 and uv[last + 1] >= threshold:
+        last += 1
+    end_hour = (int(_hhmm(times[last])[:2]) + 1) % 24
+    return {
+        "start": _hhmm(times[first]),
+        "end": f"{end_hour:02d}:00" if end_hour else "23:59",
+        "peak": _hhmm(times[peak]),
+        "max": round(uv[peak]),
+    }
+
+
+def uv_at(current_time, times, values):
+    """`current_time` saatindeki UV (yuvarlak); veri yoksa None."""
+    if not current_time or not times or not values:
+        return None
+    hour = str(current_time).split("T", 1)[1][:2]
+    for t, v in zip(times, values):
+        if _hhmm(t)[:2] == hour:
+            return round(float(v or 0))
     return None
 
 

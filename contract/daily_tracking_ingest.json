@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "log_date": "2026-10-15",
+  "log_date": "2026-10-16",
   "aggregated": {
     "water_ml_total": 1000,
     "nutrition": {
@@ -14,7 +14,14 @@
       "uv_index": 6,
       "humidity": 38,
       "temperature": 18,
-      "description": "Açık"
+      "description": "Açık",
+      "uv_window": {
+        "start": "11:00",
+        "end": "16:00",
+        "peak": "13:00",
+        "max": 6
+      },
+      "uv_now": 2
     },
     "events_count": 10,
     "routine_steps_done": 2,
@@ -40,7 +47,7 @@
       {
         "product": "SPF 50 (geniş spektrumlu)",
         "step_order": 40,
-        "at": "2026-10-15T12:30:00+00:00"
+        "at": "2026-10-16T12:30:00+00:00"
       }
     ]
   }

@@ -77,14 +77,19 @@ def _makeup_part(makeup: dict | None) -> str | None:
     return "Makyaj: yaptı, henüz temizlemedi"
 
 
-def build_today_summary(aggregated: dict | None, weather: dict | None = None, checkin_done: bool = False) -> str:
+def build_today_summary(
+    aggregated: dict | None,
+    weather: dict | None = None,
+    checkin_done: bool = False,
+    water_target: int = WATER_TARGET_ML,
+) -> str:
     """Bugünün verisinden tek paragraflık özet. Veri yoksa boş metin."""
     agg = aggregated or {}
     parts: list[str | None] = [_weather_part(weather)]
 
     water = _number(agg.get("water_ml_total")) or 0
     if water > 0:
-        parts.append(f"Su: {water}/{WATER_TARGET_ML} ml")
+        parts.append(f"Su: {water}/{water_target} ml")
 
     spf = _number(agg.get("spf_refreshes")) or 0
     if spf > 0:

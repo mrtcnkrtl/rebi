@@ -187,3 +187,8 @@ def test_invalid_utc_offset_is_rejected(monkeypatch, client, headers, chat_stubs
 def test_summary_builder_is_async_safe_for_demo_users():
     demo = "00000000-0000-4000-8000-000000000001"
     assert asyncio.run(main._chat_today_summary(object(), demo, None)) == ""
+
+
+def test_summary_uses_the_users_own_water_target():
+    assert "Su: 750/2000 ml" in build_today_summary({"water_ml_total": 750})
+    assert "Su: 750/2500 ml" in build_today_summary({"water_ml_total": 750}, water_target=2500)

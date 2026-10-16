@@ -1,6 +1,6 @@
 {
   "user_id": "99999999-9999-4999-8999-999999999999",
-  "log_date": "2026-10-15",
+  "log_date": "2026-10-16",
   "has_routine": true,
   "routine": [
     {
@@ -40,7 +40,14 @@
     "uv_index": 6,
     "humidity": 38,
     "temperature": 18,
-    "description": "Açık"
+    "description": "Açık",
+    "uv_window": {
+      "start": "11:00",
+      "end": "16:00",
+      "peak": "13:00",
+      "max": 6
+    },
+    "uv_now": 2
   },
   "weather_source": "tracking",
   "environment_advice": [
@@ -62,6 +69,30 @@
       "priority": 2
     }
   ],
+  "weather_decisions": {
+    "spf": {
+      "spf": "50",
+      "level": "high",
+      "uv": 6,
+      "refresh": true,
+      "refresh_every_minutes": 120,
+      "window": {
+        "start": "11:00",
+        "end": "16:00",
+        "peak": "13:00"
+      }
+    },
+    "moisture": {
+      "kind": "boost",
+      "humidity": 38,
+      "temperature": 18,
+      "night_mask": false
+    },
+    "lip_balm": {
+      "needed": false,
+      "reason": null
+    }
+  },
   "reminders": [
     {
       "id": "routine_morning",
@@ -75,7 +106,7 @@
     {
       "id": "water_intake",
       "title": "Su içme zamanı",
-      "body": "Günlük hedef 2000 ml. İçtikçe kaydet.",
+      "body": "Günlük hedef 2500 ml. İçtikçe kaydet.",
       "start": "08:30",
       "end": "21:00",
       "every_minutes": 90,
@@ -85,8 +116,8 @@
       "id": "spf_refresh",
       "title": "Güneş kremini yenile",
       "body": "UV 6. Dışarıdaysan 2 saatte bir tazele.",
-      "start": "10:30",
-      "end": "15:30",
+      "start": "11:00",
+      "end": "16:00",
       "every_minutes": 120,
       "log_event": "spf_refresh"
     },
@@ -113,6 +144,7 @@
     "wake_time": "07:00",
     "sleep_time": "23:00",
     "water_every_minutes": 90,
+    "water_target_ml": 2500,
     "enabled": {
       "routine": true,
       "water": true,
@@ -136,7 +168,14 @@
       "uv_index": 6,
       "humidity": 38,
       "temperature": 18,
-      "description": "Açık"
+      "description": "Açık",
+      "uv_window": {
+        "start": "11:00",
+        "end": "16:00",
+        "peak": "13:00",
+        "max": 6
+      },
+      "uv_now": 2
     },
     "events_count": 9,
     "routine_steps_done": 2,
@@ -162,7 +201,7 @@
       {
         "product": "SPF 50 (geniş spektrumlu)",
         "step_order": 40,
-        "at": "2026-10-15T12:30:00+00:00"
+        "at": "2026-10-16T12:30:00+00:00"
       }
     ]
   },

@@ -89,6 +89,7 @@ def test_broken_settings_fall_back_to_defaults():
 
     assert broken["wake_time"] == "07:30", "geçersiz saat ikisini birden varsayılana döndürür"
     assert broken["water_every_minutes"] == 120
+    assert broken["water_target_ml"] == 2000
     assert broken["enabled"]["water"] is True
     assert broken["enabled"]["spf"] is False
     assert "uydurma" not in broken["enabled"]
@@ -187,6 +188,8 @@ def test_settings_are_saved_merged_and_read_back(monkeypatch, client, headers):
         {"wake_time": "03:00"},
         {"sleep_time": "05:00"},
         {"water_every_minutes": 45},
+        {"water_target_ml": 500},
+        {"water_target_ml": 2100},
         {"enabled": {"uydurma": True}},
     ],
 )
@@ -409,3 +412,54 @@ def test_offset_outside_the_valid_range_is_rejected(monkeypatch, client, headers
     r = client.get("/today/plan", params={"user_id": USER_ID, "utc_offset_minutes": 5000}, headers=headers)
 
     assert r.status_code == 422
+
+
+# ── Günlük su hedefi ─────────────────────────────────────────────────────────
+
+def _water(reminders):
+    return next((r for r in reminders if r["id"] == "water_intake"), None)
+
+
+def test_water_target_defaults_to_two_litres_and_survives_garbage():
+    assert normalize_reminder_settings(None)["water_target_ml"] == 2000
+    assert normalize_reminder_settings({"water_target_ml": 2500})["water_target_ml"] == 2500
+    for bad in (1234, "2500", None, True, -1):
+        assert normalize_reminder_settings({"water_target_ml": bad})["water_target_ml"] == 2000, bad
+
+
+def test_water_reminder_stops_at_the_users_own_target():
+    below_default = {"water_ml_total": 2200}
+
+    assert _water(build_reminders(CALM_WEATHER, below_default)) is None  # 2000 ml hedefi aşıldı
+    r = _water(build_reminders(CALM_WEATHER, below_default, settings={"water_target_ml": 2500}))
+    assert r is not None and "2500 ml" in r["body"]
+    assert _water(build_reminders(CALM_WEATHER, {"water_ml_total": 1600}, settings={"water_target_ml": 1500})) is None
+
+
+def test_water_target_is_saved_and_merged_like_other_fields(monkeypatch, client, headers):
+    _db(monkeypatch)
+
+    put = client.put("/me/reminder-settings", json={"user_id": USER_ID, "water_target_ml": 2500}, headers=headers)
+    again = client.put("/me/reminder-settings", json={"user_id": USER_ID, "wake_time": "06:30"}, headers=headers)
+    read = client.get("/me/reminder-settings", params={"user_id": USER_ID}, headers=headers)
+
+    assert put.status_code == 200, put.text
+    assert put.json()["settings"]["water_target_ml"] == 2500
+    assert again.json()["settings"]["water_target_ml"] == 2500, "başka alanı kaydetmek hedefi silmez"
+    assert read.json()["settings"]["water_target_ml"] == 2500
+
+
+def test_plan_returns_the_target_and_uses_it_for_the_water_reminder(monkeypatch, client, headers):
+    _db(
+        monkeypatch,
+        reminder_settings=[{"user_id": USER_ID, "settings": {"water_target_ml": 3000}}],
+        daily_events=[{
+            "user_id": USER_ID, "log_date": str(date.today()), "event_time": "2026-10-16T09:00:00+00:00",
+            "type": "water_intake", "payload": {"ml": 2400},
+        }],
+    )
+
+    body = client.get("/today/plan", params={"user_id": USER_ID}, headers=headers).json()
+
+    assert body["reminder_settings"]["water_target_ml"] == 3000
+    assert _water(body["reminders"]) is not None, "2400 ml, 3000 ml hedefinin altında: hatırlatıcı sürer"

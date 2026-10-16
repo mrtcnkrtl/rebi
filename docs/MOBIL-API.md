@@ -45,12 +45,21 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
   "log_date": "2026-10-04",
   "has_routine": true,
   "routine": [{ "time": "Sabah", "action": "Jel temizleyici", "detail": "…", "step_order": 10 }],
-  "weather": { "uv_index": 7, "humidity": 42, "temperature": 24 },
+  "weather": {
+    "uv_index": 7, "humidity": 42, "temperature": 24,
+    "uv_window": { "start": "11:00", "end": "16:00", "peak": "13:00", "max": 7 }, "uv_now": 4
+  },
   "weather_source": "live",
   "environment_advice": [
     { "time": "Sabah", "category": "Koruma", "icon": "☀️", "action": "SPF 50 (…)", "detail": "…", "priority": 1 }
   ],
-  "reminder_settings": { "wake_time": "07:30", "sleep_time": "23:00", "water_every_minutes": 120, "enabled": { "water": true } },
+  "weather_decisions": {
+    "spf": { "spf": "50", "level": "high", "uv": 7, "refresh": true, "refresh_every_minutes": 120,
+             "window": { "start": "11:00", "end": "16:00", "peak": "13:00" } },
+    "moisture": { "kind": "boost", "humidity": 38, "temperature": 18, "night_mask": false },
+    "lip_balm": { "needed": false, "reason": null }
+  },
+  "reminder_settings": { "wake_time": "07:30", "sleep_time": "23:00", "water_every_minutes": 120, "water_target_ml": 2000, "enabled": { "water": true } },
   "reminders": [
     {
       "id": "water_intake",
@@ -70,6 +79,20 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
   "checkin_done": false
 }
 ```
+
+**Hava ve kararlar.** `weather.uv_window` (saatlik UV biliniyorsa) UV'nin eşiğe (5) ulaştığı, en yüksek saati içeren
+kesintisiz aralıktır (konumun yerel duvar saati); `uv_now` o saatteki UV'dir. Alanlar yoksa kaynak saatlik veri vermemiştir.
+`weather_decisions` bugünün üç kararını **yapılandırılmış** verir (metin yok; istemci cümleleri kendi dilinde kurar):
+
+| karar | alanlar |
+| --- | --- |
+| `spf` | `spf` (`30`, `30+`, `50`, `50+`), `level` (`low`, `moderate`, `high`, `extreme`), `uv`, `refresh` (UV ≥ 5), `refresh_every_minutes`, `window` (UV aralığı ya da null) |
+| `moisture` | `kind` (`intense`, `barrier`, `boost`, `light`, `light_hot`, `standard`), `humidity`, `temperature`, `night_mask` |
+| `lip_balm` | `needed`, `reason` (`cold`, `dry`, `both` ya da null) |
+
+Nemlendirici türü öncelik sırasıyla seçilir: nem < %25 → `intense`; sıcaklık < 5 → `barrier`; nem < %40 → `boost`;
+nem > %75 → `light`; sıcaklık > 35 → `light_hot`; aksi `standard`. Eski sunucu bu alanı göndermez; istemci o zaman
+`environment_advice` listesini gösterir.
 
 `utc_offset_minutes` (−840…840) verilirse "bugün" kullanıcının yerel günüdür; verilmezse sunucu günü
 kullanılır. Mobil bunu her zaman göndermelidir: yoksa gece 00:00–03:00 (TR) arası bir önceki gün görünür.
@@ -91,7 +114,7 @@ uyku 23:00) sonucudur.
 
 - `GET /me/reminder-settings?user_id=…` — `{ "settings": {…}, "synced": true }`. Kayıt yoksa varsayılan döner.
 - `PUT /me/reminder-settings` — `{ "user_id": "…", "wake_time": "06:30", "sleep_time": "22:30",
-  "water_every_minutes": 90, "enabled": { "spf": false } }`; yalnızca gönderilen alanlar değişir
+  "water_every_minutes": 90, "water_target_ml": 2500, "enabled": { "spf": false } }`; yalnızca gönderilen alanlar değişir
   (`enabled` içinde yalnızca gönderilen kategoriler). Yanıt güncel ayardır.
 
 | alan | kural |
@@ -99,6 +122,7 @@ uyku 23:00) sonucudur.
 | `wake_time` | `SS:DD`, en erken 04:00 |
 | `sleep_time` | `SS:DD`, en geç 23:59; uyanmadan en az 9 saat sonra |
 | `water_every_minutes` | `60`, `90`, `120` ya da `180` |
+| `water_target_ml` | günlük su hedefi: `1500`, `1750`, `2000` (varsayılan), `2250`, `2500` ya da `3000` |
 | `enabled` | `routine`, `water`, `makeup`, `nutrition`, `spf`, `lip_balm`, `checkin` → `true`/`false` |
 
 Geçersiz değer 422 döner ve hiçbir şey kaydedilmez. Kapatılan kategorinin hatırlatıcıları ne plana ne
@@ -112,8 +136,8 @@ dudak balsamı +4,5–5,5 sa; su +1,5 sa ile uykudan 2 sa önce arası; akşam r
 | --- | --- | --- |
 | `routine_morning` | 07:30–09:30 | sabah rutini işaretlenmemişse |
 | `makeup_log` | 10:00–11:00 | bugün makyaj kaydı yoksa |
-| `water_intake` | 09:00–21:00, 120 dk | toplam < 2000 ml |
-| `spf_refresh` | 11:00–16:00, 120 dk | UV ≥ 5 ve günde 2'den az tazeleme |
+| `water_intake` | 09:00–21:00, 120 dk | toplam < kullanıcının su hedefi (`water_target_ml`, varsayılan 2000 ml) |
+| `spf_refresh` | 11:00–16:00, 120 dk (saatlik UV biliniyorsa `uv_window`; uyanma–uyku gününe kırpılır, 30 dk'dan kısaysa sabit pencere) | UV ≥ 5 ve günde 2'den az tazeleme |
 | `lip_balm` | 12:00–13:00 | sıcaklık ≤ 10 °C veya nem < %35 |
 | `nutrition_log` | 20:00–20:30 | beslenme kaydı yoksa |
 | `makeup_removal` | 21:00–23:00 | makyaj yapıldı ve temizlenmedi |
