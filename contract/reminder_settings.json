@@ -12,7 +12,8 @@
       "nutrition": false,
       "spf": true,
       "lip_balm": true,
-      "checkin": true
+      "checkin": true,
+      "restock": true
     }
   },
   "synced": true

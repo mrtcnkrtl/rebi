@@ -14,6 +14,7 @@ from __future__ import annotations
 import re
 
 from flow_engine import SKIN_TYPE_PROFILES, compute_environment_branches
+from shelf import restock_due
 
 # Günlük su hedefi (ml). Hatırlatıcı bu hedefe ulaşılınca susar. Varsayılan; kullanıcı ayardan değiştirebilir.
 WATER_TARGET_ML = 2000
@@ -40,6 +41,7 @@ REMINDER_CATEGORIES: dict[str, str] = {
     "spf_refresh": "spf",
     "lip_balm": "lip_balm",
     "daily_checkin": "checkin",
+    "restock_check": "restock",
 }
 CATEGORY_NAMES = tuple(dict.fromkeys(REMINDER_CATEGORIES.values()))
 
@@ -132,6 +134,8 @@ _WINDOW_OFFSETS: dict[str, tuple[str, int, int]] = {
     "makeup_removal": ("sleep", -120, 0),
     "nutrition_log": ("sleep", -180, -150),
     "daily_checkin": ("sleep", -120, -30),
+    # Akşamın erken saati (varsayılan düzende 18:00–19:00): yenisini almak için makul bir an.
+    "restock_check": ("sleep", -300, -240),
 }
 
 
@@ -282,6 +286,7 @@ def build_reminders(
     aggregated: dict,
     checkin_done: bool = False,
     settings: dict | None = None,
+    products_out: list[dict] | None = None,
 ) -> list[dict]:
     """
     Bugün için saat aralıklı hatırlatıcılar; yapılan işler listeden düşer.
@@ -378,6 +383,17 @@ def build_reminders(
             "Akşam rutini",
             "Akşam adımlarını uygula ve bitince işaretle.",
             log_event="routine_completed_block",
+        )
+
+    # Ürün bittikten tam 3 gün sonra tek seferlik: "yenisini aldın mı?" (her gün tekrarlamaz).
+    due = restock_due(products_out)
+    if due:
+        first = due[0]["product"]
+        more = f" ve {len(due) - 1} ürün daha" if len(due) > 1 else ""
+        add(
+            "restock_check",
+            "Yenisini aldın mı?",
+            f"{first}{more} birkaç gün önce bitti. Aldıysan Rafım'dan işaretle.",
         )
 
     if not checkin_done:

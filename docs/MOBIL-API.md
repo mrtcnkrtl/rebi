@@ -59,6 +59,9 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
     "moisture": { "kind": "boost", "humidity": 38, "temperature": 18, "night_mask": false },
     "lip_balm": { "needed": false, "reason": null }
   },
+  "products_out": [
+    { "product": "SPF 50", "step_order": 40, "finished_at": "2026-10-13T10:00:00+00:00", "log_date": "2026-10-13", "days_out": 3 }
+  ],
   "reminder_settings": { "wake_time": "07:30", "sleep_time": "23:00", "water_every_minutes": 120, "water_target_ml": 2000, "enabled": { "water": true } },
   "reminders": [
     {
@@ -123,12 +126,23 @@ uyku 23:00) sonucudur.
 | `sleep_time` | `SS:DD`, en geç 23:59; uyanmadan en az 9 saat sonra |
 | `water_every_minutes` | `60`, `90`, `120` ya da `180` |
 | `water_target_ml` | günlük su hedefi: `1500`, `1750`, `2000` (varsayılan), `2250`, `2500` ya da `3000` |
-| `enabled` | `routine`, `water`, `makeup`, `nutrition`, `spf`, `lip_balm`, `checkin` → `true`/`false` |
+| `enabled` | `routine`, `water`, `makeup`, `nutrition`, `spf`, `lip_balm`, `checkin`, `restock` → `true`/`false` |
 
 Geçersiz değer 422 döner ve hiçbir şey kaydedilmez. Kapatılan kategorinin hatırlatıcıları ne plana ne
 push'a girer. Pencereler: sabah rutini uyanma + 0–2 sa; makyaj sorusu +2,5–3,5 sa; güneş kremi +3,5–8,5 sa;
 dudak balsamı +4,5–5,5 sa; su +1,5 sa ile uykudan 2 sa önce arası; akşam rutini ve makyaj temizliği uykudan
 2 sa önce–uyku; check-in uykudan 2 sa–30 dk önce; beslenme kaydı uykudan 3–2,5 sa önce.
+
+### Rafım (biten ürünler)
+
+Durum ayrı bir tabloda tutulmaz; kullanıcının son bir yıllık `product_finished` / `product_restocked` olaylarından türetilir:
+bir ürünün **son olayı** "bitti" ise rafta bitmiştir, "aldım" ise değildir. Ürünler ad eşleşmesiyle (büyük/küçük harf ve fazla boşluk
+fark yaratmaz, ilk 120 karakter) bir sayılır. Bu yüzden web/mobil, çevrimdışı kuyruk ve geri alma aynı kuralla çalışır; eski
+`product_finished` kayıtları da doğrudan Rafım'a yansır. `/today/plan` → `products_out`: en son biten başta, en çok 50 kayıt,
+`days_out` kullanıcının yerel gününe göre geçen gündür (bugün 0). Gün sınırı yoktur; dün biten ürün bugün de listededir.
+
+Hatırlatma: ürün bittikten tam 3 gün sonra, yenisi hâlâ alınmadıysa `restock_check` (tek seferlik). Aynı gün birden çok ürün
+varsa ilk ürün adıyla ve "+N ürün daha" ile tek bildirim gider. Push dağıtımı Rafım'ı yalnızca bu pencere açıkken sorgular.
 
 ### Hatırlatıcı kimlikleri
 
@@ -143,6 +157,7 @@ dudak balsamı +4,5–5,5 sa; su +1,5 sa ile uykudan 2 sa önce arası; akşam r
 | `makeup_removal` | 21:00–23:00 | makyaj yapıldı ve temizlenmedi |
 | `routine_evening` | 21:00–23:00 | akşam rutini işaretlenmemişse |
 | `daily_checkin` | 21:00–22:30 | bugün check-in yapılmadıysa |
+| `restock_check` | 18:00–19:00 (uykudan 5–4 sa önce) | bir ürün **tam 3 gün önce** bittiyse ve yenisi alınmadıysa; yalnızca o gün (her gün tekrarlamaz). Kategori: `restock` |
 
 ### `GET /routine/active?user_id=...`
 
@@ -175,7 +190,8 @@ Olay tipleri ve yükleri:
 | `water_intake` | `{ "ml": 250 }` | gün toplamına eklenir. Negatif değer (`-250`) yanlış girişi düzeltir; toplam 0'ın altına inmez, tek kayıt en çok ±5000 ml |
 | `nutrition` | `{ "junk_food": true, "snacks": true, "sweets": false, "fried_food": false, "dairy": false, "balanced": false }` | alanlar gün içinde birleştirilir, her alan için son değer geçerlidir. `junk_food` bütün abur cubur seçeneklerinin özetidir |
 | `makeup` | `{ "used": true }` / `{ "removed": true, "method": "double" }` | `method`: `double`, `cleanser`, `water`, `wipe`, `none` |
-| `product_finished` | `{ "product": "SPF 50", "step_order": 40 }` | "ürün bitti" butonu; günde en fazla 20 kayıt |
+| `product_finished` | `{ "product": "SPF 50", "step_order": 40 }` | "ürün bitti" butonu; günde en fazla 20 kayıt; ürün Rafım'a girer |
+| `product_restocked` | `{ "product": "SPF 50", "step_order": 40 }` | "Aldım": ürün Rafım'dan çıkar |
 | `routine_completed_block` | `{ "morning": true }` / `{ "evening": true }` | "yaptım" butonu. `false` bloğu yeniden açar (son olay geçerli) |
 | `routine_step` | `{ "done": true, "block": "morning", "step_order": 20 }` | adım adım işaretleme; `block`: `morning` / `evening`. Aynı adım için son olay geçerlidir, `done: false` işareti kaldırır. `progress.routine_steps` işaretli adımları döndürür |
 | `spf_refresh` | `{}` | güneş kremi tazelendi |

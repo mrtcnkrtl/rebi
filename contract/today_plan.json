@@ -93,6 +93,15 @@
       "reason": null
     }
   },
+  "products_out": [
+    {
+      "product": "SPF 50 (geniş spektrumlu)",
+      "step_order": 40,
+      "finished_at": "2026-10-16T12:30:00+00:00",
+      "log_date": "2026-10-16",
+      "days_out": 0
+    }
+  ],
   "reminders": [
     {
       "id": "routine_morning",
@@ -152,7 +161,8 @@
       "nutrition": false,
       "spf": true,
       "lip_balm": true,
-      "checkin": true
+      "checkin": true,
+      "restock": true
     }
   },
   "progress": {

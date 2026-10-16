@@ -82,6 +82,7 @@ def build_today_summary(
     weather: dict | None = None,
     checkin_done: bool = False,
     water_target: int = WATER_TARGET_ML,
+    products_out: list[dict] | None = None,
 ) -> str:
     """Bugünün verisinden tek paragraflık özet. Veri yoksa boş metin."""
     agg = aggregated or {}
@@ -90,6 +91,11 @@ def build_today_summary(
     water = _number(agg.get("water_ml_total")) or 0
     if water > 0:
         parts.append(f"Su: {water}/{water_target} ml")
+
+    out_names = [str(p.get("product")) for p in products_out or [] if p.get("product")]
+    if out_names:
+        shown = ", ".join(out_names[:5]) + (f" (+{len(out_names) - 5})" if len(out_names) > 5 else "")
+        parts.append(f"Biten ürünleri (yenisi alınmadı): {shown}")
 
     spf = _number(agg.get("spf_refreshes")) or 0
     if spf > 0:

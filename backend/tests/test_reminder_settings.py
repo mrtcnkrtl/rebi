@@ -56,6 +56,7 @@ def test_default_settings_reproduce_the_original_fixed_windows():
         "routine_evening": ("21:00", "23:00"),
         "makeup_removal": ("21:00", "23:00"),
         "daily_checkin": ("21:00", "22:30"),
+        "restock_check": ("18:00", "19:00"),
     }
 
 

@@ -34,9 +34,11 @@ from today_plan import (
     due_reminders,
     normalize_reminder_settings,
     parse_hhmm,
+    reminder_windows,
 )
 from push_service import push_configured, send_push
 from chat_context import build_today_summary
+from shelf import SHELF_EVENT_TYPES, SHELF_LOOKBACK_DAYS, derive_products_out
 from flow_engine import (
     run_flow,
     adapt_existing_routine,
@@ -455,6 +457,46 @@ def _load_daily_events(supabase, user_id: str, log_date: str) -> list[dict]:
     return _MEM_DAILY_EVENTS.get((user_id, log_date), [])
 
 
+def _load_shelf_events(supabase, user_id: str, today: date) -> list[dict]:
+    """Rafım için kullanıcının son bir yıllık ürün olayları (eskiden yeniye)."""
+    since = str(today - timedelta(days=SHELF_LOOKBACK_DAYS))
+    if should_use_supabase_db(supabase, user_id):
+        try:
+            r = (
+                supabase.table("daily_events")
+                .select("event_time,log_date,type,payload")
+                .eq("user_id", user_id)
+                .in_("type", list(SHELF_EVENT_TYPES))
+                .gte("log_date", since)
+                .order("event_time", desc=False)
+                .execute()
+            )
+            return r.data or []
+        except Exception as e:
+            log.error("Rafım olayları okunamadı (bellek yedeği): %s", type(e).__name__)
+    rows = [
+        {**event, "log_date": day}
+        for (uid, day), events in _MEM_DAILY_EVENTS.items()
+        if uid == user_id and day >= since
+        for event in events
+        if event.get("type") in SHELF_EVENT_TYPES
+    ]
+    return sorted(rows, key=lambda e: str(e.get("event_time") or ""))
+
+
+def _products_out(supabase, user_id: str, today: date) -> list[dict]:
+    """Bitti işaretlenip henüz yenisi alınmamış ürünler (en son biten üstte)."""
+    return derive_products_out(_load_shelf_events(supabase, user_id, today), today)
+
+
+def _restock_window_open(settings: dict, local_now: datetime) -> bool:
+    """Push dağıtımında Rafım sorgusu yalnızca "yenisini aldın mı" penceresi açıkken yapılır."""
+    start, end = reminder_windows(settings).get("restock_check", ("", ""))
+    now = local_now.hour * 60 + local_now.minute
+    a, b = parse_hhmm(start), parse_hhmm(end)
+    return a is not None and b is not None and a <= now <= b + _PUSH_DISPATCH_TOLERANCE_MINUTES
+
+
 def _load_active_routine(supabase, user_id: str) -> dict:
     """Yürürlükteki rutin satırı; yoksa boş sözlük."""
     if not should_use_supabase_db(supabase, user_id):
@@ -658,7 +700,11 @@ async def _chat_today_summary(supabase, user_id: str, utc_offset_minutes: Option
         weather = aggregated.get("weather") or await _weather_from_profile(supabase, user_id)
         settings = _load_reminder_settings(supabase, user_id)
         return build_today_summary(
-            aggregated, weather, _checkin_done_today(supabase, user_id, today), settings["water_target_ml"]
+            aggregated,
+            weather,
+            _checkin_done_today(supabase, user_id, today),
+            settings["water_target_ml"],
+            _products_out(supabase, user_id, date.fromisoformat(today)),
         )
     except Exception as e:
         log.error("Sohbet günlük özeti hazırlanamadı: %s", type(e).__name__)
@@ -1058,6 +1104,7 @@ DailyTrackingClientEventType = Literal[
     "checkin_feedback",
     "makeup",
     "product_finished",
+    "product_restocked",
 ]
 
 
@@ -1241,6 +1288,8 @@ class TodayPlanResponse(BaseModel):
     environment_advice: list[dict] = []
     # Güneş kremi, nemlendirici ve dudak balsamı kararları (yapılandırılmış, istemci kendi dilinde yazar).
     weather_decisions: dict = {}
+    # Rafım: bitti işaretlenip yenisi alınmamış ürünler (gün sınırı yok).
+    products_out: list[dict] = []
     reminders: list[dict] = []
     reminder_settings: dict = {}
     progress: dict
@@ -1577,6 +1626,7 @@ async def today_plan_endpoint(
     row = _load_active_routine(supabase, user_id)
     routine = row.get("active_routine") or []
     checkin_done = _checkin_done_today(supabase, user_id, today)
+    products_out = _products_out(supabase, user_id, date.fromisoformat(today))
 
     return TodayPlanResponse(
         user_id=user_id,
@@ -1587,7 +1637,8 @@ async def today_plan_endpoint(
         weather_source=weather_source,
         environment_advice=build_environment_advice(weather, _profile_skin_type(supabase, user_id)),
         weather_decisions=build_weather_decisions(weather, settings),
-        reminders=build_reminders(weather, aggregated, checkin_done, settings),
+        products_out=products_out,
+        reminders=build_reminders(weather, aggregated, checkin_done, settings, products_out),
         reminder_settings=settings,
         progress=aggregated,
         checkin_done=checkin_done,
@@ -2088,11 +2139,18 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
         # için sağlayıcıya yalnızca gün ortası penceresinde başvurulur.
         if not weather and _PUSH_WEATHER_HOURS[0] <= local_now.hour <= _PUSH_WEATHER_HOURS[1]:
             weather = await _weather_from_profile(supabase, uid)
+        user_settings = settings_by_user.get(uid)
+        products_out = (
+            _products_out(supabase, uid, local_now.date())
+            if user_settings and _restock_window_open(user_settings, local_now)
+            else None
+        )
         plan = build_reminders(
             weather or dict(WEATHER_FALLBACK),
             aggregated,
             _checkin_done_today(supabase, uid, log_date),
-            settings_by_user.get(uid),
+            user_settings,
+            products_out,
         )
         for reminder in due_reminders(
             plan, local_now.strftime("%H:%M"), _PUSH_DISPATCH_TOLERANCE_MINUTES
