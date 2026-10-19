@@ -455,7 +455,12 @@
       "junk": "Junk food eaten",
       "junkValue": "{{n}} days",
       "up": "increased",
-      "down": "decreased"
+      "down": "decreased",
+      "waterGoal": "Water goal",
+      "waterGoalValue": "{{n}}/7 days ({{ml}} ml)",
+      "makeup": "Makeup",
+      "makeupValue": "{{n}} days · removed on {{removed}}",
+      "makeupValueAllRemoved": "{{n}} days · always removed"
     }
   },
   "mobileReminders": {
@@ -640,14 +645,61 @@
       "titleMonth": "You've used this month's chats",
       "bodyDay": "Your allowance renews tomorrow. You can keep using your routine, tracking and check-in today.",
       "bodyMonth": "Your allowance renews at the start of the month. Until then you can keep using your routine, tracking and check-in.",
-      "close": "OK"
+      "close": "OK",
+      "signIn": "Sign in",
+      "plusOpen": "Open Rebi Plus",
+      "plusSwitch": "Go Plus",
+      "notNow": "Close for now",
+      "bulletData": "More consistent advice from your tracking and check-ins",
+      "bulletThemes": "Premium themes and new features",
+      "signInNote": "You'll need an account to use the routine side anyway."
+    },
+    "contextLabel": "Rebi knows your day",
+    "context": {
+      "weather": "UV {{uv}} · {{temp}}°C",
+      "routine": "Routine {{done}}/{{total}}",
+      "routineDone": "Routine done",
+      "water": "Water {{ml}}/{{target}} ml",
+      "makeupPending": "Makeup not removed",
+      "makeupDone": "Makeup removed",
+      "shelf": "{{n}} finished"
+    },
+    "retry": "Try again",
+    "error": {
+      "offline": "Couldn't connect. Check your internet and try again.",
+      "server": "The server isn't responding right now. Try again in a moment.",
+      "auth": "Your session may have expired. Try signing out and back in.",
+      "generic": "Couldn't get a reply. Want to try again?"
     }
   },
   "mobileCheckin": {
     "prefilled": "{{n}} answers were filled in from today's tracking. Change them if you like."
   },
   "mobileSubscribe": {
-    "unavailable": "Rebi Plus can't be purchased in the app right now. It will show up here once it's active on your account."
+    "unavailable": "Rebi Plus can't be purchased in the app right now. It will show up here once it's active on your account.",
+    "active": "Plus is active",
+    "activeBody": "Rebi Plus shows on your account. Thank you.",
+    "included": "What's included?",
+    "open": "Open Plus",
+    "backToChat": "Back to chat",
+    "benefits": {
+      "chat": {
+        "title": "Unlimited Rebi AI",
+        "body": "The daily free message limit goes away; the conversation never stops."
+      },
+      "themes": {
+        "title": "Premium themes",
+        "body": "Distinctive accent colors: Sunset, Deep Water, Night."
+      },
+      "early": {
+        "title": "Early access",
+        "body": "New features reach Plus first; you try them before anyone."
+      },
+      "tracking": {
+        "title": "Deeper tracking",
+        "body": "The check-in flow works harder and adapts your routine better."
+      }
+    }
   },
   "mobileLanding": {
     "chipUv": "UV 6",
@@ -692,5 +744,32 @@
     "loadFailed": "Couldn't load your shelf. Check your connection.",
     "retry": "Try again",
     "pending": "{{count}} entries waiting to be sent"
+  },
+  "mobileRoutine": {
+    "askRebi": "Ask Rebi",
+    "askPrompt": "Why am I using \"{{item}}\" in my routine and how should I apply it? Can you also suggest alternatives that suit my skin?",
+    "comboHint": "You don't need everything in one product: treat this line as example target ingredients; if you can't find them all together, pick one of the similar ones.",
+    "stepCount": "{{n}} steps",
+    "humidity": "humidity {{value}}%",
+    "weeklyDays": "Use this on: {{days}}",
+    "everyDayCount": "{{n}} tips",
+    "ingredientCount": "{{n}} ingredients",
+    "progressPhoto": "Progress tracking",
+    "tips": {
+      "water": {
+        "title": "Water",
+        "body": "Drink at least 2 L a day. It directly affects your skin's hydration."
+      },
+      "sleep": {
+        "title": "Sleep",
+        "body": "Aim for 7–8 hours. Your skin repairs itself at night."
+      }
+    }
+  },
+  "mobileLocation": {
+    "promptTitle": "Show the weather for where you are",
+    "promptBody": "Sunscreen, moisturizer and lip balm advice follows the real weather at your location. Your location is only used approximately (~1 km).",
+    "promptEnable": "Turn on location",
+    "promptLater": "Not now"
   }
 }

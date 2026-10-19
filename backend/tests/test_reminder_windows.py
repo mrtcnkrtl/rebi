@@ -422,3 +422,36 @@ def test_a_dispatch_round_makes_the_dispatcher_count_as_alive(monkeypatch, clien
         assert _register(client, headers).json()["dispatch_alive"] is True
     finally:
         main._PUSH_LAST_RUN.clear()
+
+
+# ── Geçmiş: kullanıcının su hedefi ──────────────────────────────────────────
+
+def test_history_reports_the_users_water_target(monkeypatch, client, headers):
+    _db(monkeypatch, reminder_settings=[{"user_id": USER_ID, "settings": {"water_target_ml": 2500}}])
+
+    r = client.get("/me/history", params={"user_id": USER_ID, "days": 7}, headers=headers)
+
+    assert r.status_code == 200, r.text
+    assert r.json()["water_target_ml"] == 2500
+
+
+def test_history_water_target_defaults_to_two_litres(monkeypatch, client, headers):
+    _db(monkeypatch)
+
+    r = client.get("/me/history", params={"user_id": USER_ID, "days": 7}, headers=headers)
+
+    assert r.json()["water_target_ml"] == 2000
+
+
+def test_history_still_loads_when_settings_are_unreadable(monkeypatch, client, headers):
+    db = _db(monkeypatch)
+
+    def broken(*_a, **_k):
+        raise RuntimeError("settings down")
+
+    monkeypatch.setattr(main, "_load_reminder_settings", broken)
+    r = client.get("/me/history", params={"user_id": USER_ID, "days": 7}, headers=headers)
+
+    assert r.status_code == 200, r.text
+    assert r.json()["water_target_ml"] == 2000
+    assert db is not None

@@ -35,3 +35,66 @@ set deviceLocationLookup(LocationLookup lookup) => _lookup = lookup;
 
 @visibleForTesting
 void resetDeviceLocationLookup() => _lookup = _lookupGrantedLocation;
+
+/// Konum izninin şu anki durumu (sormadan okunur).
+enum LocationAccess {
+  /// İzin verilmiş.
+  granted,
+
+  /// Henüz sorulmamış ya da bir kez reddedilmiş: sistem penceresi yine açılabilir.
+  askable,
+
+  /// Kalıcı reddedilmiş (telefon ayarlarından açılır).
+  blocked,
+
+  /// Cihazın konum servisi kapalı ya da okunamadı.
+  off,
+}
+
+Future<LocationAccess> _readAccess() async {
+  try {
+    if (!await Geolocator.isLocationServiceEnabled()) return LocationAccess.off;
+    return switch (await Geolocator.checkPermission()) {
+      LocationPermission.whileInUse || LocationPermission.always => LocationAccess.granted,
+      LocationPermission.deniedForever => LocationAccess.blocked,
+      _ => LocationAccess.askable,
+    };
+  } catch (_) {
+    return LocationAccess.off;
+  }
+}
+
+Future<LocationAccess> _askAccess() async {
+  try {
+    final permission = await Geolocator.requestPermission();
+    return switch (permission) {
+      LocationPermission.whileInUse || LocationPermission.always => LocationAccess.granted,
+      LocationPermission.deniedForever => LocationAccess.blocked,
+      _ => LocationAccess.askable,
+    };
+  } catch (_) {
+    return LocationAccess.off;
+  }
+}
+
+Future<LocationAccess> Function() _access = _readAccess;
+Future<LocationAccess> Function() _request = _askAccess;
+
+/// Konum izni durumu; **sorulmaz**.
+Future<LocationAccess> locationAccess() => _access();
+
+/// Sistem konum izni penceresini açar (kullanıcı "Konumu aç" dediğinde).
+Future<LocationAccess> requestLocationAccess() => _request();
+
+/// Testlerde gerçek konum eklentisi yerine sabit durum vermek için.
+@visibleForTesting
+void setLocationAccess({Future<LocationAccess> Function()? read, Future<LocationAccess> Function()? request}) {
+  if (read != null) _access = read;
+  if (request != null) _request = request;
+}
+
+@visibleForTesting
+void resetLocationAccess() {
+  _access = _readAccess;
+  _request = _askAccess;
+}

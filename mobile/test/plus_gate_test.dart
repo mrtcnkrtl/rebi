@@ -71,9 +71,9 @@ void main() {
       expect(find.text(tr('mobileChat.limit.bodyDay')), findsOneWidget);
       expect(find.text(tr('chat.paywallTitleDay')), findsNothing);
       expect(find.text('REBI PLUS'), findsNothing);
-      expect(find.text('Plus ile'), findsNothing);
-      expect(find.text('Rebi Plus’ı aç'), findsNothing);
-      expect(find.text('Plus’a geç'), findsNothing);
+      expect(find.text(tr('mobileChat.limit.bulletThemes')), findsNothing);
+      expect(find.text(tr('mobileChat.limit.plusOpen')), findsNothing);
+      expect(find.text(tr('mobileChat.limit.plusSwitch')), findsNothing);
 
       await tapText(tester, tr('mobileChat.limit.close'));
       expect(find.text(tr('mobileChat.limit.titleDay')), findsNothing);
@@ -126,7 +126,7 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.send);
       await settle(tester);
       expect(find.text(tr('chat.paywallTitleDay')), findsOneWidget);
-      expect(find.text('Rebi Plus’ı aç'), findsOneWidget);
+      expect(find.text(tr('mobileChat.limit.plusOpen')), findsOneWidget);
     });
   });
 }

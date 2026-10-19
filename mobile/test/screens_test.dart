@@ -384,7 +384,7 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.send);
       await settle(tester);
       expect(find.text(tr('chat.paywallTitleDay')), findsOneWidget);
-      await tapText(tester, 'Şimdilik kapat');
+      await tapText(tester, tr('mobileChat.limit.notNow'));
       expect(find.text(tr('chat.paywallTitleDay')), findsNothing);
 
       await tapText(tester, tr('chat.clear'));

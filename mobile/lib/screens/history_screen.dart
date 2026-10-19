@@ -8,7 +8,6 @@ import 'package:provider/provider.dart';
 import '../core/demo_user.dart';
 import '../core/history_trends.dart';
 import '../core/i18n.dart';
-import '../core/today_plan.dart' show waterTargetMl;
 import '../core/user_history.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
@@ -134,8 +133,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
           else ...[
             _summaryCard(i18n, theme, summarizeHistory(history.days)),
             const SizedBox(height: 16),
-            ..._weekSection(i18n, theme, history.days),
-            _trendsSection(i18n, history.days),
+            ..._weekSection(i18n, theme, history.days, history.waterTargetMl),
+            _trendsSection(i18n, history.days, history.waterTargetMl),
             const SizedBox(height: 16),
             for (final d in history.days) ...[_dayCard(i18n, theme, d), const SizedBox(height: 12)],
           ],
@@ -150,7 +149,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _failedCard(I18n i18n, RebiTheme theme) => RCard(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         borderColor: Tw.amber200,
         color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Tw.surface),
         child: Row(children: [
@@ -180,7 +179,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (s.avgRiskScore != null) i18n.t('mobileHistory.summary.avgRisk', {'n': s.avgRiskScore}),
     ];
     return RCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       borderColor: theme.primaryLight,
       color: Color.alphaBlend(theme.primary.withValues(alpha: .05), Tw.surface),
       child: Column(
@@ -189,7 +188,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Row(children: [
             Icon(LucideIcons.chartLine, size: 16, color: theme.primary),
             const SizedBox(width: 8),
-            Text(i18n.t('mobileHistory.summaryTitle'), style: tx(12, w: 7, c: Tw.gray800)),
+            Text(i18n.t('mobileHistory.summaryTitle'), style: tx(13.5, w: 7, c: Tw.gray800)),
           ]),
           const SizedBox(height: 8),
           Wrap(spacing: 12, runSpacing: 4, children: [for (final l in lines) Text(l, style: tx(12, c: Tw.gray700))]),
@@ -200,8 +199,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   // ---- Bu hafta ----
 
-  List<Widget> _weekSection(I18n i18n, RebiTheme theme, List<HistoryDay> days) {
-    final week = summarizeWeeks(days, DateTime.now());
+  List<Widget> _weekSection(I18n i18n, RebiTheme theme, List<HistoryDay> days, int waterTargetMl) {
+    final week = summarizeWeeks(days, DateTime.now(), waterTargetMl: waterTargetMl);
     if (week == null) return const [];
     final cur = week.current, prev = week.previous;
     final nf = NumberFormat.decimalPattern(i18n.lang);
@@ -224,6 +223,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (cur.avgWaterMl != null)
         _weekRow(i18n, LucideIcons.droplet, 'water', i18n.t('mobileHistory.week.waterValue', {'ml': nf.format(cur.avgWaterMl)}),
             delta(cur.avgWaterMl, prev?.avgWaterMl, goodWhenHigher: true, fmt: (n) => '${whole(n)} ml')),
+      if (cur.avgWaterMl != null)
+        _weekRow(i18n, LucideIcons.target, 'waterGoal', i18n.t('mobileHistory.week.waterGoalValue', {'n': cur.waterGoalDays, 'ml': nf.format(waterTargetMl)}),
+            delta(cur.waterGoalDays, prev?.waterGoalDays, goodWhenHigher: true, fmt: whole)),
       if (cur.avgSleepHours != null)
         _weekRow(i18n, LucideIcons.moon, 'sleep', i18n.t('mobileHistory.week.sleepValue', {'h': one(cur.avgSleepHours!)}),
             delta(cur.avgSleepHours, prev?.avgSleepHours, goodWhenHigher: true, fmt: (n) => '${one(n)} ${i18n.t('mobileHistory.trends.hoursUnit')}')),
@@ -236,6 +238,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
       if (cur.checkins > 0)
         _weekRow(i18n, LucideIcons.clipboardCheck, 'checkins', i18n.t('mobileHistory.week.checkinsValue', {'n': cur.checkins}),
             delta(cur.checkins, prev?.checkins, goodWhenHigher: true, fmt: whole)),
+      if (cur.makeupDays > 0)
+        _weekRow(
+          i18n,
+          LucideIcons.sparkles,
+          'makeup',
+          cur.makeupRemovedDays == cur.makeupDays
+              ? i18n.t('mobileHistory.week.makeupValueAllRemoved', {'n': cur.makeupDays})
+              : i18n.t('mobileHistory.week.makeupValue', {'n': cur.makeupDays, 'removed': cur.makeupRemovedDays}),
+          delta(cur.makeupDays, prev?.makeupDays, goodWhenHigher: null, fmt: whole),
+        ),
       if (cur.junkDays > 0)
         _weekRow(i18n, LucideIcons.cookie, 'junk', i18n.t('mobileHistory.week.junkValue', {'n': cur.junkDays}),
             delta(cur.junkDays, prev?.junkDays, goodWhenHigher: false, fmt: whole)),
@@ -243,14 +255,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
     return [
       RCard(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(children: [
               Icon(LucideIcons.calendarDays, size: 16, color: theme.primary),
               const SizedBox(width: 8),
-              Expanded(child: Text(i18n.t('mobileHistory.week.title'), style: tx(12, w: 7, c: Tw.gray800))),
+              Expanded(child: Text(i18n.t('mobileHistory.week.title'), style: tx(13.5, w: 7, c: Tw.gray800))),
             ]),
             const SizedBox(height: 2),
             Text(i18n.t(prev == null ? 'mobileHistory.week.subtitleNoPrev' : 'mobileHistory.week.subtitle'), style: tx(11, c: Tw.gray500, h: relaxed)),
@@ -309,7 +321,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   // ---- Eğilimler ----
 
-  Widget _trendsSection(I18n i18n, List<HistoryDay> days) {
+  Widget _trendsSection(I18n i18n, List<HistoryDay> days, int waterTargetMl) {
     final t = buildTrends(days, range: _range, today: DateTime.now());
     final nf = NumberFormat.decimalPattern(i18n.lang);
     final nf1 = NumberFormat('#,##0.0', i18n.lang);
@@ -339,8 +351,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(i18n.t('mobileHistory.trends.title'), style: tx(14, w: 7)),
-        const SizedBox(height: 8),
+        Padding(padding: const EdgeInsets.only(left: 4), child: Text(i18n.t('mobileHistory.trends.title'), style: heading(22, h: 1.2))),
+        const SizedBox(height: 10),
         _trendCard(
           i18n,
           t,
@@ -428,7 +440,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }) {
     final date = DateFormat.MMMd(i18n.lang);
     return RCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -442,7 +454,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 spacing: 8,
                 runSpacing: 2,
                 children: [
-                  Text(title, style: tx(12, w: 7, c: Tw.gray800)),
+                  Text(title, style: tx(13.5, w: 7, c: Tw.gray800)),
                   if (average != null) Text(i18n.t('mobileHistory.trends.avg', {'v': average}), style: tx(12, w: 6, c: Tw.gray700)),
                 ],
               ),
@@ -499,11 +511,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
     ];
 
     return RCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: tx(13, w: 7, c: Tw.gray800)),
+          Text(title, style: tx(14, w: 7, c: Tw.gray800)),
           if (chips.isNotEmpty) ...[
             const SizedBox(height: 8),
             Wrap(spacing: 6, runSpacing: 6, children: chips),
@@ -529,14 +541,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _assessmentsCard(I18n i18n, RebiTheme theme, List<HistoryAssessment> items) {
     final pack = Pack(i18n.analyzeWizardPack.cast<String, dynamic>());
     return RCard(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(children: [
             Icon(LucideIcons.scan, size: 16, color: theme.primary),
             const SizedBox(width: 8),
-            Text(i18n.t('mobileHistory.assessmentsTitle'), style: tx(12, w: 7, c: Tw.gray800)),
+            Text(i18n.t('mobileHistory.assessmentsTitle'), style: tx(13.5, w: 7, c: Tw.gray800)),
           ]),
           const SizedBox(height: 8),
           for (final a in items)

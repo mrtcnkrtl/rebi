@@ -248,7 +248,7 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 
 **Kabul:** 24 saatlik gerçek telefon denemesinde bildirimler doğru saat aralığında geliyor, yapılan iş için tekrar gelmiyor, bildirimden işlem uygulamaya yansıyor.
 
-### Faz F — Sohbet ve kalan ekranlar yeni dilde  *(boyut: büyük)*
+### Faz F — Sohbet ve kalan ekranlar yeni dilde  *(boyut: büyük)* — **yapıldı (2026-10-19)**
 
 | # | İş | Kim |
 |---|----|-----|
@@ -256,6 +256,26 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 | F2 | Rutin (haftalık plan), Geçmiş, Ben, Check-in, Analiz, Hatırlatıcılar, Profil, Abonelik, Temalar yeni dilde. | Ben |
 | F3 | Geçmiş: trend grafikleri yeni stil, su/makyaj/beslenme için haftalık özet. | Ben |
 | F4 | İlk açılış: bildirim ve konum izinleri sırası, ilk gün Bugün durumu (boş veri ile de güzel). | Ben |
+
+**Durum (2026-10-19).**
+
+- **F1 Sohbet:** başlık (Fraunces "Rebi" + kota hapı + Temizle), **"Rebi bugünü biliyor" şeridi** (hava, rutin, su, makyaj, biten ürün; dokununca Bugün),
+  düz yüzeyli balonlar ve yanıt biçimi (maddeler asılı girintiyle, ":" ile biten satır alt başlık), üç noktalı yazıyor göstergesi, boş durumda
+  tam genişlikte soru satırları. **Hata artık sohbetin içine metin olarak yazılmaz** (eskiden geçmişe girip sonraki isteklerde "asistan mesajı"
+  olarak sunucuya gidiyordu): çevrimdışı / sunucu / oturum / genel için sakin hata kartı + **Tekrar dene**. Limit dolunca koyu mor panel yerine sohbetin
+  altında bilgi kartı; "Giriş yap", "Rebi Plus'ı aç" ve madde metinleri çevrildi (eskiden Türkçe sabitti). Rutin adımının ayrıntısında ve Bugün'deki
+  kahraman kartta **"Rebi'ye sor"**: sohbeti hazır soruyla açıp gönderir.
+- **F2 Ekranlar:** **Rutin** sekmesi baştan kuruldu (`screens/routine/`): başlık + tek satır profil, sabah kullanım uyarısı ve günlük denge notu en üstte,
+  gün seçici + seçili günün sabah/akşam blokları (numaralı adımlar, "Neden bu ürün?" katlanır), seyrek adımlar yedi günlük kutularla, check-in,
+  tek satır hava, katlanır bölümler (aktifler, etken madde listesi, nasıl seçersin, beslenme, zihin ve hareket); mavi/camgöbeği gradyan kartlar ve
+  sabit Türkçe metinler kalktı. **Abonelik** koyu mor cam görünümden krem zemin/düz karta geçti (geliştirici notu yalnız debug'da). Analiz
+  ilerleme çubuğu ve yükleme ekranındaki gradyanlar düz renk oldu. Ben, Check-in, Temalar, Hatırlatıcılar, Geçmiş zaten yeni dildeydi; Geçmiş'te kart
+  ölçüleri ve başlıklar hizalandı. Süs gradyanı ve koyu mor "cam" renkleri artık **testle yasak** (`design_system_test`).
+- **F3 Geçmiş:** haftalık özete **makyaj** (kaç gün, kaçında temizlendi), **su hedefi** (kaç gün tutturuldu) satırları eklendi; `/me/history` artık
+  kullanıcının gerçek su hedefini (`water_target_ml`) döndürür ve grafik referansı 2000 ml sabitinden kurtuldu.
+- **F4 İlk açılış:** Bugün'de tek seferde tek öneri; **önce konum** (ekrandaki hava gerçek olur; yalnızca gizlilik onayında konum varsa ve telefon izni
+  henüz sorulmadıysa, izin penceresi ancak "Konumu aç" denince açılır, verilirse plan konumla yenilenir), konum kararı verilince bildirim önerisi.
+- *Bilinen boşluk:* Check-in ekranındaki soru başlıkları hâlâ Türkçe sabit metin (İngilizce arayüzde de Türkçe); ayrı bir yerelleştirme işi.
 
 **Kabul:** uygulamanın hiçbir ekranında `Tw` mavi gradyan/eski kart kalmadı; tüm ekranlar açık/koyu ve küçük telefonda görsel testten geçiyor.
 

@@ -494,8 +494,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               height: 6,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(999),
-                color: s < _step ? Tw.teal500 : (s == _step ? null : Tw.gray200),
-                gradient: s == _step ? LinearGradient(colors: [Tw.teal400, Tw.teal600]) : null,
+                color: s <= _step ? Tw.teal600 : Tw.gray200,
               ),
             ),
           ),

@@ -43,6 +43,15 @@ class FakeBackend {
   int chatCalls = 0;
   int quotaAfter = 999;
 
+  /// `POST /chat_general` bu kadar çağrı boyunca başarısız olur (sonra normal yanıt verir): [chatFailOffline] ise
+  /// bağlantı hatası, değilse [chatFailStatus] durum koduyla.
+  int chatFailTimes = 0;
+  bool chatFailOffline = false;
+  int chatFailStatus = 503;
+
+  /// Sohbet yanıt metni (boşsa varsayılan).
+  String? chatReply;
+
   /// true: yapay zekâ uçları rıza kaydı yokmuş gibi 403 döner.
   bool consentMissing = false;
   Map<String, dynamic> checkinStatus = {'already_checked_in': false, 'log_date': '2026-10-10'};
@@ -320,6 +329,12 @@ class FakeBackend {
           case 'GET /chat/history':
             return ok({'messages': [], 'cursor': null});
           case 'POST /chat_general':
+            if (chatFailTimes > 0) {
+              chatFailTimes--;
+              if (chatFailOffline) throw const SocketException('çevrimdışı');
+              return http.Response.bytes(utf8.encode(jsonEncode({'detail': 'hata'})), chatFailStatus,
+                  headers: {'content-type': 'application/json'});
+            }
             if (consentMissing) {
               return http.Response.bytes(utf8.encode(jsonEncode({'detail': 'AI işleme izni gerekli'})), 403,
                   headers: {'content-type': 'application/json'});
@@ -335,7 +350,7 @@ class FakeBackend {
               });
             }
             return ok({
-              'reply': 'Niasinamid bariyeri destekler.\nGünde 1-2 kez kullanılabilir.',
+              'reply': chatReply ?? 'Niasinamid bariyeri destekler.\nGünde 1-2 kez kullanılabilir.',
               'chat_quota_exceeded': false,
               'usage_kind': 'free_daily',
               'usage_remaining': 3,

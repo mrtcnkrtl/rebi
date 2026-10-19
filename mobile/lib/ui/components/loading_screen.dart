@@ -66,12 +66,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                     height: 80,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Tw.teal500, Tw.teal600],
-                      ),
-                      boxShadow: [BoxShadow(color: Tw.teal500.withValues(alpha: .3), blurRadius: 50, offset: const Offset(0, 25))],
+                      color: Tw.teal600,
                     ),
                     child: const Icon(LucideIcons.leaf, size: 40, color: Colors.white),
                   ),
@@ -97,9 +92,7 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                       curve: Curves.easeOut,
                       widthFactor: (_current + 1) / _steps.length,
                       child: Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [Tw.teal400, Tw.teal600]),
-                        ),
+                        color: Tw.teal600,
                       ),
                     ),
                   ),

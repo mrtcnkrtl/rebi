@@ -22,6 +22,7 @@ from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
 from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather, fetch_weather_live
 from today_plan import (
     CATEGORY_NAMES,
+    DEFAULT_REMINDER_SETTINGS,
     EARLIEST_WAKE_MINUTES,
     LATEST_SLEEP_MINUTES,
     MIN_AWAKE_MINUTES,
@@ -1223,6 +1224,8 @@ class UserHistoryResponse(BaseModel):
     days: list[UserHistoryDay] = []
     assessments: list[dict] = []
     synced: bool
+    # Kullanıcının günlük su hedefi (ml): grafik referansı ve "hedefi tutturulan gün" sayısı bununla hesaplanır.
+    water_target_ml: int = 2000
 
 
 class DeviceRegisterRequest(BaseModel):
@@ -1741,6 +1744,14 @@ async def me_profile_update(request: Request, req: UserProfileUpdateRequest):
     )
 
 
+def _water_target_for(supabase, user_id: str) -> int:
+    """Kullanıcının günlük su hedefi; ayar okunamazsa varsayılan (geçmiş ekranı yine açılsın)."""
+    try:
+        return int(_load_reminder_settings(supabase, user_id)["water_target_ml"])
+    except Exception:
+        return int(DEFAULT_REMINDER_SETTINGS["water_target_ml"])
+
+
 @app.get(
     "/me/history",
     response_model=UserHistoryResponse,
@@ -1775,6 +1786,7 @@ async def me_history(
             to_date=str(to_date),
             days=days_out,
             synced=False,
+            water_target_ml=_water_target_for(supabase, user_id),
         )
 
     try:
@@ -1827,6 +1839,7 @@ async def me_history(
         from_date=str(from_date),
         to_date=str(to_date),
         days=days_out,
+        water_target_ml=_water_target_for(supabase, user_id),
         assessments=assessments,
         synced=True,
     )

@@ -1,5 +1,6 @@
 import 'event_outbox.dart';
 import 'local_store.dart';
+import 'location_prefs.dart';
 import 'notification_prefs.dart';
 
 /// Bir hesaba ait cihazdaki kişisel veriyi sil (web: `lib/privacyStorage.js`).
@@ -21,4 +22,5 @@ Future<void> clearUserLocalData(String? userId) async {
   // Mobil: gönderilmeyi bekleyen gün içi kayıtlar da kişisel veridir.
   await EventOutbox.instance.clear(userId);
   await clearNotificationPrefs(userId);
+  await clearLocationPrefs(userId);
 }

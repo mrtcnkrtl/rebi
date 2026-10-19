@@ -78,6 +78,24 @@ gün içi kayıtlar → "Daha fazlası"**; altta sabit "Yaptım / Ürün bitti" 
 - Aynı iş iki yerde tekrar etmez (rutin hatırlatıcısı "şimdi" listesinde yok; güneş kremi kaydı yalnız "havaya göre" kartında).
 - Yeni durumlar galeriye eklenir: `bugun-tamam`, `bugun-hata`, `bugun-yukleniyor`, `bugun-bos`.
 
+## Sohbet
+
+Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır: üstte Fraunces "Rebi" imzası ve kota hapı; hemen altında **"Rebi bugünü biliyor" şeridi**
+(hava, rutin, su, makyaj, biten ürün; yalnızca gerçek veri; dokununca Bugün). Kullanıcı balonu vurgu rengiyle dolu, Rebi balonu yüzey rengi ve ince
+çerçeveli; yanıt düz metin olarak okunaklı çizilir (maddeler asılı girinti, ":" ile biten satır alt başlık). Hata **sohbetin içine yazılmaz**: sakin bir
+kart ve "Tekrar dene" (çevrimdışı / sunucu / oturum / genel). Hak dolunca sohbetin altında bilgi kartı çıkar, giriş alanı kilitlenir. Rutin
+adımından "Rebi'ye sor" sohbeti hazır soruyla açar.
+
+## Rutin sekmesi
+
+Tek sütun, sakin: önce güvenlik bilgisi (sabah kullanım uyarısı, günlük denge), sonra **gün seçici ve seçilen günün sabah/akşam blokları**; ayrıntı
+("Neden bu ürün?") ve uzun rehberler katlanır. Hava tek satırdır; renkli gradyan kart yok. Aynı adım dili Bugün'deki kahraman kartla ortaktır.
+
+## İlk açılış izinleri
+
+Tek seferde tek öneri, değerini gösterdiği sırayla: **konum** (ekrandaki hava ve havaya göre kararlar gerçek olur) → **bildirim** (hatırlatmalar). İzin
+penceresi hiçbir zaman uygulama açılırken değil, kullanıcı önerideki düğmeye dokununca açılır; "Şimdi değil" kalıcıdır.
+
 ## Vurgu rengi (tema)
 
 Uygulamanın dili tektir; kullanıcı yalnızca **vurgu rengini** seçer (düğme, seçim, vurgu): ücretsiz **Orman · Adaçayı · Pudra · Lavanta**,
@@ -101,5 +119,7 @@ sistemleri arasında piksel piksel aynı olmadığı için CI'da kararsız olurd
 
 - Arayüz kodunda emoji yok (`design_system_test`): `glyphs.dart` ikonlarını kullan.
 - Ham Tailwind neon rengi yok.
+- Ekranlarda ve bileşenlerde süs gradyanı yok (izinli: kabuğun temalı yıkaması, karşılama/yükleme zemini, marka çizimleri) ve koyu mor "cam"
+  panel renkleri yok (`design_system_test`).
 - Her temanın düğme rengi üstünde beyaz yazı ≥ 4.5:1.
 - Metin/zemin çiftleri iki modda ≥ 4.5:1 (`dark_mode_test`).

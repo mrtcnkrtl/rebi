@@ -1,4 +1,5 @@
 import 'api.dart';
+import 'reminder_settings.dart' show defaultWaterTargetMl;
 import 'today_plan.dart';
 
 /// Bir günün check-in kaydı (`daily_logs`).
@@ -89,7 +90,7 @@ class HistoryAssessment {
 
 /// `GET /me/history` yanıtı.
 class UserHistory {
-  const UserHistory({required this.days, required this.assessments, required this.synced});
+  const UserHistory({required this.days, required this.assessments, required this.synced, this.waterTargetMl = defaultWaterTargetMl});
 
   factory UserHistory.fromJson(Map<String, dynamic> j) {
     final days = [
@@ -105,6 +106,7 @@ class UserHistory {
           if (a is Map) HistoryAssessment.fromJson(a.cast<String, dynamic>()),
       ],
       synced: j['synced'] != false,
+      waterTargetMl: _num(j['water_target_ml'])?.toInt().clamp(500, 6000) ?? defaultWaterTargetMl,
     );
   }
 
@@ -114,6 +116,9 @@ class UserHistory {
 
   /// false: kullanıcı verisi sunucuda tutulmuyor.
   final bool synced;
+
+  /// Kullanıcının günlük su hedefi (ml): grafik referansı ve "hedefi tutturulan gün" sayısı. Eski sunucuda varsayılan.
+  final int waterTargetMl;
 }
 
 /// Seçilen aralığın tek bakışta özeti.

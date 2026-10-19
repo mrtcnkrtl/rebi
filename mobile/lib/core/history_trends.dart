@@ -119,6 +119,9 @@ class WeekStats {
     required this.checkins,
     required this.spfRefreshes,
     required this.junkDays,
+    this.makeupDays = 0,
+    this.makeupRemovedDays = 0,
+    this.waterGoalDays = 0,
     this.avgWaterMl,
     this.avgSleepHours,
     this.avgStress,
@@ -133,6 +136,13 @@ class WeekStats {
 
   /// Abur cubur / şekerli yenen gün sayısı.
   final int junkDays;
+
+  /// Makyaj yapılan gün sayısı ve bunlardan makyajın o gün temizlendiği gün sayısı.
+  final int makeupDays;
+  final int makeupRemovedDays;
+
+  /// Günlük su hedefine ulaşılan gün sayısı.
+  final int waterGoalDays;
   final int? avgWaterMl;
   final double? avgSleepHours;
   final double? avgStress;
@@ -146,7 +156,7 @@ class WeeklySummary {
   final WeekStats? previous;
 }
 
-WeekStats _weekStats(List<HistoryDay> days) {
+WeekStats _weekStats(List<HistoryDay> days, int waterTargetMl) {
   final water = [for (final d in days) ?_waterOf(d)];
   final sleep = [for (final d in days) ?_sleepOf(d)];
   final stress = [for (final d in days) ?_stressOf(d)];
@@ -159,14 +169,18 @@ WeekStats _weekStats(List<HistoryDay> days) {
     checkins: days.where((d) => d.checkin != null).length,
     spfRefreshes: days.fold(0, (a, d) => a + d.tracking.progress.spfRefreshes),
     junkDays: days.where((d) => d.tracking.junkFood).length,
+    makeupDays: days.where((d) => d.tracking.progress.makeupUsed).length,
+    makeupRemovedDays: days.where((d) => d.tracking.progress.makeupUsed && d.tracking.progress.makeupRemoved).length,
+    waterGoalDays: days.where((d) => d.tracking.progress.waterMl >= waterTargetMl).length,
     avgWaterMl: avgWater?.round(),
     avgSleepHours: avgSleep == null ? null : (avgSleep * 10).round() / 10,
     avgStress: avgStress == null ? null : (avgStress * 10).round() / 10,
   );
 }
 
-/// `today` dahil son 7 günü, bir önceki 7 günle karşılaştırır. Bu hafta hiç kayıt yoksa null.
-WeeklySummary? summarizeWeeks(List<HistoryDay> days, DateTime today) {
+/// `today` dahil son 7 günü, bir önceki 7 günle karşılaştırır. Bu hafta hiç kayıt yoksa null. [waterTargetMl]:
+/// kullanıcının günlük su hedefi (hedefi tutturulan gün sayısı için).
+WeeklySummary? summarizeWeeks(List<HistoryDay> days, DateTime today, {int waterTargetMl = 2000}) {
   final end = dateOnly(today);
   List<HistoryDay> within(int fromAgo, int toAgo) {
     final from = dayKey(DateTime(end.year, end.month, end.day - fromAgo));
@@ -177,5 +191,8 @@ WeeklySummary? summarizeWeeks(List<HistoryDay> days, DateTime today) {
   final current = within(6, 0);
   if (current.isEmpty) return null;
   final previous = within(13, 7);
-  return WeeklySummary(current: _weekStats(current), previous: previous.isEmpty ? null : _weekStats(previous));
+  return WeeklySummary(
+    current: _weekStats(current, waterTargetMl),
+    previous: previous.isEmpty ? null : _weekStats(previous, waterTargetMl),
+  );
 }

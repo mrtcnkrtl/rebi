@@ -220,6 +220,7 @@ void main() {
     final h = UserHistory.fromJson(contract('me_history'));
 
     expect(h.synced, isTrue);
+    expect(h.waterTargetMl, 2500, reason: 'kullanıcının su hedefi (sahnede 2500 ml); grafik ve hedef günleri bununla hesaplanır');
     expect(h.assessments.single.concern, 'acne');
     expect(h.assessments.single.severityScore, 4);
     expect(h.days, hasLength(2));

@@ -21,7 +21,7 @@ void main() {
 
     testWidgets('Plus hesapta durum gösterilir', (tester) async {
       await pumpApp(tester, location: '/dashboard/subscribe', user: fakeUser(appMetadata: {'subscription_tier': 'plus'}));
-      expect(find.text('Plus aktif'), findsOneWidget);
+      expect(find.text(tr('mobileSubscribe.active')), findsOneWidget);
     });
   });
 }

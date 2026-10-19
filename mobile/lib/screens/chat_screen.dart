@@ -4,6 +4,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api.dart';
+import '../core/chat_context.dart';
+import '../core/chat_failure.dart';
 import '../core/chat_suggestions.dart';
 import '../core/consent_recovery.dart';
 import '../core/demo_user.dart';
@@ -19,6 +21,9 @@ import '../state/theme_controller.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/brand/palette.dart';
+import 'chat/chat_composer.dart';
+import 'chat/chat_limit_card.dart';
+import 'chat/chat_parts.dart';
 
 String _historyKey(String userId) => 'rebi-chat-history_$userId';
 
@@ -101,8 +106,12 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _edgeOpen = false;
   int _generation = 0;
 
-  /// Bugünün planı; öneri çipleri buradan çıkar. Plan yoksa genel sorular gösterilir.
+  /// Bugünün planı; öneri çipleri ve "Rebi bugünü biliyor" şeridi buradan çıkar. Plan yoksa genel sorular gösterilir.
   TodayPlan? _plan;
+
+  /// Son mesajın yanıtı alınamadıysa nedeni (hata kartı + "Tekrar dene"); mesaj geçmişte kalır, hata kalmaz.
+  ChatFailure? _failure;
+  int? _failureStatus;
 
   @override
   void initState() {
@@ -146,6 +155,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _routineAccepted = false;
       _edgeOpen = false;
       _plan = null;
+      _failure = null;
+      _failureStatus = null;
     });
     _loadForUser();
   }
@@ -265,8 +276,33 @@ class _ChatScreenState extends State<ChatScreen> {
     if (msg.isEmpty || _loading || _paywallOpen) return;
     if (preset == null) _input.clear();
     _sentThisSession = true;
-    final newHist = [..._history, {'role': 'user', 'content': msg}];
-    _setHistory(newHist);
+    setState(() {
+      _failure = null;
+      _failureStatus = null;
+    });
+    _setHistory([..._history, {'role': 'user', 'content': msg}]);
+    await _deliver();
+  }
+
+  /// Hata kartındaki "Tekrar dene": son kullanıcı mesajı zaten geçmişte; yeniden gönderilir.
+  Future<void> _retry() async {
+    if (_loading || _history.isEmpty || _history.last['role'] != 'user') return;
+    setState(() {
+      _failure = null;
+      _failureStatus = null;
+    });
+    await _deliver();
+  }
+
+  void _fail(ChatFailure failure, [int? status]) => setState(() {
+        _failure = failure;
+        _failureStatus = status;
+      });
+
+  /// Geçmişin son mesajını (kullanıcınınki) sunucuya gönderir; yanıt geçmişe eklenir, hata geçmişe girmez.
+  Future<void> _deliver() async {
+    final newHist = List<ChatMessage>.of(_history);
+    final msg = newHist.last['content'] ?? '';
     setState(() => _loading = true);
     _scrollToEnd();
     final gen = _generation;
@@ -286,14 +322,8 @@ class _ChatScreenState extends State<ChatScreen> {
           _setHistory([...newHist, {'role': 'assistant', 'content': I18n.instance.t('common.consentRecoveryBody')}]);
           return;
         }
-        var errText = '${formatApiErrorDetail(data)} (${res.status})';
-        if (res.status == 401) {
-          errText = 'Oturum süresi doldu veya giriş doğrulanamadı. Çıkış yapıp tekrar giriş yapmayı dene. $errText';
-        }
-        if (res.status == 502 || res.status == 503) {
-          errText = 'Sunucu geçici olarak yanıt vermiyor. Biraz sonra tekrar dene. $errText';
-        }
-        _setHistory([...newHist, {'role': 'assistant', 'content': 'Şu an yanıt alınamadı: $errText'}]);
+        _fail(ChatFailure.fromStatus(res.status), res.status);
+        _scrollToEnd();
         return;
       }
       _applyUsage(data);
@@ -307,15 +337,8 @@ class _ChatScreenState extends State<ChatScreen> {
       _setHistory([...newHist, {'role': 'assistant', 'content': reply}]);
     } catch (e) {
       if (!mounted || gen != _generation) return;
-      _setHistory([
-        ...newHist,
-        {
-          'role': 'assistant',
-          'content': isNetworkError(e)
-              ? 'Bağlantı kurulamadı. İnternetini ve API adresini kontrol et; backend çalışıyor mu?'
-              : 'Bir hata oluştu, tekrar dener misin?',
-        },
-      ]);
+      _fail(isNetworkError(e) ? ChatFailure.offline : ChatFailure.generic);
+      _scrollToEnd();
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -323,7 +346,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _clearChat() async {
     _setHistory([]);
-    setState(() => _paywallOpen = false);
+    setState(() {
+      _paywallOpen = false;
+      _failure = null;
+      _failureStatus = null;
+    });
     await LocalStore.instance.remove(_historyKey(_effectiveUserId));
     final uid = _auth.user?.id;
     if (uid == null) return;
@@ -363,15 +390,16 @@ class _ChatScreenState extends State<ChatScreen> {
               );
 
     final u = _usage;
-    String? cornerUsageText;
+    String? usageLabel;
     if (u?.kind == 'free_daily' && u?.remaining != null && u?.limit != null) {
-      cornerUsageText = i18n.t('chat.usageBadgeDay', {'rem': u!.remaining, 'lim': u.limit});
+      usageLabel = i18n.t('chat.usageBadgeDay', {'rem': u!.remaining, 'lim': u.limit});
     } else if (u?.kind == 'plus_monthly' && u?.remaining != null && u?.limit != null) {
-      cornerUsageText = i18n.t('chat.usageBadgeMonth', {'rem': u!.remaining, 'lim': u.limit});
+      usageLabel = i18n.t('chat.usageBadgeMonth', {'rem': u!.remaining, 'lim': u.limit});
     } else if (u?.kind == 'plus_unlimited') {
-      cornerUsageText = i18n.t('chat.usageBadgeUnlimited');
+      usageLabel = i18n.t('chat.usageBadgeUnlimited');
     }
 
+    final canSend = !_loading && !_paywallOpen && _input.text.trim().isNotEmpty;
     return ThemedBackground(
       theme: theme,
       child: Stack(
@@ -380,15 +408,32 @@ class _ChatScreenState extends State<ChatScreen> {
             maxWidth: 672,
             child: Column(
               children: [
-                _header(i18n, theme, hasConversation),
-                Expanded(child: hasConversation ? _messages(theme) : _empty(i18n, theme)),
-                if (hasConversation) _suggestionStrip(i18n, theme),
-                _inputBar(i18n, theme, subscribeHref),
+                ChatHeader(theme: theme, usageLabel: usageLabel, canClear: hasConversation, onClear: _clearChat),
+                ChatContextStrip(
+                  items: chatContext(_plan, i18n),
+                  theme: theme,
+                  onTap: () => context.go('/dashboard'),
+                ),
+                Expanded(child: hasConversation ? _messages(i18n, theme) : _empty(i18n, theme)),
+                if (_paywallOpen)
+                  _limitCard(theme, user != null, subscribeHref)
+                else if (hasConversation)
+                  _suggestionStrip(i18n, theme),
+                ChatComposer(
+                  theme: theme,
+                  controller: _input,
+                  focusNode: _focus,
+                  locked: _loading || _paywallOpen,
+                  canSend: canSend,
+                  onSend: _send,
+                  footer: _footer(i18n, theme),
+                  compact: _paywallOpen,
+                ),
               ],
             ),
           ),
-          // Web'de köşe sayacı masaüstü içindir; telefonda aynı rozet başlıkta zaten var.
-          if (cornerUsageText != null && wide)
+          // Geniş ekranda (tablet) köşe sayacı ve rutin kenar çekmecesi.
+          if (usageLabel != null && wide)
             Positioned(
               top: 76,
               right: 16,
@@ -399,9 +444,8 @@ class _ChatScreenState extends State<ChatScreen> {
                     color: Tw.surface.withValues(alpha: .9),
                     borderRadius: BorderRadius.circular(999),
                     border: Border.all(color: Tw.gray200.withValues(alpha: .8)),
-                    boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))],
                   ),
-                  child: Text(cornerUsageText, style: tx(11, w: 6, c: Tw.gray800)),
+                  child: Text(usageLabel, style: tx(11, w: 6, c: Tw.gray800)),
                 ),
               ),
             ),
@@ -409,100 +453,86 @@ class _ChatScreenState extends State<ChatScreen> {
             Positioned(top: 96, left: 0, child: _edgeHandle(i18n, theme, routineCorner.$1)),
             if (_edgeOpen) Positioned.fill(child: _edgePanel(i18n, theme, routineCorner)),
           ],
-          if (_paywallOpen) Positioned.fill(child: _paywall(i18n, theme, user != null, subscribeHref)),
         ],
       ),
     );
   }
 
-  Widget _badge(String text, Color bg, Color fg, Color border) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: border),
-        ),
-        child: Text(text, style: tx(10, w: 6, c: fg)),
-      );
-
-  Widget _header(I18n i18n, RebiTheme theme, bool hasConversation) {
+  /// Giriş alanının altındaki kota notu (pakete göre).
+  Widget _footer(I18n i18n, RebiTheme theme) {
     final u = _usage;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Tw.surface.withValues(alpha: .7),
-        border: Border(bottom: BorderSide(color: theme.cardBorder)),
-      ),
-      child: Row(
+    if (u?.kind == 'free_daily') {
+      return Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          GradientIconBox(icon: LucideIcons.bot, from: theme.accent, to: theme.primary, size: 40, iconSize: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text('Rebi', style: tx(14, w: 7)),
-                    if (u?.kind == 'free_daily' && u?.limit != null && u?.remaining != null)
-                      _badge(i18n.t('chat.usageBadgeDay', {'rem': u!.remaining, 'lim': u.limit}), Tw.gray100, Tw.gray700,
-                          Tw.gray200.withValues(alpha: .8)),
-                    if (u?.kind == 'plus_monthly' && u?.limit != null && u?.remaining != null)
-                      _badge(i18n.t('chat.usageBadgeMonth', {'rem': u!.remaining, 'lim': u.limit}), Tw.violet50, Tw.violet900,
-                          Tw.violet200.withValues(alpha: .8)),
-                    if (u?.kind == 'plus_unlimited')
-                      _badge(i18n.t('chat.usageBadgeUnlimited'), Tw.emerald50, Tw.emerald900, Tw.emerald200.withValues(alpha: .8)),
-                  ],
-                ),
-                Text(i18n.t('chat.subtitle'), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(11, c: Tw.gray500)),
-              ],
+          if (plusPurchasable) ...[
+            GestureDetector(
+              onTap: () => context.go(_auth.user != null ? '/dashboard/subscribe' : '/auth?next=${Uri.encodeComponent('/dashboard/subscribe')}'),
+              child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(11, w: 6, c: theme.primary)),
             ),
-          ),
-          Opacity(
-            opacity: hasConversation ? 1 : .4,
-            child: TextButton(
-              onPressed: hasConversation ? _clearChat : null,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: Text(i18n.t('chat.clear'), style: tx(10, c: Tw.gray400)),
-            ),
-          ),
+            Text(' · ', style: tx(11, c: Tw.gray500)),
+          ],
+          Text(i18n.t('chat.footerHintShort'), style: tx(11, c: Tw.gray400)),
         ],
+      );
+    }
+    if (u?.kind == 'plus_monthly') {
+      return Text(i18n.t('chat.plusPack1000Footer'), textAlign: TextAlign.center, style: tx(11, c: Tw.gray500));
+    }
+    if (u?.kind == 'plus_unlimited') {
+      return Text(i18n.t('chat.plusUnlimitedFooter'), textAlign: TextAlign.center, style: tx(11, w: 5, c: Tw.gray500));
+    }
+    return Text.rich(
+      TextSpan(children: [
+        WidgetSpan(alignment: PlaceholderAlignment.middle, child: Icon(LucideIcons.sparkles, size: 12, color: Tw.gray400)),
+        TextSpan(text: ' ${i18n.t('chat.footerHint')}'),
+      ]),
+      textAlign: TextAlign.center,
+      style: tx(11, c: Tw.gray400),
+    );
+  }
+
+  /// Sohbet hakkı doldu kartı; sohbetin altında, kısa ekranda kayar.
+  Widget _limitCard(RebiTheme theme, bool loggedIn, String subscribeHref) {
+    return Flexible(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: ChatLimitCard(
+          theme: theme,
+          month: _paywallKind == 'plus_monthly',
+          offer: plusPurchasable,
+          loggedIn: loggedIn,
+          onClose: () => setState(() => _paywallOpen = false),
+          onSignIn: () => context.go('/auth?next=${Uri.encodeComponent('/dashboard/chat')}'),
+          onPlus: () => context.go(loggedIn ? '/dashboard/subscribe' : subscribeHref),
+        ),
       ),
     );
   }
 
   List<ChatSuggestion> _currentSuggestions(I18n i18n) => chatSuggestions(_plan, DateTime.now(), i18n);
 
+  /// Konuşma sürerken giriş alanının üstünde yatay kayan öneri çipi.
   Widget _suggestionChip(RebiTheme theme, ChatSuggestion s) {
     return Semantics(
       button: true,
       label: s.text,
       child: Material(
-        color: theme.primary.withValues(alpha: .06),
-        borderRadius: BorderRadius.circular(16),
+        color: Tw.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: theme.primary.withValues(alpha: .28))),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () => _send(s.text),
           child: Container(
-            constraints: const BoxConstraints(maxWidth: 300, minHeight: 40),
+            constraints: const BoxConstraints(maxWidth: 260, minHeight: 40),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.primary.withValues(alpha: .3)),
-            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(LucideIcons.sparkles, size: 14, color: theme.primary),
+                Icon(LucideIcons.sparkles, size: 14, color: theme.fg),
                 const SizedBox(width: 8),
-                Flexible(child: Text(s.text, style: tx(13, w: 5, c: theme.primaryDark, h: snug))),
+                Flexible(child: Text(s.text, maxLines: 2, overflow: TextOverflow.ellipsis, style: tx(13, w: 5, c: Tw.gray800, h: snug))),
               ],
             ),
           ),
@@ -511,12 +541,44 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  /// Konuşma sürerken giriş alanının üstünde yatay kayan öneriler.
+  /// Boş sohbette: tam genişlikte, dokunması kolay soru satırı.
+  Widget _suggestionRow(RebiTheme theme, ChatSuggestion s) {
+    return Semantics(
+      button: true,
+      label: s.text,
+      child: Material(
+        color: Tw.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18), side: BorderSide(color: Tw.gray100)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _send(s.text),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(color: theme.primary.withValues(alpha: .1), borderRadius: BorderRadius.circular(10)),
+                  child: Icon(LucideIcons.sparkles, size: 15, color: theme.fg),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(s.text, style: tx(14, w: 5, c: Tw.gray800, h: snug))),
+                const SizedBox(width: 8),
+                Icon(LucideIcons.arrowUpRight, size: 16, color: Tw.gray400),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _suggestionStrip(I18n i18n, RebiTheme theme) {
-    if (_loading || _paywallOpen || _input.text.isNotEmpty) return const SizedBox.shrink();
+    if (_loading || _paywallOpen || _input.text.isNotEmpty || _failure != null) return const SizedBox.shrink();
     final items = _currentSuggestions(i18n);
     return SizedBox(
-      height: 52,
+      height: 72,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
@@ -529,51 +591,36 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _empty(I18n i18n, RebiTheme theme) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: MediaQuery.of(context).size.height * .4),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Opacity(
-              opacity: .95,
-              child: GradientIconBox(icon: LucideIcons.sparkles, from: theme.accent, to: theme.primary, size: 56, iconSize: 28),
-            ),
-            const SizedBox(height: 24),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 448),
-              child: Text(i18n.t('chat.emptyTitle'), textAlign: TextAlign.center, style: heading(28, h: 1.2)),
-            ),
-            const SizedBox(height: 12),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 448),
-              child: Text(i18n.t('chat.emptySubtitle'), textAlign: TextAlign.center, style: tx(16, c: Tw.gray600, h: relaxed)),
-            ),
-            const SizedBox(height: 24),
-            Text(i18n.t('mobileChat.suggestionsTitle'), style: tx(12, w: 7, c: Tw.gray600)),
-            const SizedBox(height: 10),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 448),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
-                children: [for (final s in _currentSuggestions(i18n)) _suggestionChip(theme, s)],
-              ),
-            ),
-            const SizedBox(height: 24),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 384),
-              child: Text(i18n.t('chat.dataHint'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500, h: relaxed)),
-            ),
-          ],
+      padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(i18n.t('chat.emptyTitle'), textAlign: TextAlign.center, style: heading(28, h: 1.2)),
+              const SizedBox(height: 10),
+              Text(i18n.t('chat.emptySubtitle'), textAlign: TextAlign.center, style: tx(15, c: Tw.gray600, h: relaxed)),
+              const SizedBox(height: 26),
+              Text(i18n.t('mobileChat.suggestionsTitle'), style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
+              const SizedBox(height: 10),
+              for (final s in _currentSuggestions(i18n)) ...[
+                _suggestionRow(theme, s),
+                const SizedBox(height: 8),
+              ],
+              const SizedBox(height: 14),
+              Text(i18n.t('chat.dataHint'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500, h: relaxed)),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _messages(RebiTheme theme) {
-    final count = _history.length + (_loading ? 1 : 0);
+  Widget _messages(I18n i18n, RebiTheme theme) {
+    final failure = _failure;
+    final extras = (_loading ? 1 : 0) + (failure != null ? 1 : 0);
+    final count = _history.length + extras;
     return ListView.separated(
       controller: _scroll,
       padding: const EdgeInsets.all(16),
@@ -581,143 +628,12 @@ class _ChatScreenState extends State<ChatScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
         if (i >= _history.length) {
-          return Align(
-            alignment: Alignment.centerLeft,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                color: Tw.gray100,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                  bottomLeft: Radius.circular(6),
-                ),
-              ),
-              child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: theme.primary)),
-            ),
-          );
+          if (_loading) return TypingBubble(theme: theme);
+          return ChatErrorCard(failure: failure!, theme: theme, status: _failureStatus, onRetry: _retry);
         }
         final m = _history[i];
-        final mine = m['role'] == 'user';
-        return Align(
-          alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-          child: FractionallySizedBox(
-            widthFactor: .85,
-            alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-            child: Align(
-              alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                decoration: BoxDecoration(
-                  color: mine ? theme.primary : Tw.gray100,
-                  borderRadius: BorderRadius.only(
-                    topLeft: const Radius.circular(16),
-                    topRight: const Radius.circular(16),
-                    bottomLeft: Radius.circular(mine ? 16 : 6),
-                    bottomRight: Radius.circular(mine ? 6 : 16),
-                  ),
-                ),
-                child: SelectableText(m['content'] ?? '', style: tx(14, c: mine ? Colors.white : Tw.gray800, h: relaxed)),
-              ),
-            ),
-          ),
-        );
+        return ChatBubble(text: m['content'] ?? '', mine: m['role'] == 'user', theme: theme);
       },
-    );
-  }
-
-  Widget _inputBar(I18n i18n, RebiTheme theme, String subscribeHref) {
-    final u = _usage;
-    final canSend = !_loading && !_paywallOpen && _input.text.trim().isNotEmpty;
-    Widget footer;
-    if (u?.kind == 'free_daily') {
-      footer = Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (plusPurchasable) ...[
-            GestureDetector(
-              onTap: () => context.go(subscribeHref),
-              child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(10, w: 6, c: theme.primary)),
-            ),
-            Text(' · ', style: tx(10, c: Tw.gray500)),
-          ],
-          Text(i18n.t('chat.footerHintShort'), style: tx(10, c: Tw.gray400)),
-        ],
-      );
-    } else if (u?.kind == 'plus_monthly') {
-      footer = Text(i18n.t('chat.plusPack1000Footer'), textAlign: TextAlign.center, style: tx(10, c: Tw.violet800.withValues(alpha: .9)));
-    } else if (u?.kind == 'plus_unlimited') {
-      footer = Text(i18n.t('chat.plusUnlimitedFooter'),
-          textAlign: TextAlign.center, style: tx(10, w: 5, c: Tw.emerald800.withValues(alpha: .85)));
-    } else {
-      footer = Text.rich(
-        TextSpan(children: [
-          WidgetSpan(
-            alignment: PlaceholderAlignment.middle,
-            child: Icon(LucideIcons.sparkles, size: 12, color: Tw.gray400),
-          ),
-          TextSpan(text: ' ${i18n.t('chat.footerHint')}'),
-        ]),
-        textAlign: TextAlign.center,
-        style: tx(10, c: Tw.gray400),
-      );
-    }
-
-    // Büyük yazı boyutunda dipnotlar ekranı kaplamasın: çubuk ekranın %42'siyle sınırlı, taşarsa kayar.
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .42),
-      child: SingleChildScrollView(child: _inputBarBody(i18n, theme, canSend, footer)),
-    );
-  }
-
-  Widget _inputBarBody(I18n i18n, RebiTheme theme, bool canSend, Widget footer) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-      decoration: BoxDecoration(
-        color: Tw.surface.withValues(alpha: .9),
-        border: Border(top: BorderSide(color: theme.cardBorder)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _input,
-                  focusNode: _focus,
-                  // Web yanıt beklerken girişi kilitler ve sonra yeniden odaklar; mobilde salt-okunur
-                  // tutmak aynı kilidi sağlar ve klavyenin kapanıp açılmasını önler.
-                  readOnly: _loading || _paywallOpen,
-                  textInputAction: TextInputAction.send,
-                  minLines: 1,
-                  maxLines: 4,
-                  onSubmitted: (_) => _send(),
-                  style: tx(14),
-                  decoration: inputDecoration(hint: i18n.t('chat.placeholder'))
-                      .copyWith(hintStyle: tx(14, c: Tw.gray400), hintMaxLines: 1),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Material(
-                color: canSend ? theme.primary : Tw.gray300,
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: canSend ? _send : null,
-                  child: const SizedBox(width: 48, height: 48, child: Icon(LucideIcons.send, size: 20, color: Colors.white)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          footer,
-          const AiDisclaimer(textAlign: TextAlign.center, padding: EdgeInsets.only(top: 6)),
-        ],
-      ),
     );
   }
 
@@ -925,235 +841,5 @@ class _ChatScreenState extends State<ChatScreen> {
   static String _short(String s) {
     final t = s.trim();
     return t.length > 64 ? '${t.substring(0, 64)}…' : t;
-  }
-
-  Widget _paywall(I18n i18n, RebiTheme theme, bool loggedIn, String subscribeHref) {
-    Widget bullet(String text) => Padding(
-          padding: const EdgeInsets.only(bottom: 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 5),
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(color: Tw.amber300.withValues(alpha: .9), shape: BoxShape.circle),
-              ),
-              const SizedBox(width: 8),
-              Expanded(child: Text(text, style: tx(12, c: Colors.white.withValues(alpha: .7)))),
-            ],
-          ),
-        );
-
-    Widget lightButton(Widget leading, String label, VoidCallback onTap) => Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          elevation: 6,
-          shadowColor: Colors.black26,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onTap,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  leading,
-                  const SizedBox(width: 8),
-                  Flexible(child: Text(label, style: tx(16, w: 8, c: Tw.fixedViolet950))),
-                  const SizedBox(width: 8),
-                  Icon(LucideIcons.arrowRight, size: 16, color: Tw.fixedViolet950),
-                ],
-              ),
-            ),
-          ),
-        );
-
-    Widget ghostButton(List<Widget> children, VoidCallback onTap) => Material(
-          color: Colors.white.withValues(alpha: .1),
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onTap,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: .15)),
-              ),
-              child: Row(mainAxisAlignment: MainAxisAlignment.center, children: children),
-            ),
-          ),
-        );
-
-    final month = _paywallKind == 'plus_monthly';
-    // Satın alma yolu yoksa panel yalnızca "limit doldu" bilgisini verir; Plus tanıtımı ve düğmeleri çıkmaz.
-    final offer = plusPurchasable;
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: () => setState(() => _paywallOpen = false),
-            child: ColoredBox(color: Tw.fixedSlate950.withValues(alpha: .7)),
-          ),
-        ),
-        Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 448),
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: .1)),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Tw.fixedSlate950, Tw.fixedViolet950.withValues(alpha: .95), Tw.fixedSlate950],
-                  ),
-                  boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 50, offset: Offset(0, 25))],
-                ),
-                child: Stack(
-                  children: [
-                    const Positioned.fill(
-                      child: Opacity(
-                        opacity: .55,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: Alignment(-.64, -.5),
-                              radius: .9,
-                              colors: [Color(0x73A78BFA), Color(0x00A78BFA)],
-                              stops: [0, .42],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Positioned.fill(
-                      child: Opacity(
-                        opacity: .55,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: RadialGradient(
-                              center: Alignment(.64, .4),
-                              radius: .9,
-                              colors: [Color(0x47F472B6), Color(0x00F472B6)],
-                              stops: [0, .38],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              GradientIconBox(
-                                  icon: offer ? LucideIcons.crown : LucideIcons.messageCircle, from: theme.accent, to: theme.primary, size: 48, iconSize: 24),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(offer ? 'REBI PLUS' : i18n.t('mobileChat.limit.label'),
-                                        style: tx(12, w: 7, c: Tw.amber200.withValues(alpha: .9))),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                        offer
-                                            ? (month ? i18n.t('chat.paywallTitleMonth') : i18n.t('chat.paywallTitleDay'))
-                                            : i18n.t(month ? 'mobileChat.limit.titleMonth' : 'mobileChat.limit.titleDay'),
-                                        style: tx(24, w: 9, c: Colors.white, h: tight)),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                        offer
-                                            ? (month ? i18n.t('chat.paywallBodyMonth') : i18n.t('chat.paywallBodyDay'))
-                                            : i18n.t(month ? 'mobileChat.limit.bodyMonth' : 'mobileChat.limit.bodyDay'),
-                                        style: tx(14, c: Tw.violet100.withValues(alpha: .85), h: relaxed)),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Material(
-                                color: Colors.white.withValues(alpha: .1),
-                                borderRadius: BorderRadius.circular(16),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(16),
-                                  onTap: () => setState(() => _paywallOpen = false),
-                                  child: SizedBox(
-                                    width: 36,
-                                    height: 36,
-                                    child: Icon(LucideIcons.x, size: 16, color: Colors.white.withValues(alpha: .8)),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-                          if (!loggedIn) ...[
-                            lightButton(Icon(LucideIcons.lock, size: 16, color: Tw.fixedViolet950), 'Giriş yap',
-                                () => context.go('/auth?next=${Uri.encodeComponent('/dashboard/chat')}')),
-                            const SizedBox(height: 12),
-                            if (offer)
-                              ghostButton([
-                                Icon(LucideIcons.crown, size: 16, color: Tw.amber300),
-                                const SizedBox(width: 8),
-                                Flexible(child: Text('Plus’a geç', style: tx(16, w: 7, c: Colors.white))),
-                                const SizedBox(width: 8),
-                                const Icon(LucideIcons.arrowRight, size: 16, color: Colors.white),
-                              ], () => context.go(subscribeHref))
-                            else
-                              ghostButton([Flexible(child: Text(i18n.t('mobileChat.limit.close'), style: tx(16, w: 7, c: Colors.white)))],
-                                  () => setState(() => _paywallOpen = false)),
-                            const SizedBox(height: 4),
-                            Text('Not: Rutin tarafına geçmek istersen zaten kayıt/giriş gerekiyor.',
-                                textAlign: TextAlign.center, style: tx(11, c: Colors.white.withValues(alpha: .6))),
-                          ] else ...[
-                            if (offer) ...[
-                              lightButton(Icon(LucideIcons.crown, size: 16, color: Tw.amber600), 'Rebi Plus’ı aç',
-                                  () => context.go('/dashboard/subscribe')),
-                              const SizedBox(height: 12),
-                            ],
-                            ghostButton(
-                                [Flexible(child: Text(offer ? 'Şimdilik kapat' : i18n.t('mobileChat.limit.close'), style: tx(16, w: 7, c: Colors.white)))],
-                                () => setState(() => _paywallOpen = false)),
-                          ],
-                          if (offer) ...[
-                            const SizedBox(height: 20),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: .05),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white.withValues(alpha: .1)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Plus ile', style: tx(12, w: 7, c: Colors.white.withValues(alpha: .9))),
-                                  const SizedBox(height: 8),
-                                  bullet(i18n.t('chat.paywallBulletUnlimited')),
-                                  bullet('Takip + check-in verisiyle daha tutarlı öneriler'),
-                                  bullet('Premium temalar ve yeni özellikler'),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 }

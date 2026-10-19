@@ -233,7 +233,9 @@ Akşam check-in'i; rutini risk skoruna göre uyarlar. Yapay zekâ izni gerekir.
   alanlar değişir. `skin_type`: `normal`, `dry`, `oily`, `combination`, `sensitive`.
   `age` 13–100 arasına sabitlenir.
 - `GET /me/history?user_id=...&days=30` — en fazla 90 gün; her gün için takip özeti
-  (`tracking`), o günün check-in'i (`checkin`) ve son değerlendirmeler.
+  (`tracking`), o günün check-in'i (`checkin`) ve son değerlendirmeler. `water_target_ml`: kullanıcının günlük su hedefi
+  (`/me/reminder-settings` ile aynı; yoksa 2000). Geçmiş ekranı grafik referansını ve "hedefi tutturulan gün" sayısını bununla
+  hesaplar; alanı bilmeyen eski sunucuda mobil 2000 kullanır.
 
 ## Sohbet
 

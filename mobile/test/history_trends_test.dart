@@ -117,6 +117,18 @@ void main() {
     });
   });
 
+  group('su hedefi (GET /me/history water_target_ml)', () {
+    test('sunucunun hedefi okunur; eksik ya da bozuksa varsayılan, aşırı değer sınırlanır', () {
+      UserHistory read(Object? v) => UserHistory.fromJson({'days': const <dynamic>[], 'water_target_ml': v, 'synced': true});
+      expect(read(2500).waterTargetMl, 2500);
+      expect(read(null).waterTargetMl, 2000);
+      expect(read('uydurma').waterTargetMl, 2000);
+      expect(read(10).waterTargetMl, 500);
+      expect(read(99999).waterTargetMl, 6000);
+      expect(UserHistory.fromJson({'days': const <dynamic>[], 'synced': true}).waterTargetMl, 2000, reason: 'eski sunucu alanı göndermez');
+    });
+  });
+
   group('haftalık özet', () {
     test('bu hafta kayıt yoksa null', () {
       expect(summarizeWeeks(const [], today), isNull);
@@ -146,6 +158,26 @@ void main() {
       expect(p.avgWaterMl, 500);
       expect(p.fullRoutineDays, 1);
       expect(p.avgSleepHours, 6);
+    });
+
+    test('makyaj günleri, temizlenenler ve su hedefine ulaşılan günler sayılır; hedef kullanıcıya göredir', () {
+      final days = parse([
+        row(0, tracking: {'water_ml_total': 2500, 'makeup': {'logged': true, 'used': true, 'removed': true}}),
+        row(1, tracking: {'water_ml_total': 2000, 'makeup': {'logged': true, 'used': true, 'removed': false}}),
+        row(2, tracking: {'water_ml_total': 1900, 'makeup': {'logged': true, 'used': false}}),
+        row(8, tracking: {'water_ml_total': 3000, 'makeup': {'logged': true, 'used': true, 'removed': true}}),
+      ]);
+
+      final byDefault = summarizeWeeks(days, today)!;
+      expect(byDefault.current.makeupDays, 2, reason: '"yapmadım" makyaj günü sayılmaz');
+      expect(byDefault.current.makeupRemovedDays, 1);
+      expect(byDefault.current.waterGoalDays, 2, reason: '2000 ml hedefiyle: 2500 ve 2000');
+      expect(byDefault.previous!.makeupDays, 1);
+      expect(byDefault.previous!.waterGoalDays, 1);
+
+      final custom = summarizeWeeks(days, today, waterTargetMl: 2500)!;
+      expect(custom.current.waterGoalDays, 1, reason: '2500 ml hedefiyle yalnızca bir gün');
+      expect(summarizeWeeks(days, today, waterTargetMl: 1500)!.current.waterGoalDays, 3);
     });
 
     test('önceki hafta boşsa previous null', () {
@@ -200,6 +232,36 @@ void main() {
       expect(find.text('+700 ml'), findsOneWidget);
       expect(find.text(tr('mobileHistory.week.routineValue', {'n': 1})), findsOneWidget);
       expect(find.text(tr('mobileHistory.week.spfValue', {'n': 1})), findsOneWidget);
+    });
+
+    testWidgets('haftalık özet makyaj ve su hedefi satırlarını gösterir; hedef kullanıcının kendi hedefidir', (tester) async {
+      final backend = backendWith((now) => [
+            row(0, from: now, tracking: {'water_ml_total': 2600, 'makeup': {'logged': true, 'used': true, 'removed': true}}),
+            row(1, from: now, tracking: {'water_ml_total': 2000, 'makeup': {'logged': true, 'used': true, 'removed': false}}),
+            row(8, from: now, tracking: {'water_ml_total': 2700, 'makeup': {'logged': true, 'used': true, 'removed': true}}),
+          ]);
+      backend.history = {...backend.history, 'water_target_ml': 2500};
+      await pumpApp(tester, location: '/dashboard/history', prefs: acceptedPrefs(), backend: backend);
+
+      expect(find.text(tr('mobileHistory.week.waterGoal')), findsOneWidget);
+      expect(find.text(tr('mobileHistory.week.waterGoalValue', {'n': 1, 'ml': '2.500'})), findsOneWidget, reason: '2500 ml hedefiyle bir gün');
+      expect(find.text(tr('mobileHistory.week.makeup')), findsWidgets, reason: 'satır etiketi (gün kartlarındaki çiplerle aynı sözcük)');
+      expect(find.text(tr('mobileHistory.week.makeupValue', {'n': 2, 'removed': 1})), findsOneWidget);
+      expect(find.textContaining(tr('mobileHistory.trends.waterTarget', {'ml': '2.500'})), findsOneWidget, reason: 'grafik notu da hedefi kullanır');
+    });
+
+    testWidgets('makyajın hepsi temizlendiyse kısa metin; makyaj yoksa satır yok', (tester) async {
+      final all = backendWith((now) => [row(0, from: now, tracking: {'makeup': {'logged': true, 'used': true, 'removed': true}})]);
+      await pumpApp(tester, location: '/dashboard/history', prefs: acceptedPrefs(), backend: all);
+      expect(find.text(tr('mobileHistory.week.makeupValueAllRemoved', {'n': 1})), findsOneWidget);
+    });
+
+    testWidgets('makyaj ve su kaydı yoksa o satırlar çıkmaz', (tester) async {
+      final backend = backendWith((now) => [row(0, from: now, tracking: {'routine_morning_done': true})]);
+      await pumpApp(tester, location: '/dashboard/history', prefs: acceptedPrefs(), backend: backend);
+      expect(find.text(tr('mobileHistory.week.makeupValue', {'n': 1, 'removed': 0})), findsNothing);
+      expect(find.text(tr('mobileHistory.week.makeupValueAllRemoved', {'n': 1})), findsNothing);
+      expect(find.text(tr('mobileHistory.week.waterGoal')), findsNothing, reason: 'su kaydı yoksa hedef satırı anlamsız');
     });
 
     testWidgets('stres düştüyse iyi, su düştüyse uyarı renginde gösterilir', (tester) async {

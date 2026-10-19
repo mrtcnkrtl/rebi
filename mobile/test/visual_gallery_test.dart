@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart' show Size;
+import 'package:flutter/material.dart' show Size, TextField, TextInputAction;
 import 'package:flutter/painting.dart' show debugDisableShadows;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rebi/core/device_location.dart';
+import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/today/today_clock.dart';
 import 'package:rebi/ui/tw.dart';
@@ -73,6 +75,8 @@ void main() {
     ('hatirlaticilar', '/dashboard/reminders', true),
     ('rafim', '/dashboard/shelf', true),
     ('checkin', '/dashboard/checkin', true),
+    ('abonelik', '/dashboard/subscribe', true),
+    ('analiz', '/dashboard/analyze', true),
     ('karsilama', '/', false),
     ('giris', '/auth', false),
   ];
@@ -180,6 +184,115 @@ void main() {
         await tapText(tester, tr('mobileReminders.categories.routine.title'));
         await shoot(tester, '${dark ? 'koyu' : 'acik'}-sayfa-saat-araligi');
       } finally {
+        debugDisableShadows = true;
+      }
+    }, skip: !screenshotsEnabled);
+  }
+
+  // Uzun ekranlar (kaydırmadan tek görüntü): Faz F'de yeniden kurulan ekranlar.
+  const tall = <(String, String, double)>[
+    ('rutin-uzun', '/dashboard/routine', 3600),
+    ('sohbet-uzun', '/dashboard/chat', 1500),
+    ('gecmis-uzun', '/dashboard/history', 3400),
+    ('ben-uzun', '/dashboard/profile', 1900),
+    ('checkin-uzun', '/dashboard/checkin', 2600),
+    ('abonelik-uzun', '/dashboard/subscribe', 2600),
+  ];
+  for (final dark in [false, true]) {
+    for (final (name, path, height) in tall) {
+      testWidgets('${dark ? 'koyu' : 'acik'} · $name', (tester) async {
+        Tw.dark = dark;
+        debugDisableShadows = false;
+        try {
+          await pumpApp(
+            tester,
+            location: path,
+            prefs: acceptedPrefs(),
+            backend: populated(),
+            realFonts: true,
+            size: Size(390, height),
+          );
+          await shoot(tester, '${dark ? 'koyu' : 'acik'}-$name', width: 585);
+        } finally {
+          debugDisableShadows = true;
+        }
+      }, skip: !screenshotsEnabled);
+    }
+  }
+
+  // Sohbet durumları (Faz F1): konuşma, hata kartı, hak doldu kartı.
+  final chatCases = <(String, FakeBackend Function())>[
+    (
+      'konusma',
+      () => populated()
+        ..chatReply = 'Niasinamid bariyeri destekler ve gözenek görünümünü dengeler.\n\nŞunlara dikkat et:\n'
+            '• Yeni ürünü önce kolunda dene\n• Aynı akşam güçlü asitlerle karıştırma\n• Sabah güneş kremi şart',
+    ),
+    ('hata', () => populated()..chatFailTimes = 1),
+    ('limit', () => populated()..quotaAfter = 0),
+  ];
+  for (final dark in [false, true]) {
+    for (final (name, make) in chatCases) {
+      testWidgets('${dark ? 'koyu' : 'acik'} · sohbet-$name', (tester) async {
+        Tw.dark = dark;
+        debugDisableShadows = false;
+        try {
+          await pumpApp(tester, location: '/dashboard/chat', prefs: acceptedPrefs(), backend: make(), realFonts: true);
+          await tester.enterText(find.byType(TextField), 'Niasinamid ne işe yarar?');
+          await tester.testTextInput.receiveAction(TextInputAction.send);
+          await settle(tester);
+          await shoot(tester, '${dark ? 'koyu' : 'acik'}-sohbet-$name');
+        } finally {
+          debugDisableShadows = true;
+        }
+      }, skip: !screenshotsEnabled);
+    }
+  }
+
+  // Analiz sihirbazı (yeni kullanıcı): adım 1 ve adım 2.
+  for (final dark in [false, true]) {
+    testWidgets('${dark ? 'koyu' : 'acik'} · analiz-adim1', (tester) async {
+      Tw.dark = dark;
+      debugDisableShadows = false;
+      try {
+        await pumpApp(tester, location: '/dashboard/analyze', backend: FakeBackend(), realFonts: true, size: const Size(390, 1500));
+        await shoot(tester, '${dark ? 'koyu' : 'acik'}-analiz-adim1', width: 585);
+      } finally {
+        debugDisableShadows = true;
+      }
+    }, skip: !screenshotsEnabled);
+
+    testWidgets('${dark ? 'koyu' : 'acik'} · analiz-adim2', (tester) async {
+      Tw.dark = dark;
+      debugDisableShadows = false;
+      try {
+        await pumpApp(tester, location: '/dashboard/analyze', backend: FakeBackend(), realFonts: true, size: const Size(390, 2200));
+        await tester.enterText(find.widgetWithText(TextField, '25'), '28');
+        await tapText(tester, Pack(I18n.instance.analyzeWizardPack).s('gender.female'));
+        await tapText(tester, tr('analyze.continue'));
+        await shoot(tester, '${dark ? 'koyu' : 'acik'}-analiz-adim2', width: 585);
+      } finally {
+        debugDisableShadows = true;
+      }
+    }, skip: !screenshotsEnabled);
+  }
+
+  // İlk açılış (Faz F4): konum önerisi, ardından bildirim önerisi.
+  for (final dark in [false, true]) {
+    testWidgets('${dark ? 'koyu' : 'acik'} · bugun-konum', (tester) async {
+      Tw.dark = dark;
+      debugDisableShadows = false;
+      setLocationAccess(read: () async => LocationAccess.askable);
+      try {
+        final b = populated();
+        b.snapshot = {
+          ...b.snapshot,
+          'consent': {...(b.snapshot['consent'] as Map).cast<String, dynamic>(), 'location_processing_allowed': true},
+        };
+        await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: b, realFonts: true, notifier: FakeReminderNotifier());
+        await shoot(tester, '${dark ? 'koyu' : 'acik'}-bugun-konum');
+      } finally {
+        resetLocationAccess();
         debugDisableShadows = true;
       }
     }, skip: !screenshotsEnabled);

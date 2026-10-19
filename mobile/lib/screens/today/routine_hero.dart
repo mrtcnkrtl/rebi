@@ -15,6 +15,7 @@ import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import '../../ui/widgets/progress_ring.dart';
 import 'today_clock.dart';
+import '../routine/routine_parts.dart';
 import 'today_widgets.dart';
 
 /// Bugün'ün kahramanı: günün rutini. Başlık, ilerleme halkası, sabah/akşam seçici ve adım adım işaretlenen liste.
@@ -375,6 +376,16 @@ class _RoutineHeroState extends State<RoutineHero> {
                           style: tx(12, c: Tw.gray600, h: relaxed),
                         ),
                       ],
+                      const SizedBox(height: 2),
+                      TextLink(
+                        i18n.t('mobileRoutine.askRebi'),
+                        onTap: () => askRebiAboutStep(
+                          context,
+                          item,
+                          RoutineCtx(i18n: i18n, theme: theme, localized: widget.localized, weekDays: const []),
+                        ),
+                        style: tx(12, w: 7, c: theme.fg),
+                      ),
                     ],
                   ],
                 ),

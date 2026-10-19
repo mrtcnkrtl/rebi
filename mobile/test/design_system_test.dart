@@ -102,6 +102,47 @@ void main() {
       expect(offenders, isEmpty, reason: 'Emoji yerine `ui/brand/glyphs.dart` ikonlarını kullan.');
     });
 
+    test('ekranlarda ve bileşenlerde süs gradyanı yok (yalnızca izinli yıkama / görsel dosyaları)', () {
+      // İzinli: kabuğun temalı yıkaması (`theme_controller`), karşılama/yükleme zemini yıkaması ve tek bir parıltı, cilt tipi
+      // görselinin çizimi. Kart, düğme, ikon kutusu, ilerleme çubuğu ve bölüm başlığı düz renkli olur.
+      const allowed = {
+        'lib/state/theme_controller.dart',
+        'lib/ui/components/skin_type_visual.dart',
+        'lib/screens/splash_screen.dart',
+        'lib/screens/legal_screen.dart',
+        'lib/ui/components/loading_screen.dart',
+      };
+      final offenders = <String>[];
+      for (final f in Directory('lib').listSync(recursive: true).whereType<File>()) {
+        final path = f.path.replaceAll('\\', '/');
+        // `lib/ui/brand/`: marka işareti ve karşılama çizimleri (illüstrasyon; gradyan çizimin parçasıdır).
+        if (!path.endsWith('.dart') || allowed.contains(path) || path.startsWith('lib/ui/brand/')) continue;
+        final lines = f.readAsLinesSync();
+        for (var i = 0; i < lines.length; i++) {
+          final line = lines[i].trimLeft();
+          if (line.startsWith('//')) continue;
+          if (line.contains('LinearGradient(') || line.contains('RadialGradient(') || line.contains('SweepGradient(')) {
+            offenders.add('$path:${i + 1}');
+          }
+        }
+      }
+      expect(offenders, isEmpty, reason: 'Gradyan yerine düz renk ya da hafif bir tint kullan (docs/MOBIL-TASARIM-DILI.md).');
+    });
+
+    test('koyu mor "cam" zemin ve sabit koyu panel renkleri ekranlara sızmaz', () {
+      // `fixedSlate950` yalnızca kapatma perdesi (scrim) için; mor tonlu sabit renkler hiç kullanılmaz.
+      final offenders = <String>[];
+      for (final f in Directory('lib/screens').listSync(recursive: true).whereType<File>()) {
+        final path = f.path.replaceAll('\\', '/');
+        if (!path.endsWith('.dart')) continue;
+        final text = f.readAsStringSync();
+        for (final banned in ['fixedViolet', 'Colors.white.withValues(alpha: .05)', 'Colors.white.withValues(alpha: .1)']) {
+          if (text.contains(banned)) offenders.add('$path: $banned');
+        }
+      }
+      expect(offenders, isEmpty, reason: 'Ekranlar krem zemin üstünde düz yüzeylerle kurulur; cam / koyu mor panel yok.');
+    });
+
     test('ham Tailwind neon tonu (0xFF3B82F6 vb.) arayüze sızmaz', () {
       const banned = ['0xFF3B82F6', '0xFF2563EB', '0xFFEC4899', '0xFFA855F7', '0xFF06B6D4', '0xFF6366F1'];
       final offenders = <String>[];

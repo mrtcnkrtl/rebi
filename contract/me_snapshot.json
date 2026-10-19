@@ -1,7 +1,7 @@
 {
   "user_id": "99999999-9999-4999-8999-999999999999",
-  "server_time": "2026-10-16T16:10:53.855950+00:00",
-  "log_date": "2026-10-16",
+  "server_time": "2026-10-19T07:57:28.731837+00:00",
+  "log_date": "2026-10-19",
   "profile": {
     "id": "99999999-9999-4999-8999-999999999999",
     "full_name": "Ayşe Yılmaz",
@@ -9,7 +9,7 @@
     "age": 29,
     "gender": "female",
     "city": "İstanbul",
-    "updated_at": "2026-10-16T06:00:00+00:00"
+    "updated_at": "2026-10-19T06:00:00+00:00"
   },
   "has_routine": true,
   "routine": [
@@ -46,7 +46,7 @@
       "usage": "Çift temizlik."
     }
   ],
-  "routine_created_at": "2026-10-16T06:30:00+00:00",
+  "routine_created_at": "2026-10-19T06:30:00+00:00",
   "progress": {
     "water_ml_total": 750,
     "nutrition": {
@@ -93,7 +93,7 @@
       {
         "product": "SPF 50 (geniş spektrumlu)",
         "step_order": 40,
-        "at": "2026-10-16T12:30:00+00:00"
+        "at": "2026-10-19T12:30:00+00:00"
       }
     ]
   },

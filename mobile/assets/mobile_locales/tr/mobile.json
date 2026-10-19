@@ -455,7 +455,12 @@
       "junk": "Abur cubur yenen",
       "junkValue": "{{n}} gün",
       "up": "arttı",
-      "down": "azaldı"
+      "down": "azaldı",
+      "waterGoal": "Su hedefi",
+      "waterGoalValue": "{{n}}/7 gün ({{ml}} ml)",
+      "makeup": "Makyaj",
+      "makeupValue": "{{n}} gün · {{removed}} gün temizlendi",
+      "makeupValueAllRemoved": "{{n}} gün · hepsi temizlendi"
     }
   },
   "mobileReminders": {
@@ -640,14 +645,61 @@
       "titleMonth": "Bu ayki sohbet hakkın doldu",
       "bodyDay": "Hakkın yarın yenilenir. Bugün rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
       "bodyMonth": "Hakkın ay başında yenilenir. O zamana kadar rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
-      "close": "Tamam"
+      "close": "Tamam",
+      "signIn": "Giriş yap",
+      "plusOpen": "Rebi Plus’ı aç",
+      "plusSwitch": "Plus’a geç",
+      "notNow": "Şimdilik kapat",
+      "bulletData": "Takip + check-in verisiyle daha tutarlı öneriler",
+      "bulletThemes": "Premium temalar ve yeni özellikler",
+      "signInNote": "Rutin tarafına geçmek istersen zaten kayıt/giriş gerekiyor."
+    },
+    "contextLabel": "Rebi bugünü biliyor",
+    "context": {
+      "weather": "UV {{uv}} · {{temp}}°C",
+      "routine": "Rutin {{done}}/{{total}}",
+      "routineDone": "Rutin tamam",
+      "water": "Su {{ml}}/{{target}} ml",
+      "makeupPending": "Makyaj temizlenmedi",
+      "makeupDone": "Makyaj temizlendi",
+      "shelf": "{{n}} ürün bitti"
+    },
+    "retry": "Tekrar dene",
+    "error": {
+      "offline": "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.",
+      "server": "Sunucu şu an yanıt vermiyor. Biraz sonra tekrar dene.",
+      "auth": "Oturum süren dolmuş olabilir. Çıkış yapıp tekrar giriş yapmayı dene.",
+      "generic": "Yanıt alınamadı. Tekrar dener misin?"
     }
   },
   "mobileCheckin": {
     "prefilled": "Bugünkü takip kayıtlarından {{n}} cevap dolduruldu. İstersen değiştir."
   },
   "mobileSubscribe": {
-    "unavailable": "Rebi Plus şu an uygulama içinden satın alınamıyor. Hesabında etkinleştirildiğinde burada görünür."
+    "unavailable": "Rebi Plus şu an uygulama içinden satın alınamıyor. Hesabında etkinleştirildiğinde burada görünür.",
+    "active": "Plus aktif",
+    "activeBody": "Hesabında Rebi Plus görünüyor. Teşekkürler.",
+    "included": "Neler dahil?",
+    "open": "Plus’ı aç",
+    "backToChat": "Sohbete dön",
+    "benefits": {
+      "chat": {
+        "title": "Sınırsız Rebi AI",
+        "body": "Günlük ücretsiz mesaj limiti kalkar; sohbet kesilmez."
+      },
+      "themes": {
+        "title": "Premium temalar",
+        "body": "Ayırt edici vurgu renkleri: Gün Batımı, Derin Su, Gece."
+      },
+      "early": {
+        "title": "Öncelikli yenilikler",
+        "body": "Yeni özellikler önce Plus’a gelir; ilk sen denersin."
+      },
+      "tracking": {
+        "title": "Daha derin takip",
+        "body": "Check-in akışı daha güçlü çalışır; rutinin daha iyi uyarlanır."
+      }
+    }
   },
   "mobileLanding": {
     "chipUv": "UV 6",
@@ -692,5 +744,32 @@
     "loadFailed": "Rafın yüklenemedi. Bağlantını kontrol et.",
     "retry": "Tekrar dene",
     "pending": "{{count}} kayıt gönderilmeyi bekliyor"
+  },
+  "mobileRoutine": {
+    "askRebi": "Rebi'ye sor",
+    "askPrompt": "Rutinimdeki \"{{item}}\" adımını neden kullanıyorum ve nasıl uygulamalıyım? Cildime uygun alternatifleri de söyler misin?",
+    "comboHint": "Tek üründe hepsi şart değil: bu satırı hedef içerik örneği gibi düşün; hepsini tek üründe bulamazsan benzerlerinden birini seçebilirsin.",
+    "stepCount": "{{n}} adım",
+    "humidity": "nem %{{value}}",
+    "weeklyDays": "Bu maddeyi şu günlerde uygula: {{days}}",
+    "everyDayCount": "{{n}} öneri",
+    "ingredientCount": "{{n}} madde",
+    "progressPhoto": "İlerleme takibi",
+    "tips": {
+      "water": {
+        "title": "Su",
+        "body": "Günde en az 2 L su iç. Cildin nemine doğrudan etki eder."
+      },
+      "sleep": {
+        "title": "Uyku",
+        "body": "7–8 saat uyku hedefle. Cilt gece kendini onarır."
+      }
+    }
+  },
+  "mobileLocation": {
+    "promptTitle": "Hava durumunu bulunduğun yere göre göster",
+    "promptBody": "Güneş kremi, nemlendirici ve dudak balsamı kararları bulunduğun yerin gerçek havasına göre verilir. Konumun yalnızca yaklaşık (~1 km) olarak kullanılır.",
+    "promptEnable": "Konumu aç",
+    "promptLater": "Şimdi değil"
   }
 }

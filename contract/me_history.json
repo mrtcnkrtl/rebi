@@ -1,10 +1,10 @@
 {
   "user_id": "99999999-9999-4999-8999-999999999999",
-  "from_date": "2026-10-10",
-  "to_date": "2026-10-16",
+  "from_date": "2026-10-13",
+  "to_date": "2026-10-19",
   "days": [
     {
-      "log_date": "2026-10-15",
+      "log_date": "2026-10-18",
       "tracking": {
         "water_ml_total": 500,
         "nutrition": {},
@@ -35,7 +35,7 @@
       "checkin": null
     },
     {
-      "log_date": "2026-10-16",
+      "log_date": "2026-10-19",
       "tracking": {
         "water_ml_total": 750,
         "nutrition": {
@@ -82,13 +82,13 @@
           {
             "product": "SPF 50 (geniş spektrumlu)",
             "step_order": 40,
-            "at": "2026-10-16T12:30:00+00:00"
+            "at": "2026-10-19T12:30:00+00:00"
           }
         ]
       },
       "checkin": {
         "user_id": "99999999-9999-4999-8999-999999999999",
-        "log_date": "2026-10-16",
+        "log_date": "2026-10-19",
         "applied_routine": true,
         "skin_feeling": "iyi",
         "sleep_hours": 7.5,
@@ -103,8 +103,9 @@
       "user_id": "99999999-9999-4999-8999-999999999999",
       "concern": "acne",
       "severity_score": 4,
-      "created_at": "2026-10-15T08:00:00+00:00"
+      "created_at": "2026-10-18T08:00:00+00:00"
     }
   ],
-  "synced": true
+  "synced": true,
+  "water_target_ml": 2500
 }
