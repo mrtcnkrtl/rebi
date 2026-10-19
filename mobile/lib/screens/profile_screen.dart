@@ -302,24 +302,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       );
 
-  Widget _checkboxRow(bool value, ValueChanged<bool> onChanged, String label) => InkWell(
-        onTap: () => onChanged(!value),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 20,
-              height: 20,
-              child: Checkbox(
-                value: value,
-                onChanged: (v) => onChanged(v ?? false),
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact,
-              ),
+  Widget _checkboxRow(bool value, ValueChanged<bool> onChanged, String label) => MergeSemantics(
+        child: InkWell(
+          onTap: () => onChanged(!value),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Checkbox(
+                    value: value,
+                    onChanged: (v) => onChanged(v ?? false),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text(label, style: tx(14, c: Tw.gray700))),
+              ],
             ),
-            const SizedBox(width: 10),
-            Expanded(child: Text(label, style: tx(14, c: Tw.gray700))),
-          ],
+          ),
         ),
       );
 

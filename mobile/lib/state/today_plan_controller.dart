@@ -22,6 +22,11 @@ enum LogOutcome {
   bool get saved => this != failed;
 }
 
+/// Plan isteği konumu en çok bu kadar bekler. Soğuk açılışta son konum yoksa GPS birkaç saniye sürebilir; kullanıcı
+/// o sürede boş ekran görmesin. Süre dolarsa plan konumsuz (profildeki şehir) istenir, konum bulununca sonraki
+/// tazelemede kullanılır.
+const locationWaitBudget = Duration(milliseconds: 2500);
+
 /// Panelin "bugün" bölümü için `GET /today/plan` durumu ve gün içi kayıtlar.
 /// Kayıtların hepsi [ingestDailyTrackingEvent] üzerinden geçer; sunucuya ulaşamayanlar
 /// [EventOutbox]ta bekler ve gösterilen ilerlemeye eklenir: ekran = sunucu durumu + bekleyenler.
@@ -97,7 +102,7 @@ class TodayPlanController extends ChangeNotifier {
     }
     TodayPlan? next;
     try {
-      final at = _useLocation ? await lookupDeviceLocation() : null;
+      final at = _useLocation ? await lookupDeviceLocation().timeout(locationWaitBudget, onTimeout: () => null) : null;
       next = await fetchTodayPlan(userId, lat: at?.lat, lon: at?.lon);
     } catch (_) {
       /* ağ yok: eldeki plan gösterilmeye devam eder */

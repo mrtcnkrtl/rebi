@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 /// Uygulamanın renk katmanı. Adlar webden gelen Tailwind adlarıdır ve 40'tan fazla dosya bunları
@@ -22,6 +24,41 @@ class Tw {
 
   /// Alt sayfa, menü gibi yükseltilmiş yüzey.
   static Color get surfaceRaised => dark ? const Color(0xFF163632) : Colors.white;
+
+  /// WCAG bağıl parlaklık.
+  static double _luminance(Color c) {
+    double channel(double v) => v <= 0.03928 ? v / 12.92 : math.pow((v + 0.055) / 1.055, 2.4).toDouble();
+    return 0.2126 * channel(c.r) + 0.7152 * channel(c.g) + 0.0722 * channel(c.b);
+  }
+
+  /// İki renk arasındaki WCAG kontrast oranı (1–21).
+  static double contrastRatio(Color a, Color b) {
+    final la = _luminance(a), lb = _luminance(b);
+    return (math.max(la, lb) + 0.05) / (math.min(la, lb) + 0.05);
+  }
+
+  /// [c] rengini metin olarak [bg] üzerinde en az [min]:1 kontrasta getirir: açık zeminde koyulaştırır, koyu zeminde
+  /// açar. Kategori renkleri (su mavisi, bal sarısı…) tint zeminde metin olarak kullanılacaksa bundan geçirilir.
+  static Color readable(Color c, {Color? bg, double min = 4.5}) {
+    final base = bg ?? surface;
+    if (contrastRatio(c, base) >= min) return c;
+    final target = _luminance(base) > .5 ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
+    for (var step = 1; step <= 20; step++) {
+      final next = Color.lerp(c, target, step * .05)!;
+      if (contrastRatio(next, base) >= min) return next;
+    }
+    return target;
+  }
+
+  /// [c] rengini dolgu olarak kullanırken üstündeki beyaz yazı en az [min]:1 olsun diye gerekirse koyulaştırır.
+  static Color fillWithWhiteText(Color c, {double min = 4.5}) {
+    if (contrastRatio(Colors.white, c) >= min) return c;
+    for (var step = 1; step <= 20; step++) {
+      final next = Color.lerp(c, const Color(0xFF000000), step * .04)!;
+      if (contrastRatio(Colors.white, next) >= min) return next;
+    }
+    return Color.lerp(c, const Color(0xFF000000), .8)!;
+  }
 
   /// Koyu moda uyarlanmış açık tint (kullanıcı temalarının açık zemin / kenarlık tonları).
   static Color adapt(Color light) => dark ? _invert(light, text: false) : light;

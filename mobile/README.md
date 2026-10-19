@@ -70,6 +70,12 @@ flutter test
 - `test/today_screens_test.dart` — "Bugün" ekranı: şimdi kartı, rutin kontrol listesi (adım, blok, geri al),
   yaptım / ürün bitti çubuğu, makyaj (temizleme yöntemi), beslenme, su ve ürün bitti sayfaları, çevrimdışı
   kuyruk, konum izni, hata durumu, küçük ekran.
+- `test/accessibility_test.dart` — erişilebilirlik (Faz G3): tüm ana ekranlar ve alt sayfalar açık + koyu modda; dokunma hedefi
+  (Android 48 dp, iOS 44 dp), ekran okuyucu etiketi, AA kontrast. `test/helpers/a11y.dart` kırılan öğeyi ve ölçüyü yazar.
+- `test/performance_test.dart` — yavaş ağ / soğuk açılış (GPS beklemesi sınırı, eldeki plan kalır, sonsuz dönme yok) ve
+  pahalı çizim yasağı (`BackdropFilter` vb.).
+- `test/store_screenshots_test.dart` — yalnızca `REBI_STORE_SHOTS=1` ile: mağaza ekran görüntüleri (`build/store/`),
+  bkz. `docs/MOBIL-MAGAZA-VARLIKLARI.md`. `test/visual_gallery_test.dart` (`REBI_SCREENSHOTS=1`) tasarım incelemesi içindir.
 
 ## Web ile ortak içerik
 

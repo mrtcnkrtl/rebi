@@ -123,3 +123,19 @@ sistemleri arasında piksel piksel aynı olmadığı için CI'da kararsız olurd
   panel renkleri yok (`design_system_test`).
 - Her temanın düğme rengi üstünde beyaz yazı ≥ 4.5:1.
 - Metin/zemin çiftleri iki modda ≥ 4.5:1 (`dark_mode_test`).
+- **Erişilebilirlik** (`accessibility_test`, Faz G3): 52 senaryo (tüm ana ekranlar + alt sayfalar, açık ve koyu) şu kurallardan geçer:
+  dokunma hedefi ≥ 48 dp (Android) / 44 dp (iOS), dokunulabilir her öğenin ekran okuyucu etiketi, metin kontrastı ≥ AA.
+
+## Erişilebilirlik kuralları (yeni ekran yazarken)
+
+- **Dokunma alanı büyür, görsel büyümez.** Küçük bir hap / simge görünümü 32 dp kalabilir; etrafındaki `InkWell` / `ConstrainedBox(minHeight: 48)`
+  48 dp olur (örnek: sohbet bilgi çipleri, `TextLink`, `ChoiceChipBox`). `VisualDensity.compact` ve `MaterialTapTargetSize.shrinkWrap`
+  hedefi 48'in altına çeker; yalnızca içinde 48 dp'lik bir sarmalayıcı varsa kullan.
+- **Metin rengi** bir kategori renginden (su mavisi, bal sarısı, pembe…) geliyorsa `Tw.readable(renk, bg: zemin)` ile geçir; renkli dolgunun
+  üzerine beyaz yazı gelecekse dolguyu `Tw.fillWithWhiteText(renk)` ile geçir. `gray400` yalnızca süs / kenar için; **metin** en az `gray500`.
+  Vurgu rengi metin olacaksa `theme.fg` (koyu modda açılır), `theme.primary` değil.
+- **Etiket:** yalnızca simge olan düğmeye `tooltip` / `Semantics(label:)` ver (`Switch` için de: `Semantics(label: ..., child: Switch(...))`).
+  Başlık + açıklama + kontrol tek satırsa `MergeSemantics` ile tek düğüm yap (örnek: onay kutusu satırı).
+- Seçilebilir kullanıcı metni için `SelectableText` yerine `SelectionArea(child: Text(...))` (aynı seçim, etiketsiz fazladan düğüm üretmez).
+- Yeni ekranı `test/accessibility_test.dart`'a bir senaryo olarak ekle; hata satırı elemanı, ölçüyü ve oranı söyler.
+

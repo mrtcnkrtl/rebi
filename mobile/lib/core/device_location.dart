@@ -27,7 +27,8 @@ double roundCoordinate(double v) => (v * 100).roundToDouble() / 100;
 
 LocationLookup _lookup = _lookupGrantedLocation;
 
-Future<Coordinates?> lookupDeviceLocation() => _lookup();
+// async: sahte bir arama `Future<Koordinat>` döndürse bile çağıran `Future<Koordinat?>` görür (zaman aşımı `null` verebilsin).
+Future<Coordinates?> lookupDeviceLocation() async => _lookup();
 
 /// Testlerde gerçek konum eklentisi yerine sabit koordinat vermek için.
 @visibleForTesting

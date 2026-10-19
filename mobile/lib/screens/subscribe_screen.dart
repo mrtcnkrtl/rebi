@@ -125,7 +125,7 @@ class SubscribeScreen extends StatelessWidget {
                       // Geliştirici ipucu yalnızca debug derlemesinde görünür.
                       if (kDebugMode) ...[
                         const SizedBox(height: 4),
-                        Text('(Dev: REBI_PLUS_CHECKOUT_URL tanımlı değil)', style: tx(11, c: Tw.amber900.withValues(alpha: .7))),
+                        Text('(Dev: REBI_PLUS_CHECKOUT_URL tanımlı değil)', style: tx(11, c: Tw.amber900)),
                       ],
                     ],
                   ),

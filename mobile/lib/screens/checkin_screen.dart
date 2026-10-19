@@ -398,7 +398,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         Text.rich(
           TextSpan(children: [
             const TextSpan(text: 'Risk: '),
-            TextSpan(text: str(result['risk_level']), style: tx(14, w: 6, c: theme.primary)),
+            TextSpan(text: str(result['risk_level']), style: tx(14, w: 6, c: theme.fg)),
             if (result['adaptation_type'] == 'major') const TextSpan(text: ' — Büyük değişiklikler yapıldı'),
           ]),
           textAlign: TextAlign.center,
@@ -441,12 +441,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   Text.rich(
                     TextSpan(children: [
                       TextSpan(text: '${str(c['old'])} → '),
-                      TextSpan(text: str(c['new']), style: tx(12, w: 6, c: theme.primary)),
+                      TextSpan(text: str(c['new']), style: tx(12, w: 6, c: theme.fg)),
                     ]),
                     style: tx(12, c: Tw.gray500),
                   ),
                   const SizedBox(height: 2),
-                  Text(str(c['reason']), style: tx(12, c: Tw.gray400)),
+                  Text(str(c['reason']), style: tx(12, c: Tw.gray500)),
                 ],
               ),
             ),
@@ -644,7 +644,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         Text(
           'Uyku ve stres cevapların, geçmiş check-in kayıtlarınla kısa süreli harmanlanarak risk özetine girer.',
           textAlign: TextAlign.center,
-          style: tx(11, c: Tw.gray400, h: relaxed),
+          style: tx(11, c: Tw.gray500, h: relaxed),
         ),
         const SizedBox(height: 32),
         if (_submitError.isNotEmpty) ...[
@@ -684,7 +684,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   const SizedBox(width: 16),
                   SizedBox(
                     width: 48,
-                    child: Text('${jsString(_sleepHours)}s', textAlign: TextAlign.center, style: tx(18, w: 7, c: Tw.indigo600)),
+                    child: Text('${jsString(_sleepHours)}s', textAlign: TextAlign.center, style: tx(18, w: 7, c: Tw.dark ? Tw.indigo400 : Tw.indigo600)),
                   ),
                 ],
               ),
@@ -693,9 +693,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('3s', style: tx(10, c: Tw.gray400)),
-                    Text('7.5s', style: tx(10, c: Tw.gray400)),
-                    Text('12s', style: tx(10, c: Tw.gray400)),
+                    Text('3s', style: tx(10, c: Tw.gray500)),
+                    Text('7.5s', style: tx(10, c: Tw.gray500)),
+                    Text('12s', style: tx(10, c: Tw.gray500)),
                   ],
                 ),
               ),
@@ -725,7 +725,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           children: [
                             Icon(stressGlyph(value), size: 22, color: _stressToday == value ? theme.primary : Tw.gray400),
                             const SizedBox(height: 2),
-                            Text(label, textAlign: TextAlign.center, style: tx(9, c: Tw.gray500, h: tight)),
+                            Text(label, textAlign: TextAlign.center, style: tx(10, w: _stressToday == value ? 6 : 5, c: _stressToday == value ? theme.primaryDark : Tw.gray600, h: tight)),
                           ],
                         ),
                       ),
@@ -823,7 +823,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [for (final n in ['1', '2', '3']) Text(n, style: tx(10, c: Tw.gray400))],
+                  children: [for (final n in ['1', '2', '3']) Text(n, style: tx(10, c: Tw.gray500))],
                 ),
               ],
             ),
@@ -875,7 +875,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
               Text.rich(
                 TextSpan(children: [
                   const TextSpan(text: 'Eklemek istediğin bir şey var mı? '),
-                  TextSpan(text: '(opsiyonel)', style: tx(14, c: Tw.gray400)),
+                  TextSpan(text: '(opsiyonel)', style: tx(14, c: Tw.gray500)),
                 ]),
                 style: tx(14, w: 7, c: Tw.gray800),
               ),
@@ -914,12 +914,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   Widget _yesNo(String label, bool selected, Color color, VoidCallback onTap) {
     return Material(
-      color: selected ? color : Tw.gray50,
+      color: selected ? Tw.fillWithWhiteText(color) : Tw.gray50,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
@@ -945,12 +947,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
             borderRadius: BorderRadius.circular(8),
             onTap: onTap,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              constraints: const BoxConstraints(minHeight: 48),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: primary ? theme.primary : Tw.gray200),
               ),
-              child: Text(label, style: tx(11, w: 5, c: primary ? Colors.white : Tw.gray700)),
+              child: Text(label, style: tx(12, w: 5, c: primary ? Colors.white : Tw.gray700)),
             ),
           ),
         );
@@ -984,11 +988,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
               suffixText: 'ml',
               radius: 12,
               borderWidth: 1,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
             ),
           ),
           const SizedBox(height: 6),
-          Text('Gönderirken değer tam sayı ml olarak kaydedilir (en fazla 8000 ml).', style: tx(10, c: Tw.gray400)),
+          Text('Gönderirken değer tam sayı ml olarak kaydedilir (en fazla 8000 ml).', style: tx(10, c: Tw.gray500)),
           if (parsed != null && parsed > 0) ...[
             const SizedBox(height: 8),
             Container(
@@ -1026,12 +1030,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
           borderRadius: BorderRadius.circular(12),
           onTap: onTap,
           child: Container(
+            constraints: const BoxConstraints(minHeight: 48),
+            alignment: Alignment.center,
             padding: const EdgeInsets.symmetric(vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: selected ? Tw.teal500 : Tw.gray200, width: 2),
             ),
-            child: Text(label, textAlign: TextAlign.center, style: tx(12, w: 5, c: plain ? Tw.gray600 : Tw.gray900)),
+            child: Text(label, textAlign: TextAlign.center, style: tx(13, w: 5, c: plain ? Tw.gray600 : Tw.gray900)),
           ),
         ),
       );

@@ -1,5 +1,9 @@
 # Mobil backend'ini canlıya alma (flutter-mobile → main)
 
+> **Durum (2026-10-19):** birleşme **yapıldı** (`main` = Faz F sonu, fast-forward) ve dağıtım başarılı; canlı `/health` `db_schema: ok`,
+> `/me/reminder-settings` 401 (yeni uç canlıda). **Kalan, sende:** "Push'u açınca" bölümündeki VPS anahtarları, duman testi (adım 5) ve
+> web'i bir kez elle açmak (adım 6). Aşağısı, aynı işi yeniden yapman gerekirse (örn. yeni backend değişikliği) sırayı korur.
+
 `main`'e her push; backend testleri → frontend lint/build → VPS'te `docker compose up -d --build` çalıştırır
 (`.github/workflows/deploy-rebiovil.yml`). Bu yüzden `flutter-mobile`'i birleştirmek **canlıyı değiştirir**.
 Aşağıdaki sıra bunu güvenli yapar. Web (`frontend/`) bu dalda değişmedi; web için ek bir adım yok.
@@ -66,4 +70,5 @@ Hesap silme, tablo hiç olmasa bile çalışmaya devam eder.
 2. `/health` → `push: configured`; `push-cron` 5 dakika içinde ilk turu çalıştırır ve `push_dispatch.at` dolar.
 3. `docker compose logs -f push-cron` satırı: `kullanıcı=… hatırlatıcı=… bildirim=… başarısız=…`.
    `başarısız` sürekli sıfırdan büyükse FCM'e ulaşılamıyordur (anahtar/proje kimliği).
-4. Mobil uygulamada yerel bildirimler ile push'un çift bildirim üretmemesi Faz E'de (E4) ele alınacak.
+4. Çift bildirim önlemi hazır (Faz E4): mobil, `/devices/register` yanıtındaki `dispatch_alive` true iken yerel bildirimleri kaldırır, false iken
+   yeniden kurar. Doğrulama: `docs/MOBIL-BILDIRIM-TEST.md` §5.

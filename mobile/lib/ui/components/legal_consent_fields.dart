@@ -47,10 +47,13 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
   }
 
   Widget _row({required bool value, required ValueChanged<bool> onChanged, required Widget label}) {
-    return InkWell(
-      onTap: () => onChanged(!value),
-      borderRadius: BorderRadius.circular(10),
-      child: Row(
+    return MergeSemantics(
+      child: InkWell(
+        onTap: () => onChanged(!value),
+        borderRadius: BorderRadius.circular(10),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
+          child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
@@ -69,6 +72,8 @@ class _LegalConsentFieldsState extends State<LegalConsentFields> {
           const SizedBox(width: 12),
           Expanded(child: Padding(padding: const EdgeInsets.only(top: 2), child: label)),
         ],
+          ),
+        ),
       ),
     );
   }

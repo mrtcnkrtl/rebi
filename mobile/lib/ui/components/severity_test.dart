@@ -86,7 +86,7 @@ class _SeverityTestState extends State<SeverityTest> {
           Text(
             interpolate(ui.s('answeredProgress'), {'answered': answered, 'total': total}),
             textAlign: TextAlign.right,
-            style: tx(12, c: Tw.gray400),
+            style: tx(12, c: Tw.gray500),
           ),
           for (final q in questions) ...[
             const SizedBox(height: 20),
@@ -129,7 +129,7 @@ class _SeverityTestState extends State<SeverityTest> {
               ),
             )
           else
-            Text(ui.s('answerAllHint'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray400)),
+            Text(ui.s('answerAllHint'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500)),
         ],
       ),
     );

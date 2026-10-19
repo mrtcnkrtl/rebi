@@ -95,7 +95,7 @@ class ChatHeader extends StatelessWidget {
           TextButton(
             onPressed: canClear ? onClear : null,
             style: TextButton.styleFrom(
-              minimumSize: const Size(44, 44),
+              minimumSize: const Size(48, 48),
               padding: const EdgeInsets.symmetric(horizontal: 10),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
@@ -149,36 +149,36 @@ class ChatContextStrip extends StatelessWidget {
         container: true,
         label: i18n.t('mobileChat.contextLabel'),
         child: SizedBox(
-          height: 44,
+          height: 56,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
             itemCount: items.length,
-            separatorBuilder: (_, _) => const SizedBox(width: 6),
+            separatorBuilder: (_, _) => const SizedBox(width: 4),
             itemBuilder: (context, i) {
               final item = items[i];
+              // Hap görünümü küçük (32 dp), dokunma alanı 48 dp.
               return Material(
-                color: Tw.surface,
-                shape: StadiumBorder(side: BorderSide(color: Tw.gray100)),
+                color: Colors.transparent,
                 child: InkWell(
                   customBorder: const StadiumBorder(),
                   onTap: onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_icon(item.id), size: 13, color: _color(item.id)),
-                        const SizedBox(width: 6),
-                        Text(
-                          item.text,
-                          maxLines: 1,
-                          style: tx(12, w: 5, c: Tw.gray700),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: ShapeDecoration(color: Tw.surface, shape: StadiumBorder(side: BorderSide(color: Tw.gray100))),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(_icon(item.id), size: 13, color: _color(item.id)),
+                            const SizedBox(width: 6),
+                            Text(item.text, maxLines: 1, style: tx(12, w: 5, c: Tw.gray700)),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -286,9 +286,8 @@ class ChatBubble extends StatelessWidget {
               ),
             ),
             child: mine
-                ? SelectableText(
-                    text,
-                    style: tx(14, c: Colors.white, h: relaxed),
+                ? SelectionArea(
+                    child: Text(text, style: tx(14, c: Colors.white, h: relaxed)),
                   )
                 : ReplyText(text, color: Tw.gray800),
           ),
@@ -453,7 +452,7 @@ class ChatErrorCard extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: SecondaryButton(
               onPressed: onRetry,
-              minHeight: 40,
+              minHeight: 48,
               fontSize: 13,
               icon: LucideIcons.refreshCw,
               borderColor: Tw.amber200,

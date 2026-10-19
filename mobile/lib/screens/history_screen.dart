@@ -156,7 +156,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           Icon(LucideIcons.wifiOff, size: 18, color: Tw.amber600),
           const SizedBox(width: 10),
           Expanded(child: Text(i18n.t('mobileHistory.loadFailed'), style: tx(12, c: Tw.amber900))),
-          TextLink(i18n.t('mobileHistory.retry'), onTap: _load, style: tx(12, w: 6, c: theme.primary)),
+          TextLink(i18n.t('mobileHistory.retry'), onTap: _load, style: tx(12, w: 6, c: theme.fg)),
         ]),
       );
 
@@ -478,14 +478,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _chip(String text, {Color? bg, Color? fg, IconData? icon}) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-        decoration: BoxDecoration(color: bg ?? Tw.gray100, borderRadius: BorderRadius.circular(999)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          if (icon != null) ...[Icon(icon, size: 12, color: fg ?? Tw.gray700), const SizedBox(width: 4)],
-          Flexible(child: Text(text, style: tx(10, w: 5, c: fg ?? Tw.gray700))),
-        ]),
-      );
+  Widget _chip(String text, {Color? bg, Color? fg, IconData? icon}) {
+    final back = bg ?? Tw.gray100;
+    // Kategori rengi tint zeminde metin olarak okunur olsun (AA).
+    final color = Tw.readable(fg ?? Tw.gray700, bg: Color.alphaBlend(back, Tw.surface));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: back, borderRadius: BorderRadius.circular(999)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        if (icon != null) ...[Icon(icon, size: 12, color: color), const SizedBox(width: 4)],
+        Flexible(child: Text(text, style: tx(10.5, w: 5, c: color))),
+      ]),
+    );
+  }
 
   Widget _dayCard(I18n i18n, RebiTheme theme, HistoryDay day) {
     final t = day.tracking;
@@ -565,7 +570,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
                 if (a.createdAt != null)
-                  Text(DateFormat.yMMMd(i18n.lang).format(a.createdAt!), style: tx(11, c: Tw.gray400)),
+                  Text(DateFormat.yMMMd(i18n.lang).format(a.createdAt!), style: tx(11, c: Tw.gray500)),
               ]),
             ),
         ],

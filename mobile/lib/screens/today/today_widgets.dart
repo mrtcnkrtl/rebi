@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../ui/tw.dart';
 
-/// Gün içi kayıt düğmesi: yuvarlak hap, en az 40 px yüksekliğinde dokunma alanı.
+/// Gün içi kayıt düğmesi: yuvarlak hap, en az 48 dp yüksekliğinde dokunma alanı.
 class TodayPill extends StatelessWidget {
   const TodayPill({
     super.key,
@@ -23,17 +23,20 @@ class TodayPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fg = filled ? Colors.white : color;
+    // Dolu düğmede beyaz yazı, hafif düğmede tint üstünde koyu/açık metin: ikisi de AA kontrastında.
+    final tint = Color.alphaBlend(color.withValues(alpha: .08), Tw.surface);
+    final fill = Tw.fillWithWhiteText(color);
+    final fg = filled ? Colors.white : Tw.readable(color, bg: tint);
     return Opacity(
       opacity: onTap == null ? .5 : 1,
       child: Material(
-        color: filled ? color : color.withValues(alpha: .08),
-        shape: StadiumBorder(side: BorderSide(color: filled ? color : color.withValues(alpha: .3))),
+        color: filled ? fill : color.withValues(alpha: .08),
+        shape: StadiumBorder(side: BorderSide(color: filled ? fill : color.withValues(alpha: .3))),
         child: InkWell(
           customBorder: const StadiumBorder(),
           onTap: onTap,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 40),
+            constraints: const BoxConstraints(minHeight: 48),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               child: Row(

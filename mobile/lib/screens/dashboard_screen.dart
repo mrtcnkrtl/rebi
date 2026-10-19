@@ -398,7 +398,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         SecondaryButton(
           onPressed: () => context.go('/dashboard/chat'),
           borderColor: theme.primaryLight,
-          textColor: theme.primary,
+          textColor: theme.fg,
           icon: LucideIcons.messageCircle,
           label: i18n.t('dashboard.chatWithAi'),
         ),
@@ -531,8 +531,8 @@ class _AccountShortcut extends StatelessWidget {
       child: GestureDetector(
         onTap: () => context.go('/dashboard/profile'),
         child: Container(
-          width: 44,
-          height: 44,
+          width: 48,
+          height: 48,
           alignment: Alignment.center,
           decoration: BoxDecoration(shape: BoxShape.circle, color: theme.primary),
           child: Text(initial, style: heading(20, c: Colors.white, w: 500)),

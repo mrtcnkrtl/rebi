@@ -160,7 +160,7 @@ class _WindowBodyState extends State<_WindowBody> {
             child: TextLink(
               i18n.t('mobileReminders.windowSheet.reset'),
               onTap: () => _reset(id),
-              style: tx(12, w: 6, c: theme.primary),
+              style: tx(12, w: 6, c: theme.fg),
             ),
           ),
         ],

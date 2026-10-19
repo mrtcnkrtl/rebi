@@ -213,7 +213,7 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 
 **Kabul:** ürünü "bitti" işaretleyince rutinde görünüyor, yeniden alınınca eski haline dönüyor, web/backend verisi tutarlı.
 
-### Faz E — Hatırlatıcılar: güvenilir ve kontrol kullanıcıda  *(boyut: orta-büyük)* — **kod yapıldı (2026-10-16); cihaz testi sende**
+### Faz E — Hatırlatıcılar: güvenilir ve kontrol kullanıcıda  *(boyut: orta-büyük)* — **kod yapıldı (2026-10-16); canlıda (2026-10-19); push anahtarları + cihaz testi sende**
 
 | # | İş | Kim |
 |---|----|-----|
@@ -245,6 +245,15 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 - **E6 (saat dilimi):** saat farkı değişince/12 saatten sonra yeniden kayıt, öne gelince planın yeniden okunması ve bildirimlerin geçen zamana göre
   yeniden kurulması, gece yarısı/ay/yıl/artık yıl geçişleri testli. Gün sınırı sunucuda her zaman cihazın bildirdiği farkla hesaplanır.
   *Sınır:* telefon saat dilimini uygulama kapalıyken değiştirirse, yerel bildirimler uygulama bir kez açılana kadar eski dilimin duvar saatinde kalır.
+
+**Kalanlar (2026-10-19).** Yapılan: `flutter-mobile` → `main` birleşti (fast-forward, e514d5e), dağıtım başarılı, canlı `/health` doğrulandı
+(`db_schema: ok`; yeni uçlar 401 döner, 404 değil). **Hâlâ sende** (erişimim olmayan şeyler; adımlar `docs/MOBIL-CANLIYA-ALMA.md` "Push'u açınca"):
+
+1. VPS `deploy/.env.api`: `PUSH_DISPATCH_SECRET` (`openssl rand -hex 32`) + Firebase servis hesabı `FCM_SERVICE_ACCOUNT_JSON`, sonra `docker compose up -d`.
+   Bugün canlıda `push: off`, `push_dispatch: null`; yani bildirimler yalnızca **telefonda planlanır** (yerel), bu bilinçli ve çalışır durumdadır.
+2. Firebase dosyaları (`google-services.json` / `GoogleService-Info.plist`) + `FIREBASE_ENABLED=true` ile mobil derleme.
+3. Duman testi, **test hesabıyla**: `REBI_SMOKE_TOKEN` verip `python3 scripts/smoke_mobile_api.py --api https://rebiovil.com/api --write` (token'ı bana vermen gerekmez).
+4. Gerçek telefonda bildirim listesi: `docs/MOBIL-BILDIRIM-TEST.md` (G1 ile birlikte, `docs/MOBIL-CIHAZ-TESTI.md`).
 
 **Kabul:** 24 saatlik gerçek telefon denemesinde bildirimler doğru saat aralığında geliyor, yapılan iş için tekrar gelmiyor, bildirimden işlem uygulamaya yansıyor.
 
@@ -279,7 +288,7 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 
 **Kabul:** uygulamanın hiçbir ekranında `Tw` mavi gradyan/eski kart kalmadı; tüm ekranlar açık/koyu ve küçük telefonda görsel testten geçiyor.
 
-### Faz G — Cihaz doğrulama, kalite, yayın  *(boyut: orta, çoğu seni gerektirir)*
+### Faz G — Cihaz doğrulama, kalite, yayın  *(boyut: orta, çoğu seni gerektirir)* — **G2, G3, G4, G5 yapıldı (2026-10-19); G1 telefonda sende**
 
 | # | İş | Kim |
 |---|----|-----|
@@ -288,6 +297,18 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
 | G3 | Erişilebilirlik: TalkBack/VoiceOver etiketleri, kontrast, %200 yazı, dokunma hedefleri ≥ 48 dp. | Ben |
 | G4 | Mağaza varlıkları: ekran görüntüleri (yeni tasarımdan), metinler, gizlilik tabloları (taslaklar hazır). | Ben (taslak), Sen (hesaplar) |
 | G5 | **Müşteri kabul demosu**: §1'deki 7 maddeyi senaryo senaryo gösteren akış + kısa not. | Ben |
+
+**Durum (2026-10-19).**
+
+- **G1:** `docs/MOBIL-CIHAZ-TESTI.md` hazır (kurulum komutları, ~50 adım, performans ölçümleri, sonuç tablosu; bildirimler `MOBIL-BILDIRIM-TEST.md`).
+  Telefon sende; bulunan hatalar bu fazda kapanacak. **Gerçek cihazda hiçbir şey denenmedi.**
+- **G2:** `docs/MOBIL-KALITE.md`. Düzeltilen: Bugün planı GPS'i 8 sn'ye kadar bekliyordu (artık en çok 2,5 sn); alt/üst çubuktaki etkisiz `BackdropFilter`
+  kaldırıldı. Yavaş ağ davranışı testli. AAB boyutu CI özetine yazılıyor. Cihaz profili (açılış ms, janky kare %) sende.
+- **G3:** 52 senaryoluk `accessibility_test.dart` (dokunma ≥ 48/44 dp, etiket, AA kontrast; açık + koyu) geçiyor; ~35 dosyada düzeltme. TalkBack/VoiceOver
+  gerçek okuma sırası cihazda doğrulanacak.
+- **G4:** `docs/MOBIL-MAGAZA-VARLIKLARI.md` (TR/EN metinler, karakter sınırları doğrulandı, inceleme notu) ve `test/store_screenshots_test.dart`
+  (1320×2868 + 1080×2160, 8 ekran). Eksik: Play öne çıkan görseli (tasarım), iPad görüntüleri, hesaplar, URL'ler.
+- **G5:** `docs/MOBIL-MUSTERI-DEMOSU.md` (hazırlık, 10 adımlı akış, bilinen sınırlar, müşteriye kısa not).
 
 ---
 
@@ -318,11 +339,13 @@ A (zemin) ─┬─> B (tasarım sistemi) ──> C (Bugün) ──> D (Ürün b
 
 ## 7. Senden beklenenler (kod dışı)
 
-- Supabase'e `20261013120000_reminder_settings.sql` uygulaması ve `flutter-mobile` → `main` birleşme onayı (Faz A7).
-- VPS'te push cron satırını ekleme (Faz A4) — betik/komutu ben hazırlarım.
-- Firebase proje dosyaları (`google-services.json`, `GoogleService-Info.plist`) + servis hesabı (push için).
-- **USB'li bir Android telefon** (mümkünse iPhone da) — gerçek cihaz testi.
-- Android yükleme anahtarı, Apple/Play hesapları, gizlilik/destek/veri-silme URL'leri, inceleme demo hesabı (yayın için; `docs/MOBIL-YAYIN.md`).
+Yapıldı: Supabase migration (sunucu açılışta kendisi uygular) ve `flutter-mobile` → `main` birleşmesi (2026-10-19).
+
+- VPS: `PUSH_DISPATCH_SECRET` ve `FCM_SERVICE_ACCOUNT_JSON` (`docs/MOBIL-CANLIYA-ALMA.md` "Push'u açınca").
+- Firebase proje dosyaları (`google-services.json`, `GoogleService-Info.plist`).
+- **USB'li bir Android telefon** (mümkünse iPhone da) — `docs/MOBIL-CIHAZ-TESTI.md` ve `docs/MOBIL-BILDIRIM-TEST.md`; duman testi için TEST hesabının token'ı.
+- Android yükleme anahtarı, Apple/Play hesapları, gizlilik / destek / veri-silme URL'leri, inceleme demo hesabı, Play öne çıkan görseli (`docs/MOBIL-YAYIN.md`, `docs/MOBIL-MAGAZA-VARLIKLARI.md`).
+- Müşteriden: "balsam" = dudak balsamı teyidi; demo (`docs/MOBIL-MUSTERI-DEMOSU.md`).
 
 ## 8. Riskler
 

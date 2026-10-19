@@ -456,9 +456,9 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(LucideIcons.camera, size: 20, color: theme.primary),
+                        Icon(LucideIcons.camera, size: 20, color: theme.fg),
                         const SizedBox(width: 8),
-                        Flexible(child: Text(i18n.t('analyze.quickPhotoUpload'), style: tx(14, w: 6, c: theme.primary))),
+                        Flexible(child: Text(i18n.t('analyze.quickPhotoUpload'), style: tx(14, w: 6, c: theme.fg))),
                       ],
                     ),
                   ),
@@ -473,7 +473,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                   });
                 },
                 borderColor: theme.primaryLight,
-                textColor: theme.primary,
+                textColor: theme.fg,
                 fontSize: 14,
                 label: i18n.t('analyze.newAnalyzeFull'),
               ),
@@ -500,7 +500,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           ),
           const SizedBox(width: 8),
         ],
-        Text('$_step/4', style: tx(12, c: Tw.gray400)),
+        Text('$_step/4', style: tx(12, c: Tw.gray500)),
       ],
     );
   }
@@ -563,6 +563,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
+                  flex: 2,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -578,6 +579,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
+                  flex: 3,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -926,8 +928,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Flexible(child: Text(pack.s('step2.scaleNever'), style: tx(9, c: Tw.gray400))),
-                  Flexible(child: Text(pack.s('step2.scaleOften'), textAlign: TextAlign.right, style: tx(9, c: Tw.gray400))),
+                  Flexible(child: Text(pack.s('step2.scaleNever'), style: tx(9, c: Tw.gray500))),
+                  Flexible(child: Text(pack.s('step2.scaleOften'), textAlign: TextAlign.right, style: tx(9, c: Tw.gray500))),
                 ],
               ),
             ],
@@ -1228,7 +1230,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label, style: tx(11, c: Tw.gray400)),
+              Text(label, style: tx(11, c: Tw.gray500)),
               Text(value, style: tx(11, w: 5)),
             ],
           ),

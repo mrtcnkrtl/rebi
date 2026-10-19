@@ -450,7 +450,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           if (routineCorner != null && wide) ...[
-            Positioned(top: 96, left: 0, child: _edgeHandle(i18n, theme, routineCorner.$1)),
+            Positioned(top: 140, left: 0, child: _edgeHandle(i18n, theme, routineCorner.$1)),
             if (_edgeOpen) Positioned.fill(child: _edgePanel(i18n, theme, routineCorner)),
           ],
         ],
@@ -469,11 +469,11 @@ class _ChatScreenState extends State<ChatScreen> {
           if (plusPurchasable) ...[
             GestureDetector(
               onTap: () => context.go(_auth.user != null ? '/dashboard/subscribe' : '/auth?next=${Uri.encodeComponent('/dashboard/subscribe')}'),
-              child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(11, w: 6, c: theme.primary)),
+              child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(11, w: 6, c: theme.fg)),
             ),
             Text(' · ', style: tx(11, c: Tw.gray500)),
           ],
-          Text(i18n.t('chat.footerHintShort'), style: tx(11, c: Tw.gray400)),
+          Text(i18n.t('chat.footerHintShort'), style: tx(11, c: Tw.gray500)),
         ],
       );
     }
@@ -489,7 +489,7 @@ class _ChatScreenState extends State<ChatScreen> {
         TextSpan(text: ' ${i18n.t('chat.footerHint')}'),
       ]),
       textAlign: TextAlign.center,
-      style: tx(11, c: Tw.gray400),
+      style: tx(11, c: Tw.gray500),
     );
   }
 
@@ -768,7 +768,7 @@ class _ChatScreenState extends State<ChatScreen> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(corner.$4, style: tx(11, w: 7, c: theme.primary)),
+                                  Text(corner.$4, style: tx(11, w: 7, c: theme.fg)),
                                   const SizedBox(width: 6),
                                   Icon(LucideIcons.arrowRight, size: 12, color: theme.primary),
                                 ],

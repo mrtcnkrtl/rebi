@@ -1,60 +1,25 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
 import 'package:flutter/material.dart' show Size, TextField, TextInputAction;
 import 'package:flutter/painting.dart' show debugDisableShadows;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/device_location.dart';
 import 'package:rebi/core/i18n.dart';
-import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/today/today_clock.dart';
 import 'package:rebi/ui/tw.dart';
 
 import 'helpers/app_harness.dart';
+import 'helpers/demo_data.dart';
 import 'helpers/notification_fakes.dart';
 import 'helpers/visual.dart';
 
 /// Ana ekranların açık/koyu görünümü, gerçek yazı tipleriyle `build/screenshots/` altına yazılır.
 /// Yalnızca `REBI_SCREENSHOTS=1` ile çalışır (bkz. `helpers/visual.dart`); verisi API sözleşmesindeki
 /// gerçek örnek yanıtlardan gelir, böylece ekranlar dolu ve gerçekçi görünür.
-Map<String, dynamic> _contract(String name) =>
-    (jsonDecode(File('../contract/$name.json').readAsStringSync()) as Map).cast<String, dynamic>();
-
 void main() {
-  final routine = routineFixture['routine'] as List;
+  Map<String, Object> acceptedPrefs() => demoPrefs();
 
-  Map<String, Object> acceptedPrefs() => {
-        trackAcceptedKey(testUserId): '1',
-        trackSnapshotKey(testUserId): jsonEncode({
-          'routine': routine,
-          'userName': 'Ayşe',
-          'weather': routineFixture['weather'],
-          'flowDebug': routineFixture['flow_debug'],
-          'acceptedAt': DateTime.now().millisecondsSinceEpoch - 3 * 86400000,
-        }),
-      };
-
-  FakeBackend populated() {
-    final b = FakeBackend();
-    final plan = _contract('today_plan');
-    b.todayPlan = {...plan, 'user_id': testUserId, 'log_date': '2026-10-10', 'routine': routine, 'has_routine': true};
-    b.waterMl = 750;
-    // Rafım: rutindeki güneş kremi bitti, bir de rutin dışı ürün.
-    b.productsOut = [
-      {'product': 'SPF 30+ (mat bitişli, yağsız SPF)', 'step_order': 40, 'finished_at': '2026-10-08T10:00:00+00:00', 'log_date': '2026-10-08', 'days_out': 2},
-      {'product': 'Gece kremi', 'step_order': null, 'finished_at': '2026-10-02T10:00:00+00:00', 'log_date': '2026-10-02', 'days_out': 8},
-    ];
-    b.snapshot = {
-      ...b.snapshot,
-      'has_routine': true,
-      'routine': routine,
-      'profile': {'full_name': 'Ayşe Yılmaz', 'skin_type': 'oily', 'age': 29, 'gender': 'female', 'city': 'İstanbul'},
-    };
-    b.profile = {'full_name': 'Ayşe Yılmaz', 'skin_type': 'oily', 'age': 29, 'gender': 'female', 'city': 'İstanbul'};
-    b.history = {...b.history, ..._contract('me_history'), 'user_id': testUserId};
-    return b;
-  }
+  FakeBackend populated() => demoBackend();
 
   setUpAll(() async {
     if (screenshotsEnabled) await loadBrandFonts();

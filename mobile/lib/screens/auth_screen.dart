@@ -305,6 +305,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     if (canSubmit) _submit();
                                   },
                                   suffix: IconButton(
+                                    tooltip: i18n.t(_showPassword ? 'mobileAuth.hidePassword' : 'mobileAuth.showPassword'),
                                     onPressed: () => setState(() => _showPassword = !_showPassword),
                                     icon: Icon(_showPassword ? LucideIcons.eyeOff : LucideIcons.eye, size: 20, color: Brand.inkSoft),
                                   ),

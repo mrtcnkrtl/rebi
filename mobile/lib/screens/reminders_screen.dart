@@ -231,7 +231,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
           Icon(LucideIcons.wifiOff, size: 18, color: Tw.amber600),
           const SizedBox(width: 10),
           Expanded(child: Text(i18n.t('mobileReminders.loadFailed'), style: tx(12, c: Tw.amber900))),
-          TextLink(i18n.t('mobileReminders.retry'), onTap: _load, style: tx(12, w: 6, c: theme.primary)),
+          TextLink(i18n.t('mobileReminders.retry'), onTap: _load, style: tx(12, w: 6, c: theme.fg)),
         ]),
       );
 
@@ -324,7 +324,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 activeBorder: Tw.blue500,
                 activeBg: Tw.blue50,
-                activeText: Tw.blue500,
+                activeText: Tw.blueText,
                 onTap: () => _edit(_draft.copyWith(waterEveryMinutes: minutes)),
               ),
           ]),
@@ -474,11 +474,14 @@ class _RemindersScreenState extends State<RemindersScreen> {
               ),
             ),
           ),
-          Switch(
-            value: on,
-            onChanged: (v) => _edit(_draft.withCategory(category, v)),
-            activeThumbColor: Colors.white,
-            activeTrackColor: theme.primary,
+          Semantics(
+            label: title,
+            child: Switch(
+              value: on,
+              onChanged: (v) => _edit(_draft.withCategory(category, v)),
+              activeThumbColor: Colors.white,
+              activeTrackColor: theme.primary,
+            ),
           ),
         ],
       ),

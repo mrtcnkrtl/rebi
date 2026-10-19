@@ -163,7 +163,7 @@ class _ProfileDetailsCardState extends State<ProfileDetailsCard> {
               Icon(LucideIcons.wifiOff, size: 16, color: Tw.amber600),
               const SizedBox(width: 8),
               Expanded(child: Text(i18n.t('mobileProfile.loadFailed'), style: tx(12, c: Tw.amber900))),
-              TextLink(i18n.t('mobileProfile.retry'), onTap: _load, style: tx(12, w: 6, c: theme.primary)),
+              TextLink(i18n.t('mobileProfile.retry'), onTap: _load, style: tx(12, w: 6, c: theme.fg)),
             ])
           else if (_loaded == null)
             const SizedBox.shrink()

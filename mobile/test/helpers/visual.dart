@@ -17,6 +17,9 @@ bool get screenshotsEnabled => Platform.environment['REBI_SCREENSHOTS'] == '1';
 
 Directory get screenshotDir => Directory('build/screenshots');
 
+/// Mağaza ekran görüntüleri: `REBI_STORE_SHOTS=1 flutter test test/store_screenshots_test.dart` (çıktı `build/store/`).
+bool get storeShotsEnabled => Platform.environment['REBI_STORE_SHOTS'] == '1';
+
 bool _fontsLoaded = false;
 
 /// Gerçek yazı tiplerini yükler (bir kez). `flutter test` pubspec'teki yazı tiplerini kendiliğinden yüklemez.
@@ -44,8 +47,8 @@ Future<void> loadBrandFonts() async {
   _fontsLoaded = true;
 }
 
-/// Mevcut ekranı `build/screenshots/<name>.png` olarak yazar ([width] mantıksal genişliğin kaç piksele çıkacağı).
-Future<void> shoot(WidgetTester tester, String name, {double width = 780}) async {
+/// Mevcut ekranı `build/screenshots/<name>.png` (ya da [into]) olarak yazar ([width] çıktının piksel genişliği).
+Future<void> shoot(WidgetTester tester, String name, {double width = 780, Directory? into}) async {
   final view = tester.binding.renderViews.first;
   final layer = view.debugLayer;
   if (layer is! OffsetLayer) throw StateError('Katman okunamadı: $layer');
@@ -55,8 +58,9 @@ Future<void> shoot(WidgetTester tester, String name, {double width = 780}) async
   await tester.runAsync(() async {
     final image = await layer.toImage(Offset.zero & physical, pixelRatio: width / physical.width);
     final data = await image.toByteData(format: ui.ImageByteFormat.png);
-    screenshotDir.createSync(recursive: true);
-    File('${screenshotDir.path}/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
+    final dir = into ?? screenshotDir;
+    dir.createSync(recursive: true);
+    File('${dir.path}/$name.png').writeAsBytesSync(data!.buffer.asUint8List());
     image.dispose();
   });
 }

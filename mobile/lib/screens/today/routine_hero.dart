@@ -185,9 +185,12 @@ class _RoutineHeroState extends State<RoutineHero> {
             child: InkWell(
               borderRadius: BorderRadius.circular(999),
               onTap: () => widget.actions.chooseBlock(b),
-              child: Padding(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
+                child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                child: FittedBox(
+                child: Center(
+                  child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -203,6 +206,8 @@ class _RoutineHeroState extends State<RoutineHero> {
                     ],
                   ),
                 ),
+                ),
+              ),
               ),
             ),
           ),
@@ -333,8 +338,11 @@ class _RoutineHeroState extends State<RoutineHero> {
                       InkWell(
                         borderRadius: BorderRadius.circular(8),
                         onTap: () => setState(() => open ? _expanded.remove(key) : _expanded.add(key)),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(minHeight: 48),
+                          child: Align(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: 1,
                           child: Row(mainAxisSize: MainAxisSize.min, children: [
                             Flexible(
                               child: Text(
@@ -350,6 +358,7 @@ class _RoutineHeroState extends State<RoutineHero> {
                             ),
                             Icon(open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 14, color: theme.fg),
                           ]),
+                          ),
                         ),
                       ),
                     ],
@@ -468,8 +477,8 @@ class _RoutineHeroState extends State<RoutineHero> {
         InkWell(
           borderRadius: BorderRadius.circular(12),
           onTap: () => setState(() => _notesOpen = !_notesOpen),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
             child: Row(
               children: [
                 Icon(LucideIcons.leaf, size: 16, color: Tw.gray600),

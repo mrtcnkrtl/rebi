@@ -73,7 +73,7 @@ class LocationPromptCard extends StatelessWidget {
                     onPressed: controller.busy ? null : controller.allow,
                     loading: controller.busy,
                     color: theme.primary,
-                    minHeight: 40,
+                    minHeight: 48,
                     fontSize: 13,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     label: i18n.t('mobileLocation.promptEnable'),

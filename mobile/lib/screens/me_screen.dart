@@ -98,7 +98,7 @@ class MeScreen extends StatelessWidget {
         SecondaryButton(
           onPressed: () => signOutAndGoHome(context),
           borderColor: Tw.red200,
-          textColor: Tw.red600,
+          textColor: Tw.readable(Tw.red600),
           icon: LucideIcons.logOut,
           fontSize: 15,
           label: i18n.t('mobileMe.logout'),

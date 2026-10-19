@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -165,41 +163,36 @@ class _Navbar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Tw.background.withValues(alpha: .9),
-            border: Border(bottom: BorderSide(color: Tw.gray100)),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: SizedBox(
-              height: 64,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => context.go('/'),
-                      child: Row(
-                        children: [
-                          const BrandMark(size: 34),
-                          const SizedBox(width: 10),
-                          Text('Rebi', style: heading(24)),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: onToggleMenu,
-                      icon: Icon(menuOpen ? LucideIcons.x : LucideIcons.menu, size: 24, color: Tw.gray600),
-                    ),
-                  ],
+    return Container(
+      decoration: BoxDecoration(
+        color: Tw.background.withValues(alpha: .9),
+        border: Border(bottom: BorderSide(color: Tw.gray100)),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 64,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => context.go('/'),
+                  child: Row(
+                    children: [
+                      const BrandMark(size: 34),
+                      const SizedBox(width: 10),
+                      Text('Rebi', style: heading(24)),
+                    ],
+                  ),
                 ),
-              ),
+                const Spacer(),
+                IconButton(
+                  onPressed: onToggleMenu,
+                  icon: Icon(menuOpen ? LucideIcons.x : LucideIcons.menu, size: 24, color: Tw.gray600),
+                ),
+              ],
             ),
           ),
         ),
@@ -289,8 +282,8 @@ class LanguageSelect extends StatelessWidget {
       children: [
         Text(i18n.t('lang.label'), style: tx(11, w: 6, c: Tw.gray500)),
         Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 8),
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             color: Tw.surface,
             borderRadius: BorderRadius.circular(8),
@@ -299,10 +292,10 @@ class LanguageSelect extends StatelessWidget {
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
               value: i18n.lang,
-              isDense: true,
+              itemHeight: kMinInteractiveDimension,
               dropdownColor: Tw.surfaceRaised,
               // DropdownButton ortam yazı stilini ezer; Inter'i açıkça taşımazsa seçili metin sistem yazı tipine düşer.
-              style: tx(11, w: 6, c: Tw.gray700).copyWith(fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily),
+              style: tx(13, w: 6, c: Tw.gray700).copyWith(fontFamily: Theme.of(context).textTheme.bodyMedium?.fontFamily),
               icon: Icon(LucideIcons.chevronDown, size: 14, color: Tw.gray500),
               items: [
                 for (final lng in supportedLangs)
@@ -360,38 +353,33 @@ class _BottomNav extends StatelessWidget {
     final theme = context.watch<ThemeController>().theme;
     final active = tabForPath(path);
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Tw.surface.withValues(alpha: .97),
-            border: Border(top: BorderSide(color: Tw.gray100)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Center(
-              heightFactor: 1,
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 512),
-                child: SizedBox(
-                  height: 64,
-                  child: Row(
-                    children: [
-                      for (final tab in AppTab.values)
-                        Expanded(
-                          child: _TabButton(
-                            tab: tab,
-                            label: i18n.t(tab.labelKey),
-                            active: active == tab,
-                            color: theme.fg,
-                            lightColor: theme.primaryLight,
-                            onTap: () => context.go(tab.path),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Tw.surface.withValues(alpha: .97),
+        border: Border(top: BorderSide(color: Tw.gray100)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Center(
+          heightFactor: 1,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 512),
+            child: SizedBox(
+              height: 64,
+              child: Row(
+                children: [
+                  for (final tab in AppTab.values)
+                    Expanded(
+                      child: _TabButton(
+                        tab: tab,
+                        label: i18n.t(tab.labelKey),
+                        active: active == tab,
+                        color: theme.fg,
+                        lightColor: theme.primaryLight,
+                        onTap: () => context.go(tab.path),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

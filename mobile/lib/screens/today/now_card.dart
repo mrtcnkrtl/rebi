@@ -132,8 +132,7 @@ class _NowCardState extends State<NowCard> {
             if (widget.onOpenSettings != null)
               IconButton(
                 tooltip: i18n.t('mobileToday.settings'),
-                visualDensity: VisualDensity.compact,
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
                 padding: EdgeInsets.zero,
                 onPressed: widget.onOpenSettings,
                 icon: Icon(LucideIcons.settings2, size: 20, color: Tw.gray500),

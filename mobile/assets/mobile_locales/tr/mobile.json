@@ -723,7 +723,9 @@
     "strengthFair": "Orta",
     "strengthStrong": "Güçlü",
     "strengthHint": "En az 6 karakter. Harf, rakam ve sembol karıştır.",
-    "trust": "Verilerin KVKK kapsamında korunur."
+    "trust": "Verilerin KVKK kapsamında korunur.",
+    "showPassword": "Parolayı göster",
+    "hidePassword": "Parolayı gizle"
   },
   "mobileShelf": {
     "title": "Rafım",

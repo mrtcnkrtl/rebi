@@ -62,8 +62,12 @@ class ChatComposer extends StatelessWidget {
                       maxLines: 4,
                       onSubmitted: (_) => onSend(),
                       style: tx(14),
-                      decoration: inputDecoration(hint: i18n.t('chat.placeholder'), focusColor: theme.primary)
-                          .copyWith(hintStyle: tx(14, c: Tw.gray400), hintMaxLines: 1),
+                      decoration: inputDecoration(
+                        hint: i18n.t('chat.placeholder'),
+                        focusColor: theme.primary,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                      )
+                          .copyWith(hintStyle: tx(14, c: Tw.gray500), hintMaxLines: 1, constraints: const BoxConstraints(minHeight: 48)),
                     ),
                   ),
                   const SizedBox(width: 8),

@@ -74,6 +74,12 @@ jobs:
       - name: Release paketi (imzasız, debug anahtarıyla)
         run: flutter build appbundle --release
 
+      - name: Paket boyutu (özet sayfasına yazılır)
+        run: |
+          size=$(stat -c %s build/app/outputs/bundle/release/app-release.aab)
+          echo "### Android paketi (AAB): $((size / 1024 / 1024)).$(((size / 1024 % 1024) * 10 / 1024)) MB" >> "$GITHUB_STEP_SUMMARY"
+          echo "Mağazadan inen boyut AAB'den küçüktür (cihaza özel bölünür)." >> "$GITHUB_STEP_SUMMARY"
+
   build-ios:
     needs: analyze-and-test
     runs-on: macos-latest

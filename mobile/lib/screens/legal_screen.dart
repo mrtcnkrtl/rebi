@@ -33,7 +33,7 @@ class LegalScreen extends StatelessWidget {
       context.pushReplacement('/$other');
     }
 
-    final linkStyle = tx(12, c: Tw.gray400).copyWith(decoration: TextDecoration.underline, decorationColor: Tw.gray400);
+    final linkStyle = tx(12, c: Tw.gray500).copyWith(decoration: TextDecoration.underline, decorationColor: Tw.gray400);
 
     return Scaffold(
       body: DecoratedBox(
@@ -52,8 +52,8 @@ class LegalScreen extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: InkWell(
                       onTap: back,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -107,7 +107,7 @@ class LegalScreen extends StatelessWidget {
                     alignment: WrapAlignment.center,
                     children: [
                       GestureDetector(onTap: () => open('kvkk'), child: Text(i18n.t('legal.kvkkTitle'), style: linkStyle)),
-                      Text(' · ', style: tx(12, c: Tw.gray400)),
+                      Text(' · ', style: tx(12, c: Tw.gray500)),
                       GestureDetector(onTap: () => open('riza'), child: Text(i18n.t('legal.rizaTitle'), style: linkStyle)),
                     ],
                   ),

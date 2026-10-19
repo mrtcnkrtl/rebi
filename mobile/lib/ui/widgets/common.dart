@@ -151,6 +151,9 @@ class PrimaryButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final color = this.color ?? Tw.teal600;
     final enabled = onPressed != null && !loading;
+    // Kapalı düğme: soluk (yarı saydam) yerine düz gri yüzey ve okunur metin (kontrast AA).
+    final disabled = !enabled && !loading;
+    final fg = disabled ? Tw.gray600 : Colors.white;
     final content = loading
         ? const SizedBox(
             width: 20,
@@ -162,20 +165,20 @@ class PrimaryButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                if (icon != null) ...[Icon(icon, size: 20, color: Colors.white), const SizedBox(width: 8)],
+                if (icon != null) ...[Icon(icon, size: 20, color: fg), const SizedBox(width: 8)],
                 if (label != null)
                   Flexible(
-                    child: Text(label!, textAlign: TextAlign.center, style: tx(fontSize, w: 6, c: Colors.white, ls: .1)),
+                    child: Text(label!, textAlign: TextAlign.center, style: tx(fontSize, w: 6, c: fg, ls: .1)),
                   ),
-                if (trailingIcon != null) ...[const SizedBox(width: 8), Icon(trailingIcon, size: 20, color: Colors.white)],
+                if (trailingIcon != null) ...[const SizedBox(width: 8), Icon(trailingIcon, size: 20, color: fg)],
               ],
             );
     return Opacity(
-      opacity: enabled || loading ? 1 : 0.5,
+      opacity: 1,
       child: Container(
         constraints: BoxConstraints(minHeight: minHeight),
         decoration: BoxDecoration(
-          color: color,
+          color: disabled ? Tw.gray200 : color,
           borderRadius: BorderRadius.circular(radius),
         ),
         child: Material(
@@ -286,7 +289,7 @@ InputDecoration inputDecoration({
       );
   return InputDecoration(
     hintText: hint,
-    hintStyle: tx(16, c: Tw.gray400),
+    hintStyle: tx(16, c: Tw.gray500),
     isDense: true,
     filled: true,
     fillColor: Tw.surface,
@@ -294,7 +297,7 @@ InputDecoration inputDecoration({
     prefixIcon: prefixIcon == null ? null : Icon(prefixIcon, size: 20, color: Tw.gray400),
     suffixIcon: suffix,
     suffixText: suffixText,
-    suffixStyle: tx(12, w: 6, c: Tw.gray400),
+    suffixStyle: tx(12, w: 6, c: Tw.gray500),
     enabledBorder: b(borderColor),
     disabledBorder: b(borderColor),
     focusedBorder: b(focusColor),
@@ -484,6 +487,9 @@ class ChoiceChipBox extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
+          // Dokunma alanı en az 48 dp.
+          constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+          alignment: center ? Alignment.center : Alignment.centerLeft,
           padding: padding,
           decoration: BoxDecoration(
             color: selected ? activeBg : inactiveBg,
@@ -491,7 +497,7 @@ class ChoiceChipBox extends StatelessWidget {
             border: Border.all(color: selected ? activeBorder : Tw.gray200, width: 1.5),
           ),
           child: leading == null
-              ? (center ? Center(child: text) : text)
+              ? text
               : Row(mainAxisSize: MainAxisSize.min, children: [leading!, const SizedBox(width: 6), Flexible(child: text)]),
         ),
       ),
@@ -612,10 +618,14 @@ class TextLink extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = (style ?? tx(14, w: 6, c: Tw.teal700))
         .copyWith(decoration: underline ? TextDecoration.underline : null, decorationColor: style?.color);
+    // Metin küçük olsa da dokunma alanı en az 48 dp (erişilebilirlik); görünüm değişmez.
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Padding(padding: const EdgeInsets.symmetric(vertical: 4), child: Text(text, style: s)),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+        child: Center(widthFactor: 1, heightFactor: 1, child: Text(text, style: s)),
+      ),
     );
   }
 }

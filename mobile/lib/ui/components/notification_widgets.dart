@@ -72,7 +72,7 @@ class _NotificationPromptCardState extends State<NotificationPromptCard> {
                     onPressed: _busy ? null : () => _enable(c),
                     loading: _busy,
                     color: theme.primary,
-                    minHeight: 40,
+                    minHeight: 48,
                     fontSize: 13,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     label: i18n.t('mobileNotifications.promptEnable'),
@@ -189,11 +189,14 @@ class _NotificationSettingsCardState extends State<NotificationSettingsCard> {
             ),
           ),
           const SizedBox(width: 8),
-          Switch(
-            value: c.enabled,
-            onChanged: _busy ? null : (v) => _toggle(c, v),
-            activeThumbColor: Colors.white,
-            activeTrackColor: theme.primary,
+          Semantics(
+            label: i18n.t('mobileNotifications.title'),
+            child: Switch(
+              value: c.enabled,
+              onChanged: _busy ? null : (v) => _toggle(c, v),
+              activeThumbColor: Colors.white,
+              activeTrackColor: theme.primary,
+            ),
           ),
         ],
       ),

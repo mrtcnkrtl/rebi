@@ -723,7 +723,9 @@
     "strengthFair": "Fair",
     "strengthStrong": "Strong",
     "strengthHint": "At least 6 characters. Mix letters, numbers and symbols.",
-    "trust": "Your data is protected under KVKK."
+    "trust": "Your data is protected under KVKK.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
   },
   "mobileShelf": {
     "title": "My shelf",

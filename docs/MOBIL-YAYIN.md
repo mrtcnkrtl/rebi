@@ -15,8 +15,8 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 | Hata raporlama (Firebase Crashlytics) | **kod hazır, Firebase dosyalarıyla açılır** (bölüm 5) |
 | Firebase push + Crashlytics | kod hazır, **`google-services.json` / `GoogleService-Info.plist` bekleniyor** |
 | Rebi Plus satışı | **ödeme altyapısı yok, karar gerekiyor** (bölüm 6) |
-| Mağaza görselleri | **gerçek cihazdan çekilmeli** (bölüm 10) |
-| Gerçek cihazda doğrulama | **yapılmadı**: bu geliştirme makinesinde emülatör açılmıyor (bölüm 11) |
+| Mağaza metinleri ve ekran görüntüleri | **hazır** (TR/EN metin, 1320×2868 ve 1080×2160 görüntü): `MOBIL-MAGAZA-VARLIKLARI.md`. Play öne çıkan görseli (1024×500) tasarım gerektirir |
+| Gerçek cihazda doğrulama | **yapılmadı**: bu geliştirme makinesinde emülatör açılmıyor; hazır kontrol listesi `MOBIL-CIHAZ-TESTI.md` (bölüm 11) |
 
 ## 2. Sürüm numarası
 
@@ -109,50 +109,15 @@ yazılıyor, abonelik ekranındaki bağlantı `REBI_PLUS_CHECKOUT_URL` boş oldu
 
 Not: `tool/build_release.sh`, `REBI_PLUS_CHECKOUT_URL` doluysa uyarır.
 
-## 7. Mağaza metinleri (taslak)
+## 7. Mağaza metinleri
 
-Sınırlar: Play başlık 30, kısa açıklama 80, tam açıklama 4000; App Store ad 30, alt başlık 30, anahtar
-kelimeler 100 karakter.
-
-**Türkçe**
-
-- Ad: `Rebi: Cilt Bakım Asistanı`
-- Alt başlık (iOS): `Kişisel cilt bakım rutini`
-- Kısa açıklama (Play): `Yapay zekâ ile kişisel cilt rutini, günlük takip ve zamanında hatırlatmalar.`
-- Anahtar kelimeler (iOS): `cilt bakımı,cilt rutini,yüz bakımı,güneş kremi,SPF,nemlendirici,su takibi,cilt analizi,dermokozmetik`
-- Açıklama:
-
-  > Rebi, cildini tanıyan ve her gün yanında olan bakım asistanındır.
-  >
-  > • Kişisel rutin: cilt tipini ve sorunlarını anlat, isteğe bağlı fotoğraf ekle; sabah ve akşam rutinin hazır olsun.
-  > • Bugün ekranı: rutinini adım adım işaretle, "yaptım" de, biten ürünü tek dokunuşla bildir.
-  > • Günlük takip: su, makyaj ve nasıl temizlediğin, beslenme, güneş kremi yenileme.
-  > • Havaya göre öneri: UV ve sıcaklığa göre güneş kremi, nemlendirici ve dudak balsamı hatırlatması.
-  > • Hatırlatıcılar: uyanma ve uyku saatine göre saat aralıklarıyla; bildirimden tek dokunuşla "+250 ml su" ya da "yaptım".
-  > • Günlük check-in: uyku, stres ve cilt hissine göre rutinin güncellenir.
-  > • Rebi sohbet: bugünkü durumunu bilen yapay zekâ ile cilt bakımı sorularını sor.
-  > • Geçmiş: su, uyku, stres ve rutin grafikleri; haftalık özet.
-  >
-  > Gizlilik: verilerini sen yönetirsin; konum ve fotoğraf isteğe bağlıdır, hesabını uygulama içinden silebilirsin.
-  >
-  > Önemli: Rebi tıbbi tanı koymaz, tedavi önermez. Öneriler genel cilt bakımı bilgisidir. Ciddi ya da süren cilt
-  > sorunlarında bir dermatoloğa danış.
-
-**English**
-
-- Name: `Rebi: Skincare Assistant`
-- Subtitle (iOS): `Your personal skincare routine`
-- Short description (Play): `AI-guided skincare routine, daily tracking and well-timed reminders.`
-- Keywords (iOS): `skincare,skin routine,face care,sunscreen,SPF,moisturizer,water tracker,skin analysis,dermocosmetic`
-- Description: yukarıdaki Türkçe metnin çevirisi (özellik listesi aynı; "Rebi does not diagnose or treat medical
-  conditions. See a dermatologist for persistent or serious skin problems." cümlesi **zorunlu**).
-
-Tıbbi iddialardan kaçının ("tedavi eder", "teşhis koyar", "akneyi yok eder" yazmayın): App Store 1.4.1 ve Play
-sağlık politikası bunları sıkı denetler.
+Türkçe ve İngilizce başlık, kısa / tam açıklama, anahtar kelimeler, sürüm notu ve inceleme notu **hazır ve karakter
+sınırları doğrulanmış** olarak [`MOBIL-MAGAZA-VARLIKLARI.md`](MOBIL-MAGAZA-VARLIKLARI.md)'dedir (metin burada tekrarlanmaz,
+ayrışmasın diye). Tıbbi iddia yoktur; İngilizce açıklamadaki "does not diagnose or treat" cümlesi **zorunludur**.
 
 ## 8. Gizlilik beyanları
 
-Uygulamanın topladığı veriler (koddan çıkarıldı; `PrivacyInfo.xcprivacy` ile aynı). Hepsi hesaba bağlı, yalnızca
+Uygulamanın topladığı veriler (koddan çıkarıldı; `PrivacyInfo.xcprivacy` ile aynı; son iki satır Faz E/D ile eklendi, form türü eşlemesini gönderimde doğrulayın). Hepsi hesaba bağlı, yalnızca
 uygulama işlevi için, izleme / reklam yok:
 
 | Veri | App Store türü | Play Data Safety türü | Zorunlu mu |
@@ -164,6 +129,8 @@ uygulama işlevi için, izleme / reklam yok:
 | Cilt fotoğrafı | User Content → Photos or Videos | Photos and videos → Photos | hayır |
 | Cilt tipi / sorunlar, uyku, stres, su, beslenme, makyaj, check-in | Health & Fitness → Health | Health and fitness → Health info | kısmen |
 | Yaş, cinsiyet, şehir | Other Data Types | Personal info → Other info | hayır |
+| Hatırlatıcı tercihleri (saat aralıkları, sessiz saat) | Other Data Types | App activity → Other actions | hayır |
+| Rafım: kullanıcının yazdığı ürün adları | User Content → Other User Content | App activity → Other user-generated content | hayır |
 | Sohbet mesajları | User Content → Other User Content | Messages → Other in-app messages | hayır |
 | Bildirim cihaz kimliği (push) ve Firebase kurulum kimliği | Identifiers → Device ID | Device or other IDs | hayır |
 | Çökme günlükleri ve tanılama (Crashlytics; kullanıcıyla eşlenmez) | Diagnostics → Crash Data, Other Diagnostic Data | App info and performance → Crash logs, Diagnostics | hayır |
@@ -198,17 +165,16 @@ Mağaza incelemecisine verilecek not (gönderim formundaki "Notes for review" al
 
 ## 10. Mağaza görselleri
 
-Gerçek cihazdan (ya da simülatörden) çekin; test çıktıları farklı yazı tipiyle çizildiği için mağazada kullanılmaz.
-Boyutları gönderimde güncel gereksinimle doğrulayın:
-
-- **App Store:** iPhone 6,9" (1320×2868) en az 3 görsel; iPad 13" (2064×2752) iPad destekleniyorsa.
-- **Google Play:** telefon ekran görüntüsü en az 2 (9:16, kenar 320–3840 px); öne çıkan görsel 1024×500; ikon 512×512.
-- Çekilecek ekranlar: Bugün (rutin + su kartı), Rutin, Rebi sohbet (öneri çipleriyle), Geçmiş (grafikler), Check-in,
-  Hatırlatıcılar, karanlık mod örneği. Kişisel veri göstermeyen, doldurulmuş bir demo hesabı kullanın.
-- Uygulama ikonu `assets/icon/icon.png` (`dart run flutter_launcher_icons`; iOS ikonunda alfa kanalı otomatik silinir).
+Sekiz ekran görüntüsü iki boyutta tek komutla üretilir (`REBI_STORE_SHOTS=1 flutter test test/store_screenshots_test.dart`);
+boyutlar, sıra ve uyarılar [`MOBIL-MAGAZA-VARLIKLARI.md`](MOBIL-MAGAZA-VARLIKLARI.md) §4'tedir. Çıktılar gerçek yazı
+tipleriyle ve gerçek ekran koduyla çizilir ama örnek hesaptır; istersen aynı ekranları telefondan da çekebilirsin.
+Güncel boyut gereksinimini gönderimde doğrulayın (App Store 6,9" = 1320×2868; Play telefon: kenar oranı en çok 2:1).
+Uygulama ikonu `assets/icon/icon.png` (`dart run flutter_launcher_icons`; iOS ikonunda alfa kanalı otomatik silinir).
 
 ## 11. Gönderimden önce cihazda doğrulama
 
+Tam adım adım liste (kurulum komutları, beklenen sonuçlar, performans ölçümleri, sonuç tablosu):
+[`MOBIL-CIHAZ-TESTI.md`](MOBIL-CIHAZ-TESTI.md); bildirimler için [`MOBIL-BILDIRIM-TEST.md`](MOBIL-BILDIRIM-TEST.md).
 Aşağıdakiler yalnızca otomatik testle ve derlemeyle doğrulandı; **gerçek telefonda hiç denenmedi**:
 
 - [ ] Kayıt / giriş / çıkış, rıza adımları, hesap silme

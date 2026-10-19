@@ -75,7 +75,7 @@ class ThemesScreen extends StatelessWidget {
             children: [
               Text('Rebi Plus için ', style: tx(12, c: Tw.gray500)),
               TextLink('abonelik sayfası',
-                  onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.primary)),
+                  onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.fg)),
               Text('.', style: tx(12, c: Tw.gray500)),
             ],
           ),
@@ -198,7 +198,7 @@ class _Preview extends StatelessWidget {
           Row(
             children: [
               Expanded(child: Text('Sabah rutini', style: Brand.serif(20, weight: 500))),
-              Text('2 / 3', style: tx(12, w: 7, c: theme.primary)),
+              Text('2 / 3', style: tx(12, w: 7, c: theme.fg)),
             ],
           ),
           const SizedBox(height: 4),

@@ -171,9 +171,14 @@ class _Sheet extends StatelessWidget {
     Widget tap(Widget child, VoidCallback onTap) => GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-        child: child,
+      child: ConstrainedBox(
+        // Dokunma alanı en az 48 dp; görünüm metin kadar.
+        constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+        child: Center(
+          widthFactor: 1,
+          heightFactor: 1,
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 6), child: child),
+        ),
       ),
     );
 

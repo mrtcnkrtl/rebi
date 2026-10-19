@@ -23,7 +23,7 @@ class Brand {
 
   /// Ana metin ve çizgi rengi.
   static Color get ink => dark ? const Color(0xFFEAF3EF) : forest;
-  static Color get inkSoft => ink.withValues(alpha: .68);
+  static Color get inkSoft => ink.withValues(alpha: .74);
   static Color get inkFaint => ink.withValues(alpha: .12);
 
   /// Ana düğme: açıkta orman yeşili, koyuda krem.

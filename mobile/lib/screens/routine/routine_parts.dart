@@ -141,8 +141,11 @@ class _RoutineStepTileState extends State<RoutineStepTile> {
                   InkWell(
                     borderRadius: BorderRadius.circular(8),
                     onTap: () => setState(() => _open = !_open),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Align(
+                      alignment: Alignment.centerLeft,
+                      widthFactor: 1,
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
                         Flexible(
                           child: Text(
@@ -159,6 +162,7 @@ class _RoutineStepTileState extends State<RoutineStepTile> {
                         const SizedBox(width: 4),
                         Icon(_open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 14, color: theme.fg),
                       ]),
+                      ),
                     ),
                   ),
                 ],
@@ -664,38 +668,44 @@ class WeekDayStrip extends StatelessWidget {
     final today = getTurkeyWeekdayIndex();
     return Row(children: [
       for (var d = 0; d < 7 && d < ctx.weekDays.length; d++) ...[
-        if (d > 0) const SizedBox(width: 6),
+        // Yedi hücre yan yana: hücreler arası boşluk görünümdedir (iç dolgu), dokunma alanı her hücrenin tam genişliği (≥ 48 dp).
         Expanded(
           child: Semantics(
             button: true,
             selected: d == selected,
             label: ctx.weekDays[d],
-            child: Material(
-              color: d == selected ? ctx.theme.primary : ctx.theme.primary.withValues(alpha: .07),
+            child: InkWell(
               borderRadius: BorderRadius.circular(14),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: () => onSelect(d),
+              onTap: () => onSelect(d),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 48),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Column(mainAxisSize: MainAxisSize.min, children: [
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        ctx.weekDays[d],
-                        style: tx(12.5, w: d == selected ? 7 : 5, c: d == selected ? Colors.white : Tw.gray600),
-                      ),
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+                  child: Material(
+                    color: d == selected ? ctx.theme.primary : ctx.theme.primary.withValues(alpha: .07),
+                    borderRadius: BorderRadius.circular(14),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Column(mainAxisSize: MainAxisSize.min, children: [
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            ctx.weekDays[d],
+                            style: tx(12.5, w: d == selected ? 7 : 5, c: d == selected ? Colors.white : Tw.gray700),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: 5,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: d == today ? (d == selected ? Colors.white : ctx.theme.primary) : Colors.transparent,
+                          ),
+                        ),
+                      ]),
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      width: 5,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: d == today ? (d == selected ? Colors.white : ctx.theme.primary) : Colors.transparent,
-                      ),
-                    ),
-                  ]),
+                  ),
                 ),
               ),
             ),
@@ -744,7 +754,7 @@ class WeeklyItemCard extends StatelessWidget {
                   ),
                   child: FittedBox(
                     fit: BoxFit.scaleDown,
-                    child: Text(ctx.weekDays[d], style: tx(11.5, w: 6, c: days.contains(d) ? Colors.white : Tw.gray400)),
+                    child: Text(ctx.weekDays[d], style: tx(11.5, w: 6, c: days.contains(d) ? Colors.white : Tw.gray600)),
                   ),
                 ),
               ),
@@ -800,16 +810,20 @@ class _LifestyleRowState extends State<LifestyleRow> {
                   InkWell(
                     borderRadius: BorderRadius.circular(8),
                     onTap: () => setState(() => _open = !_open),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 5),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Text(
-                          _open ? c.i18n.t('common.hide') : c.i18n.t('dashboard.lifestyleThisItem'),
-                          style: tx(12.5, w: 6, c: c.theme.fg),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(_open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 14, color: c.theme.fg),
-                      ]),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: 1,
+                        child: Row(mainAxisSize: MainAxisSize.min, children: [
+                          Text(
+                            _open ? c.i18n.t('common.hide') : c.i18n.t('dashboard.lifestyleThisItem'),
+                            style: tx(12.5, w: 6, c: c.theme.fg),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(_open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 14, color: c.theme.fg),
+                        ]),
+                      ),
                     ),
                   ),
                   if (_open) Text(detail, style: tx(12.5, c: Tw.gray600, h: relaxed)),
