@@ -32,6 +32,16 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- E-posta onayı ve parola sıfırlama bağlantıları (com.rebiovil.rebi://auth-callback) uygulamayı açar;
+                 oturumu supabase_flutter (app_links) kurar. Flutter'ın kendi derin bağlantı yönlendirmesi kapalıdır,
+                 yoksa aynı bağlantı bir de sayfa yolu sanılıp ana sayfaya düşer. -->
+            <meta-data android:name="flutter_deeplinking_enabled" android:value="false" />
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="com.rebiovil.rebi" android:host="auth-callback"/>
+            </intent-filter>
         </activity>
         <!-- Zamanlanmış yerel bildirimleri gösteren ve yeniden başlatmada geri kuran alıcılar. -->
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />

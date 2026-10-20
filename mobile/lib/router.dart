@@ -60,9 +60,13 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
     redirect: (context, state) {
       final path = state.uri.path;
       final user = auth.user;
+      // Sıfırlama bağlantısıyla gelindi: yeni parola belirlenene kadar yalnızca bu ekran açılabilir.
+      if (user != null && auth.recoveryPending) return path == '/auth' ? null : '/auth';
       if (path.startsWith('/dashboard') && user == null) {
         return '/auth?next=${Uri.encodeComponent(state.uri.toString())}';
       }
+      // Geçersiz/süresi dolmuş e-posta bağlantısı: nedenini giriş ekranı gösterir.
+      if (user == null && auth.linkError != null && (path == '/' || path == '/splash')) return '/auth';
       if (path == '/splash' && user != null) return '/dashboard';
       if (path == '/auth' && user != null && !auth.authFlowInProgress) {
         return safeNext(state.uri.queryParameters['next']);

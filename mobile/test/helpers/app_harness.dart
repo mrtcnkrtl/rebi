@@ -492,6 +492,9 @@ Future<Harness> pumpApp(
 
   /// true: Inter yazı tipi isteğe bağlı (görsel testler `loadBrandFonts` ile gerçek yazı tiplerini yükler).
   bool realFonts = false,
+
+  /// Giriş/kayıt çağrılarını Supabase'siz yanıtlayan sahte denetleyici (`AuthController`'ı genişletir).
+  AuthController? authController,
 }) async {
   tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
@@ -523,7 +526,7 @@ Future<Harness> pumpApp(
     );
   });
 
-  final auth = AuthController();
+  final auth = authController ?? AuthController();
   if (loggedIn) auth.debugSetUser(user ?? fakeUser());
   final theme = ThemeController(auth);
   final sync = HomeSyncController(auth);
