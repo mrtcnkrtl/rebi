@@ -35,7 +35,14 @@ void main() {
       expect(find.text(tr('dashboard.routineByDayTitle')), findsOneWidget);
       expect(find.text(tr('dashboard.morning')), findsOneWidget);
       expect(find.text(tr('dashboard.evening')), findsOneWidget);
-      expect(find.text(tr('mobileRoutine.stepCount', {'n': 3})), findsOneWidget, reason: 'sabah: temizleyici, nemlendirici, SPF');
+      // Akşam planında haftanın yalnız bazı günlerinde (fixture: Pzt, Paz) ek bir adım var: sayılar güne göre değişir,
+      // beklenen değer bugünün planından hesaplanır (sabit "3" yalnız Pzt/Paz geçerdi).
+      final todayPlan = RoutineView(asRoutine(routine)).routineByDay[getTurkeyWeekdayIndex()]!;
+      expect(todayPlan.morning.length, 3, reason: 'sabah: temizleyici, nemlendirici, SPF');
+      final counts = [todayPlan.morning.length, todayPlan.evening.length];
+      for (final n in counts.toSet()) {
+        expect(find.text(tr('mobileRoutine.stepCount', {'n': n})), findsNWidgets(counts.where((c) => c == n).length));
+      }
       final days = I18n.instance.tList('dashboard.weekDays', const []);
       final today = days[getTurkeyWeekdayIndex()];
       expect(find.text('$today · ${tr('dashboard.todayTitle')}'), findsOneWidget, reason: 'bugünün planı açık');
