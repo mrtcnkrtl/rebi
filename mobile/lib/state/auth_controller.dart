@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/api.dart';
 import '../core/auth_errors.dart';
+import '../core/legal_consent.dart';
 
 /// E-posta onayı ve parola sıfırlama bağlantılarının uygulamayı açtığı adres (Android `intent-filter`,
 /// iOS `CFBundleURLTypes`). Supabase panelinde Authentication → URL Configuration → Redirect URLs listesinde
@@ -105,14 +106,34 @@ class AuthController extends ChangeNotifier {
   /// ekranı bunu bir kez gösterir.
   String? linkError;
 
+  bool _disposed = false;
+  Future<void> _consentSync = Future.value();
+
+  /// Oturum açılınca kayıt sırasında verilen rızanın sunucuya yazılması (yoksa hemen biten bir Future).
+  /// Giriş ekranı bunu bekleyip panele öyle geçer; e-posta bağlantısıyla girişte aynı iş arka planda yürür.
+  Future<void> get consentSync => _consentSync;
+
   void setAuthFlowInProgress(bool v) {
     if (authFlowInProgress == v) return;
     authFlowInProgress = v;
     notifyListeners();
   }
 
+  /// Kayıtta verilen rıza bu oturumun kullanıcı bilgisinde bekliyorsa yazılır. Bitene kadar açılış senkronu ve
+  /// giriş yönlendirmesi bekletilir; yoksa rıza kutusu boşuna açılır.
+  void _startConsentSync(User u) {
+    if (pendingConsentFromMetadata(u.userMetadata) == null) return;
+    authFlowInProgress = true;
+    _consentSync = syncPendingLegalConsent(u).whenComplete(() {
+      if (_disposed) return;
+      authFlowInProgress = false;
+      notifyListeners();
+    });
+  }
+
   void _onAuthState(AuthState data) {
     final next = data.session?.user;
+    if (data.event == AuthChangeEvent.signedIn && next != null && next.id != user?.id) _startConsentSync(next);
     final recovery = data.event == AuthChangeEvent.passwordRecovery;
     var changed = false;
     if (recovery && !recoveryPending) {
@@ -144,14 +165,16 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<SignUpResult> signUp(String email, String password, String fullName) async {
+  /// [consent]: kayıt formundaki KVKK/açık rıza seçimleri; kullanıcı bilgisine konur ve ilk oturum açılışında
+  /// sunucuya yazılır (e-posta onayı beklenirken oturum olmadığı için hemen yazılamaz).
+  Future<SignUpResult> signUp(String email, String password, String fullName, {ConsentPermissions? consent}) async {
     final client = supabase;
     if (client == null) return const SignUpResult(error: supabaseNotConfiguredError, kind: AuthErrorKind.notConfigured);
     try {
       final res = await client.auth.signUp(
         email: email,
         password: password,
-        data: {'full_name': fullName},
+        data: {'full_name': fullName, if (consent != null) 'legal_consent': legalConsentMetadata(consent)},
         emailRedirectTo: authCallbackUrl,
       );
       return signUpResultFromResponse(res);
@@ -251,6 +274,7 @@ class AuthController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _sub?.cancel();
     super.dispose();
   }

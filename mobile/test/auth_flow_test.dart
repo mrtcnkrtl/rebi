@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show Checkbox, Key, TextFormField;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/auth_errors.dart';
+import 'package:rebi/core/legal_consent.dart';
 import 'package:rebi/state/auth_controller.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -17,16 +18,22 @@ class FakeAuth extends AuthController {
   AuthActionResult updateResult = const AuthActionResult();
   final calls = <String>[];
 
+  /// Son `signUp` çağrısıyla gelen rıza seçimleri.
+  ConsentPermissions? lastConsent;
+
   @override
   Future<SignInResult> signIn(String email, String password) async {
     calls.add('signIn $email');
-    if (signInResult.user != null) debugSetUser(signInResult.user);
+    final u = signInResult.user;
+    // Gerçek SDK gibi: giriş başarılıysa `signedIn` olayı yayılır (rıza eşitlemesi buradan başlar).
+    if (u != null) debugEmitAuthState(AuthState(AuthChangeEvent.signedIn, Session(accessToken: 'tok', tokenType: 'bearer', user: u)));
     return signInResult;
   }
 
   @override
-  Future<SignUpResult> signUp(String email, String password, String fullName) async {
+  Future<SignUpResult> signUp(String email, String password, String fullName, {ConsentPermissions? consent}) async {
     calls.add('signUp $email $fullName');
+    lastConsent = consent;
     return signUpResult;
   }
 
@@ -162,11 +169,21 @@ void main() {
   });
 
   group('giriş ekranı', () {
+    testWidgets('yasal metin ve onay kutusu yok; yalnız e-posta + parola ile gönderilebilir', (tester) async {
+      final fake = FakeAuth();
+      await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
+      expect(find.byType(Checkbox), findsNothing);
+      expect(find.text(tr('auth.legalRequired')), findsNothing);
+      expect(find.textContaining(tr('auth.kvkkLink')), findsNothing);
+      await _fillLogin(tester);
+      await _submit(tester);
+      expect(fake.calls, ['signIn ayse@ornek.com'], reason: 'onay kutusu şartı olmadan gönderilir');
+    });
+
     testWidgets('yanlış parola: ham İngilizce mesaj yerine anlaşılır cümle', (tester) async {
       final fake = FakeAuth();
       await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
       await _fillLogin(tester);
-      await _acceptLegal(tester);
       await _submit(tester);
       expect(find.text(tr('mobileAuth.errInvalidCredentials')), findsOneWidget);
       expect(find.text('Invalid login credentials'), findsNothing);
@@ -178,7 +195,6 @@ void main() {
         ..signInResult = const SignInResult(error: 'Email not confirmed', kind: AuthErrorKind.emailNotConfirmed);
       await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
       await _fillLogin(tester);
-      await _acceptLegal(tester);
       await _submit(tester);
       expect(find.text(tr('mobileAuth.errEmailNotConfirmed')), findsOneWidget);
 
@@ -191,21 +207,116 @@ void main() {
       final fake = FakeAuth()..signInResult = const SignInResult(error: 'SocketException', kind: AuthErrorKind.network, networkError: true);
       await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
       await _fillLogin(tester);
-      await _acceptLegal(tester);
       await _submit(tester);
       expect(find.text(tr('mobileAuth.errNetwork')), findsOneWidget);
     });
 
-    testWidgets('başarılı giriş rıza kaydını backend\'e yazar ve panele geçer', (tester) async {
+    testWidgets('rızası zaten kayıtlı kullanıcı: rıza yazılmaz, panele geçilir', (tester) async {
       final fake = FakeAuth()..signInResult = SignInResult(user: fakeUser());
       final h = await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
       await _fillLogin(tester);
-      await _acceptLegal(tester);
       await _submit(tester);
       await settle(tester, 6);
+      expect(h.backend.calls('/legal-consent/status'), isEmpty, reason: 'kayıtta bekleyen rıza yok: sunucuya sorulmaz');
+      expect(h.backend.calls('/legal-consent/accept'), isEmpty);
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+  });
+
+  group('kayıttaki rızanın ilk girişte kayda geçmesi', () {
+    User pendingUser({bool location = false, bool photo = false}) => User(
+          id: testUserId,
+          appMetadata: const {},
+          userMetadata: {
+            'full_name': 'Ayşe Test',
+            'legal_consent': legalConsentMetadata(ConsentPermissions(ai: true, location: location, photo: photo)),
+          },
+          aud: 'authenticated',
+          createdAt: '2026-10-20T10:00:00Z',
+          email: 'ayse@ornek.com',
+        );
+
+    testWidgets('girişte bekleyen rıza sunucuya yazılır (kutu sormadan) ve panele geçilir', (tester) async {
+      final fake = FakeAuth()..signInResult = SignInResult(user: pendingUser(location: true));
+      final h = await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
+      await _fillLogin(tester);
+      await _submit(tester);
+      await settle(tester, 8);
       final body = h.backend.bodyOf('/legal-consent/accept');
       expect(body['user_id'], testUserId);
+      expect(body['kvkk_accepted'], true);
+      expect(body['explicit_consent_accepted'], true);
+      expect(body['ai_processing_accepted'], true);
+      expect(body['location_processing_accepted'], true, reason: 'kayıt formundaki seçim taşınır');
+      expect(body['photo_processing_accepted'], false);
       expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+      expect(find.text(tr('common.consentRecoveryTitle')), findsNothing, reason: 'rıza kutusu açılmaz');
+    });
+
+    testWidgets('sunucuda zaten kayıt varsa üzerine yazılmaz (sonradan değiştirilen izinler korunur)', (tester) async {
+      final backend = FakeBackend()..consentRecordedOnServer = true;
+      final fake = FakeAuth()..signInResult = SignInResult(user: pendingUser(location: true));
+      final h = await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake, backend: backend);
+      await _fillLogin(tester);
+      await _submit(tester);
+      await settle(tester, 8);
+      expect(h.backend.calls('/legal-consent/status'), isNotEmpty);
+      expect(h.backend.calls('/legal-consent/accept'), isEmpty);
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+
+    testWidgets('rıza yazılamazsa giriş engellenmez: panel açılır, rıza kutusu yedek olur', (tester) async {
+      final backend = FakeBackend()
+        ..consentStatusFails = 500
+        ..consentMissing = true
+        ..snapshot = {
+          ...FakeBackend().snapshot,
+          'consent': {'legal_version': 'v2', 'legal_accepted': false, 'ai_processing_allowed': false},
+        };
+      final fake = FakeAuth()..signInResult = SignInResult(user: pendingUser());
+      final h = await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake, backend: backend);
+      await _fillLogin(tester);
+      await _submit(tester);
+      await settle(tester, 8);
+      expect(h.backend.calls('/legal-consent/accept'), isEmpty);
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard', reason: 'rıza hatası girişi kilitlemez');
+      expect(find.text(tr('common.consentRecoveryTitle')), findsOneWidget, reason: 'yazılamayan rıza, rıza kutusuyla yeniden alınır');
+    });
+
+    testWidgets('e-posta onayı bağlantısıyla (ekransız) girişte de rıza yazılır', (tester) async {
+      final fake = FakeAuth();
+      final h = await pumpApp(tester, location: '/', loggedIn: false, authController: fake);
+      // Bağlantı uygulamayı açınca SDK oturumu kurar ve `signedIn` yayar.
+      fake.debugEmitAuthState(AuthState(AuthChangeEvent.signedIn, Session(accessToken: 'tok', tokenType: 'bearer', user: pendingUser(photo: true))));
+      expect(fake.authFlowInProgress, isTrue, reason: 'rıza yazılırken açılış senkronu ve yönlendirme bekler');
+      await fake.consentSync;
+      await settle(tester, 6);
+      expect(fake.authFlowInProgress, isFalse);
+      final body = h.backend.bodyOf('/legal-consent/accept');
+      expect(body['user_id'], testUserId);
+      expect(body['photo_processing_accepted'], true);
+    });
+  });
+
+  group('rıza yardımcıları', () {
+    test('kayıt seçimleri metadata\'ya konur ve geri okunur', () {
+      final meta = legalConsentMetadata(const ConsentPermissions(ai: true, location: true, photo: false));
+      expect(meta['version'], legalConsentVersion);
+      final back = pendingConsentFromMetadata({'legal_consent': meta})!;
+      expect(back.ai, isTrue);
+      expect(back.location, isTrue);
+      expect(back.photo, isFalse);
+    });
+
+    test('eksik, eski sürüm ya da onaysız metadata bekleyen rıza sayılmaz', () {
+      Map<String, dynamic> m(Map<String, dynamic> over) => {'legal_consent': {...legalConsentMetadata(const ConsentPermissions(ai: true)), ...over}};
+      expect(pendingConsentFromMetadata(null), isNull);
+      expect(pendingConsentFromMetadata(const {}), isNull);
+      expect(pendingConsentFromMetadata({'legal_consent': 'x'}), isNull);
+      expect(pendingConsentFromMetadata(m({'version': 'v1'})), isNull, reason: 'eski metin sürümü: yeniden onay gerekir');
+      expect(pendingConsentFromMetadata(m({'kvkk': false})), isNull);
+      expect(pendingConsentFromMetadata(m({'riza': false})), isNull);
+      expect(pendingConsentFromMetadata(m({'ai': false})), isNull);
     });
   });
 
@@ -224,6 +335,8 @@ void main() {
       final fake = FakeAuth()..signUpResult = const SignUpResult(needsEmailConfirmation: true);
       await openSignup(tester, fake);
       expect(fake.calls, contains('signUp ayse@ornek.com Ayşe Test'));
+      expect(fake.lastConsent?.ai, isTrue, reason: 'kayıttaki rıza, oturum açılınca yazılmak üzere gönderilir');
+      expect(fake.lastConsent?.location, isFalse);
       expect(find.text(tr('mobileAuth.signupSent')), findsOneWidget);
       expect(find.text(tr('auth.welcome')), findsOneWidget, reason: 'giriş kipine dönmeli');
       expect(find.byKey(const Key('auth-resend')), findsOneWidget);

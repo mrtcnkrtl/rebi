@@ -54,6 +54,10 @@ class FakeBackend {
 
   /// true: yapay zekâ uçları rıza kaydı yokmuş gibi 403 döner.
   bool consentMissing = false;
+
+  /// `GET /legal-consent/status` yanıtı: sunucuda bu kullanıcının rıza kaydı var mı. [consentStatusFails] doluysa o durum koduyla düşer.
+  bool consentRecordedOnServer = false;
+  int? consentStatusFails;
   Map<String, dynamic> checkinStatus = {'already_checked_in': false, 'log_date': '2026-10-10'};
 
   /// `GET /me/snapshot` yanıtı; testler istediği alanı değiştirir.
@@ -392,6 +396,16 @@ class FakeBackend {
               }
             }
             return ok({'ok': true, 'log_date': '2026-10-10', 'aggregated': progress});
+          case 'GET /legal-consent/status':
+            if (consentStatusFails != null) return http.Response('Internal Server Error', consentStatusFails!);
+            return ok({
+              'accepted': consentRecordedOnServer,
+              'document_version': 'v2',
+              'accepted_at': consentRecordedOnServer ? '2026-10-01T09:00:00Z' : null,
+              'ai_processing_accepted': consentRecordedOnServer,
+              'location_processing_accepted': false,
+              'photo_processing_accepted': false,
+            });
           case 'POST /legal-consent/accept':
             consentMissing = false;
             return ok({'ok': true, 'accepted_at': '2026-10-10T10:00:00Z'});

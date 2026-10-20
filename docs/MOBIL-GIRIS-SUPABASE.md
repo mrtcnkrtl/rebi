@@ -27,12 +27,25 @@ Telefon ──(Authorization: Bearer <token>)──▶ FastAPI (rebiovil.com/api
 | 2 | **Onaysız e-posta ile giriş** | Ham İngilizce "Email not confirmed", yapacak bir şey yok | Açıklama + **Onay e-postasını tekrar gönder** |
 | 3 | **Parola sıfırlama hiç yoktu** (webde de yok) | Parolasını unutan kullanıcı hesabına bir daha giremiyordu | **Parolamı unuttum** → e-postadaki bağlantı uygulamayı açar → **yeni parola belirle** ekranı |
 | 4 | Onay bağlantısı uygulamayı değil, **web sitesini** açıyordu | Kullanıcı tarayıcıda kalıyor, uygulamaya elle dönüp giriş yapıyordu | Bağlantı `com.rebiovil.rebi://auth-callback` ile uygulamayı açar ve oturumu kurar (Android/iOS derin bağlantı ayarı eklendi) |
-| 5 | Süresi dolmuş / posta tarayıcısının önceden açtığı bağlantı | Supabase bu hatayı oturum akışına hata olarak yollar; dinleyici yoktu → **yakalanmamış hata** | Hata yakalanır, giriş ekranında nedeniyle gösterilir (+ tekrar gönder) |
+| 5 | Uygulamaya hata parametresiyle dönen bağlantı (`#error=…`) | Hata oturum akışına düşer; dinleyici yoktu → **yakalanmamış hata** | Hata yakalanır, giriş ekranında nedeniyle gösterilir (+ tekrar gönder). **Not:** kullanılmış/süresi dolmuş tek kullanımlık bağlantıda Supabase uygulamaya hiç yönlendirmez, tarayıcıda ham `otp_expired` JSON'u gösterir (bkz. A7); uygulama bunu göremez |
 | 6 | Supabase hataları ham İngilizce (`Invalid login credentials`, `User already registered`…) | Türkçe kullanıcıya İngilizce cümle | Hata kodu/mesajı türe çevrilir; TR/EN cümleler (`mobileAuth.err*`) |
 | 7 | Rıza kaydı sırasında ağ kesilirse `SocketException: …` metni gösteriliyordu | Teknik metin | "Sunucuya bağlanılamadı…" mesajı |
+| 8 | KVKK / açık rıza kutuları **girişte de** zorunluydu ve rıza kaydı girişi engelliyordu (kayıtta e-posta onayı beklenirken oturum olmadığı için rıza ilk girişte yazılıyordu) | Her girişte aynı kutular; rıza yazılamazsa (`Rıza kaydı oluşturulamadı`) kullanıcı **içeri alınmıyordu** | Yasal metinler ve onay kutuları **yalnızca kayıt ekranında**. Kayıttaki seçimler Supabase `user_metadata.legal_consent` içinde taşınır, ilk oturum açılışında (şifreyle giriş ya da e-posta bağlantısı) sunucuya yazılır. Yazılamazsa giriş **engellenmez**; açılış paketi eksik rızayı görüp mevcut "rıza kutusu"nu açar |
 
-Testler: `mobile/test/auth_flow_test.dart` (17 test: hata sınıflandırma, kayıtlı e-posta, onaysız giriş, tekrar gönder,
-parolamı unuttum, sıfırlama oturumu, geçersiz bağlantı). Supabase'e gerçek istek atılmaz.
+### Rıza akışı (kayıt → ilk giriş)
+
+1. **Kayıt ekranı:** KVKK + açık rıza (zorunlu), konum/fotoğraf (isteğe bağlı). Seçimler `signUp(data: {legal_consent: {...}})` ile kullanıcı bilgisine konur.
+2. E-posta onayı beklerken oturum yoktur, sunucuya yazılamaz: kayıt "Kayıt alındı…" ile biter.
+3. **İlk oturum açılışı** (`signedIn` olayı; giriş ekranı ya da onay bağlantısı): `syncPendingLegalConsent` önce `GET /legal-consent/status` ile sunucuya bakar;
+   kayıt **yoksa** `POST /legal-consent/accept` yazar, **varsa** dokunmaz (kullanıcının sonradan değiştirdiği izinler ezilmesin).
+   Bu sırada açılış senkronu ve giriş yönlendirmesi bekler (rıza kutusu boşuna açılmasın).
+4. Başarısızlıkta sessizce geçilir; `/me/snapshot` rıza eksikliğini bildirirse mevcut **rıza kutusu** (yasal metin + kutular) açılır. Yapay zekâ uçları rıza olmadan zaten 403 döner.
+5. Metin sürümü (`v2`) değişirse metadata'daki eski seçim geçersiz sayılır; kullanıcı rıza kutusuyla yeniden onaylar.
+
+Yasal metinlerin okunabileceği yerler: kayıt ekranındaki bağlantılar, karşılama ekranının altı ve Ben → Hesap ve gizlilik (mağaza kuralları için uygulama içinde erişilebilir kalmalı).
+
+Testler: `mobile/test/auth_flow_test.dart` (24 test: hata sınıflandırma, kayıtlı e-posta, onaysız giriş, tekrar gönder, parolamı unuttum,
+sıfırlama oturumu, geçersiz bağlantı, girişte rıza kutusu yok, kayıttaki rızanın ilk girişte yazılması). Supabase'e gerçek istek atılmaz.
 
 ## 2. SENİN yapman gerekenler (Supabase paneli)
 
@@ -76,8 +89,11 @@ Gelmiyorsa uygulamada "Şu an e-posta gönderilemedi" ya da "Kısa sürede çok 
 | A4 | Onaylamadan giriş yapmayı dene | "Bu e-posta henüz onaylanmamış…" + tekrar gönder |
 | A5 | Giriş ekranı → **Parolamı unuttum** → e-posta | "Bu adres kayıtlıysa bağlantı gönderdik" |
 | A6 | Sıfırlama e-postasındaki bağlantıya dokun | Uygulama açılır, **Yeni parola belirle** ekranı; kaydedince panele geçer |
-| A7 | Aynı bağlantıya ikinci kez dokun | "Bağlantı geçersiz ya da süresi dolmuş…" (çökme yok) |
+| A7 | Aynı bağlantıya ikinci kez dokun | Tarayıcıda Supabase'in `{"code":403,"error_code":"otp_expired",…}` sayfası açılır (**Supabase kullanılmış/süresi dolmuş bağlantıyı uygulamaya yönlendirmez**, ham JSON gösterir; 2026-10-20 telefon testinde görüldü). Uygulamaya dön: giriş ekranından **tekrar gönder** / **Parolamı unuttum** ile yeni bağlantı iste |
 | A8 | Yeni parolayla çıkış yapıp giriş | Girer |
+| A9 | Giriş ekranını aç | KVKK / açık rıza metni ve onay kutusu **yok**; yalnız e-posta + parola |
+| A10 | A1'deki kayıttan sonra (onay bağlantısına dokunup ya da şifreyle) ilk kez içeri gir | **Rıza kutusu çıkmaz** (kayıtta verilen rıza arka planda yazıldı); Ben → Hesap ve gizlilik'te izinler kayıttaki seçimle aynı |
+| A11 | Rıza kaydı sunucuda başarısız olursa (ör. sunucu kapalı) | Giriş **engellenmez**; panel açılır ve rıza kutusu bir kez sorar |
 
 ## 4. Bilinen sınırlar
 

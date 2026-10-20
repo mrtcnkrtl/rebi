@@ -4,7 +4,6 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
-import '../core/api.dart' show isNetworkError;
 import '../core/auth_errors.dart';
 import '../core/i18n.dart';
 import '../core/legal_consent.dart';
@@ -150,7 +149,8 @@ class _AuthScreenState extends State<AuthScreen> {
     final router = GoRouter.of(context);
     if (auth.recoveryPending) return _submitReset(auth, router);
     if (_mode == 'forgot') return _submitForgot(auth);
-    if (!_kvkk || !_riza) {
+    // KVKK ve açık rıza yalnızca kayıtta alınır; girişte kutu da, onay şartı da yoktur.
+    if (_mode == 'signup' && (!_kvkk || !_riza)) {
       setState(() => _error = I18n.instance.t('auth.legalRequired'));
       return;
     }
@@ -164,11 +164,11 @@ class _AuthScreenState extends State<AuthScreen> {
           _showAuthError(r.error!, r.kind, offerResend: r.kind == AuthErrorKind.emailNotConfirmed);
           return;
         }
-        if (!await _recordConsent(auth, r.user?.id, consent)) return;
+        await _waitConsentSync(auth);
         auth.setAuthFlowInProgress(false);
         router.go(widget.next);
       } else {
-        final r = await auth.signUp(_email.text.trim(), _password.text, _fullName.text);
+        final r = await auth.signUp(_email.text.trim(), _password.text, _fullName.text, consent: consent);
         if (r.error != null) {
           _showAuthError(r.error!, r.kind);
           return;
@@ -195,7 +195,8 @@ class _AuthScreenState extends State<AuthScreen> {
           }
           return;
         }
-        if (!await _recordConsent(auth, r.user?.id, consent)) return;
+        // E-posta onayı kapalıysa oturum hemen açılır: kayıttaki rıza şimdi kayda geçer.
+        await _waitConsentSync(auth);
         auth.setAuthFlowInProgress(false);
         router.go(widget.next);
       }
@@ -205,21 +206,10 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  /// Rıza kaydı başarısızsa oturumu kapatır (web ile aynı); hatayı ekranda gösterir.
-  Future<bool> _recordConsent(AuthController auth, String? userId, ConsentPermissions consent) async {
-    try {
-      await recordLegalConsent(userId, consent);
-      return true;
-    } catch (e) {
-      await auth.signOut();
-      if (isNetworkError(e)) {
-        _showAuthError('', AuthErrorKind.network);
-      } else {
-        _showAuthError(e.toString().replaceFirst('Exception: ', ''), AuthErrorKind.other);
-      }
-      return false;
-    }
-  }
+  /// Kayıtta verilen rıza ilk oturum açılışında yazılır (bkz. [AuthController.consentSync]). Hata girişi engellemez:
+  /// yazılamazsa panel açılır ve açılış paketi eksik rızayı görüp rıza kutusunu gösterir. Uzun beklemeyi keser.
+  Future<void> _waitConsentSync(AuthController auth) =>
+      auth.consentSync.timeout(const Duration(seconds: 15), onTimeout: () {});
 
   Future<void> _submitForgot(AuthController auth) async {
     setState(() => _loading = true);
@@ -328,7 +318,9 @@ class _AuthScreenState extends State<AuthScreen> {
     final signup = mode == 'signup';
     final forgot = mode == 'forgot';
     final reset = mode == 'reset';
-    final withLegal = login || signup;
+    // Yasal metinler ve onay kutuları yalnızca kayıt ekranında; giriş ve diğer kiplerde yoktur.
+    final withLegal = signup;
+    final canSwitch = login || signup;
     final canSubmit = !_loading && (!withLegal || (_kvkk && _riza));
     final overlay = (Brand.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark).copyWith(
       statusBarColor: Colors.transparent,
@@ -563,7 +555,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                       ),
                       const SizedBox(height: 22),
-                      if (withLegal)
+                      if (canSwitch)
                         Center(
                           child: GestureDetector(
                             behavior: HitTestBehavior.opaque,

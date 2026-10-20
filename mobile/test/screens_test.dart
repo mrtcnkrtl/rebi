@@ -85,8 +85,9 @@ void main() {
       expect(h.router.routeInformationProvider.value.uri.toString(), '/auth?next=%2Fdashboard%2Fchat');
     });
 
-    testWidgets('auth: onay kutuları işaretlenmeden gönderilemez, form doğrulaması çalışır', (tester) async {
-      await pumpApp(tester, location: '/auth', loggedIn: false);
+    // KVKK ve açık rıza yalnızca kayıt ekranında alınır (girişte kutu yok: test/auth_flow_test.dart).
+    testWidgets('auth (kayıt): onay kutuları işaretlenmeden gönderilemez, form doğrulaması çalışır', (tester) async {
+      await pumpApp(tester, location: '/auth?mode=signup', loggedIn: false);
       final submit = find.byKey(const Key('auth-submit'));
       await tester.ensureVisible(submit.first);
       await tester.tap(submit.first, warnIfMissed: false);
@@ -98,19 +99,19 @@ void main() {
       await tapFinder(tester, boxes.at(0));
       await tapFinder(tester, boxes.at(1));
       await tapFinder(tester, submit.first);
-      expect(find.text('Lütfen bu alanı doldurun.'), findsNWidgets(2));
+      expect(find.text('Lütfen bu alanı doldurun.'), findsNWidgets(3), reason: 'ad, e-posta, parola');
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'yanlis-eposta');
-      await tester.enterText(find.byType(TextFormField).at(1), '123');
+      await tester.enterText(find.byType(TextFormField).at(1), 'yanlis-eposta');
+      await tester.enterText(find.byType(TextFormField).at(2), '123');
       await settle(tester, 4); // alanın ekrana kaydırma animasyonu bitsin
       await tapFinder(tester, submit.first);
       expect(find.text('Lütfen geçerli bir e-posta adresi girin.'), findsOneWidget);
       expect(find.textContaining('en az 6 karakter'), findsOneWidget);
     });
 
-    testWidgets('auth: KVKK bağlantısı formu kaybetmeden üstte açılır', (tester) async {
-      final h = await pumpApp(tester, location: '/auth', loggedIn: false);
-      await tester.enterText(find.byType(TextFormField).at(0), 'ayse@ornek.com');
+    testWidgets('auth (kayıt): KVKK bağlantısı formu kaybetmeden üstte açılır', (tester) async {
+      final h = await pumpApp(tester, location: '/auth?mode=signup', loggedIn: false);
+      await tester.enterText(find.byType(TextFormField).at(1), 'ayse@ornek.com');
       final rich = find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().contains(tr('auth.kvkkLink')));
       await tester.ensureVisible(rich.first);
       await tester.pump();
