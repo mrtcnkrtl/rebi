@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+ sistem açılış ekranı logosu. ÜRETİLİR: test/brand_assets_test.dart (elle düzenlemeyin). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="288dp"
+    android:height="288dp"
+    android:viewportWidth="288"
+    android:viewportHeight="288">
+    <path android:pathData="M123.2 92H164.8A31.2 31.2 0 0 1 196 123.2V164.8A31.2 31.2 0 0 1 164.8 196H123.2A31.2 31.2 0 0 1 92 164.8V123.2A31.2 31.2 0 0 1 123.2 92Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="92"
+                android:startY="92"
+                android:endX="196"
+                android:endY="196"
+                android:startColor="#FF2DD4BF"
+                android:endColor="#FF0D9488" />
+        </aapt:attr>
+    </path>
+    <path
+        android:pathData="M128.4 170 L128.4 119.04 L147.12 119.04 C170 119.04 170 147.12 147.12 147.12 L128.4 147.12 M148.16 148.16 L164.8 170"
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="13"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M173.12 107.08 Q173.12 114.88 180.92 114.88 Q173.12 114.88 173.12 122.68 Q173.12 114.88 165.32 114.88 Q173.12 114.88 173.12 107.08 Z"
+        android:fillColor="#F2FFFFFF" />
+</vector>

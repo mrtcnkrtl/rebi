@@ -309,8 +309,19 @@ Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu mod
 ## Uygulama kimliği ve yayın
 
 - Paket / bundle kimliği: `com.rebiovil.rebi`, görünen ad: `Rebi`.
-- İkonlar web'deki marka görselinden üretilir: `dart run flutter_launcher_icons`. Android bildirim küçük simgesi tek
-  renkli `ic_stat_rebi`'dir (logodan üretildi) ve `res/raw/keep.xml` ile release kaynak küçültmesinden korunur.
+- **Logo ve ikonlar tek kaynaktan üretilir:** uygulama içindeki `BrandMark`'ın geometrisi (`BrandGlyph`,
+  `lib/ui/brand/brand_mark.dart`). Logoyu değiştirirseniz:
+
+  ```bash
+  cd mobile && REBI_BRAND_ASSETS=1 flutter test test/brand_assets_test.dart && dart run flutter_launcher_icons
+  ```
+
+  Birinci komut `assets/icon/*.png` (1024 px kaynaklar, Play 512 ikonu), bildirim simgesi `ic_stat_rebi` ve Android 12+
+  açılış vektörü `drawable-v31/splash_logo.xml` dosyalarını yazar; ikincisi iOS/Android ikon boyutlarını çıkarır.
+  Açılış logosu bilerek PNG değil vektördür: Android 12+ simgeyi 288 dp'ye büyütür, PNG olsaydı pikselleşirdi.
+  Normal `flutter test` iki şeyi korur: ikon kaynakları ≥1024 px ve vektör geometriyle güncel. (Web'deki
+  `favicon.svg` ve PNG'leri ayrı bir kaynaktır; mobil ikonla aynı değildir.) Bildirim simgesi `ic_stat_rebi` tek
+  renklidir ve `res/raw/keep.xml` ile release kaynak küçültmesinden korunur.
 - **Mağaza derlemesi:** `tool/build_release.sh android|ios`. `env/prod.json` doğrulanır (şablon değeri, yerel adres,
   http reddedilir); Android'de `android/key.properties` yoksa debug anahtarıyla sessizce imzalamak yerine durur
   (şablon: `android/key.properties.example`). Anahtar oluşturma, sürüm numarası, mağaza metinleri, gizlilik

@@ -123,7 +123,9 @@ Dikkat:
 - App Store iPad destekleniyorsa (`TARGETED_DEVICE_FAMILY = 1,2`) iPad 13" (2064×2752) görüntüleri de gerekir
   (`MOBIL-YAYIN.md` §4, madde 6); yalnızca iPhone isterseniz bu atlanır. Bu araç iPad boyutu üretmez.
 - **Play öne çıkan görsel** (1024×500) zorunludur ve burada **üretilmedi**: marka tasarımı gerektirir (logo + slogan).
-  **Uygulama ikonu** hazır: `mobile/assets/icon/icon.png` (512×512).
+  **Uygulama ikonları** hazır: Play Console için `mobile/assets/icon/play-store-512.png` (512×512), App Store için
+  `mobile/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png` (1024×1024, alfasız). İkisi de
+  uygulama içindeki logodan üretilir; yeniden üretme: `mobile/README.md`.
 
 ## 5. Gizlilik formları
 

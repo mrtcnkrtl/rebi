@@ -169,7 +169,9 @@ Sekiz ekran görüntüsü iki boyutta tek komutla üretilir (`REBI_STORE_SHOTS=1
 boyutlar, sıra ve uyarılar [`MOBIL-MAGAZA-VARLIKLARI.md`](MOBIL-MAGAZA-VARLIKLARI.md) §4'tedir. Çıktılar gerçek yazı
 tipleriyle ve gerçek ekran koduyla çizilir ama örnek hesaptır; istersen aynı ekranları telefondan da çekebilirsin.
 Güncel boyut gereksinimini gönderimde doğrulayın (App Store 6,9" = 1320×2868; Play telefon: kenar oranı en çok 2:1).
-Uygulama ikonu `assets/icon/icon.png` (`dart run flutter_launcher_icons`; iOS ikonunda alfa kanalı otomatik silinir).
+Uygulama ikonu `assets/icon/icon.png` (1024×1024; iOS ve Android ikon boyutları `dart run flutter_launcher_icons` ile
+buradan çıkar, iOS ikonunda alfa kanalı otomatik silinir). İkon kaynakları `BrandMark` geometrisinden üretilir
+(`mobile/README.md` → "Uygulama kimliği ve yayın"); elle PNG düzenlemeyin.
 
 ## 11. Gönderimden önce cihazda doğrulama
 
