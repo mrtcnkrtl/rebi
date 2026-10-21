@@ -713,24 +713,9 @@
     }
   },
   "mobileLanding": {
-    "chipUv": "UV 6",
-    "chipHumidity": "Humidity 48%",
-    "chipSpf": "SPF 50",
-    "chipActive": "Niacinamide",
-    "tagMorning": "Morning routine",
-    "tagMorningSub": "Completed",
-    "tagSpf": "Reapply SPF",
-    "tagSpfSub": "UV 6 · Humidity 48%",
-    "openApp": "Open dashboard",
-    "s1Title": "Truly know your skin",
-    "s1Sub": "Your photo, lifestyle and local weather in a single analysis.",
-    "s2Title": "Science-backed routine",
-    "s2Sub": "Morning and evening steps built on active ingredients, not brands.",
-    "s3Title": "Adapts to you daily",
-    "s3Sub": "Daily check-ins and weather shape your routine around your skin.",
-    "eyebrow1": "Analysis",
-    "eyebrow2": "Routine",
-    "eyebrow3": "Daily"
+    "heroTitle": "A routine made\nfor your skin.",
+    "heroSub": "Your photo, lifestyle and weather become your morning and evening steps.",
+    "openApp": "Open dashboard"
   },
   "mobileAuth": {
     "strengthWeak": "Weak",

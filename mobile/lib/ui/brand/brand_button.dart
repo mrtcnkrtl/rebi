@@ -14,6 +14,7 @@ class BrandButton extends StatelessWidget {
     this.trailingIcon,
     this.loading = false,
     this.outlined = false,
+    this.onDark = false,
     this.height = 58,
   });
 
@@ -22,12 +23,15 @@ class BrandButton extends StatelessWidget {
   final IconData? trailingIcon;
   final bool loading;
   final bool outlined;
+
+  /// Koyu orman zemininde (karşılama): dolu düğme krem zeminde orman yazılı, çerçeveli düğme krem çerçeveli ve yazılıdır.
+  final bool onDark;
   final double height;
 
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null && !loading;
-    final fg = outlined ? Brand.ink : Brand.buttonFg;
+    final fg = onDark ? (outlined ? Brand.cream : Brand.forest) : (outlined ? Brand.ink : Brand.buttonFg);
     final content = loading
         ? SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: fg))
         : Row(
@@ -49,9 +53,9 @@ class BrandButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: outlined ? Colors.transparent : Brand.buttonBg,
+            color: outlined ? Colors.transparent : (onDark ? Brand.cream : Brand.buttonBg),
             borderRadius: BorderRadius.circular(height / 2),
-            border: outlined ? Border.all(color: Brand.ink.withValues(alpha: .22), width: 1.4) : null,
+            border: outlined ? Border.all(color: (onDark ? Brand.cream : Brand.ink).withValues(alpha: onDark ? .32 : .22), width: 1.4) : null,
           ),
           child: content,
         ),

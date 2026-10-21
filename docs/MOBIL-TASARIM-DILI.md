@@ -68,21 +68,22 @@ Sayfa zemini kabuktandır: `ThemedBackground` zemin boyamaz. Sayfada zemini yeni
 
 ## Açılış ve karşılama
 
-Marka ilk izlenimi tek bir hikâyedir: **derin orman yeşili sahne, altında krem "kâğıt" panel**. Açılış ve karşılama aynı
-yeşille başlar; iki temada da aynıdır (koyu temada yalnızca panel koyulaşır).
+Marka ilk izlenimi tek bir hikâyedir: **derin orman yeşili sahne** (açılış, karşılama, giriş, Bugün) ve gerektiğinde altına
+yükselen **krem "kâğıt" panel** (giriş, kayıt, Bugün kartları). Açılış ve karşılama aynı yeşille başlar; iki temada da aynıdır
+(koyu temada yalnızca paneller koyulaşır).
 
 - **Açılış (`SplashScreen`, ~2,4 sn).** İlk kare yerel açılış ekranıyla **birebir** örtüşür: düz orman yeşili zemin ve ekranın
   tam ortasında 104 dp marka karosu (`BrandMark.launchSize`). Android 12+ `drawable-v31/splash_logo.xml`, Android 12 öncesi
   `launch_logo.png`, iOS `LaunchImage` aynı karoyu gösterir (`test/launch_experience_test.dart` konumu ve boyutu korur).
   Sonra karo yukarı süzülür, "Rebi" harf harf belirir, ince bir çizgi çekilir, geniş aralıklı büyük harfli slogan gelir.
   Halka, ışıltı, cam gibi süs yoktur; tek hareket "marka kuruluyor"dur. Çıkış karşılamanın üstünde solarak olur.
-- **Karşılama (`LandingScreen`).** Üstte orman sahnesi: marka karosu + "Rebi" ve dil seçici (krem), ortada üç çizim; sahnenin
-  altında zemine sahne renginde (nane / pudra / kum) tek bir yumuşak ışık havuzu düşer. Çizimler her zaman bu koyu zemine
-  göre çizilir; etiket kartları kremdir. Altta krem panel, hiyerarşi: **küçük etiket → Fraunces başlık → açıklama → üç ince
-  ilerleme çizgisi → tek ana düğme → tek satır ikincil eylem (Giriş yap | Rebi ile konuş) → tek satır yasal metin.**
-- Büyük harfli etiketler `brandCaps` ile yazılır (Türkçede i→İ; Arapçada büyük harf ve harf aralığı yoktur).
-- Logoyu ya da karo boyutunu değiştirirseniz yerel açılış görselleri `test/brand_assets_test.dart` ile yeniden üretilir
-  (`mobile/README.md` → "Uygulama kimliği ve yayın").
+- **Karşılama (`LandingScreen`, giriş yapmadan önce açılan sayfa).** Tek odak, **sıfır etiket**: tam ekran derin orman yeşili,
+  arkasında tek bir yumuşak ışık havuzu; ortada tek kahraman görsel (`HeroArt`: podyum üstünde ürünler), altında ortalı iki
+  satırlık Fraunces başlık, iki satırlık açıklama, krem tek ana düğme ("Rutini oluştur"), tek satır sessiz ikincil eylem
+  (Giriş yap | Rebi ile konuş) ve en dipte silik yasal metin. Kaydırmalı sahne, yüzen kart/etiket, ilerleme göstergesi,
+  yaprak gölgesi yoktur (göz tek yerde durur; testle korunur: `PageView` yok). Hareket: önce sahne kurulur (ürünler yerine
+  süzülür), sonra başlık, açıklama, düğme sırayla belirir; ardından yalnızca çok yavaş bir nefes alma (güneş diski salınır,
+  zeytin dalı sallanır). "Animasyonları azalt" açıkken hepsi durur.
 
 ### Giriş ve kayıt (`AuthScreen`)
 

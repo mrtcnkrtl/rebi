@@ -713,24 +713,9 @@
     }
   },
   "mobileLanding": {
-    "chipUv": "UV 6",
-    "chipHumidity": "Nem %48",
-    "chipSpf": "SPF 50",
-    "chipActive": "Niasinamid",
-    "tagMorning": "Sabah rutini",
-    "tagMorningSub": "Tamamlandı",
-    "tagSpf": "SPF'ni yenile",
-    "tagSpfSub": "UV 6 · Nem %48",
-    "openApp": "Panele git",
-    "s1Title": "Cildini gerçekten tanı",
-    "s1Sub": "Fotoğraf, yaşam tarzın ve hava durumu tek bir analizde buluşur.",
-    "s2Title": "Bilimle kurulan rutin",
-    "s2Sub": "Marka değil, etken madde odaklı sabah ve akşam adımları.",
-    "s3Title": "Sana göre şekillenir",
-    "s3Sub": "Günlük check-in ve hava durumuna göre rutinin cildine uyum sağlar.",
-    "eyebrow1": "Analiz",
-    "eyebrow2": "Rutin",
-    "eyebrow3": "Günlük"
+    "heroTitle": "Cildine özel rutin,\ntek bir analizle.",
+    "heroSub": "Fotoğrafın, yaşam tarzın ve hava durumun sabah ve akşam adımlarına dönüşür.",
+    "openApp": "Panele git"
   },
   "mobileAuth": {
     "strengthWeak": "Zayıf",

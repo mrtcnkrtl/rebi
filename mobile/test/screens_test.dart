@@ -33,7 +33,7 @@ void main() {
   group('giriş yapmamış kullanıcı', () {
     testWidgets('landing: ana eylem kayıt ekranını açar ve analize yönlendirmeyi taşır', (tester) async {
       final h = await pumpApp(tester, location: '/', loggedIn: false);
-      expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
+      expect(find.text(tr('mobileLanding.heroTitle')), findsOneWidget);
       await tapText(tester, tr('landing.ctaBuildRoutine'));
       expect(h.router.routeInformationProvider.value.uri.toString(), '/auth?next=%2Fdashboard%2Fanalyze&mode=signup');
       expect(find.text(tr('auth.createAccount')), findsOneWidget);
@@ -55,14 +55,17 @@ void main() {
       expect(find.text(tr('chat.emptyTitle')), findsOneWidget);
     });
 
-    testWidgets('landing: yana kaydırınca sahne metinleri değişir', (tester) async {
+    testWidgets('landing: tek kahraman, tek ana eylem; kaydırmalı sahne, yüzen kart ve ilerleme göstergesi yoktur', (tester) async {
       await pumpApp(tester, location: '/', loggedIn: false);
-      await tester.drag(find.byType(PageView), const Offset(-320, 0));
-      await settle(tester, 6);
-      expect(find.text(tr('mobileLanding.s2Title')), findsOneWidget);
-      await tester.drag(find.byType(PageView), const Offset(-320, 0));
-      await settle(tester, 6);
-      expect(find.text(tr('mobileLanding.s3Title')), findsOneWidget);
+      expect(find.byType(PageView), findsNothing, reason: 'sahneler arasında kaydırma yok');
+      expect(find.text(tr('mobileLanding.heroTitle')), findsOneWidget);
+      expect(find.text(tr('mobileLanding.heroSub')), findsOneWidget);
+      // Ana düğme tek: dolu (krem) düğme yalnızca "Rutini oluştur"dur; geri kalanlar sessiz metin eylemleridir.
+      expect(find.text(tr('landing.ctaBuildRoutine')), findsOneWidget);
+      expect(find.text(tr('auth.login')), findsOneWidget);
+      expect(find.text(tr('landing.ctaChat')), findsOneWidget);
+      expect(find.text(tr('legal.kvkkTitle')), findsOneWidget);
+      expect(find.text(tr('legal.rizaTitle')), findsOneWidget);
     });
 
     testWidgets('landing: oturum açıkken ana eylem panele götürür', (tester) async {
@@ -77,7 +80,7 @@ void main() {
       expect(h.router.routeInformationProvider.value.uri.path, '/splash');
       await settle(tester, 12);
       expect(h.router.routeInformationProvider.value.uri.path, '/');
-      expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
+      expect(find.text(tr('mobileLanding.heroTitle')), findsOneWidget);
     });
 
     testWidgets('korumalı rota girişe yönlendirir ve next parametresini taşır', (tester) async {
@@ -598,7 +601,7 @@ void main() {
     await tester.tap(find.text('English'));
     await settle(tester, 4);
     expect(LocalStore.instance.getString('rebi-lang'), 'en');
-    expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
+    expect(find.text(tr('mobileLanding.heroTitle')), findsOneWidget);
   });
 
   testWidgets('hızlı foto yükleme: Supabase yoksa açıklama gösterir', (tester) async {
