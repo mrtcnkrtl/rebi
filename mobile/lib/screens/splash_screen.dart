@@ -71,7 +71,7 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     final i18n = context.i18n;
     final lang = i18n.lang;
     final tagline = brandCaps(i18n.t('landing.heroBadge'), lang);
-    const cream = Color(0xFFF7F3EC);
+    const cream = Brand.cream;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,

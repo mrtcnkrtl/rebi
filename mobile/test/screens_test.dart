@@ -94,7 +94,13 @@ void main() {
       await settle(tester, 3);
       expect(find.text('Lütfen bu alanı doldurun.'), findsNothing, reason: 'onaysız düğme pasif olmalı');
 
+      // İsteğe bağlı izinler varsayılan olarak katlıdır; açılınca konum ve fotoğraf kutuları görünür, ikisi de işaretsizdir.
+      expect(find.text(tr('auth.locationConsent')), findsNothing);
+      expect(find.byType(Checkbox), findsNWidgets(2));
+      await tapText(tester, tr('auth.optionalPermissions'));
+      expect(find.byType(Checkbox), findsNWidgets(4));
       await tapText(tester, tr('auth.locationConsent'));
+      expect(find.text('1/2'), findsOneWidget, reason: 'açık izin sayısı satırda görünür');
       final boxes = find.byType(Checkbox);
       await tapFinder(tester, boxes.at(0));
       await tapFinder(tester, boxes.at(1));

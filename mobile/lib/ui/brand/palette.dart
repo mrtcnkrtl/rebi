@@ -15,6 +15,9 @@ class Brand {
   static const teal = Color(0xFF14B8A6);
   static const tealDeep = Color(0xFF0D9488);
 
+  /// Koyu orman zemininde (açılış, karşılama sahnesi, giriş üst sahnesi) yazı ve çizgi rengi.
+  static const cream = Color(0xFFF7F3EC);
+
   /// Sayfa zemini (krem kâğıt).
   static Color get paper => dark ? const Color(0xFF071A18) : const Color(0xFFF7F3EC);
 

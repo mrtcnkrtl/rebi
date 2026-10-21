@@ -22,7 +22,7 @@ class PublicTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final i18n = context.i18n;
-    const cream = Color(0xFFF7F3EC);
+    const cream = Brand.cream;
     final fg = onDark ? cream : Brand.ink;
     final fgSoft = onDark ? cream.withValues(alpha: .72) : Brand.inkSoft;
     final line = onDark ? cream.withValues(alpha: .26) : Brand.ink.withValues(alpha: .16);

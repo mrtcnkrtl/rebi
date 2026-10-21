@@ -84,6 +84,23 @@ yeşille başlar; iki temada da aynıdır (koyu temada yalnızca panel koyulaş�
 - Logoyu ya da karo boyutunu değiştirirseniz yerel açılış görselleri `test/brand_assets_test.dart` ile yeniden üretilir
   (`mobile/README.md` → "Uygulama kimliği ve yayın").
 
+### Giriş ve kayıt (`AuthScreen`)
+
+Karşılamanın devamıdır (aynı orman sahnesi + krem panel); düz krem sayfaya düşme kopukluğu yoktur.
+
+- **Üst sahne** düz orman yeşilidir (gradyan yok): krem Fraunces başlık, sağ üstte çok silik (%7,5) dev "R" monogramı.
+  Monogram sayfa açılırken kendini çizer, sonunda köşedeki parıltı belirir: tek ve sakin hareket. Giriş, parola sıfırlama
+  ve yeni parola kiplerinde sahne ekran yüksekliğinin ~%40'ına uzar, başlık alta oturur; **kayıtta kompakt** kalır (form
+  uzundur). Kip değişince yükseklik ve başlık yumuşakça değişir.
+- **Krem panel** alttan yükselir, alanlar sırayla belirir. Alanlar küçük çizgi ikonlu (kişi, posta, kilit), 16 px köşeli,
+  ince çerçevelidir; odakta çerçeve koyulaşır.
+- **Alt şerit** (giriş ↔ kayıt bağlantısı + güven notu) kaydırma alanının dışında, ekranın dibinde sabittir; klavye açılınca
+  yer açmak için gizlenir. Kısa formda boşluk panelin ortasında değil, form ile şerit arasında kalır.
+- **Kayıt onayları sadeleştirildi:** iki zorunlu onay (KVKK, açık rıza) açıktadır; isteğe bağlı izinler (konum, fotoğraf)
+  tek satıra **katlıdır**, varsayılan kapalı ve hiçbiri önceden işaretli değildir. Açık izin sayısı satırda (`1/2`) görünür.
+  Zorunlu onaylar ile ilk iki `Checkbox` sırası testlerce korunur (`auth_flow_test`, `screens_test`).
+- Sahne her iki temada orman yeşilidir (açık/koyu farkı yalnızca panelde); durum çubuğu simgeleri açıktır.
+
 ## Bugün ekranı
 
 Tek odak "şimdi ne yapmalıyım": yukarıdan aşağı **başlık + hava hapı → kahraman rutin kartı → gün akışı → havaya göre üç karar →
