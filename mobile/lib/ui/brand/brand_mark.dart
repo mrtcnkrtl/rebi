@@ -95,6 +95,10 @@ class BrandMark extends StatelessWidget {
   /// Karonun köşe yuvarlaklığı (kenar oranı).
   static const cornerRadius = .3;
 
+  /// Açılışta karonun boyutu (dp): yerel açılış ekranları (Android 12+ vektörü, Android 12 öncesi ve iOS görseli) ile
+  /// Flutter açılış ekranı aynı boyutta ve ekranın tam ortasında çizer; ilk kare yerel açılışla birebir örtüşür.
+  static const launchSize = 104.0;
+
   @override
   Widget build(BuildContext context) {
     return Container(

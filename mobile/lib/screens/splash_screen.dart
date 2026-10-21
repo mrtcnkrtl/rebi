@@ -1,17 +1,17 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/i18n.dart';
+import '../ui/brand/brand_caps.dart';
 import '../ui/brand/brand_mark.dart';
 import '../ui/brand/motion.dart';
 import '../ui/brand/palette.dart';
 import '../ui/tw.dart';
 
-/// Açılış animasyonu: koyu yeşil zeminde "R" harfi çizilir, ardından marka adı ve slogan belirir,
-/// sonra karşılamaya geçilir. Android/iOS'un yerel açılış ekranı da aynı renktedir (beyaz parlama olmaz).
+/// Açılış: yerel açılış ekranıyla aynı yerde, aynı boyutta duran marka karosu yukarı süzülür, altında "Rebi"
+/// yazısı soldan sağa açılır, ince bir çizgi çekilir ve slogan belirir; sonra karşılamaya geçilir.
+/// Zemin yerel açılışla aynı düz orman yeşilidir (ilk karede dikiş yok) ve yavaşça hafif bir ışık havuzu alır.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -19,14 +19,20 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 2400),
-  );
+class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400));
   bool _left = false;
   bool _reduced = false;
+
+  // Yerleşim (dp): karo, yazı, çizgi ve slogan dikey olarak tek blok oluşturur. Başlangıçta karo ekranın tam
+  // ortasındadır (yerel açılışla aynı); blok kurulurken karo yukarı çıkar, blok ekranın ortasında kalır.
+  static const _gapTileWord = 26.0;
+  static const _wordH = 54.0;
+  static const _gapWordRule = 16.0;
+  static const _gapRuleTag = 16.0;
+  static const _tagH = 14.0;
+  static const _blockH = BrandMark.launchSize + _gapTileWord + _wordH + _gapWordRule + 1 + _gapRuleTag + _tagH;
+  static const _lift = (_blockH - BrandMark.launchSize) / 2;
 
   @override
   void initState() {
@@ -63,105 +69,109 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     final i18n = context.i18n;
+    final lang = i18n.lang;
+    final tagline = brandCaps(i18n.t('landing.heroBadge'), lang);
+    const cream = Color(0xFFF7F3EC);
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Brand.forestDeep,
+        systemNavigationBarColor: Brand.forest,
         systemNavigationBarIconBrightness: Brightness.light,
       ),
       child: Scaffold(
-        backgroundColor: Brand.forestDeep,
+        backgroundColor: Brand.forest,
         resizeToAvoidBottomInset: false,
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _leave,
-          child: DecoratedBox(
-            decoration: const BoxDecoration(
-              gradient: RadialGradient(
-                center: Alignment(0, -.25),
-                radius: 1.05,
-                colors: [Color(0xFF0E4943), Brand.forest, Color(0xFF083430)],
-                stops: [0, .55, 1],
-              ),
-            ),
-            child: SizedBox.expand(
+          child: Semantics(
+            label: 'Rebi. ${i18n.t('landing.heroBadge')}',
+            child: ExcludeSemantics(
               child: AnimatedBuilder(
                 animation: _c,
                 builder: (context, _) {
-                  final tile = _iv(0, .24);
-                  final draw = _iv(.1, .52, Curves.easeInOutCubic);
-                  final spark = _iv(.5, .66, Curves.easeOutBack);
-                  final word = _iv(.44, .72);
-                  final tag = _iv(.62, .86);
-                  final pulse = _reduced ? 0.0 : _iv(.46, .95, Curves.easeOut);
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Align(
-                        alignment: const Alignment(0, -.1),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Stack(
-                              alignment: Alignment.center,
-                              clipBehavior: Clip.none,
-                              children: [
-                                // Harf tamamlandığında dışa yayılan ince halka
-                                CustomPaint(
-                                  size: const Size(104, 104),
-                                  painter: _PulsePainter(pulse),
+                  final glow = _iv(0, .4, Curves.easeOut);
+                  final lift = _iv(.08, .36, Curves.easeInOutCubic);
+                  final word = _iv(.15, .45, Curves.easeInOutCubic);
+                  final rule = _iv(.38, .54);
+                  final tag = _iv(.44, .64);
+                  final twinkle = _reduced ? 0.0 : _iv(.48, .68, Curves.easeInOut);
+                  final bump = twinkle <= 0 ? 0.0 : (1 - (2 * twinkle - 1).abs());
+                  return DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: RadialGradient(
+                        center: const Alignment(0, -.1),
+                        radius: 1.0,
+                        colors: [
+                          Color.lerp(Brand.forest, const Color(0xFF0E4943), glow)!,
+                          Brand.forest,
+                          Color.lerp(Brand.forest, Brand.forestDeep, glow * .75)!,
+                        ],
+                        stops: const [0, .55, 1],
+                      ),
+                    ),
+                    child: SizedBox.expand(
+                      child: Center(
+                        child: SizedBox(
+                          width: 320,
+                          height: _blockH,
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Positioned(
+                                top: _lift * (1 - lift),
+                                left: 0,
+                                right: 0,
+                                child: Center(
+                                  child: BrandMark(size: BrandMark.launchSize, sparkle: 1 + .5 * bump),
                                 ),
-                                Opacity(
-                                  opacity: tile,
-                                  child: Transform.scale(
-                                    scale: .82 + .18 * tile,
-                                    child: BrandMark(
-                                      size: 104,
-                                      progress: draw,
-                                      sparkle: spark,
+                              ),
+                              Positioned(
+                                top: BrandMark.launchSize + _gapTileWord,
+                                left: 0,
+                                right: 0,
+                                height: _wordH,
+                                child: Center(
+                                  child: _Wordmark(
+                                    progress: word,
+                                    style: Brand.serif(54, weight: 600, color: cream, ls: -1.6, h: 1),
+                                  ),
+                                ),
+                              ),
+                              Positioned(
+                                top: BrandMark.launchSize + _gapTileWord + _wordH + _gapWordRule,
+                                left: 0,
+                                right: 0,
+                                height: 1,
+                                child: Center(
+                                  child: Container(width: 32 * rule, height: 1, color: cream.withValues(alpha: .4)),
+                                ),
+                              ),
+                              Positioned(
+                                top: _blockH - _tagH,
+                                left: -20,
+                                right: -20,
+                                height: _tagH,
+                                child: Opacity(
+                                  opacity: tag,
+                                  child: Transform.translate(
+                                    offset: Offset(0, (1 - tag) * 6),
+                                    child: Text(
+                                      tagline,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.visible,
+                                      softWrap: false,
+                                      style: tx(11.5, w: 6, c: cream.withValues(alpha: .8), ls: brandTracking(lang, 2.4), h: 1.2),
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
-                            const SizedBox(height: 30),
-                            Opacity(
-                              opacity: word,
-                              child: Transform.translate(
-                                offset: Offset(0, (1 - word) * 14),
-                                child: Text(
-                                  'Rebi',
-                                  style: Brand.serif(
-                                    54,
-                                    weight: 600,
-                                    color: const Color(0xFFF7F3EC),
-                                    ls: -1.6 + (1 - word) * 6,
-                                    h: 1,
-                                  ),
-                                ),
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            Opacity(
-                              opacity: tag,
-                              child: Transform.translate(
-                                offset: Offset(0, (1 - tag) * 8),
-                                child: Text(
-                                  i18n.t('landing.heroBadge'),
-                                  style: tx(
-                                    14,
-                                    w: 5,
-                                    c: const Color(0xFFF7F3EC)
-                                        .withValues(alpha: .66),
-                                    ls: .3,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ],
+                    ),
                   );
                 },
               ),
@@ -173,25 +183,34 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-class _PulsePainter extends CustomPainter {
-  _PulsePainter(this.p);
+/// "Rebi" yazısı harf harf, soldan sağa süzülerek belirir; [progress] 0→1. Katman filtresi yoktur (her harf kendi
+/// saydamlığı ve kaymasıyla çizilir), bitince tek bir yazı gibi durur.
+class _Wordmark extends StatelessWidget {
+  const _Wordmark({required this.progress, required this.style});
 
-  final double p;
+  final double progress;
+  final TextStyle style;
+
+  static const _letters = ['R', 'e', 'b', 'i'];
 
   @override
-  void paint(Canvas canvas, Size size) {
-    if (p <= 0 || p >= 1) return;
-    final c = size.center(Offset.zero);
-    canvas.drawCircle(
-      c,
-      52 + math.min(1.0, p) * 96,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4
-        ..color = Brand.teal.withValues(alpha: .38 * (1 - p)),
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      textBaseline: TextBaseline.alphabetic,
+      crossAxisAlignment: CrossAxisAlignment.baseline,
+      children: [
+        for (var i = 0; i < _letters.length; i++)
+          Builder(
+            builder: (context) {
+              final p = Curves.easeOutCubic.transform(Interval(i * .17, i * .17 + .49).transform(progress));
+              return Opacity(
+                opacity: p,
+                child: Transform.translate(offset: Offset(0, (1 - p) * 14), child: Text(_letters[i], style: style)),
+              );
+            },
+          ),
+      ],
     );
   }
-
-  @override
-  bool shouldRepaint(covariant _PulsePainter old) => old.p != p;
 }

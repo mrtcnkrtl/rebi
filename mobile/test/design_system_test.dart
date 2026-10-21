@@ -103,12 +103,13 @@ void main() {
     });
 
     test('ekranlarda ve bileşenlerde süs gradyanı yok (yalnızca izinli yıkama / görsel dosyaları)', () {
-      // İzinli: kabuğun temalı yıkaması (`theme_controller`), karşılama/yükleme zemini yıkaması ve tek bir parıltı, cilt tipi
-      // görselinin çizimi. Kart, düğme, ikon kutusu, ilerleme çubuğu ve bölüm başlığı düz renkli olur.
+      // İzinli: kabuğun temalı yıkaması (`theme_controller`), karşılama/açılış/yükleme zemini yıkaması ve tek bir parıltı, cilt
+      // tipi görselinin çizimi. Kart, düğme, ikon kutusu, ilerleme çubuğu ve bölüm başlığı düz renkli olur.
       const allowed = {
         'lib/state/theme_controller.dart',
         'lib/ui/components/skin_type_visual.dart',
         'lib/screens/splash_screen.dart',
+        'lib/screens/landing_screen.dart',
         'lib/screens/legal_screen.dart',
         'lib/ui/components/loading_screen.dart',
       };

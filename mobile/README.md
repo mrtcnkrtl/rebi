@@ -316,8 +316,10 @@ Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu mod
   cd mobile && REBI_BRAND_ASSETS=1 flutter test test/brand_assets_test.dart && dart run flutter_launcher_icons
   ```
 
-  Birinci komut `assets/icon/*.png` (1024 px kaynaklar, Play 512 ikonu), bildirim simgesi `ic_stat_rebi` ve Android 12+
-  açılış vektörü `drawable-v31/splash_logo.xml` dosyalarını yazar; ikincisi iOS/Android ikon boyutlarını çıkarır.
+  Birinci komut `assets/icon/*.png` (1024 px kaynaklar, Play 512 ikonu), bildirim simgesi `ic_stat_rebi`, Android 12+
+  açılış vektörü `drawable-v31/splash_logo.xml` ile Android 12 öncesi `launch_logo.png` ve iOS `LaunchImage` karolarını
+  yazar (yerel açılış ekranları Flutter açılışının ilk karesiyle aynı karoyu gösterir); ikincisi iOS/Android ikon
+  boyutlarını çıkarır.
   Açılış logosu bilerek PNG değil vektördür: Android 12+ simgeyi 288 dp'ye büyütür, PNG olsaydı pikselleşirdi.
   Normal `flutter test` iki şeyi korur: ikon kaynakları ≥1024 px ve vektör geometriyle güncel. (Web'deki
   `favicon.svg` ve PNG'leri ayrı bir kaynaktır; mobil ikonla aynı değildir.) Bildirim simgesi `ic_stat_rebi` tek

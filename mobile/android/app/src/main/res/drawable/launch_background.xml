@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Modify this file to customize your launch splash screen -->
+<!-- Android 12 öncesi açılış ekranı (12+ için values-v31/styles.xml): orman yeşili zeminde, ortada marka karosu.
+     Karo Flutter açılış ekranının ilk karesiyle aynı boyutta ve yerdedir (BrandMark.launchSize = 104 dp). -->
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/splash_bg" />
-
-    <!-- You can insert your own image assets here -->
-    <!-- <item>
+    <item>
         <bitmap
             android:gravity="center"
-            android:src="@mipmap/launch_image" />
-    </item> -->
+            android:src="@drawable/launch_logo" />
+    </item>
 </layer-list>

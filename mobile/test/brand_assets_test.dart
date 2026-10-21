@@ -16,7 +16,9 @@ import 'package:rebi/ui/brand/brand_mark.dart';
 ///   `assets/icon/icon-maskable.png` (1024, Android uyarlanabilir ikon önü; harf güvenli bölgede),
 ///   `assets/icon/play-store-512.png` (Play Console ikonu),
 /// - `android/.../drawable-*dpi/ic_stat_rebi.png` (tek renkli bildirim simgesi),
-/// - `android/.../drawable-v31/splash_logo.xml` (Android 12+ açılış logosu; vektör olduğu için her çözünürlükte keskin).
+/// - `android/.../drawable-v31/splash_logo.xml` (Android 12+ açılış logosu; vektör olduğu için her çözünürlükte keskin),
+/// - `android/.../drawable-*dpi/launch_logo.png` (Android 12 öncesi) ve iOS `LaunchImage.imageset` (marka karosu): her
+///   platformun yerel açılış ekranı, Flutter açılışının ilk karesiyle aynı karoyu aynı yerde gösterir.
 ///
 /// Android 12+ sistem açılış ekranı simgeyi 288 dp alana büyütür; PNG kullanılırsa pikselleşir, bu yüzden vektördür.
 /// Bu dosya her zaman çalışan iki koruma da içerir: ikon kaynakları ≥1024 px olmalı ve açılış vektörü geometriyle
@@ -35,9 +37,14 @@ const _iconScale = .92;
 /// Uyarlanabilir ikonda görünen alan ön planın 72/108'idir; harf bunun içinde kalsın.
 const _maskableScale = _iconScale * 72 / 108;
 
-/// Android açılış simgesi: 288 dp tuval, ortada Flutter açılışındaki karo ile aynı boyutta (104 dp) karo.
+/// Android açılış simgesi: 288 dp tuval, ortada Flutter açılışındaki karo ile aynı boyutta karo.
 const _splashCanvas = 288.0;
-const _splashTile = 104.0;
+const _splashTile = BrandMark.launchSize;
+
+/// Karo görseli (Android 12 öncesi `launch_logo.png`, iOS `LaunchImage`): dp/pt başına piksel çarpanlarıyla.
+const _androidLaunch = {'mdpi': 1.0, 'hdpi': 1.5, 'xhdpi': 2.0, 'xxhdpi': 3.0, 'xxxhdpi': 4.0};
+const _iosLaunch = {'LaunchImage.png': 1, 'LaunchImage@2x.png': 2, 'LaunchImage@3x.png': 3};
+const _iosLaunchDir = 'ios/Runner/Assets.xcassets/LaunchImage.imageset';
 
 String _n(double v) {
   final r = double.parse(v.toStringAsFixed(3));
@@ -120,6 +127,24 @@ Future<void> _png(
     ..writeAsBytesSync(bytes.buffer.asUint8List());
 }
 
+/// Köşeleri yuvarlak marka karosu (harf + parıltı dahil), şeffaf zeminde [px] kenarlı.
+Future<void> _tilePng(String path, int px) async {
+  final s = px.toDouble();
+  final rect = Rect.fromLTWH(0, 0, s, s);
+  final recorder = ui.PictureRecorder();
+  final canvas = Canvas(recorder);
+  canvas.drawRRect(
+    RRect.fromRectAndRadius(rect, Radius.circular(s * BrandMark.cornerRadius)),
+    Paint()..shader = BrandMark.gradient.createShader(rect),
+  );
+  BrandGlyphPainter(1, 1).paint(canvas, Size(s, s));
+  final image = await recorder.endRecording().toImage(px, px);
+  final bytes = (await image.toByteData(format: ui.ImageByteFormat.png))!;
+  File(path)
+    ..createSync(recursive: true)
+    ..writeAsBytesSync(bytes.buffer.asUint8List());
+}
+
 /// PNG başlığından (genişlik, yükseklik).
 (int, int) _pngSize(String path) {
   final h = ByteData.sublistView(File(path).readAsBytesSync(), 16, 24);
@@ -134,6 +159,17 @@ void main() {
         final (w, h) = _pngSize('assets/icon/$f.png');
         expect(w, h, reason: '$f kare olmalı');
         expect(w, greaterThanOrEqualTo(1024), reason: '$f: iOS 1024 ikonu ve Android 12 açılışı büyütülünce pikselleşir');
+      }
+    });
+
+    test('yerel açılış karoları Flutter açılışıyla aynı boyutta (${BrandMark.launchSize.round()} dp/pt)', () {
+      for (final e in _androidLaunch.entries) {
+        final px = (BrandMark.launchSize * e.value).round();
+        expect(_pngSize('$_res/drawable-${e.key}/launch_logo.png'), (px, px), reason: 'launch_logo ${e.key}');
+      }
+      for (final e in _iosLaunch.entries) {
+        final px = (BrandMark.launchSize * e.value).round();
+        expect(_pngSize('$_iosLaunchDir/${e.key}'), (px, px), reason: 'iOS ${e.key}');
       }
     });
 
@@ -153,6 +189,13 @@ void main() {
       const stat = {'mdpi': 24, 'hdpi': 36, 'xhdpi': 48, 'xxhdpi': 72, 'xxxhdpi': 96};
       for (final e in stat.entries) {
         await _png('$_res/drawable-${e.key}/ic_stat_rebi.png', e.value, scale: 1.3, shift: const Offset(-.025, -.005), sparkle: false);
+      }
+
+      for (final e in _androidLaunch.entries) {
+        await _tilePng('$_res/drawable-${e.key}/launch_logo.png', (BrandMark.launchSize * e.value).round());
+      }
+      for (final e in _iosLaunch.entries) {
+        await _tilePng('$_iosLaunchDir/${e.key}', (BrandMark.launchSize * e.value).round());
       }
 
       File(_splashXml)

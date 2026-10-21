@@ -66,6 +66,24 @@ Ham renk (`Color(0xFF…)`) yazma; `Tw`/`Brand` kullan. Ham Tailwind neon tonlar
 
 Sayfa zemini kabuktandır: `ThemedBackground` zemin boyamaz. Sayfada zemini yeniden boyamak, geri çubuğuyla sayfa arasında dikiş bırakır.
 
+## Açılış ve karşılama
+
+Marka ilk izlenimi tek bir hikâyedir: **derin orman yeşili sahne, altında krem "kâğıt" panel**. Açılış ve karşılama aynı
+yeşille başlar; iki temada da aynıdır (koyu temada yalnızca panel koyulaşır).
+
+- **Açılış (`SplashScreen`, ~2,4 sn).** İlk kare yerel açılış ekranıyla **birebir** örtüşür: düz orman yeşili zemin ve ekranın
+  tam ortasında 104 dp marka karosu (`BrandMark.launchSize`). Android 12+ `drawable-v31/splash_logo.xml`, Android 12 öncesi
+  `launch_logo.png`, iOS `LaunchImage` aynı karoyu gösterir (`test/launch_experience_test.dart` konumu ve boyutu korur).
+  Sonra karo yukarı süzülür, "Rebi" harf harf belirir, ince bir çizgi çekilir, geniş aralıklı büyük harfli slogan gelir.
+  Halka, ışıltı, cam gibi süs yoktur; tek hareket "marka kuruluyor"dur. Çıkış karşılamanın üstünde solarak olur.
+- **Karşılama (`LandingScreen`).** Üstte orman sahnesi: marka karosu + "Rebi" ve dil seçici (krem), ortada üç çizim; sahnenin
+  altında zemine sahne renginde (nane / pudra / kum) tek bir yumuşak ışık havuzu düşer. Çizimler her zaman bu koyu zemine
+  göre çizilir; etiket kartları kremdir. Altta krem panel, hiyerarşi: **küçük etiket → Fraunces başlık → açıklama → üç ince
+  ilerleme çizgisi → tek ana düğme → tek satır ikincil eylem (Giriş yap | Rebi ile konuş) → tek satır yasal metin.**
+- Büyük harfli etiketler `brandCaps` ile yazılır (Türkçede i→İ; Arapçada büyük harf ve harf aralığı yoktur).
+- Logoyu ya da karo boyutunu değiştirirseniz yerel açılış görselleri `test/brand_assets_test.dart` ile yeniden üretilir
+  (`mobile/README.md` → "Uygulama kimliği ve yayın").
+
 ## Bugün ekranı
 
 Tek odak "şimdi ne yapmalıyım": yukarıdan aşağı **başlık + hava hapı → kahraman rutin kartı → gün akışı → havaya göre üç karar →

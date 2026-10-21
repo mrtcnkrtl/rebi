@@ -6,11 +6,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/i18n.dart';
 import '../tw.dart';
 import 'motion.dart';
-import 'palette.dart';
 
 // Karşılama sahnelerinin illüstrasyonları. Hepsi 100×100'lük birim tuvalde çizilir, sol üstten gelen
 // tek bir ışık yönü ve sınırlı bir palet kullanır. Sahne öne çıktığında kendi animasyonunu oynatır;
 // kaydırma sırasında katmanlar farklı hızda kayar (paralaks).
+//
+// Sahne zemini açık ve koyu temada da derin orman yeşilidir (açılış ekranıyla aynı), bu yüzden çizimler her zaman
+// bu zemine göre ("gece" paleti: şeffaf beyaz hale, koyu gölge) ve krem etiket kartlarıyla çizilir.
 
 const _ink = Color(0xFF0B3D38);
 const _inkMid = Color(0xFF1B6F65);
@@ -194,11 +196,11 @@ class ArtTag extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(8, 7, 13, 7),
         decoration: BoxDecoration(
-          color: Brand.surface,
+          color: _cream,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: Brand.dark ? .35 : .09), blurRadius: 22, offset: const Offset(0, 10)),
-            BoxShadow(color: Colors.black.withValues(alpha: Brand.dark ? .2 : .04), blurRadius: 3, offset: const Offset(0, 1)),
+            BoxShadow(color: Colors.black.withValues(alpha: .35), blurRadius: 22, offset: const Offset(0, 10)),
+            BoxShadow(color: Colors.black.withValues(alpha: .2), blurRadius: 3, offset: const Offset(0, 1)),
           ],
         ),
         child: Row(
@@ -215,8 +217,8 @@ class ArtTag extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: tx(12.5, w: 7, c: Brand.ink, h: 1.15)),
-                if (sub != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub!, style: tx(10.5, w: 5, c: Brand.inkSoft, h: 1.1))),
+                Text(title, style: tx(12.5, w: 7, c: _ink, h: 1.15)),
+                if (sub != null) Padding(padding: const EdgeInsets.only(top: 2), child: Text(sub!, style: tx(10.5, w: 5, c: _ink.withValues(alpha: .72), h: 1.1))),
               ],
             ),
           ],
@@ -245,9 +247,9 @@ class MirrorArt extends StatelessWidget {
       builder: (context, t, s) => Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned.fill(child: CustomPaint(painter: _MirrorPainter(t, delta, Brand.dark))),
+          Positioned.fill(child: CustomPaint(painter: _MirrorPainter(t, delta, true))),
           Positioned(left: s * (.0 + delta * .10), top: s * .20, child: ArtTag(t: t, from: .45, icon: LucideIcons.sun, iconColor: const Color(0xFFE08A1E), title: i18n.t('mobileLanding.chipUv'))),
-          Positioned(right: s * (.0 - delta * .10), top: s * .66, child: ArtTag(t: t, from: .6, icon: LucideIcons.droplets, iconColor: _teal, title: i18n.t('mobileLanding.chipHumidity'))),
+          Positioned(right: s * (.0 - delta * .10), top: s * .55, child: ArtTag(t: t, from: .6, icon: LucideIcons.droplets, iconColor: _teal, title: i18n.t('mobileLanding.chipHumidity'))),
         ],
       ),
     );
@@ -400,7 +402,7 @@ class PodiumArt extends StatelessWidget {
       builder: (context, t, s) => Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned.fill(child: CustomPaint(painter: _PodiumPainter(t, delta, Brand.dark))),
+          Positioned.fill(child: CustomPaint(painter: _PodiumPainter(t, delta, true))),
           Positioned(left: s * (-.01 + delta * .10), top: s * .27, child: ArtTag(t: t, from: .5, icon: LucideIcons.flaskConical, iconColor: _teal, title: i18n.t('mobileLanding.chipActive'))),
           Positioned(right: s * (.0 - delta * .10), top: s * .07, child: ArtTag(t: t, from: .62, icon: LucideIcons.shieldCheck, iconColor: const Color(0xFFE08A1E), title: i18n.t('mobileLanding.chipSpf'))),
         ],
@@ -550,7 +552,7 @@ class RingsArt extends StatelessWidget {
       builder: (context, t, s) => Stack(
         clipBehavior: Clip.none,
         children: [
-          Positioned.fill(child: CustomPaint(painter: _RingsArtPainter(t, delta, Brand.ink, Brand.dark))),
+          Positioned.fill(child: CustomPaint(painter: _RingsArtPainter(t, delta, const Color(0xFFEAF3EF), true))),
           Positioned(
             left: s * .5 - 12,
             top: s * .42 - 12,
@@ -684,7 +686,7 @@ class _DappledLeavesState extends State<DappledLeaves> with SingleTickerProvider
           final v = Curves.easeInOut.transform(_c.value) - .5;
           return Transform.rotate(angle: v * .05, alignment: Alignment.topRight, child: Transform.translate(offset: Offset(v * 8, v * 4), child: child));
         },
-        child: RepaintBoundary(child: CustomPaint(painter: _DapplePainter(Brand.dark), size: Size.infinite)),
+        child: RepaintBoundary(child: CustomPaint(painter: _DapplePainter(true), size: Size.infinite)),
       ),
     );
   }

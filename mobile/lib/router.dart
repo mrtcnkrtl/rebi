@@ -82,9 +82,11 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
         pageBuilder: (context, state) => CustomTransitionPage<void>(
           key: state.pageKey,
           child: const SplashScreen(),
+          // Girişte anında görünür (yerel açılışla dikişsiz); çıkışta karşılamanın üstünde solarak kaybolur.
           transitionDuration: Duration.zero,
           reverseTransitionDuration: const Duration(milliseconds: 520),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) => child,
+          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+              FadeTransition(opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut), child: child),
         ),
       ),
       // Yasal metinler formların üstünde açılır; geri dönüldüğünde form korunur.

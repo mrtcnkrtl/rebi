@@ -716,7 +716,10 @@
     "s2Title": "Science-backed routine",
     "s2Sub": "Morning and evening steps built on active ingredients, not brands.",
     "s3Title": "Adapts to you daily",
-    "s3Sub": "Daily check-ins and weather shape your routine around your skin."
+    "s3Sub": "Daily check-ins and weather shape your routine around your skin.",
+    "eyebrow1": "Analysis",
+    "eyebrow2": "Routine",
+    "eyebrow3": "Daily"
   },
   "mobileAuth": {
     "strengthWeak": "Weak",

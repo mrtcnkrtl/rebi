@@ -716,7 +716,10 @@
     "s2Title": "Bilimle kurulan rutin",
     "s2Sub": "Marka değil, etken madde odaklı sabah ve akşam adımları.",
     "s3Title": "Sana göre şekillenir",
-    "s3Sub": "Günlük check-in ve hava durumuna göre rutinin cildine uyum sağlar."
+    "s3Sub": "Günlük check-in ve hava durumuna göre rutinin cildine uyum sağlar.",
+    "eyebrow1": "Analiz",
+    "eyebrow2": "Rutin",
+    "eyebrow3": "Günlük"
   },
   "mobileAuth": {
     "strengthWeak": "Zayıf",

@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../core/i18n.dart';
 import '../state/auth_controller.dart';
 import '../ui/brand/brand_button.dart';
+import '../ui/brand/brand_caps.dart';
 import '../ui/brand/motion.dart';
 import '../ui/brand/palette.dart';
 import '../ui/brand/public_top_bar.dart';
@@ -17,7 +18,11 @@ import '../ui/tw.dart';
 
 const _slideCount = 3;
 
-/// Karşılama (web: `pages/Landing.jsx`): tam ekran, yana kaydırılan üç sahne ve altta tek net eylem.
+/// Sahne ışığı: orman zemininin üstünde, sahnenin renginde yumuşak bir ışık havuzu (nane, pudra, kum).
+const _glow = [Color(0xFF2FB9A4), Color(0xFFDD8F76), Color(0xFFC9A862)];
+
+/// Karşılama (web: `pages/Landing.jsx`): yukarıda derin orman yeşili sahne (açılış ekranıyla aynı zemin, iki temada da),
+/// altında krem "kâğıt" panel: yana kaydırılan üç sahne ve tek net eylem.
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
 
@@ -46,29 +51,22 @@ class _LandingScreenState extends State<LandingScreen> {
     super.dispose();
   }
 
-  static Color _tint(double page) {
+  static Color _light(double page) {
     final i = page.floor().clamp(0, _slideCount - 1);
     final next = math.min(i + 1, _slideCount - 1);
-    return Color.lerp(
-      Brand.tint(i),
-      Brand.tint(next),
-      (page - i).clamp(0.0, 1.0),
-    )!;
+    return Color.lerp(_glow[i], _glow[next], (page - i).clamp(0.0, 1.0))!;
   }
 
   @override
   Widget build(BuildContext context) {
     final authed = context.watch<AuthController>().user != null;
     final chatHref = authed ? '/dashboard/chat' : '/rebi';
-    final overlay =
-        (Brand.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
-            .copyWith(
-              statusBarColor: Colors.transparent,
-              systemNavigationBarColor: Brand.paper,
-              systemNavigationBarIconBrightness: Brand.dark
-                  ? Brightness.light
-                  : Brightness.dark,
-            );
+    // Üst sahne her iki temada koyu: durum çubuğu simgeleri açık. Alt çubuk panelin (kâğıt) rengindedir.
+    final overlay = SystemUiOverlayStyle.light.copyWith(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Brand.paper,
+      systemNavigationBarIconBrightness: Brand.dark ? Brightness.light : Brightness.dark,
+    );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: overlay,
@@ -77,7 +75,19 @@ class _LandingScreenState extends State<LandingScreen> {
           Positioned.fill(
             child: ValueListenableBuilder<double>(
               valueListenable: _page,
-              builder: (context, page, _) => ColoredBox(color: _tint(page)),
+              builder: (context, page, _) => ColoredBox(
+                color: Brand.forest,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(0, -.42),
+                      radius: .95,
+                      colors: [_light(page).withValues(alpha: .34), _light(page).withValues(alpha: .08), Colors.transparent],
+                      stops: const [0, .55, 1],
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
           const Positioned.fill(child: DappledLeaves()),
@@ -89,7 +99,7 @@ class _LandingScreenState extends State<LandingScreen> {
                 child: Column(
                   children: [
                     SizedBox(height: MediaQuery.paddingOf(context).top),
-                    const Reveal(offset: Offset.zero, child: PublicTopBar()),
+                    const Reveal(offset: Offset.zero, child: PublicTopBar(onDark: true)),
                     Expanded(
                       child: _ArtPager(controller: _controller, page: _page),
                     ),
@@ -146,7 +156,8 @@ class _ArtPager extends StatelessWidget {
   }
 }
 
-/// Altta duran krem panel: sahne metni, noktalar ve eylemler.
+/// Altta duran krem "kâğıt" panel: etiket, başlık, açıklama, ilerleme çizgisi ve eylemler.
+/// Hiyerarşi: tek ana düğme; altında tek satır ikincil eylem; en altta tek satır yasal metin.
 class _Sheet extends StatelessWidget {
   const _Sheet({
     required this.page,
@@ -167,6 +178,7 @@ class _Sheet extends StatelessWidget {
     final i18n = context.i18n;
     final bottom = MediaQuery.paddingOf(context).bottom;
     final legal = tx(11.5, w: 5, c: Brand.inkSoft);
+    final action = tx(14.5, w: 6, c: Brand.ink);
 
     Widget tap(Widget child, VoidCallback onTap) => GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -182,23 +194,28 @@ class _Sheet extends StatelessWidget {
       ),
     );
 
+    final chat = tap(
+      Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(LucideIcons.messageCircle, size: 17, color: Brand.ink),
+          const SizedBox(width: 8),
+          Flexible(child: Text(i18n.t('landing.ctaChat'), style: action)),
+        ],
+      ),
+      onChat,
+    );
+
     return Reveal(
       delay: const Duration(milliseconds: 150),
       duration: const Duration(milliseconds: 750),
       offset: const Offset(0, 70),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.fromLTRB(26, 28, 26, 10 + bottom),
+        padding: EdgeInsets.fromLTRB(26, 26, 26, 6 + bottom),
         decoration: BoxDecoration(
           color: Brand.paper,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(38)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: Brand.dark ? .25 : .035),
-              blurRadius: 18,
-              offset: const Offset(0, -3),
-            ),
-          ],
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: Center(
           child: ConstrainedBox(
@@ -209,70 +226,35 @@ class _Sheet extends StatelessWidget {
               children: [
                 _SlideTexts(page: page),
                 const SizedBox(height: 20),
-                _Dots(page: page),
-                const SizedBox(height: 24),
+                _Progress(page: page),
+                const SizedBox(height: 22),
                 BrandButton(
                   onPressed: onPrimary,
-                  label: authed
-                      ? i18n.t('mobileLanding.openApp')
-                      : i18n.t('landing.ctaBuildRoutine'),
+                  label: authed ? i18n.t('mobileLanding.openApp') : i18n.t('landing.ctaBuildRoutine'),
                   trailingIcon: LucideIcons.arrowRight,
                 ),
                 const SizedBox(height: 6),
-                if (!authed)
-                  Center(
-                    child: tap(
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: 6,
-                        children: [
-                          Text(
-                            i18n.t('auth.haveAccount'),
-                            style: tx(14.5, c: Brand.inkSoft),
-                          ),
-                          BrandLinkText(i18n.t('auth.login')),
-                        ],
+                if (authed)
+                  Center(child: chat)
+                else
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Center(child: tap(Text(i18n.t('auth.login'), style: action), onLogin)),
                       ),
-                      onLogin,
-                    ),
+                      Container(width: 1, height: 20, color: Brand.inkFaint),
+                      Expanded(child: Center(child: chat)),
+                    ],
                   ),
-                Center(
-                  child: tap(
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          LucideIcons.messageCircle,
-                          size: 16,
-                          color: Brand.inkSoft,
-                        ),
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(
-                            i18n.t('landing.ctaChat'),
-                            style: tx(14, w: 6, c: Brand.inkSoft),
-                          ),
-                        ),
-                      ],
-                    ),
-                    onChat,
-                  ),
-                ),
                 const SizedBox(height: 2),
                 Wrap(
                   alignment: WrapAlignment.center,
                   crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 14,
+                  spacing: 4,
                   children: [
-                    tap(
-                      Text(i18n.t('legal.kvkkTitle'), style: legal),
-                      () => context.push('/kvkk'),
-                    ),
-                    tap(
-                      Text(i18n.t('legal.rizaTitle'), style: legal),
-                      () => context.push('/riza'),
-                    ),
+                    tap(Text(i18n.t('legal.kvkkTitle'), style: legal), () => context.push('/kvkk')),
+                    Text('·', style: legal),
+                    tap(Text(i18n.t('legal.rizaTitle'), style: legal), () => context.push('/riza')),
                   ],
                 ),
               ],
@@ -284,7 +266,7 @@ class _Sheet extends StatelessWidget {
   }
 }
 
-/// Üç sahnenin başlık ve açıklaması; kaydırırken çapraz solar, hafifçe yana kayar.
+/// Üç sahnenin etiketi, başlığı ve açıklaması; kaydırırken çapraz solar, hafifçe yana kayar.
 class _SlideTexts extends StatelessWidget {
   const _SlideTexts({required this.page});
 
@@ -293,10 +275,11 @@ class _SlideTexts extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final i18n = context.i18n;
+    final lang = i18n.lang;
     final texts = [
-      (i18n.t('mobileLanding.s1Title'), i18n.t('mobileLanding.s1Sub')),
-      (i18n.t('mobileLanding.s2Title'), i18n.t('mobileLanding.s2Sub')),
-      (i18n.t('mobileLanding.s3Title'), i18n.t('mobileLanding.s3Sub')),
+      (i18n.t('mobileLanding.eyebrow1'), i18n.t('mobileLanding.s1Title'), i18n.t('mobileLanding.s1Sub')),
+      (i18n.t('mobileLanding.eyebrow2'), i18n.t('mobileLanding.s2Title'), i18n.t('mobileLanding.s2Sub')),
+      (i18n.t('mobileLanding.eyebrow3'), i18n.t('mobileLanding.s3Title'), i18n.t('mobileLanding.s3Sub')),
     ];
     final titleSize = MediaQuery.sizeOf(context).width < 360 ? 30.0 : 35.0;
     return ValueListenableBuilder<double>(
@@ -317,15 +300,24 @@ class _SlideTexts extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            texts[i].$1,
-                            style: Brand.serif(titleSize, ls: -1.1, h: 1.08),
+                          Row(
+                            children: [
+                              Container(width: 22, height: 1.5, color: Brand.teal),
+                              const SizedBox(width: 10),
+                              Flexible(
+                                child: Text(
+                                  brandCaps(texts[i].$1, lang),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: tx(11, w: 7, c: Brand.inkSoft, ls: brandTracking(lang, 2.0)),
+                                ),
+                              ),
+                            ],
                           ),
+                          const SizedBox(height: 14),
+                          Text(texts[i].$2, style: Brand.serif(titleSize, ls: -1.1, h: 1.08)),
                           const SizedBox(height: 10),
-                          Text(
-                            texts[i].$2,
-                            style: tx(16, c: Brand.inkSoft, h: 1.5),
-                          ),
+                          Text(texts[i].$3, style: tx(16, c: Brand.inkSoft, h: 1.5)),
                         ],
                       ),
                     ),
@@ -339,8 +331,9 @@ class _SlideTexts extends StatelessWidget {
   }
 }
 
-class _Dots extends StatelessWidget {
-  const _Dots({required this.page});
+/// Üç ince çizgi: sahne değiştikçe ilgili çizgi dolar.
+class _Progress extends StatelessWidget {
+  const _Progress({required this.page});
 
   final ValueNotifier<double> page;
 
@@ -355,16 +348,12 @@ class _Dots extends StatelessWidget {
               builder: (context) {
                 final a = (1 - (p - i).abs()).clamp(0.0, 1.0);
                 return Container(
-                  margin: const EdgeInsets.only(right: 6),
-                  width: 7 + 21 * a,
-                  height: 7,
+                  margin: const EdgeInsetsDirectional.only(end: 6),
+                  width: 28,
+                  height: 3,
                   decoration: BoxDecoration(
-                    color: Color.lerp(
-                      Brand.ink.withValues(alpha: .18),
-                      Brand.ink,
-                      a,
-                    ),
-                    borderRadius: BorderRadius.circular(4),
+                    color: Color.lerp(Brand.ink.withValues(alpha: .14), Brand.ink, a),
+                    borderRadius: BorderRadius.circular(2),
                   ),
                 );
               },
