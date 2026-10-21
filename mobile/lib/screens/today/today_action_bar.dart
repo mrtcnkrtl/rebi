@@ -84,13 +84,17 @@ class _TodayActionBarState extends State<TodayActionBar> {
                       ? const SizedBox.shrink(key: ValueKey('no-toast'))
                       : _ToastBubble(key: ValueKey(toast), toast: toast, onDismiss: widget.actions.dismissToast),
                 ),
+                // Yüzen "dock": tam genişlikte bant yerine kenarlardan boşluklu, yuvarlak bir yüzey (altındaki gezinme çubuğuyla
+                // iki bant yığını oluşturmaz); içerik arkasından kayar.
                 Container(
+                  margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
                   decoration: BoxDecoration(
-                    color: Tw.surface.withValues(alpha: .98),
-                    border: Border(top: BorderSide(color: Tw.gray100)),
-                    boxShadow: const [BoxShadow(color: Color(0x0F0B3D38), blurRadius: 20, offset: Offset(0, -6))],
+                    color: Tw.surface,
+                    borderRadius: BorderRadius.circular(34),
+                    border: Border.all(color: Tw.gray100),
+                    boxShadow: Tw.dark ? null : const [BoxShadow(color: Color(0x240B3D38), blurRadius: 28, offset: Offset(0, 10))],
                   ),
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                  padding: const EdgeInsets.all(8),
                   child: Row(
                     children: [
                       Expanded(
@@ -164,7 +168,7 @@ class _BarButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
           onTap: loading ? null : onTap,
           child: Container(
-            constraints: const BoxConstraints(minHeight: 54),
+            constraints: const BoxConstraints(minHeight: 52),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(999),

@@ -1,5 +1,16 @@
 {
   "mobileToday": {
+    "empty": {
+      "eyebrow": "İlk adım",
+      "title": "Cildini tanıyarak başlayalım",
+      "body": "Bir fotoğraf ve birkaç soru yeterli. Sana özel sabah ve akşam rutinini birlikte kuralım.",
+      "step1": "Fotoğraf ve birkaç soru",
+      "step1Sub": "Cildini ve yaşam tarzını anlat",
+      "step2": "Rebi analiz eder",
+      "step2Sub": "Cilt durumuna ve havaya göre",
+      "step3": "Rutinin hazır",
+      "step3Sub": "Sabah ve akşam adımları, hatırlatmalarla"
+    },
     "title": "Bugün",
     "now": "Şimdi",
     "later": "Sıradaki hatırlatmalar",

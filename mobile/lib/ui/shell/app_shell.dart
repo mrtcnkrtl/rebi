@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -108,9 +109,19 @@ class _AppShellState extends State<AppShell> {
     // Açılış ve giriş ekranları kendi üst çubuğunu çizer (hero zeminin üstünde).
     final immersive = path == '/' || path == '/auth';
 
+    // Sayfa zemini krem kâğıt (koyu modda koyu): durum çubuğu simgeleri buna göre. Sahnesi olan ekranlar (Bugün) kendi
+    // `AnnotatedRegion`ıyla açık simge ister; en üstteki bölge geçerli olur.
+    final chrome = (Tw.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark).copyWith(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Tw.surface,
+      systemNavigationBarIconBrightness: Tw.dark ? Brightness.light : Brightness.dark,
+    );
+
     return BackButtonListener(
       onBackButtonPressed: _onBack,
-      child: Stack(
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: chrome,
+        child: Stack(
         children: [
           Scaffold(
             backgroundColor: Tw.background,
@@ -119,7 +130,9 @@ class _AppShellState extends State<AppShell> {
                 // Krem kâğıt + temanın hafif yıkaması tek yerde çizilir: geri çubuğu ve sayfa aynı zeminde durur.
                 ? DecoratedBox(
                     decoration: BoxDecoration(gradient: theme.bg),
+                    // Bugün ve Rutin kökünde (boş durumda) üst sahne durum çubuğunun altına uzanır: güvenli alanı sayfa uygular.
                     child: SafeArea(
+                      top: path != AppTab.today.path && path != AppTab.routine.path,
                       bottom: false,
                       child: Column(
                         children: [
@@ -146,6 +159,7 @@ class _AppShellState extends State<AppShell> {
           if (isAiSurface) const Positioned.fill(child: AiDisclaimerModal()),
           if (user != null) const Positioned.fill(child: ConsentRecoveryModal()),
         ],
+        ),
       ),
     );
   }

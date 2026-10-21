@@ -103,8 +103,21 @@ Karşılamanın devamıdır (aynı orman sahnesi + krem panel); düz krem sayfay
 
 ## Bugün ekranı
 
-Tek odak "şimdi ne yapmalıyım": yukarıdan aşağı **başlık + hava hapı → kahraman rutin kartı → gün akışı → havaya göre üç karar →
-gün içi kayıtlar → "Daha fazlası"**; altta sabit "Yaptım / Ürün bitti" çubuğu. Kurallar:
+Tek odak "şimdi ne yapmalıyım": yukarıdan aşağı **üst sahne (selamlama + hava hapı) → kahraman rutin kartı → gün akışı → havaya
+göre üç karar → gün içi kayıtlar → "Daha fazlası"**; altta yüzen "Yaptım / Ürün bitti" dock'u. Kurallar:
+
+- **Üst sahne (`TodayHeader`)** giriş ve karşılamayla aynı dildir: seçili temanın **derin tonunda** (`RebiTheme.deep`/`stage`; Orman'da
+  marka yeşili, koyu modda biraz koyulaşır; üstünde krem yazı ≥ 4,5:1, testle korunur), tam genişlikte ve durum çubuğunun altına
+  uzanır, alt köşeleri yuvarlaktır. İçinde: küçük harfli tarih, krem Fraunces selamlama (saate göre), krem hesap düğmesi, hava
+  özeti (krem çerçeveli hap) ve çok silik sabit "R" imzası. İlk kart (`StageOverlap`) sahnenin alt kenarına **40 dp biner**; içerik
+  sırayla süzülerek belirir. Sahne ekrandayken durum çubuğu simgeleri açık, kaydırılıp çıkınca sayfanın stiline döner
+  (`AnnotatedRegion`). Bu yüzden kabuk Bugün ve Rutin kökünde üst güvenli alanı uygulamaz; sahnesiz durumlar (yükleniyor,
+  tam plan) güvenli alanı kendileri uygular.
+- **Alt dock (`TodayActionBar`)** tam genişlikte bant değil, kenarlardan boşluklu yuvarlak yüzeydir; altındaki gezinme çubuğuyla
+  iki bant yığını oluşturmaz.
+- **Rutinsiz karşılama (`TodayEmptyStart`, ilk giriş):** aynı sahne (selamlama = `dashboard.noAnalyzeTitle`) ve sahneye binen
+  "İlk adım" kartı: küçük etiket, Fraunces başlık, kısa açıklama, kendini çizen üç adımlık yol (nasıl çalışır), tek ana düğme
+  (Analiz Başlat) ve ikincil sohbet eylemi. Bugün ve Rutin sekmesinde aynıdır.
 
 - Kahraman kart tek bir rutin bloğunu gösterir; tamamlanınca adımlar sakin bir özetin arkasına çekilir (istenirse açılır, "yeniden aç" ile geri alınır).
 - Gün akışı şeridi bir **zaman çizelgesidir**: çubuk = pencere (yapıldıysa dolu), nokta = su, dikey çizgi = şimdi. Renkler kategori renkleridir; altında renk açıklaması durur.

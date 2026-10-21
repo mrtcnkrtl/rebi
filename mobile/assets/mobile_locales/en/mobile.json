@@ -1,5 +1,16 @@
 {
   "mobileToday": {
+    "empty": {
+      "eyebrow": "First step",
+      "title": "Let's start by getting to know your skin",
+      "body": "A photo and a few questions are enough. We'll build your own morning and evening routine together.",
+      "step1": "A photo and a few questions",
+      "step1Sub": "Tell us about your skin and lifestyle",
+      "step2": "Rebi analyzes",
+      "step2Sub": "Based on your skin and the weather",
+      "step3": "Your routine is ready",
+      "step3Sub": "Morning and evening steps, with reminders"
+    },
     "title": "Today",
     "now": "Right now",
     "later": "Coming up",

@@ -24,9 +24,11 @@ import '../state/today_actions.dart';
 import '../state/today_plan_controller.dart';
 import '../ui/components/location_widgets.dart';
 import '../ui/tw.dart';
+import '../ui/widgets/stage_overlap.dart';
 import '../ui/widgets/common.dart';
 import 'today/now_card.dart';
 import 'today/routine_hero.dart';
+import 'today/empty_start.dart';
 import 'today/more_list.dart';
 import 'today/today_widgets.dart';
 import 'today/today_action_bar.dart';
@@ -348,11 +350,14 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     final dateLine = DateFormat.yMMMMEEEEd(i18n.lang).format(DateTime.now());
     final userName = str(merged['userName']);
 
+    // Bugün kökünde (`/dashboard`) kabuk üst güvenli alanı uygulamaz: üst sahne durum çubuğunun altına uzanır. Sahnesiz
+    // durumlar (yükleniyor, boş, tam plan) güvenli alanı kendileri uygular.
+    Widget safe(Widget child) => SafeArea(bottom: false, child: child);
     if (routine.isEmpty) {
       if (uid != null && uid != demoUserId && _fetchingDbRoutine) {
-        return ThemedBackground(theme: theme, child: const Center(child: RingSpinner()));
+        return safe(ThemedBackground(theme: theme, child: const Center(child: RingSpinner())));
       }
-      return _emptyState(i18n, theme, userName);
+      return _emptyState(i18n, theme, userName, dateLine);
     }
 
     final view = RoutineView(routine);
@@ -360,7 +365,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     final ctx = RoutineCtx(i18n: i18n, theme: theme, localized: localized, weekDays: weekDays);
 
     if (trackingMode) return _tracking(ctx, view, merged, dateLine, userName);
-    return _fullPlan(ctx, view, merged, dateLine, userName, accepted);
+    return safe(_fullPlan(ctx, view, merged, dateLine, userName, accepted));
   }
 
   Widget _flashNeedAccept(I18n i18n) => Padding(
@@ -373,34 +378,37 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         ),
       );
 
-  Widget _emptyState(I18n i18n, RebiTheme theme, String userName) {
+  /// Rutini olmayan kullanıcı (ilk giriş): üst sahne + sahneye binen "İlk adım" kartı. Sahne durum çubuğunun altına
+  /// uzandığı için güvenli alanı kendisi uygular (Bugün ve Rutin kökünde kabuk üst güvenli alanı uygulamaz).
+  Widget _emptyState(I18n i18n, RebiTheme theme, String userName, String dateLine) {
     return ThemedPage(
       theme: theme,
-      padding: const EdgeInsets.fromLTRB(16, 64, 16, 64),
+      maxWidth: 672,
+      padding: EdgeInsets.zero,
       children: [
-        if (_nav['flashNeedAccept'] == true) _flashNeedAccept(i18n),
-        Center(child: GradientIconBox(icon: LucideIcons.leaf, from: theme.accent, to: theme.primary, size: 80, iconSize: 40, radius: 24)),
-        const SizedBox(height: 24),
-        Text(i18n.t('dashboard.noAnalyzeTitle', {'name': userName}), textAlign: TextAlign.center, style: heading(28)),
-        const SizedBox(height: 8),
-        Text(i18n.t('dashboard.noAnalyzeDesc'), textAlign: TextAlign.center, style: tx(16, c: Tw.gray500)),
-        const SizedBox(height: 24),
-        PrimaryButton(
-          onPressed: () => context.go('/dashboard/analyze'),
-          color: theme.primary,
-          icon: LucideIcons.circlePlus,
-          label: i18n.t('dashboard.startAnalyze'),
-          trailingIcon: LucideIcons.arrowRight,
-          fontSize: 18,
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-        ),
-        const SizedBox(height: 12),
-        SecondaryButton(
-          onPressed: () => context.go('/dashboard/chat'),
-          borderColor: theme.primaryLight,
-          textColor: theme.fg,
-          icon: LucideIcons.messageCircle,
-          label: i18n.t('dashboard.chatWithAi'),
+        StageOverlap(
+          overlap: TodayHeader.overlap,
+          stage: TodayHeader(
+            name: userName,
+            dateLine: dateLine,
+            theme: theme,
+            greeting: i18n.t('dashboard.noAnalyzeTitle', {'name': userName}),
+            trailing: _AccountShortcut(name: userName, theme: theme),
+          ),
+          body: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (_nav['flashNeedAccept'] == true) _flashNeedAccept(i18n),
+                TodayEmptyStart(
+                  theme: theme,
+                  onStart: () => context.go('/dashboard/analyze'),
+                  onChat: () => context.go('/dashboard/chat'),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -415,69 +423,79 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     final weather = merged['weather'];
     final actions = _actions;
 
+    // Üst sahne tam genişlikte (durum çubuğunun altına kadar) çizilir; kahraman kart sahnenin alt kenarına biner.
+    final bodyChildren = <Widget>[
+      FirstRunPrompts(location: _location, theme: theme),
+      if (actions != null) ...[
+        // Kahraman: günün rutini. Altında gün akışı, havaya göre kararlar ve gün içi kayıtlar.
+        RoutineHero(
+          actions: actions,
+          theme: theme,
+          dayLabel: c.weekDays[todayIdx],
+          localized: c.localized,
+          morning: today.morning,
+          evening: today.evening,
+          morningNotes: [...v.wellnessMorningItems, ...v.dailyLifestyleItems],
+          eveningNotes: [...v.wellnessEveningItems, ...v.dailyLifestyleItems],
+        ),
+        const SizedBox(height: 14),
+        NowCard(
+          controller: actions.plan,
+          theme: theme,
+          onAction: _runReminderAction,
+          onRetryPending: () => context.read<OutboxSyncController>().flushNow(),
+          onOpenSettings: () => context.push('/dashboard/reminders'),
+        ),
+        const SizedBox(height: 14),
+        _withPlan((plan) => plan == null
+            ? const SizedBox.shrink()
+            : Padding(padding: const EdgeInsets.only(bottom: 14), child: WeatherDecisionsCard(plan: plan, theme: theme, actions: actions))),
+        // Plan yoksa (yüklenemedi) altında kart olmayan yalnız bir etiket kalmasın.
+        _withPlan((plan) => plan != null || _today?.loading == true ? SectionLabel(i18n.t('mobileToday.dayLog.title')) : const SizedBox.shrink()),
+        TrackingTiles(actions: actions, theme: theme, onOpenSheet: _openSheet),
+        const SizedBox(height: 14),
+      ] else ...[
+        // Demo oturumunda gün içi kayıt yoktur: rutin yalnızca okunur gösterilir.
+        if (today.morning.isNotEmpty) ...[
+          RoutineBlockCard(icon: LucideIcons.sun, title: i18n.t('dashboard.morning'), ctx: c, steps: today.morning),
+          const SizedBox(height: 14),
+        ],
+        if (today.evening.isNotEmpty) ...[
+          RoutineBlockCard(icon: LucideIcons.moon, title: i18n.t('dashboard.evening'), ctx: c, steps: today.evening),
+          const SizedBox(height: 14),
+        ],
+        if (weather is Map && truthy(weather['temperature'])) ...[WeatherLine(weather: weather, ctx: c), const SizedBox(height: 14)],
+      ],
+      if (v.dailyBalanceItem != null) ...[
+        DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: merged['flowDebug'], ctx: c),
+        const SizedBox(height: 14),
+      ],
+      if (checkinResult is Map && truthy(checkinResult['ai_note'])) ...[
+        AiNoteCard(checkinResult: checkinResult, ctx: c),
+        const SizedBox(height: 14),
+      ],
+      _withPlan((plan) => TodayMoreList(theme: theme, checkinDone: plan?.checkinDone == true, shelfCount: plan?.productsOut.length ?? 0)),
+      const AiDisclaimer(padding: EdgeInsets.only(top: 20)),
+    ];
     final page = ThemedPage(
       theme: theme,
       maxWidth: 672,
-      padding: EdgeInsets.fromLTRB(16, 24, 16, actions != null ? 132 : 32),
+      padding: EdgeInsets.zero,
       children: [
-        _withPlan((plan) => TodayHeader(
-              name: userName,
-              dateLine: dateLine,
-              plan: plan,
-              trailing: _AccountShortcut(name: userName, theme: theme),
-            )),
-        const SizedBox(height: 20),
-        FirstRunPrompts(location: _location, theme: theme),
-        if (actions != null) ...[
-          // Kahraman: günün rutini. Altında gün akışı, havaya göre kararlar ve gün içi kayıtlar.
-          RoutineHero(
-            actions: actions,
-            theme: theme,
-            dayLabel: c.weekDays[todayIdx],
-            localized: c.localized,
-            morning: today.morning,
-            evening: today.evening,
-            morningNotes: [...v.wellnessMorningItems, ...v.dailyLifestyleItems],
-            eveningNotes: [...v.wellnessEveningItems, ...v.dailyLifestyleItems],
+        StageOverlap(
+          overlap: TodayHeader.overlap,
+          stage: _withPlan((plan) => TodayHeader(
+                name: userName,
+                dateLine: dateLine,
+                plan: plan,
+                theme: theme,
+                trailing: _AccountShortcut(name: userName, theme: theme),
+              )),
+          body: Padding(
+            padding: EdgeInsets.fromLTRB(16, 0, 16, actions != null ? 132 : 32),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: bodyChildren),
           ),
-          const SizedBox(height: 14),
-          NowCard(
-            controller: actions.plan,
-            theme: theme,
-            onAction: _runReminderAction,
-            onRetryPending: () => context.read<OutboxSyncController>().flushNow(),
-            onOpenSettings: () => context.push('/dashboard/reminders'),
-          ),
-          const SizedBox(height: 14),
-          _withPlan((plan) => plan == null
-              ? const SizedBox.shrink()
-              : Padding(padding: const EdgeInsets.only(bottom: 14), child: WeatherDecisionsCard(plan: plan, theme: theme, actions: actions))),
-          // Plan yoksa (yüklenemedi) altında kart olmayan yalnız bir etiket kalmasın.
-          _withPlan((plan) => plan != null || _today?.loading == true ? SectionLabel(i18n.t('mobileToday.dayLog.title')) : const SizedBox.shrink()),
-          TrackingTiles(actions: actions, theme: theme, onOpenSheet: _openSheet),
-          const SizedBox(height: 14),
-        ] else ...[
-          // Demo oturumunda gün içi kayıt yoktur: rutin yalnızca okunur gösterilir.
-          if (today.morning.isNotEmpty) ...[
-            RoutineBlockCard(icon: LucideIcons.sun, title: i18n.t('dashboard.morning'), ctx: c, steps: today.morning),
-            const SizedBox(height: 14),
-          ],
-          if (today.evening.isNotEmpty) ...[
-            RoutineBlockCard(icon: LucideIcons.moon, title: i18n.t('dashboard.evening'), ctx: c, steps: today.evening),
-            const SizedBox(height: 14),
-          ],
-          if (weather is Map && truthy(weather['temperature'])) ...[WeatherLine(weather: weather, ctx: c), const SizedBox(height: 14)],
-        ],
-        if (v.dailyBalanceItem != null) ...[
-          DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: merged['flowDebug'], ctx: c),
-          const SizedBox(height: 14),
-        ],
-        if (checkinResult is Map && truthy(checkinResult['ai_note'])) ...[
-          AiNoteCard(checkinResult: checkinResult, ctx: c),
-          const SizedBox(height: 14),
-        ],
-        _withPlan((plan) => TodayMoreList(theme: theme, checkinDone: plan?.checkinDone == true, shelfCount: plan?.productsOut.length ?? 0)),
-        const AiDisclaimer(padding: EdgeInsets.only(top: 20)),
+        ),
       ],
     );
 
@@ -534,8 +552,8 @@ class _AccountShortcut extends StatelessWidget {
           width: 48,
           height: 48,
           alignment: Alignment.center,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: theme.primary),
-          child: Text(initial, style: heading(20, c: Colors.white, w: 500)),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: Brand.cream),
+          child: Text(initial, style: heading(20, c: theme.deep, w: 600)),
         ),
       ),
     );
