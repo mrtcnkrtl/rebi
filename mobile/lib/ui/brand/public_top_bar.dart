@@ -11,13 +11,18 @@ import 'palette.dart';
 /// Açılış ve giriş ekranlarının üst çubuğu: solda marka yazısı (ya da geri düğmesi), sağda dil seçici.
 /// Sayfayla birlikte durur; kabuğun sabit çubuğunun yerini alır.
 class PublicTopBar extends StatelessWidget {
-  const PublicTopBar({super.key, this.onBack, this.onDark = false});
+  const PublicTopBar({super.key, this.onBack, this.onDark = false, this.brandOpacity = 1, this.trailingOpacity = 1});
 
   /// Verilirse marka yazısı yerine geri düğmesi görünür.
   final VoidCallback? onBack;
 
   /// Koyu orman zemininde (karşılama sahnesi) krem renkler ve marka karosu kullanılır.
   final bool onDark;
+
+  /// Marka (karo + yazı) ve dil seçicinin görünürlüğü. Karşılamanın giriş sekansında marka başka bir katmanda
+  /// süzülüp buraya yerleşir; o sırada bu çubuktaki marka gizlenir (yerleşimi korunur) ve dil seçici sonradan belirir.
+  final double brandOpacity;
+  final double trailingOpacity;
 
   @override
   Widget build(BuildContext context) {
@@ -55,42 +60,51 @@ class PublicTopBar extends StatelessWidget {
                           ),
                         ),
                       )
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (onDark) ...[const BrandMark(size: 28), const SizedBox(width: 10)],
-                          Text('Rebi', maxLines: 1, style: Brand.serif(27, weight: 600, color: onDark ? cream : null, ls: -.8)),
-                        ],
+                    : Opacity(
+                        opacity: brandOpacity,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (onDark) ...[const BrandMark(size: 28), const SizedBox(width: 10)],
+                            Text('Rebi', maxLines: 1, style: Brand.serif(27, weight: 600, color: onDark ? cream : null, ls: -.8)),
+                          ],
+                        ),
                       ),
               ),
             ),
             const SizedBox(width: 8),
-            Semantics(
-              button: true,
-              label: i18n.t('lang.label'),
-              child: Pressable(
-                onTap: () => showLanguageSheet(context),
-                scale: .95,
-                child: ConstrainedBox(
-                  // Görünüm hap boyunda, dokunma alanı 48 dp.
-                  constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-                  child: Center(
-                    widthFactor: 1,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(999),
-                        border: Border.all(color: line, width: 1.3),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(LucideIcons.globe, size: 15, color: fg),
-                          const SizedBox(width: 6),
-                          Text(i18n.lang.toUpperCase(), style: tx(12.5, w: 7, c: fg, ls: .4)),
-                          const SizedBox(width: 3),
-                          Icon(LucideIcons.chevronDown, size: 14, color: fgSoft),
-                        ],
+            IgnorePointer(
+              ignoring: trailingOpacity < .5,
+              child: Opacity(
+                opacity: trailingOpacity,
+                child: Semantics(
+                  button: true,
+                  label: i18n.t('lang.label'),
+                  child: Pressable(
+                    onTap: () => showLanguageSheet(context),
+                    scale: .95,
+                    child: ConstrainedBox(
+                      // Görünüm hap boyunda, dokunma alanı 48 dp.
+                      constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
+                      child: Center(
+                        widthFactor: 1,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(999),
+                            border: Border.all(color: line, width: 1.3),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(LucideIcons.globe, size: 15, color: fg),
+                              const SizedBox(width: 6),
+                              Text(i18n.lang.toUpperCase(), style: tx(12.5, w: 7, c: fg, ls: .4)),
+                              const SizedBox(width: 3),
+                              Icon(LucideIcons.chevronDown, size: 14, color: fgSoft),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   ),

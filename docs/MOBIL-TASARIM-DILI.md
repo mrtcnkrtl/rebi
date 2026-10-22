@@ -72,18 +72,27 @@ Marka ilk izlenimi tek bir hikâyedir: **derin orman yeşili sahne** (açılış
 yükselen **krem "kâğıt" panel** (giriş, kayıt, Bugün kartları). Açılış ve karşılama aynı yeşille başlar; iki temada da aynıdır
 (koyu temada yalnızca paneller koyulaşır).
 
-- **Açılış (`SplashScreen`, ~2,4 sn).** İlk kare yerel açılış ekranıyla **birebir** örtüşür: düz orman yeşili zemin ve ekranın
-  tam ortasında 104 dp marka karosu (`BrandMark.launchSize`). Android 12+ `drawable-v31/splash_logo.xml`, Android 12 öncesi
-  `launch_logo.png`, iOS `LaunchImage` aynı karoyu gösterir (`test/launch_experience_test.dart` konumu ve boyutu korur).
-  Sonra karo yukarı süzülür, "Rebi" harf harf belirir, ince bir çizgi çekilir, geniş aralıklı büyük harfli slogan gelir.
-  Halka, ışıltı, cam gibi süs yoktur; tek hareket "marka kuruluyor"dur. Çıkış karşılamanın üstünde solarak olur.
-- **Karşılama (`LandingScreen`, giriş yapmadan önce açılan sayfa).** Tek odak, **sıfır etiket**: tam ekran derin orman yeşili,
-  arkasında tek bir yumuşak ışık havuzu; ortada tek kahraman görsel (`HeroArt`: podyum üstünde ürünler), altında ortalı iki
-  satırlık Fraunces başlık, iki satırlık açıklama, krem tek ana düğme ("Rutini oluştur"), tek satır sessiz ikincil eylem
-  (Giriş yap | Rebi ile konuş) ve en dipte silik yasal metin. Kaydırmalı sahne, yüzen kart/etiket, ilerleme göstergesi,
-  yaprak gölgesi yoktur (göz tek yerde durur; testle korunur: `PageView` yok). Hareket: önce sahne kurulur (ürünler yerine
-  süzülür), sonra başlık, açıklama, düğme sırayla belirir; ardından yalnızca çok yavaş bir nefes alma (güneş diski salınır,
-  zeytin dalı sallanır). "Animasyonları azalt" açıkken hepsi durur.
+- **Açılış + karşılama tek sekanstır (`LandingScreen`).** Ayrı bir açılış rotası yoktur: uygulama oturumsuz açılınca
+  (`buildRouter(splash: true)` → `landingIntroPending`) ilk karşılama kendi içinde ~3 sn'lik bir sekans oynatır; sonraki
+  ziyaretler (ör. girişten geri dönüş) oynatmaz. **İlk kare yerel açılış ekranıyla birebir örtüşür:** düz orman yeşili zemin ve
+  ekranın tam ortasında 104 dp marka karosu (`BrandMark.launchSize`; Android 12+ `splash_logo.xml`, Android 12 öncesi
+  `launch_logo.png`, iOS `LaunchImage`; `test/launch_experience_test.dart` konumu ve boyutu korur). Sonra "Rebi" harf harf
+  belirir, ince çizgi çekilir, geniş aralıklı slogan gelir; ardından **karo ve yazı sol üstteki yerine süzülür** (yazı 54→27
+  puntoya iner, slogan solar), sahne ve içerik onun ardından kurulur. Marka bu katmanda kalır (üst çubuktaki marka gizli), bu
+  yüzden yerleşmede kayma yoktur. Ekrana dokunmak sekansı atlatır; "animasyonları azalt" açıkken hiç oynamaz.
+- **Karşılama içeriği.** Tek odak, **sıfır etiket**: tam ekran derin orman yeşili, arkasında tek bir yumuşak ışık havuzu; ortada
+  tek kahraman görsel (`HeroArt`: podyum üstünde ürünler), altında ortalı iki satırlık Fraunces başlık, iki satırlık açıklama,
+  krem tek ana düğme ("Rutini oluştur"), tek satır sessiz ikincil eylem (Giriş yap | Rebi ile konuş) ve en dipte silik yasal
+  metin. Kaydırmalı sahne, yüzen kart/etiket, ilerleme göstergesi, yaprak gölgesi yoktur (testle korunur: `PageView` yok).
+- **Günün ışığı (`HeroLight`).** Gökyüzü diski yerel saate göre değişir: 05–17 gündüz (şeftali güneş, turkuaz ışık), 17–21 akşam
+  (alçak, sıcak güneş), 21–05 gece (hilal ay, birkaç yıldız, soğuk mavi ışık). Uygulamanın "sabah ve akşam rutini" fikrini
+  yazısız anlatır; her kullanıcı kendi saatini görür.
+- **Cila.** Kubbe ve ürün gövdelerinden birkaç saniyede bir geçen yumuşak ışık bandı (13 sn döngü); diskin halesi; çok yavaş
+  nefes alma (güneş diski salınır, zeytin dalı sallanır). Başlık belirirken Fraunces'in eksenleri oturur (ağırlık 320→500,
+  yumuşaklık 0→40). Ana düğmede belirdikten kısa süre sonra bir kez turkuaz ışık bandı geçer (`ShimmerOnce`); basınca çabuk
+  küçülür, bırakınca yay gibi hafifçe aşıp oturur ve hafif darbe titreşimi verir. Sürekli çizilen sahne kendi katmanındadır.
+- **Kayda geçiş.** Karşılamadan çıkarken yalnızca içerik yukarı süzülüp solar, zemin yerinde kalır (sayfa düzeyinde solma yok:
+  arkada kâğıt rengi parlamaz); kayıt sayfasının krem paneli aynı zeminin üstüne yükselir. Geri dönüşte tersi olur.
 
 ### Giriş ve kayıt (`AuthScreen`)
 

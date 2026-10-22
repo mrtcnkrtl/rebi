@@ -15,6 +15,7 @@ class BrandButton extends StatelessWidget {
     this.loading = false,
     this.outlined = false,
     this.onDark = false,
+    this.shimmerDelay,
     this.height = 58,
   });
 
@@ -26,6 +27,9 @@ class BrandButton extends StatelessWidget {
 
   /// Koyu orman zemininde (karşılama): dolu düğme krem zeminde orman yazılı, çerçeveli düğme krem çerçeveli ve yazılıdır.
   final bool onDark;
+
+  /// Verilirse düğmenin üstünden bu gecikmeden sonra bir kez ışık bandı geçer (karşılamadaki ana eylem).
+  final Duration? shimmerDelay;
   final double height;
 
   @override
@@ -48,7 +52,8 @@ class BrandButton extends StatelessWidget {
       child: Pressable(
         onTap: enabled ? onPressed : null,
         scale: .98,
-        child: Container(
+        impact: !outlined,
+        child: _shimmer(Container(
           constraints: BoxConstraints(minHeight: height),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           alignment: Alignment.center,
@@ -58,10 +63,15 @@ class BrandButton extends StatelessWidget {
             border: outlined ? Border.all(color: (onDark ? Brand.cream : Brand.ink).withValues(alpha: onDark ? .32 : .22), width: 1.4) : null,
           ),
           child: content,
-        ),
+        )),
       ),
     );
   }
+
+  /// Karşılamadaki ana eylemde düğmenin üstünden bir kez ışık bandı geçirir (krem düğmede turkuaz, koyuda beyaz).
+  Widget _shimmer(Widget button) => shimmerDelay == null || outlined
+      ? button
+      : ShimmerOnce(delay: shimmerDelay!, radius: height / 2, color: onDark ? Brand.teal : Colors.white, child: button);
 }
 
 /// Vurgulu bağlantı metni: altçizgi, harf kuyruklarını (ş, ç, ğ) kapatmasın diye ayrı bir çizgi olarak çizilir.

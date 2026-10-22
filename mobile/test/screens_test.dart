@@ -75,14 +75,6 @@ void main() {
       expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
     });
 
-    testWidgets('splash: animasyon bitince karşılamaya geçer', (tester) async {
-      final h = await pumpApp(tester, location: '/splash', loggedIn: false);
-      expect(h.router.routeInformationProvider.value.uri.path, '/splash');
-      await settle(tester, 12);
-      expect(h.router.routeInformationProvider.value.uri.path, '/');
-      expect(find.text(tr('mobileLanding.heroTitle')), findsOneWidget);
-    });
-
     testWidgets('korumalı rota girişe yönlendirir ve next parametresini taşır', (tester) async {
       final h = await pumpApp(tester, location: '/dashboard/chat', loggedIn: false);
       expect(h.router.routeInformationProvider.value.uri.toString(), '/auth?next=%2Fdashboard%2Fchat');

@@ -13,7 +13,6 @@ import 'screens/me_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/reminders_screen.dart';
 import 'screens/shelf_screen.dart';
-import 'screens/splash_screen.dart';
 import 'screens/subscribe_screen.dart';
 import 'screens/themes_screen.dart';
 import 'state/auth_controller.dart';
@@ -48,14 +47,30 @@ CustomTransitionPage<void> _softPage(GoRouterState state, Widget child) {
   );
 }
 
+/// Karşılama sayfası: dönüşte (girişten geri) zemin yumuşakça belirir; çıkışta sayfa düzeyinde solma yoktur (zemin yerinde
+/// kalır, arkada kâğıt rengi parlamaz). Çıkış/giriş sırasında içeriği süzüp soldurmayı sayfanın kendisi yapar
+/// (`LandingScreen`, rotanın `animation` ve `secondaryAnimation`ı ile).
+CustomTransitionPage<void> _landingPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 420),
+    reverseTransitionDuration: const Duration(milliseconds: 340),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) =>
+        FadeTransition(opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut), child: child),
+  );
+}
+
 Map<String, dynamic>? _extraMap(Object? extra) => extra is Map ? extra.cast<String, dynamic>() : null;
 
 /// Web `App.jsx` rotaları. `/dashboard*` korumalıdır (web: `ProtectedRoute`).
-/// [splash] true ise oturum yokken uygulama animasyonlu açılışla başlar (yalnızca gerçek uygulamada).
+/// [splash] true ise oturum yokken uygulama animasyonlu açılışla başlar (yalnızca gerçek uygulamada): açılış ayrı bir rota
+/// değil, karşılamanın içinde oynayan giriş sekansıdır (`landingIntroPending`).
 GoRouter buildRouter(AuthController auth, {bool splash = false}) {
+  if (splash && auth.user == null) landingIntroPending = true;
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: auth.user != null ? '/dashboard' : (splash ? '/splash' : '/'),
+    initialLocation: auth.user != null ? '/dashboard' : '/',
     refreshListenable: auth,
     redirect: (context, state) {
       final path = state.uri.path;
@@ -66,8 +81,7 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
         return '/auth?next=${Uri.encodeComponent(state.uri.toString())}';
       }
       // Geçersiz/süresi dolmuş e-posta bağlantısı: nedenini giriş ekranı gösterir.
-      if (user == null && auth.linkError != null && (path == '/' || path == '/splash')) return '/auth';
-      if (path == '/splash' && user != null) return '/dashboard';
+      if (user == null && auth.linkError != null && path == '/') return '/auth';
       if (path == '/auth' && user != null && !auth.authFlowInProgress) {
         return safeNext(state.uri.queryParameters['next']);
       }
@@ -76,19 +90,6 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
     // Bilinmeyen yol → ana sayfa (web: `<Route path="*" element={<Navigate to="/" />} />`).
     onException: (context, state, router) => router.go('/'),
     routes: [
-      GoRoute(
-        path: '/splash',
-        parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => CustomTransitionPage<void>(
-          key: state.pageKey,
-          child: const SplashScreen(),
-          // Girişte anında görünür (yerel açılışla dikişsiz); çıkışta karşılamanın üstünde solarak kaybolur.
-          transitionDuration: Duration.zero,
-          reverseTransitionDuration: const Duration(milliseconds: 520),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) =>
-              FadeTransition(opacity: CurvedAnimation(parent: animation, curve: Curves.easeInOut), child: child),
-        ),
-      ),
       // Yasal metinler formların üstünde açılır; geri dönüldüğünde form korunur.
       GoRoute(
         path: '/kvkk',
@@ -106,7 +107,7 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
         routes: [
           GoRoute(
             path: '/',
-            pageBuilder: (context, state) => _softPage(state, const LandingScreen()),
+            pageBuilder: (context, state) => _landingPage(state, const LandingScreen()),
           ),
           GoRoute(
             path: '/auth',

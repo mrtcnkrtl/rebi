@@ -168,55 +168,142 @@ class _ArtFrameState extends State<ArtFrame> with SingleTickerProviderStateMixin
 }
 
 // ---------------------------------------------------------------------------------------------
+// Işık: günün saatine göre gökyüzü
+// ---------------------------------------------------------------------------------------------
+
+/// Sahnenin gökyüzü: yerel saate göre gündüz (güneş), akşam (alçak, sıcak güneş) ya da gece (ay).
+enum HeroSky { day, dusk, night }
+
+/// Saat kaynağı; testlerde sabitlenir.
+DateTime Function() heroClock = DateTime.now;
+
+/// Kahraman sahnenin ışığı: gökyüzü diskinin rengi ve yeri, arkadaki ışık havuzunun rengi. Gündüz 05–17, akşam 17–21,
+/// gece 21–05. Uygulamanın "sabah ve akşam rutini" fikrini yazısız anlatır; her kullanıcı kendi saatini görür.
+class HeroLight {
+  const HeroLight._(this.sky, {required this.glow, required this.disc, required this.discAt, required this.discRadius});
+
+  factory HeroLight.at(DateTime now) {
+    final h = now.hour + now.minute / 60;
+    if (h >= 5 && h < 17) return day;
+    if (h >= 17 && h < 21) return dusk;
+    return night;
+  }
+
+  static const day = HeroLight._(
+    HeroSky.day,
+    glow: Color(0xFF2FB9A4),
+    disc: [Color(0xFFFAD0AE), Color(0xFFF2A07C)],
+    discAt: Offset(69, 31),
+    discRadius: 9.4,
+  );
+  static const dusk = HeroLight._(
+    HeroSky.dusk,
+    glow: Color(0xFFD98962),
+    disc: [Color(0xFFF8B88C), Color(0xFFE06C52)],
+    discAt: Offset(73, 42),
+    discRadius: 10.6,
+  );
+  static const night = HeroLight._(
+    HeroSky.night,
+    glow: Color(0xFF5A9DB8),
+    disc: [Color(0xFFF8F3E6), Color(0xFFD6D2C2)],
+    discAt: Offset(68, 30),
+    discRadius: 8.8,
+  );
+
+  final HeroSky sky;
+
+  /// Arkadaki ışık havuzunun rengi (karşılama zemininde).
+  final Color glow;
+
+  /// Gökyüzü diskinin üstten alta renkleri (güneş ya da ay).
+  final List<Color> disc;
+  final Offset discAt;
+  final double discRadius;
+}
+
+// ---------------------------------------------------------------------------------------------
 // Sahne 2 — podyum üstünde ürünler
 // ---------------------------------------------------------------------------------------------
 
 class HeroArt extends StatefulWidget {
-  const HeroArt({super.key});
+  const HeroArt({super.key, required this.light});
+
+  /// Günün saatine göre gökyüzü ([HeroLight.at]).
+  final HeroLight light;
 
   @override
   State<HeroArt> createState() => _HeroArtState();
 }
 
-class _HeroArtState extends State<HeroArt> with SingleTickerProviderStateMixin {
+class _HeroArtState extends State<HeroArt> with TickerProviderStateMixin {
   late final AnimationController _idle = AnimationController(vsync: this, duration: const Duration(seconds: 8));
+  late final AnimationController _glint = AnimationController(vsync: this, duration: const Duration(seconds: 13));
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (reduceMotion(context)) {
+      // Sakin hâl: salınım ortada, parıltı bandı dışarıda.
       _idle.stop();
-    } else if (!_idle.isAnimating) {
-      _idle.repeat(reverse: true);
+      _idle.value = .5;
+      _glint.stop();
+      _glint.value = .95;
+    } else {
+      if (!_idle.isAnimating) _idle.repeat(reverse: true);
+      if (!_glint.isAnimating) _glint.repeat();
     }
   }
 
   @override
   void dispose() {
     _idle.dispose();
+    _glint.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Süsleme: ekran okuyuculardan gizli.
+    // Süsleme: ekran okuyuculardan gizli. Sürekli çizilen katman kendi katmanında (üst öğeler yeniden çizilmesin).
     return ExcludeSemantics(
       child: ArtFrame(
         active: true,
         duration: const Duration(milliseconds: 2400),
-        builder: (context, t, s) => CustomPaint(painter: _PodiumPainter(t, _idle)),
+        builder: (context, t, s) => RepaintBoundary(child: CustomPaint(painter: _PodiumPainter(t, _idle, _glint, widget.light))),
       ),
     );
   }
 }
 
 class _PodiumPainter extends _UnitPainter {
-  _PodiumPainter(this.t, this.idle) : super(Listenable.merge([t, idle]));
+  _PodiumPainter(this.t, this.idle, this.glint, this.light) : super(Listenable.merge([t, idle, glint]));
 
   final Animation<double> t;
 
-  /// 0→1→0 yavaş salınım (8 sn): güneş diski ve zeytin dalı.
+  /// 0→1→0 yavaş salınım (8 sn): gökyüzü diski ve zeytin dalı.
   final Animation<double> idle;
+
+  /// 0→1 tekrar eden döngü (13 sn): ilk %28'inde cam yüzeylerin üstünden bir ışık bandı geçer.
+  final Animation<double> glint;
+  final HeroLight light;
+
+  /// Bu karedeki parıltı bandı ilerlemesi (0–1; band yoksa -1) ve giriş bitişine bağlı görünürlük.
+  double _gp = -1;
+  double _ready = 0;
+
+  /// [clip] içinde, soldan sağa süzülen eğik, yumuşak bir ışık bandı çizer (cam ve parlak yüzeylerde).
+  void _glint(Canvas c, Path clip, double alpha, {double width = 11}) {
+    if (_gp < 0 || _ready <= 0) return;
+    final x = -24 + _gp * 148;
+    final a = alpha * _ready * math.sin(math.pi * _gp);
+    c.save();
+    c.clipPath(clip);
+    c.translate(x, 50);
+    c.rotate(.5);
+    final band = Rect.fromLTWH(-width / 2, -90, width, 180);
+    c.drawRect(band, Paint()..shader = LinearGradient(colors: [Colors.white.withValues(alpha: 0), Colors.white.withValues(alpha: a), Colors.white.withValues(alpha: 0)]).createShader(band));
+    c.restore();
+  }
 
   static const _goldA = Color(0xFFEBD299);
   static const _goldB = Color(0xFFB88F4C);
@@ -228,6 +315,7 @@ class _PodiumPainter extends _UnitPainter {
     _contact(c, cx + 1, base, 9.5);
     final body = RRect.fromLTRBR(cx - 8, base - 30, cx + 8, base, const Radius.circular(5));
     c.drawRRect(body, _grad(body.outerRect, const [Color(0xFFF9DDD0), Color(0xFFF1C2AE), Color(0xFFE4A38B)], begin: Alignment.centerLeft, end: Alignment.centerRight, stops: const [0, .5, 1]));
+    _glint(c, Path()..addRRect(body), .6, width: 8);
     c.drawRRect(RRect.fromLTRBR(cx - 3.3, base - 34, cx + 3.3, base - 29.6, const Radius.circular(1)), _paint(_ink));
     c.drawRect(Rect.fromLTRB(cx - 1.1, base - 38.6, cx + 1.1, base - 34), _paint(_ink));
     c.drawRRect(RRect.fromLTRBR(cx - 6.8, base - 41.8, cx + 3.6, base - 38.4, const Radius.circular(1.5)), _paint(_ink));
@@ -244,6 +332,7 @@ class _PodiumPainter extends _UnitPainter {
     _contact(c, cx + 1, base, 9);
     final body = RRect.fromLTRBR(cx - 7.6, base - 22, cx + 7.6, base, const Radius.circular(4.6));
     c.drawRRect(body, _grad(body.outerRect, const [Color(0xFF8CC1B2), Color(0xFFC6E4DA), Color(0xFF74AC9C)], begin: Alignment.centerLeft, end: Alignment.centerRight, stops: const [0, .45, 1]));
+    _glint(c, Path()..addRRect(body), .65, width: 8);
     c.drawRect(Rect.fromLTRB(cx - 3.6, base - 26.4, cx + 3.6, base - 21.4), _paint(const Color(0xFF74AC9C)));
     final collar = RRect.fromLTRBR(cx - 4.5, base - 30.4, cx + 4.5, base - 26, const Radius.circular(1.3));
     c.drawRRect(collar, _grad(collar.outerRect, const [_goldA, _goldB]));
@@ -262,6 +351,7 @@ class _PodiumPainter extends _UnitPainter {
     _contact(c, cx + 1.4, base, 12);
     final body = RRect.fromLTRBR(cx - 10, base - 11, cx + 10, base, const Radius.circular(3.4));
     c.drawRRect(body, _grad(body.outerRect, const [Color(0xFFE6DAC5), Colors.white, Color(0xFFF0E7D7), Color(0xFFDDCFB6)], begin: Alignment.centerLeft, end: Alignment.centerRight, stops: const [0, .3, .68, 1]));
+    _glint(c, Path()..addRRect(body), .5, width: 9);
     c.drawRect(Rect.fromLTRB(cx - 5.5, base - 5.6, cx + 5.5, base - 4.9), _paint(_teal.withValues(alpha: .7)));
     final lid = RRect.fromLTRBR(cx - 10.7, base - 17.6, cx + 10.7, base - 11.1, const Radius.circular(2.2));
     c.drawRRect(lid, _grad(lid.outerRect, const [_inkMid, Color(0xFF0F4F48), _ink], begin: Alignment.centerLeft, end: Alignment.centerRight));
@@ -274,14 +364,36 @@ class _PodiumPainter extends _UnitPainter {
     final rise = _iv(t.value, .1, .7);
     // -1..1 yumuşak salınım (easeInOut): yalnızca giriş bittikten sonra belirginleşir.
     final sway = (Curves.easeInOut.transform(idle.value) * 2 - 1) * _iv(t.value, .7, 1);
+    // Parıltı bandı: döngünün ilk %28'inde, giriş bittikten sonra.
+    _ready = _iv(t.value, .85, 1);
+    _gp = glint.value < .28 ? glint.value / .28 : -1;
 
-    // Arka katman: güneş ve kemerler
+    // Arka katman: gökyüzü diski (güneş ya da ay), halesi ve kemerler
     c.save();
     _group(c, e, () {
-      final sunC = Offset(69, 32 + (1 - e) * 5 + sway * 1.3);
-      c.drawCircle(sunC, 9.4, _grad(Rect.fromCircle(center: sunC, radius: 9.4), const [Color(0xFFFAD0AE), Color(0xFFF2A07C)], begin: Alignment.topLeft, end: Alignment.bottomRight));
+      final at = light.discAt.translate(0, (1 - e) * 5 + sway * 1.3);
+      final r = light.discRadius;
+      final bounds = Rect.fromCircle(center: at, radius: r);
+      // Hale: diskin renginde yumuşak bir ışıma (derinlik katar).
+      c.drawCircle(at, r * 1.9, _blur(light.disc.first.withValues(alpha: .26), 5));
+      if (light.sky == HeroSky.night) {
+        final moon = Path.combine(
+          PathOperation.difference,
+          Path()..addOval(bounds),
+          Path()..addOval(Rect.fromCircle(center: at.translate(r * .52, -r * .22), radius: r * .86)),
+        );
+        c.drawPath(moon, _grad(bounds, light.disc, begin: Alignment.topLeft, end: Alignment.bottomRight));
+        // Birkaç yıldız: çok küçük, salınımla yavaşça parlar.
+        final twinkle = .45 + .25 * Curves.easeInOut.transform(idle.value);
+        for (final star in const [Offset(26, 24), Offset(44, 17), Offset(30, 40), Offset(79, 53)]) {
+          c.drawCircle(star, .5, _paint(Colors.white.withValues(alpha: twinkle)));
+        }
+      } else {
+        c.drawCircle(at, r, _grad(bounds, light.disc, begin: Alignment.topLeft, end: Alignment.bottomRight));
+      }
       final arch = _archPath(20, 80, 14, 82);
       c.drawPath(arch, _grad(const Rect.fromLTRB(20, 14, 80, 82), [Colors.white.withValues(alpha: .09), Colors.white.withValues(alpha: .02)]));
+      _glint(c, arch, .24, width: 18);
       final inner = _archPath(28, 72, 21, 82);
       c.drawPath(inner, _grad(const Rect.fromLTRB(28, 21, 72, 82), [Colors.white.withValues(alpha: .06), Colors.white.withValues(alpha: 0)]));
     });

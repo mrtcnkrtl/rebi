@@ -509,6 +509,9 @@ Future<Harness> pumpApp(
 
   /// Giriş/kayıt çağrılarını Supabase'siz yanıtlayan sahte denetleyici (`AuthController`'ı genişletir).
   AuthController? authController,
+
+  /// false: ilk kare çizilir çizilmez döner (açılış sekansının ilk karesi gibi, zamanla değişen ilk anları denetlemek için).
+  bool settleAfter = true,
 }) async {
   tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
@@ -579,7 +582,7 @@ Future<Harness> pumpApp(
     ),
   ));
   router.go(location, extra: extra);
-  await settle(tester);
+  if (settleAfter) await settle(tester);
   return Harness(auth, theme, router, fb, sync, outbox, notifications, fakeNotifier);
 }
 
