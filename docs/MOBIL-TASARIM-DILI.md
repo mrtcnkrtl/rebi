@@ -136,13 +136,27 @@ göre üç karar → gün içi kayıtlar → "Daha fazlası"**; altta yüzen "Ya
 - Aynı iş iki yerde tekrar etmez (rutin hatırlatıcısı "şimdi" listesinde yok; güneş kremi kaydı yalnız "havaya göre" kartında).
 - Yeni durumlar galeriye eklenir: `bugun-tamam`, `bugun-hata`, `bugun-yukleniyor`, `bugun-bos`.
 
-## Sohbet
+## Sohbet ("Rebi ile konuş")
 
-Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır: üstte Fraunces "Rebi" imzası ve kota hapı; hemen altında **"Rebi bugünü biliyor" şeridi**
-(hava, rutin, su, makyaj, biten ürün; yalnızca gerçek veri; dokununca Bugün). Kullanıcı balonu vurgu rengiyle dolu, Rebi balonu yüzey rengi ve ince
-çerçeveli; yanıt düz metin olarak okunaklı çizilir (maddeler asılı girinti, ":" ile biten satır alt başlık). Hata **sohbetin içine yazılmaz**: sakin bir
-kart ve "Tekrar dene" (çevrimdışı / sunucu / oturum / genel). Hak dolunca sohbetin altında bilgi kartı çıkar, giriş alanı kilitlenir. Rutin
-adımından "Rebi'ye sor" sohbeti hazır soruyla açar.
+Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır. Karşılamadan açılan oturumsuz sayfa (`/rebi`) ve oturumlu sekme
+(`/dashboard/chat`) aynı ekrandır; dil de aynıdır: **tema derin tonunda üst sahne + krem zemin**.
+
+- **Üst sahne (`ChatStage`).** Tam genişlikte, krem yazılı. Soldan sağa: geri düğmesi (yalnız oturumsuzken; karşılamaya döner),
+  Rebi imzası (marka karosu + Fraunces "Rebi"; **yanıt hazırlanırken karonun çevresinde iki halka sırayla yayılır**), kota hapı
+  ve "Temizle" (yalnız konuşma varken). Kabuğun ayrı logo/menü çubuğu yoktur (çift başlık olmasın); kabuk `/rebi`'de çubuk
+  çizmez, `/dashboard/chat`'te üst güvenli alanı sayfaya bırakır.
+- **Boşken büyük sahne:** altında Fraunces karşılama sorusu (`chat.emptyTitle`) ve oturumluysa "Rebi bugünü biliyor" çipleri
+  (krem çerçeveli, kaydırılır, dokununca Bugün). **İlk mesajla sahne ince çubuğa katlanır** (soru ve çipler kalkar), temizleyince
+  yeniden açılır. Sığmayan durumlarda (yükseklik < 700 dp, yazı > %130, klavye açık) sahne ince kalır; soru klavye yokken
+  kaydırılabilir gövdenin başında görünür (taşma testle korunur).
+- **Öneriler** etiketsizdir (başlık yok), sırayla süzülerek belirir; altında tek satırlık dürüstlük notu. Konuşma sürerken
+  giriş alanının üstünde yatay çip şeridi olarak kalır (yazarken ve beklerken gizli).
+- **Mesajlar:** kullanıcı balonu vurgu rengiyle dolu, Rebi balonu yüzey rengi, ince çerçeve ve çok hafif gölgeli; **ekran açıkken
+  eklenen mesajlar süzülerek gelir** (eskiler kaydırılınca yeniden oynamaz). Yanıt düz metin olarak okunaklı çizilir (maddeler
+  asılı girinti, ":" ile biten satır alt başlık). Hata **sohbetin içine yazılmaz**: sakin bir kart ve "Tekrar dene". Hak
+  dolunca sohbetin altında bilgi kartı çıkar, giriş alanı kilitlenir. Rutin adımından "Rebi'ye sor" sohbeti hazır soruyla açar.
+- **Yazı alanı** yüzen yuvarlak bir dock'tur (alan + gönder düğmesi tek yüzeyde; gönder düğmesi yazı varken yaylı büyür).
+  Klavye açılınca kota notu ve yapay zekâ beyanı gizlenir (pencere metrikleri dinlenir; `MediaQuery` gövdede klavyeyi vermez).
 
 ## Rutin sekmesi
 

@@ -59,7 +59,7 @@ class TodayHeader extends StatelessWidget {
           child: Stack(
             children: [
               // Marka imzası: çok silik, sabit "R" (karşılama ve girişteki monogramın sakin hâli).
-              const Positioned(right: -64, top: -18, child: _Watermark(size: 250)),
+              const Positioned(right: -64, top: -18, child: BrandWatermark(size: 250)),
               Padding(
                 // Hava özeti yoksa (rutinsiz karşılama) sahne biraz uzar: selamlama ile kart arasında nefes payı kalsın.
                 padding: EdgeInsets.fromLTRB(22, top + 14, 16, 22 + overlap + (plan != null && plan!.weather['temperature'] != null ? 0 : 10)),
@@ -147,27 +147,6 @@ class _WeatherPill extends StatelessWidget {
             const SizedBox(width: 8),
             Flexible(child: Text(text, style: tx(12.5, w: 6, c: Brand.cream.withValues(alpha: .92)), maxLines: 1, overflow: TextOverflow.ellipsis)),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Süsleme: sabit, çok silik "R"; ekran okuyuculardan gizli, tek katman saydamlık (üst üste binen çizgiler koyulaşmasın).
-class _Watermark extends StatelessWidget {
-  const _Watermark({required this.size});
-
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: IgnorePointer(
-        child: RepaintBoundary(
-          child: Opacity(
-            opacity: .055,
-            child: CustomPaint(size: Size.square(size), painter: BrandGlyphPainter(1, 1, color: Brand.cream)),
-          ),
         ),
       ),
     );

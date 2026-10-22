@@ -107,7 +107,7 @@ class _AppShellState extends State<AppShell> {
     final isAiSurface = isDashboard || path.startsWith('/rebi');
     final inApp = user != null && isDashboard;
     // Açılış ve giriş ekranları kendi üst çubuğunu çizer (hero zeminin üstünde).
-    final immersive = path == '/' || path == '/auth';
+    final immersive = path == '/' || path == '/auth' || path == '/rebi';
 
     // Sayfa zemini krem kâğıt (koyu modda koyu): durum çubuğu simgeleri buna göre. Sahnesi olan ekranlar (Bugün) kendi
     // `AnnotatedRegion`ıyla açık simge ister; en üstteki bölge geçerli olur.
@@ -130,9 +130,9 @@ class _AppShellState extends State<AppShell> {
                 // Krem kâğıt + temanın hafif yıkaması tek yerde çizilir: geri çubuğu ve sayfa aynı zeminde durur.
                 ? DecoratedBox(
                     decoration: BoxDecoration(gradient: theme.bg),
-                    // Bugün ve Rutin kökünde (boş durumda) üst sahne durum çubuğunun altına uzanır: güvenli alanı sayfa uygular.
+                    // Bugün, Rutin (boş durumda) ve Rebi sohbet kökünde üst sahne durum çubuğunun altına uzanır: güvenli alanı sayfa uygular.
                     child: SafeArea(
-                      top: path != AppTab.today.path && path != AppTab.routine.path,
+                      top: path != AppTab.today.path && path != AppTab.routine.path && path != AppTab.chat.path,
                       bottom: false,
                       child: Column(
                         children: [

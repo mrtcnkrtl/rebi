@@ -114,6 +114,29 @@ class BrandMark extends StatelessWidget {
   }
 }
 
+/// Süsleme: koyu sahnelerde marka imzası olan çok silik, sabit "R". Tek katman saydamlık (üst üste binen çizgiler
+/// koyulaşmasın); ekran okuyuculardan gizli, dokunmayı geçirir. [Positioned] içinde, sahnenin köşesine taşırarak kullanın.
+class BrandWatermark extends StatelessWidget {
+  const BrandWatermark({super.key, required this.size, this.opacity = .055});
+
+  final double size;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: RepaintBoundary(
+          child: Opacity(
+            opacity: opacity,
+            child: CustomPaint(size: Size.square(size), painter: const BrandGlyphPainter(1, 1, color: Color(0xFFF7F3EC))),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Yalnızca harfi ve parıltıyı çizer (karo olmadan): [BrandMark] içinde ve ikon üretiminde kullanılır.
 class BrandGlyphPainter extends CustomPainter {
   const BrandGlyphPainter(this.progress, this.sparkle, {this.color = Colors.white});

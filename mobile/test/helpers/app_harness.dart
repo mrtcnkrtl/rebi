@@ -126,6 +126,9 @@ class FakeBackend {
   /// Doluysa `GET /today/plan` bu tamamlanana kadar yanıt vermez (yükleniyor durumunu görmek için).
   Completer<void>? planGate;
 
+  /// Dolu ise sohbet yanıtı bu tamamlanana kadar bekler ("Rebi düşünüyor" durumunu denetlemek için).
+  Completer<void>? chatGate;
+
   /// Rafım (`products_out`): bitti işaretlenip yenisi alınmamış ürünler. `product_finished` / `product_restocked` kayıtlarıyla
   /// sunucudaki türetme kuralıyla güncel tutulur (aynı ad iki kez eklenmez, aldım listeden çıkarır).
   List<Map<String, dynamic>> productsOut = [];
@@ -333,6 +336,7 @@ class FakeBackend {
           case 'GET /chat/history':
             return ok({'messages': [], 'cursor': null});
           case 'POST /chat_general':
+            await chatGate?.future;
             if (chatFailTimes > 0) {
               chatFailTimes--;
               if (chatFailOffline) throw const SocketException('çevrimdışı');

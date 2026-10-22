@@ -112,7 +112,7 @@ void main() {
       backend.todayPlan = richPlan(backend);
       final h = await pumpApp(tester, location: '/dashboard/chat', backend: backend);
 
-      expect(find.text(tr('mobileChat.suggestionsTitle')), findsOneWidget);
+      expect(find.text(tr('mobileChat.suggestionsTitle')), findsNothing, reason: 'öneriler etiketsizdir (gereksiz başlık yok)');
       final uv = tr('mobileChat.suggestions.uvHigh', {'uv': 8});
       expect(find.text(uv), findsOneWidget);
       expect(find.text(tr('mobileChat.suggestions.makeupPending')), findsOneWidget);
