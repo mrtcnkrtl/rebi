@@ -27,6 +27,9 @@ Tek sunucu için hazır `docker-compose.yml` ve adım adım Türkçe rehber: **[
 - [ ] **Rate limit:** çok süreç için `REDIS_URL`; yoksa bellek içi (tek worker).
 - [ ] Süreç yöneticisi: `uvicorn main:app --host 0.0.0.0 --port 8000` veya benzeri; reverse proxy arkasında TLS.
 - [ ] Sağlık: `GET /health` (`jwt_auth`, `rate_limit_backend`, `supabase`).
+- [ ] **Token harcaması:** her Gemini çağrısı günlüğe `gemini_usage label=… in=… out=… cost_usd=…` satırı yazar
+      (`docker compose logs api | grep gemini_usage`). Etiket çağrı yerini gösterir (`chat_slots`, `chat_compose`,
+      `routine_polish`, `checkin_note` …). Zaman aşımı/hata: `gemini_error label=… kind=…`.
 
 ## 3. Frontend
 

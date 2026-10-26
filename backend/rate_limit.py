@@ -6,6 +6,7 @@ yoksa bellek içi kayan pencere (tek süreç için).
 from __future__ import annotations
 
 import os
+import threading
 import time
 from collections import defaultdict, deque
 from typing import Deque, Dict, Protocol
@@ -33,17 +34,19 @@ class SlidingWindowLimiter:
         self.max_requests = max(1, max_requests)
         self.window_seconds = float(window_seconds)
         self._hits: Dict[str, Deque[float]] = defaultdict(deque)
+        self._lock = threading.Lock()
 
     def allow(self, key: str) -> bool:
         now = time.monotonic()
-        dq = self._hits[key]
-        cutoff = now - self.window_seconds
-        while dq and dq[0] < cutoff:
-            dq.popleft()
-        if len(dq) >= self.max_requests:
-            return False
-        dq.append(now)
-        return True
+        with self._lock:
+            dq = self._hits[key]
+            cutoff = now - self.window_seconds
+            while dq and dq[0] < cutoff:
+                dq.popleft()
+            if len(dq) >= self.max_requests:
+                return False
+            dq.append(now)
+            return True
 
 
 class RedisFixedWindowLimiter:

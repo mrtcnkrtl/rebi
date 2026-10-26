@@ -16,13 +16,16 @@ import asyncio
 import json
 import random
 import re
+import time
 import unicodedata
 import difflib
+import hashlib
 from datetime import date
 from typing import Any, Dict, List, Literal, Optional, Tuple
-from google import genai
 from google.genai import types
 from config import GEMINI_API_KEY, GEMINI_MODEL, KNOWLEDGE_CATALOG_USER_ID, get_logger
+from async_bridge import run_sync
+from ai_client import REQUEST_TIMEOUT_SECONDS, get_client as get_gemini_client, record_error, record_usage
 from flow_engine import sanitize_routine_items_details
 from knowledge.query_expand import expand_skin_query_for_vector_search, strip_conversational_turkish
 
@@ -229,7 +232,7 @@ def _free_chat_medical_boundary_reply() -> str:
     )
 
 
-def _extract_chat_slots_llm(text: str) -> dict:
+async def _extract_chat_slots_llm(text: str) -> dict:
     """
     Lightweight NLU via LLM (no per-topic regex trees).
     Returns a dict with keys we can safely use to avoid re-asking obvious details and to pick ONE
@@ -241,7 +244,7 @@ def _extract_chat_slots_llm(text: str) -> dict:
     if len(t) < 4:
         return {}
     try:
-        resp = gemini_client.models.generate_content(
+        resp = await _llm("chat_slots",
             model=GEMINI_MODEL,
             contents=[
                 types.Content(
@@ -1581,6 +1584,85 @@ def _strict_no_evidence_questions(user_message: str, history: Optional[List[Any]
     return ["Tam olarak neyi çözmek istiyorsun: parlama mı, sivilce mi, kuruluk mu, leke mi?"]
 
 
+def _cache_pubmed_abstract(pmid: str, title: str, abstract: str) -> None:
+    """PubMed özetini iç bilgi tabanına yazar ve gömer (senkron DB + embedding; iş parçacığında çağrılır)."""
+    from knowledge.db import pg_conn
+    from knowledge.ingest import embed_texts_google, _pg_vector_literal
+
+    uid = (KNOWLEDGE_CATALOG_USER_ID or "").strip() or "00000000-0000-4000-8000-000000000001"
+    folder_slug = "external-pubmed"
+    folder_title = "External (PubMed) cache"
+    source_url = f"pubmed:{pmid}" if pmid else "pubmed:" + hashlib.sha1((title + abstract).encode("utf-8")).hexdigest()[:16]
+    with pg_conn(autocommit=True) as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                insert into public.knowledge_folders (user_id, slug, title)
+                values (%s::uuid, %s, %s)
+                on conflict (user_id, slug) do update set title = excluded.title
+                returning id
+                """,
+                (uid, folder_slug, folder_title),
+                prepare=False,
+            )
+            folder_id = cur.fetchone()[0]
+            cur.execute(
+                """
+                select id from public.knowledge_documents
+                where user_id = %s::uuid and folder_id = %s::uuid and source_url = %s
+                limit 1
+                """,
+                (uid, folder_id, source_url),
+                prepare=False,
+            )
+            row = cur.fetchone()
+            if row:
+                doc_id = row[0]
+            else:
+                cur.execute(
+                    """
+                    insert into public.knowledge_documents
+                      (user_id, folder_id, source_type, title, source_url, raw_text, tags)
+                    values (%s::uuid, %s::uuid, %s, %s, %s, %s, %s::jsonb)
+                    returning id
+                    """,
+                    (
+                        uid,
+                        folder_id,
+                        "pubmed",
+                        title or "PubMed abstract",
+                        source_url,
+                        abstract,
+                        json.dumps(["pubmed", "external", "auto"]),
+                    ),
+                    prepare=False,
+                )
+                doc_id = cur.fetchone()[0]
+            # upsert chunk 0
+            cur.execute(
+                """
+                insert into public.knowledge_chunks
+                  (user_id, folder_id, document_id, chunk_index, chunk_text, embed_model, embed_ok)
+                values (%s::uuid, %s::uuid, %s::uuid, 0, %s, %s, false)
+                on conflict (document_id, chunk_index) do update
+                  set chunk_text = excluded.chunk_text
+                """,
+                (uid, folder_id, doc_id, abstract[:7000], "gemini-embedding-001"),
+                prepare=False,
+            )
+            # embed and mark ok
+            vec = embed_texts_google([abstract[:3500]], model="gemini-embedding-001", output_dimensionality=768)[0]
+            cur.execute(
+                """
+                update public.knowledge_chunks
+                set embedding = %s::vector, embed_ok = true, embed_error = null
+                where document_id = %s::uuid and chunk_index = 0
+                """,
+                (_pg_vector_literal(vec), doc_id),
+                prepare=False,
+            )
+
+
 async def _strict_no_evidence_reply(user_message: str, history: Optional[List[Any]] = None) -> str:
     """
     Evidence-first (strict): no internal evidence => no generic guidance.
@@ -1611,7 +1693,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
         # If Turkish query yields nothing, try a compact English keyword query via LLM (no user-facing labels).
         if not arts and gemini_client:
             try:
-                response = gemini_client.models.generate_content(
+                response = await _llm("pubmed_keywords",
                     model=GEMINI_MODEL,
                     contents=[
                         types.Content(
@@ -1648,88 +1730,14 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
             if abstract:
                 # ingest into internal knowledge store for reuse
                 try:
-                    from knowledge.db import pg_conn
-                    from knowledge.ingest import embed_texts_google, _pg_vector_literal
-
-                    uid = (KNOWLEDGE_CATALOG_USER_ID or "").strip() or "00000000-0000-4000-8000-000000000001"
-                    folder_slug = "external-pubmed"
-                    folder_title = "External (PubMed) cache"
-                    source_url = f"pubmed:{pmid}" if pmid else f"pubmed:{hash(title + abstract)}"
-                    with pg_conn(autocommit=True) as conn:
-                        with conn.cursor() as cur:
-                            cur.execute(
-                                """
-                                insert into public.knowledge_folders (user_id, slug, title)
-                                values (%s::uuid, %s, %s)
-                                on conflict (user_id, slug) do update set title = excluded.title
-                                returning id
-                                """,
-                                (uid, folder_slug, folder_title),
-                                prepare=False,
-                            )
-                            folder_id = cur.fetchone()[0]
-                            cur.execute(
-                                """
-                                select id from public.knowledge_documents
-                                where user_id = %s::uuid and folder_id = %s::uuid and source_url = %s
-                                limit 1
-                                """,
-                                (uid, folder_id, source_url),
-                                prepare=False,
-                            )
-                            row = cur.fetchone()
-                            if row:
-                                doc_id = row[0]
-                            else:
-                                cur.execute(
-                                    """
-                                    insert into public.knowledge_documents
-                                      (user_id, folder_id, source_type, title, source_url, raw_text, tags)
-                                    values (%s::uuid, %s::uuid, %s, %s, %s, %s, %s::jsonb)
-                                    returning id
-                                    """,
-                                    (
-                                        uid,
-                                        folder_id,
-                                        "pubmed",
-                                        title or "PubMed abstract",
-                                        source_url,
-                                        abstract,
-                                        json.dumps(["pubmed", "external", "auto"]),
-                                    ),
-                                    prepare=False,
-                                )
-                                doc_id = cur.fetchone()[0]
-                            # upsert chunk 0
-                            cur.execute(
-                                """
-                                insert into public.knowledge_chunks
-                                  (user_id, folder_id, document_id, chunk_index, chunk_text, embed_model, embed_ok)
-                                values (%s::uuid, %s::uuid, %s::uuid, 0, %s, %s, false)
-                                on conflict (document_id, chunk_index) do update
-                                  set chunk_text = excluded.chunk_text
-                                """,
-                                (uid, folder_id, doc_id, abstract[:7000], "gemini-embedding-001"),
-                                prepare=False,
-                            )
-                            # embed and mark ok
-                            vec = embed_texts_google([abstract[:3500]], model="gemini-embedding-001", output_dimensionality=768)[0]
-                            cur.execute(
-                                """
-                                update public.knowledge_chunks
-                                set embedding = %s::vector, embed_ok = true, embed_error = null
-                                where document_id = %s::uuid and chunk_index = 0
-                                """,
-                                (_pg_vector_literal(vec), doc_id),
-                                prepare=False,
-                            )
+                    await run_sync(_cache_pubmed_abstract, pmid, title, abstract)
                 except Exception:
                     pass
 
                 # respond: summarize only the abstract (no links, no labels)
                 if gemini_client:
                     try:
-                        response = gemini_client.models.generate_content(
+                        response = await _llm("strict_abstract",
                             model=GEMINI_MODEL,
                             contents=[
                                 types.Content(
@@ -1816,7 +1824,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     stated_zone: str = ""
     if gemini_client:
         try:
-            resp = gemini_client.models.generate_content(
+            resp = await _llm("strict_reply_a",
                 model=GEMINI_MODEL,
                 contents=[
                     types.Content(
@@ -1860,7 +1868,7 @@ async def _strict_no_evidence_reply(user_message: str, history: Optional[List[An
     llm_text = ""
     if gemini_client:
         try:
-            response = gemini_client.models.generate_content(
+            response = await _llm("strict_reply_b",
                 model=GEMINI_MODEL,
                 contents=[
                     types.Content(
@@ -2361,7 +2369,7 @@ async def _free_chat_compact_guidance_from_model(
         return None
     # Yazım/typo toleransı: modele giden payload'da kritik terimleri düzelt
     um_raw = (user_message or "").strip()
-    um = _free_chat_fuzzy_correct_terms(um_raw, user_id=user_id) or um_raw
+    um = (await run_sync(_free_chat_fuzzy_correct_terms, um_raw, user_id=user_id)) or um_raw
     if len(um) > 900:
         um = um[:900].rsplit(" ", 1)[0]
     blob = _free_chat_recent_turns_blob(history, max_len=320) if history else ""
@@ -2490,7 +2498,7 @@ async def _free_chat_compact_guidance_from_model(
         f"{_free_chat_soft_context_notes(user_id, history)}"
     )
     try:
-        response = gemini_client.models.generate_content(
+        response = await _llm("free_chat_guidance",
             model=GEMINI_MODEL,
             contents=[types.Content(role="user", parts=[types.Part.from_text(text=payload)])],
             config=_gen_config(
@@ -2524,7 +2532,10 @@ async def _free_chat_compact_guidance_without_rag(
     Pasaj yok; cilt/ürün sorusu: önce hafif model özeti, kısa takipte ince bağlam; yedekte tek şablon + isteğe bağlı literatür başlıkları.
     """
     um = (user_message or "").strip()
-    if not um or not _free_chat_allows_general_guidance_without_rag(um, history, user_id=user_id):
+    allowed = bool(um) and await run_sync(
+        _free_chat_allows_general_guidance_without_rag, um, history, user_id=user_id
+    )
+    if not allowed:
         return None
 
     from knowledge.free_literature import (
@@ -2584,13 +2595,29 @@ def _gemini_response_text(response) -> str:
         return ""
 
 
+# Paylaşılan istemci: zaman aşımı ve token kullanım günlüğü ai_client'ta (testler bu değişkeni değiştirebilir).
 gemini_client = None
 if GEMINI_API_KEY:
     try:
-        gemini_client = genai.Client(api_key=GEMINI_API_KEY)
-        log.info("Gemini client hazır")
+        gemini_client = get_gemini_client()
+        log.info("Gemini client hazır (zaman aşımı %.0f sn)", REQUEST_TIMEOUT_SECONDS)
     except Exception as e:
         log.error("Gemini client hatası: %s", e)
+
+
+async def _llm(label: str, **kwargs):
+    """
+    Asenkron Gemini üretim çağrısı: olay döngüsünü bloklamaz, zaman aşımına uğrayabilir ve her çağrının
+    token kullanımı `gemini_usage` satırı olarak günlüğe yazılır. `label` günlükte çağrı yerini gösterir.
+    """
+    started = time.perf_counter()
+    try:
+        response = await gemini_client.aio.models.generate_content(**kwargs)
+    except Exception as e:
+        record_error(label, e, time.perf_counter() - started)
+        raise
+    record_usage(label, kwargs.get("model"), response, time.perf_counter() - started)
+    return response
 
 
 async def polish_routine_with_ai(
@@ -2683,7 +2710,7 @@ SADECE JSON array döndür (sadece detail güncellenebilir, action/time/category
         )
 
     try:
-        response = gemini_client.models.generate_content(
+        response = await _llm("routine_polish",
             model=GEMINI_MODEL,
             contents=prompt,
             config=_gen_config(
@@ -2760,7 +2787,7 @@ async def translate_routine_items(
     )
 
     try:
-        response = gemini_client.models.generate_content(
+        response = await _llm("routine_translate",
             model=GEMINI_MODEL,
             contents=prompt,
             config=_gen_config(
@@ -2817,7 +2844,7 @@ async def assessment_chat(
                     "reply": _free_chat_data_provenance_reply(user_message),
                     "is_complete": False,
                 }
-            fb = _build_free_chat_rag_context(user_id, user_message, history)
+            fb = await run_sync(_build_free_chat_rag_context, user_id, user_message, history)
             if _free_chat_has_usable_rag(fb):
                 return {
                     "reply": (
@@ -2922,7 +2949,7 @@ Cevabının sonuna ekle:
     contents.append(types.Content(role="user", parts=[types.Part.from_text(text=user_message)]))
 
     try:
-        response = gemini_client.models.generate_content(
+        response = await _llm("assessment_chat",
             model=GEMINI_MODEL,
             contents=contents,
             config=_gen_config(
@@ -3098,7 +3125,7 @@ async def _chat_general_compose_with_evidence(
     last_err: Optional[Exception] = None
     for attempt in range(3):
         try:
-            response = gemini_client.models.generate_content(
+            response = await _llm("chat_compose",
                 model=GEMINI_MODEL,
                 contents=contents,
                 config=_gen_config(
@@ -3143,9 +3170,11 @@ async def chat_general(
     user_id: Optional[str] = None,
     profile_hint: Optional[dict] = None,
     accept_lang: str = "tr",
+    evidence_out: Optional[dict] = None,
 ) -> str:
     """
     Rebi Chat (genel): rutin motorundan ayrı, konuşma dili odaklı Q/A.
+    `evidence_out` verilirse kurulan kanıt paketi içine yazılır (çağıran metaveriyi yeniden hesaplamasın).
     - RAG varsa: kısa bağlamla cevap
     - RAG yoksa: ingredient_db/entity tabanlı deterministik kısa cevap
     """
@@ -3236,7 +3265,7 @@ async def chat_general(
         )
 
     # Yazım toleransı + konu yakalama (user_id ile dinamik vocab)
-    um2 = _free_chat_fuzzy_correct_terms(um, user_id=user_id) or um
+    um2 = (await run_sync(_free_chat_fuzzy_correct_terms, um, user_id=user_id)) or um
 
     # INCI listesi hızlı raporu
     inci = _free_chat_inci_report(um2, ctx=ctx)
@@ -3252,7 +3281,7 @@ async def chat_general(
                 [str(m.get("content") or "") for m in hist[-6:] if isinstance(m, dict) and m.get("role") == "user"]
                 + [um2]
             ).strip()
-            slots_router = _extract_chat_slots_llm(recent_user) or {}
+            slots_router = (await _extract_chat_slots_llm(recent_user)) or {}
     except Exception:
         slots_router = {}
 
@@ -3338,7 +3367,11 @@ async def chat_general(
     qpack = _build_query_pack(um_retrieval, slots_router or {}, tags)
 
     # Evidence-first RAG bundle (entity + vector + score)
-    ev = _build_free_chat_evidence_bundle(user_id, um_retrieval, hist, extra_queries=qpack[1:])
+    ev = await run_sync(
+        _build_free_chat_evidence_bundle, user_id, um_retrieval, hist, extra_queries=qpack[1:]
+    )
+    if evidence_out is not None and isinstance(ev, dict):
+        evidence_out.update(ev)
     kb = str((ev or {}).get("context_text") or "")
     ev_score = float((ev or {}).get("score") or 0.0)
     ev_ok = bool((ev or {}).get("ok"))
@@ -3504,7 +3537,7 @@ async def _free_chat(
     if _free_chat_requests_action_plan(um):
         return redirect_app
 
-    ev = _build_free_chat_evidence_bundle(user_id, um, hist)
+    ev = await run_sync(_build_free_chat_evidence_bundle, user_id, um, hist)
     kb = str((ev or {}).get("context_text") or "")
     ev_score = float((ev or {}).get("score") or 0.0)
     ev_ok = bool((ev or {}).get("ok"))
@@ -3561,7 +3594,7 @@ async def _free_chat(
         }
 
     try:
-        response = gemini_client.models.generate_content(
+        response = await _llm("free_chat",
             model=GEMINI_MODEL,
             contents=contents,
             config=_gen_config(
@@ -3666,38 +3699,43 @@ async def chat_with_knowledge(
                     tokens.append(t)
                     seen.add(t)
 
-            # Query entity list for a few tokens; pick the best matched entity names.
-            candidate_entities: list[str] = []
-            for t in tokens[:6]:
-                ents = list_entities(user_id=user_id, folder_slug=folder_slug, q=t, k=5) or []
-                for e in ents[:3]:
-                    name = (e.get("name") or "").strip()
-                    if not name:
-                        continue
-                    name_l = name.lower()
-                    if name_l == t or t in name_l:
-                        candidate_entities.append(name)
-                if len(candidate_entities) >= 4:
-                    break
+            def _lookup_entity_chunks() -> list[str]:
+                # DB okumaları senkron: iş parçacığında çalışır, olay döngüsünü bloklamaz.
+                # Query entity list for a few tokens; pick the best matched entity names.
+                candidate_entities: list[str] = []
+                for t in tokens[:6]:
+                    ents = list_entities(user_id=user_id, folder_slug=folder_slug, q=t, k=5) or []
+                    for e in ents[:3]:
+                        name = (e.get("name") or "").strip()
+                        if not name:
+                            continue
+                        name_l = name.lower()
+                        if name_l == t or t in name_l:
+                            candidate_entities.append(name)
+                    if len(candidate_entities) >= 4:
+                        break
 
-            # Fetch chunks for top entities.
-            chunks_texts: list[str] = []
-            for ename in candidate_entities[:2]:
-                chunks = find_chunks_by_entity(
-                    user_id=user_id,
-                    folder_slug=folder_slug,
-                    q=ename,
-                    k=6,
-                )
-                if chunks:
-                    used_entity_names.append(ename)
-                for c in chunks[:4]:
-                    txt = (c.chunk_text or "").strip()
-                    if txt:
-                        chunks_texts.append(txt)
-                if len(chunks_texts) >= 6:
-                    break
+                # Fetch chunks for top entities.
+                chunks_texts: list[str] = []
+                for ename in candidate_entities[:2]:
+                    chunks = find_chunks_by_entity(
+                        user_id=user_id,
+                        folder_slug=folder_slug,
+                        q=ename,
+                        k=6,
+                    )
+                    if chunks:
+                        used_entity_names.append(ename)
+                    for c in chunks[:4]:
+                        txt = (c.chunk_text or "").strip()
+                        if txt:
+                            chunks_texts.append(txt)
+                    if len(chunks_texts) >= 6:
+                        break
 
+                return chunks_texts
+
+            chunks_texts = await run_sync(_lookup_entity_chunks)
             if chunks_texts:
                 joined = "\n\n---\n\n".join(chunks_texts)
                 entity_context = joined[:2200]
@@ -3748,7 +3786,7 @@ Kullanıcı sorusu: {user_message}
 Bu soruyu bilgi tabanındaki verilere dayanarak yanıtla. Emin olmadığın konularda bunu belirt. Türkçe yanıt ver."""
 
     try:
-        response = gemini_client.models.generate_content(
+        response = await _llm("concern_chat",
             model=GEMINI_MODEL,
             contents=prompt,
             config=_gen_config(
@@ -3815,7 +3853,7 @@ Kullanıcıya KISA (2-3 cümle max) bir not yaz:
 Türkçe, sıcak, samimi ol. Bilgi yığını yapma."""
 
     try:
-        response = gemini_client.models.generate_content(
+        response = await _llm("checkin_note",
             model=GEMINI_MODEL,
             contents=prompt,
             config=_gen_config(

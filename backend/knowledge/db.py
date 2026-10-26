@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import threading
 from contextlib import contextmanager
 from urllib.parse import quote_plus
 
@@ -53,13 +54,31 @@ def postgres_dsn() -> str:
     return dsn
 
 
+# Varsayılan, API isteği yolunda ulaşılamayan bir veritabanı iş parçacığını dakikalarca tutmasın diye
+# kısa. Uzun classify/ingest koşuları POSTGRES_CONNECT_TIMEOUT ile (en fazla 900 sn) yükseltir.
+_DEFAULT_CONNECT_TIMEOUT_SEC = 20
+
+
 def _connect_timeout_sec() -> int:
-    raw = (os.getenv("POSTGRES_CONNECT_TIMEOUT") or "240").strip() or "240"
+    raw = (os.getenv("POSTGRES_CONNECT_TIMEOUT") or str(_DEFAULT_CONNECT_TIMEOUT_SEC)).strip()
     try:
         v = int(raw)
     except ValueError:
-        v = 240
-    return max(15, min(v, 900))
+        v = _DEFAULT_CONNECT_TIMEOUT_SEC
+    return max(5, min(v, 900))
+
+
+def _max_concurrent_connections() -> int:
+    try:
+        return max(1, int(os.getenv("POSTGRES_MAX_CONCURRENT") or 16))
+    except ValueError:
+        return 16
+
+
+# Her pg_conn yeni bir bağlantı açar (havuz yok). Eşzamanlı sohbetler iş parçacığı havuzundan aynı anda
+# onlarca bağlantı açıp Supabase'in bağlantı sınırını (doğrudan ~60, pooler ~200) zorlamasın diye
+# aynı anda açık bağlantı sayısı sınırlanır; fazlası sırada bekler.
+_conn_slots = threading.BoundedSemaphore(_max_concurrent_connections())
 
 
 @contextmanager
@@ -71,17 +90,22 @@ def pg_conn(autocommit: bool = True):
     # Supabase pooler (PgBouncer) can break psycopg prepared statement caching.
     # Disable automatic prepared statements; also deallocate any server-side statements
     # that might remain from a reused pooled connection.
-    with psycopg.connect(
-        postgres_dsn(),
-        autocommit=autocommit,
-        prepare_threshold=0,
-        connect_timeout=_connect_timeout_sec(),
-    ) as conn:
-        try:
-            # Pooler can reuse server connections that already have prepared statements.
-            # Clearing is safe and helps avoid name collisions.
-            conn.execute("DEALLOCATE ALL")
-        except Exception:
-            pass
-        yield conn
+    if not _conn_slots.acquire(timeout=_connect_timeout_sec()):
+        raise RuntimeError("Postgres bağlantı sırası dolu (zaman aşımı)")
+    try:
+        with psycopg.connect(
+            postgres_dsn(),
+            autocommit=autocommit,
+            prepare_threshold=0,
+            connect_timeout=_connect_timeout_sec(),
+        ) as conn:
+            try:
+                # Pooler can reuse server connections that already have prepared statements.
+                # Clearing is safe and helps avoid name collisions.
+                conn.execute("DEALLOCATE ALL")
+            except Exception:
+                pass
+            yield conn
+    finally:
+        _conn_slots.release()
 

@@ -3,10 +3,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
+from ai_client import record_embedding, record_error
 from config import GEMINI_API_KEY, get_logger
 from knowledge.db import resolve_postgres_dsn
 
@@ -147,12 +149,14 @@ def _normalize_ingest_paths(paths: Iterable[Path]) -> list[Path]:
     return out
 
 
-def _ensure_gemini_client():
-    if not GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY is missing")
-    from google import genai  # type: ignore
+def _ensure_gemini_client(batch: bool = False):
+    """Paylaşılan Gemini istemcisi (zaman aşımlı); toplu ingest için uzun zaman aşımlı olanı."""
+    from ai_client import get_client
 
-    return genai.Client(api_key=GEMINI_API_KEY)
+    client = get_client(batch=batch)
+    if client is None:
+        raise RuntimeError("GEMINI_API_KEY is missing")
+    return client
 
 
 def embed_texts_google(
@@ -164,7 +168,9 @@ def embed_texts_google(
     Returns a list of embedding vectors (float lists).
     Uses google-genai client.
     """
-    client = _ensure_gemini_client()
+    # Çok metinli çağrılar ingest betiklerindendir: uzun zaman aşımı; tek sorgu (sohbet) kısa zaman aşımı alır.
+    client = _ensure_gemini_client(batch=len(texts) > 8)
+    started = time.perf_counter()
     # google-genai supports embed_content; API responses vary slightly by version
     try:
         from google.genai import types  # type: ignore
@@ -174,12 +180,17 @@ def embed_texts_google(
             contents=texts,
             config=types.EmbedContentConfig(output_dimensionality=int(output_dimensionality)),
         )
-    except Exception:
+    except Exception as e:
+        # Zaman aşımında ikinci denemeyle bekleme iki katına çıkmasın.
+        if "timeout" in type(e).__name__.lower() or "timed out" in str(e).lower():
+            record_error("embed", e, time.perf_counter() - started)
+            raise
         # fallback for older client versions without config typing
         resp = client.models.embed_content(
             model=model,
             contents=texts,
         )
+    record_embedding("embed", texts, time.perf_counter() - started)
     # Normalize response into list[list[float]] across google-genai versions.
     def _values_from_item(item):
         if item is None:

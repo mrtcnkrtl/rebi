@@ -243,7 +243,10 @@ Sohbet geçmişi sunucuda tutulur; web ve mobil aynı konuşmayı görür.
 
 - `POST /chat_general` — `{ user_id, message, history, utc_offset_minutes }`. `utc_offset_minutes` (−840…840) verilirse sohbet kullanıcının yerel gününün özetini (hava, su, makyaj ve temizleme yöntemi, beslenme, rutin) yanıt için kullanır; özet kısa tutulur, ürün adı içermez ve yalnızca soruyla ilgiliyse kullanılır. Yanıt: `reply`, kota alanları
   (`usage_kind`, `usage_remaining`, `usage_limit`, `chat_quota_exceeded`). Başarılı her
-  tur sunucuda saklanır.
+  tur sunucuda saklanır. Girdi sınırları (aşan kısım reddedilmez, sessizce kırpılır):
+  `message` en fazla 4000 karakter; `history` son 20 tur, her turun metni en fazla 1500
+  karakter. Sunucu zaten yalnızca son birkaç turu kullanır; istemci tüm geçmişi göndermek
+  zorunda değildir.
 - `GET /chat/history?user_id=...&limit=50&after_seq=&surface=general` — eskiden yeniye
   mesajlar ve `cursor`. `after_seq` verilirse yalnızca o imleçten sonrakiler gelir;
   cihaz `cursor` değerini saklayıp her açılışta tüm geçmişi indirmemelidir.

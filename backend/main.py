@@ -16,9 +16,12 @@ import re
 import secrets
 import time
 import uuid
+from contextlib import nullcontext
 from datetime import date, datetime, timedelta, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
+from supabase_client import get_shared_client
+from async_bridge import configure_threadpool, run_async, run_sync
 from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather, fetch_weather_live
 from today_plan import (
     CATEGORY_NAMES,
@@ -79,15 +82,12 @@ from auth_deps import (
 from free_chat_quota import (
     free_chat_limit,
     free_chat_remaining,
-    free_chat_quota_exceeded,
-    free_chat_record_successful_turn,
 )
 from plus_chat_quota import (
     plus_chat_monthly_cap,
-    plus_chat_quota_exceeded,
-    plus_chat_record_successful_turn,
     plus_chat_remaining,
 )
+from chat_quota import reserve_chat_turn
 from demo_users import (
     demo_checkin_already_today,
     demo_checkin_mark,
@@ -198,6 +198,11 @@ _DB_SCHEMA_STATUS = "unknown"
 
 
 @app.on_event("startup")
+async def _configure_threadpool() -> None:
+    await configure_threadpool()
+
+
+@app.on_event("startup")
 def _bootstrap_database_schema() -> None:
     """Supabase Postgres şifresi/URI varsa supabase/migrations/*.sql dosyalarını uygular."""
     global _DB_SCHEMA_STATUS
@@ -215,10 +220,8 @@ def _bootstrap_database_schema() -> None:
 
 
 def get_supabase():
-    if not SUPABASE_URL:
-        return None
-    from supabase import create_client
-    return create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+    """Paylaşılan istemci (bağlantı havuzu yeniden kullanılır); yapılandırılmamışsa None."""
+    return get_shared_client()
 
 def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -671,6 +674,14 @@ async def _weather_from_profile(supabase, user_id: str) -> Optional[dict]:
     İstemci konum göndermediğinde profildeki son bilinen koordinatı kullan.
     Konum izni yoksa hava durumu çekilmez.
     """
+    coords = await run_sync(_profile_coords, supabase, user_id)
+    if coords is None:
+        return None
+    return await _weather_for_coords(*coords)
+
+
+def _profile_coords(supabase, user_id: str) -> Optional[tuple]:
+    """Konum izni verilmişse profildeki son bilinen (enlem, boylam); aksi halde None. Senkron DB okuması."""
     if not _privacy_permission_granted(supabase, user_id, "location"):
         return None
     try:
@@ -688,7 +699,7 @@ async def _weather_from_profile(supabase, user_id: str) -> Optional[dict]:
     lat, lon = row.get("location_lat"), row.get("location_lon")
     if lat is None or lon is None:
         return None
-    return await _weather_for_coords(lat, lon)
+    return lat, lon
 
 
 async def _chat_today_summary(supabase, user_id: str, utc_offset_minutes: Optional[int]) -> str:
@@ -700,16 +711,22 @@ async def _chat_today_summary(supabase, user_id: str, utc_offset_minutes: Option
         return ""
     try:
         today = str(_local_today(utc_offset_minutes))
-        aggregated = _aggregate_daily_events(_load_daily_events(supabase, user_id, today))
-        weather = aggregated.get("weather") or await _weather_from_profile(supabase, user_id)
-        settings = _load_reminder_settings(supabase, user_id)
-        return build_today_summary(
-            aggregated,
-            weather,
-            _checkin_done_today(supabase, user_id, today),
-            settings["water_target_ml"],
-            _products_out(supabase, user_id, date.fromisoformat(today)),
+        aggregated = await run_sync(
+            lambda: _aggregate_daily_events(_load_daily_events(supabase, user_id, today))
         )
+        weather = aggregated.get("weather") or await _weather_from_profile(supabase, user_id)
+
+        def _rest():
+            settings = _load_reminder_settings(supabase, user_id)
+            return build_today_summary(
+                aggregated,
+                weather,
+                _checkin_done_today(supabase, user_id, today),
+                settings["water_target_ml"],
+                _products_out(supabase, user_id, date.fromisoformat(today)),
+            )
+
+        return await run_sync(_rest)
     except Exception as e:
         log.error("Sohbet günlük özeti hazırlanamadı: %s", type(e).__name__)
         return ""
@@ -910,11 +927,59 @@ class RoutineResponse(BaseModel):
     ai_polish_note: Optional[str] = None
 
 
+# Girdi sınırları: istemci ne gönderirse göndersin modele giden token sayısı sınırlıdır. Aşan kısım reddedilmez,
+# sessizce kırpılır (meşru kullanım bu sınırların çok altındadır; INCI listesi yapıştırmak ~1-2 bin karakterdir).
+# Kırpma olmazsa tek bir istek (nginx sınırı 12 MB) milyonlarca giriş token'ı faturalandırabilir.
+CHAT_MESSAGE_MAX_CHARS = 4000
+CHAT_HISTORY_MAX_TURNS = 20
+# Değerlendirme sohbetinde "bilgi toplandı mı" sezgisi tüm geçmişi tarar (model yalnızca son 16 turu görür);
+# erken verilen cevaplar (hamilelik, alerji…) kaybolmasın diye bu uçta sınır daha geniştir. Maliyeti artırmaz.
+ASSESSMENT_HISTORY_MAX_TURNS = 40
+CHAT_HISTORY_ITEM_MAX_CHARS = 1500
+CHAT_PROFILE_MAX_KEYS = 80
+CHAT_PROFILE_VALUE_MAX_CHARS = 1000
+TRANSLATE_MAX_ITEMS = 40
+TRANSLATE_ITEM_FIELD_MAX_CHARS = 1000
+
+
+def _clip_text(value, limit: int):
+    return value[:limit] if isinstance(value, str) and len(value) > limit else value
+
+
+def _clip_history(history, max_turns: int = CHAT_HISTORY_MAX_TURNS):
+    """Son N tur; her turun metni sınırlı. Sözlük olmayan öğeler atılır (sunucu `.get` ile okur)."""
+    if not history:
+        return history
+    clipped = []
+    for item in [m for m in history if isinstance(m, dict)][-max_turns:]:
+        content = item.get("content")
+        if isinstance(content, str) and len(content) > CHAT_HISTORY_ITEM_MAX_CHARS:
+            item = {**item, "content": content[:CHAT_HISTORY_ITEM_MAX_CHARS]}
+        clipped.append(item)
+    return clipped
+
+
+def _clip_profile(profile):
+    """Serbest biçimli profil sözlüğü: anahtar sayısı ve metin değerleri sınırlı."""
+    if not isinstance(profile, dict):
+        return profile
+    return {
+        k: _clip_text(v, CHAT_PROFILE_VALUE_MAX_CHARS)
+        for k, v in list(profile.items())[:CHAT_PROFILE_MAX_KEYS]
+    }
+
+
 class ChatRequest(BaseModel):
     user_id: str
     message: str
     concern: Optional[str] = "acne"
     history: Optional[list[dict]] = None
+
+    @model_validator(mode="after")
+    def _clip_inputs(self):
+        self.message = _clip_text(self.message, CHAT_MESSAGE_MAX_CHARS)
+        self.history = _clip_history(self.history)
+        return self
 
 
 class ChatResponse(BaseModel):
@@ -927,6 +992,13 @@ class AssessmentChatRequest(BaseModel):
     message: str
     history: Optional[list] = None
     user_profile: Optional[dict] = None
+
+    @model_validator(mode="after")
+    def _clip_inputs(self):
+        self.message = _clip_text(self.message, CHAT_MESSAGE_MAX_CHARS)
+        self.history = _clip_history(self.history, ASSESSMENT_HISTORY_MAX_TURNS)
+        self.user_profile = _clip_profile(self.user_profile)
+        return self
 
 
 class AssessmentChatResponse(BaseModel):
@@ -948,6 +1020,12 @@ class ChatGeneralRequest(BaseModel):
     history: Optional[list] = None
     # İstemcinin UTC farkı (dakika): sohbetin bildiği "bugün" kullanıcının yerel günüdür.
     utc_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
+
+    @model_validator(mode="after")
+    def _clip_inputs(self):
+        self.message = _clip_text(self.message, CHAT_MESSAGE_MAX_CHARS)
+        self.history = _clip_history(self.history)
+        return self
 
 
 class ChatGeneralResponse(BaseModel):
@@ -1000,6 +1078,29 @@ class ChatHistoryResponse(BaseModel):
     synced: bool
 
 
+# Model/ağ hatasında kullanıcıya dönen sabit metinler: bu turlar kullanıcının kota hakkından düşmez.
+_ASSESSMENT_ERROR_PREFIXES = (
+    "Bir hata oluştu",
+    "Bağlantı kurulamadı",
+    "Şu an güvenli bir yanıt üretilemedi",
+    "Şu an kısa bir yanıt üretilemedi",
+    "Üzgünüm, şu anda cevap veremiyorum",
+    "Şu an çok yoğunuz",
+    "İşlem tamamlanamadı",
+)
+_GENERAL_ERROR_PREFIXES = (
+    "Bir hata oluştu",
+    "Bağlantı kurulamadı",
+    "Şu an çok yoğunuz",
+    "İşlem tamamlanamadı",
+)
+
+
+def _reply_looks_failed(reply: str, prefixes: tuple) -> bool:
+    text = (reply or "").strip()
+    return not text or text.startswith(prefixes)
+
+
 class ChatUsageResponse(BaseModel):
     """Rebi AI sohbet kotası özeti (üst sayaç)."""
 
@@ -1027,6 +1128,14 @@ def _chat_usage_row(request: Request, user_id: str) -> tuple[Optional[str], Opti
 class TranslateRoutineItemsRequest(BaseModel):
     user_id: str
     routine_items: list[dict] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _clip_inputs(self):
+        self.routine_items = [
+            {k: _clip_text(v, TRANSLATE_ITEM_FIELD_MAX_CHARS) for k, v in item.items()}
+            for item in self.routine_items[:TRANSLATE_MAX_ITEMS]
+        ]
+        return self
 
 
 class DailyCheckinRequest(BaseModel):
@@ -1382,7 +1491,7 @@ async def root():
 
 
 @app.get("/knowledge/entity_search", response_model=KnowledgeEntitySearchResponse, tags=["meta"])
-async def knowledge_entity_search(
+def knowledge_entity_search(
     request: Request,
     user_id: str,
     folder: str = "data-pdfs",
@@ -1415,7 +1524,7 @@ async def knowledge_entity_search(
     tags=["meta"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_INTRO_SEEN))],
 )
-async def intro_seen_get(request: Request):
+def intro_seen_get(request: Request):
     """Bu istemci IP’si giriş sunumunu daha önce bitirdi mi? Ham IP saklanmaz."""
     from intro_seen import intro_already_seen
 
@@ -1427,7 +1536,7 @@ async def intro_seen_get(request: Request):
     tags=["meta"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_INTRO_SEEN))],
 )
-async def intro_seen_post(request: Request):
+def intro_seen_post(request: Request):
     from intro_seen import mark_intro_seen
 
     mark_intro_seen(get_client_ip(request))
@@ -1464,7 +1573,7 @@ async def health():
     tags=["tracking"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_TRACKING_INGEST))],
 )
-async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestRequest):
+def daily_tracking_ingest(request: Request, req: DailyTrackingIngestRequest):
     """
     En basit ama sorunsuz: gün içinde event ingest et.
     Supabase varsa daily_events tablosuna yazar; yoksa bellek içi saklar.
@@ -1514,7 +1623,7 @@ async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestReques
             lon = (req.payload or {}).get("lon")
             # Hava servisi yanıt vermezse olay yazılmaz: varsayılan değer gerçek hava gibi saklanmasın.
             weather_data = (
-                await _weather_for_coords(lat, lon) if lat is not None and lon is not None else None
+                run_async(_weather_for_coords, lat, lon) if lat is not None and lon is not None else None
             )
             if weather_data:
                 w_event = {
@@ -1564,7 +1673,7 @@ async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestReques
     tags=["tracking"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_TRACKING_TODAY))],
 )
-async def daily_tracking_today(
+def daily_tracking_today(
     request: Request,
     user_id: str,
     log_date: Optional[str] = None,
@@ -1592,7 +1701,7 @@ async def daily_tracking_today(
     tags=["routine"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_ROUTINE_ACTIVE))],
 )
-async def routine_active(request: Request, user_id: str = Query(..., min_length=1)):
+def routine_active(request: Request, user_id: str = Query(..., min_length=1)):
     """Mobil ana ekran: yürürlükteki rutin (üretmez, yalnızca okur)."""
     enforce_supabase_user(request, user_id)
     row = _load_active_routine(get_supabase(), user_id)
@@ -1612,7 +1721,7 @@ async def routine_active(request: Request, user_id: str = Query(..., min_length=
     tags=["routine"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_TODAY_PLAN))],
 )
-async def today_plan_endpoint(
+def today_plan_endpoint(
     request: Request,
     user_id: str = Query(..., min_length=1),
     lat: Optional[float] = None,
@@ -1639,14 +1748,14 @@ async def today_plan_endpoint(
     weather_source = "default"
     if lat is not None and lon is not None:
         _require_privacy_permission(user_id, "location")
-        weather = await _weather_for_coords(lat, lon)
+        weather = run_async(_weather_for_coords, lat, lon)
         if weather:
             weather_source = "live"
     if weather is None and aggregated.get("weather"):
         weather = dict(aggregated["weather"])
         weather_source = "tracking"
     if weather is None:
-        weather = await _weather_from_profile(supabase, user_id)
+        weather = run_async(_weather_from_profile, supabase, user_id)
         if weather:
             weather_source = "profile"
     if weather is None:
@@ -1683,7 +1792,7 @@ _MAX_HISTORY_DAYS = 90
     tags=["account"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
 )
-async def me_profile_get(request: Request, user_id: str = Query(..., min_length=1)):
+def me_profile_get(request: Request, user_id: str = Query(..., min_length=1)):
     """Kullanıcı profili: web ve mobil aynı kaydı okur."""
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
@@ -1708,7 +1817,7 @@ async def me_profile_get(request: Request, user_id: str = Query(..., min_length=
     tags=["account"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_USER_PROFILE_WRITE))],
 )
-async def me_profile_update(request: Request, req: UserProfileUpdateRequest):
+def me_profile_update(request: Request, req: UserProfileUpdateRequest):
     """Profili güncelle; yalnızca gönderilen alanlar değişir."""
     enforce_supabase_user(request, req.user_id)
     fields = {
@@ -1758,7 +1867,7 @@ def _water_target_for(supabase, user_id: str) -> int:
     tags=["account"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
 )
-async def me_history(
+def me_history(
     request: Request,
     user_id: str = Query(..., min_length=1),
     days: int = Query(30, ge=1, le=_MAX_HISTORY_DAYS),
@@ -1851,7 +1960,7 @@ async def me_history(
     tags=["account"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
 )
-async def me_snapshot(
+def me_snapshot(
     request: Request,
     user_id: str = Query(..., min_length=1),
     utc_offset_minutes: Optional[int] = Query(None, ge=-840, le=840),
@@ -1890,7 +1999,7 @@ async def me_snapshot(
     tags=["account"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
 )
-async def me_reminder_settings_get(request: Request, user_id: str = Query(..., min_length=1)):
+def me_reminder_settings_get(request: Request, user_id: str = Query(..., min_length=1)):
     """Hatırlatıcı ayarları: gün düzeni, su aralığı ve kapatılan kategoriler."""
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
@@ -2007,7 +2116,7 @@ def _merge_reminder_settings(current: dict, req: ReminderSettingsUpdateRequest) 
     tags=["account"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_USER_PROFILE_WRITE))],
 )
-async def me_reminder_settings_update(request: Request, req: ReminderSettingsUpdateRequest):
+def me_reminder_settings_update(request: Request, req: ReminderSettingsUpdateRequest):
     """Hatırlatıcı ayarlarını güncelle; yalnızca gönderilen alanlar değişir."""
     enforce_supabase_user(request, req.user_id)
     supabase = get_supabase()
@@ -2110,7 +2219,7 @@ def _remove_invalid_device_tokens(supabase, tokens: list[str]) -> int:
     tags=["push"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_DEVICE_REGISTER))],
 )
-async def device_register(request: Request, req: DeviceRegisterRequest):
+def device_register(request: Request, req: DeviceRegisterRequest):
     """Cihazı bildirimler için kaydeder; her açılışta çağrılabilir."""
     enforce_supabase_user(request, req.user_id)
     supabase = get_supabase()
@@ -2138,7 +2247,7 @@ async def device_register(request: Request, req: DeviceRegisterRequest):
     tags=["push"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_DEVICE_REGISTER))],
 )
-async def device_unregister(
+def device_unregister(
     request: Request,
     user_id: str = Query(..., min_length=1),
     token: str = Query(..., min_length=1),
@@ -2168,7 +2277,7 @@ async def device_unregister(
     tags=["push"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_PUSH_DISPATCH))],
 )
-async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1000)):
+def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1000)):
     """
     Zamanı gelen hatırlatıcıları kayıtlı cihazlara gönderir. Sunucu cron'u
     tarafından 10 dakikada bir çağrılmak üzere tasarlandı; her hatırlatıcı
@@ -2228,7 +2337,7 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
         # Havaya bağlı tek hatırlatıcılar SPF (11–16) ve balsam (12–13) olduğu
         # için sağlayıcıya yalnızca gün ortası penceresinde başvurulur.
         if not weather and _PUSH_WEATHER_HOURS[0] <= local_now.hour <= _PUSH_WEATHER_HOURS[1]:
-            weather = await _weather_from_profile(supabase, uid)
+            weather = run_async(_weather_from_profile, supabase, uid)
         user_settings = settings_by_user.get(uid)
         products_out = (
             _products_out(supabase, uid, local_now.date())
@@ -2250,7 +2359,7 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
         ):
             if not _claim_push_slot(supabase, uid, reminder["id"], log_date, reminder["slot"]):
                 continue
-            result = await send_push(
+            result = run_async(send_push,
                 entry["tokens"],
                 reminder["title"],
                 reminder["body"],
@@ -2280,7 +2389,7 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
         push_configured=True,
         deliveries_failed=deliveries_failed,
     )
-    _PUSH_LAST_RUN.clear()
+    # clear() kullanılmaz: /health başka iş parçacığında okurken sözlük bir an boş görünmesin (anahtarlar her turda aynı).
     _PUSH_LAST_RUN.update(summary.model_dump(), at=_utc_now_iso())
     log.info(
         "Push dağıtımı: kullanıcı=%d hatırlatıcı=%d bildirim=%d geçersiz_token=%d başarısız=%d",
@@ -2298,7 +2407,7 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
     tags=["routine"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_GENERATE_ROUTINE))],
 )
-async def generate_routine(request: Request, req: AssessmentRequest):
+def generate_routine(request: Request, req: AssessmentRequest):
     """
     Ana rutin üretme endpoint'i.
     1. Hava durumu (1 HTTP call)
@@ -2316,7 +2425,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     # ADIM 1: Hava Durumu
     weather_data = {"humidity": 50, "uv_index": 3, "temperature": 20, "description": "N/A"}
     if req.location_lat and req.location_lon:
-        weather_data = await fetch_weather(req.location_lat, req.location_lon)
+        weather_data = run_async(fetch_weather, req.location_lat, req.location_lon)
 
     # ADIM 2: Flow Engine (0 TOKEN)
     flow_result = run_flow(
@@ -2355,8 +2464,8 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     log.info("Flow Engine: %d rutin öğesi, %d sorgu planı", len(routine_items), len(query_plan))
 
     # ADIM 3: Knowledge Router (0 TOKEN)
-    knowledge_result = await execute_query_plan(query_plan)
-    knowledge_context = await get_targeted_context(knowledge_result, max_chars=2000)
+    knowledge_result = run_async(execute_query_plan, query_plan)
+    knowledge_context = run_async(get_targeted_context, knowledge_result, max_chars=2000)
 
     # ADIM 3b: Kanonik dolap — şikâyet için kanıta dayalı içerik zinciri + literatür.
     # Rutin adımlarını değiştirmez; polish'in bilimsel bağlamını güçlendirir.
@@ -2381,7 +2490,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
     # ADIM 4: AI Polish (~400 TOKEN)
     accept_lang = (request.headers.get("accept-language") or "").strip()
     target_lang = _primary_lang_from_header(accept_lang)
-    polished_routine, ai_polish_note = await polish_routine_with_ai(
+    polished_routine, ai_polish_note = run_async(polish_routine_with_ai,
         routine_items=routine_items,
         context_summary=context_summary,
         knowledge_context=knowledge_context,
@@ -2395,7 +2504,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
 
     polished_routine, rule_enforcement_final = enforce_absolute_rules_on_routine(polished_routine)
     sanitize_routine_items_details(polished_routine)
-    polished_routine = await translate_routine_items(polished_routine, target_lang=target_lang)
+    polished_routine = run_async(translate_routine_items, polished_routine, target_lang=target_lang)
 
     # Kanonik kimlik: motorun yazdığı action cümlelerinden id bas, sonra yedek etiketle.
     try:
@@ -2605,7 +2714,7 @@ def _persist_chat_turn(
     tags=["chat"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_HISTORY))],
 )
-async def chat_history_get(
+def chat_history_get(
     request: Request,
     user_id: str = Query(..., min_length=1),
     limit: int = Query(50, ge=1, le=_CHAT_HISTORY_MAX_ROWS),
@@ -2662,7 +2771,7 @@ async def chat_history_get(
     tags=["chat"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_HISTORY_IMPORT))],
 )
-async def chat_history_import(request: Request, req: ChatHistoryImportRequest):
+def chat_history_import(request: Request, req: ChatHistoryImportRequest):
     """
     Sunucu öncesi dönemden kalan yerel sohbeti bir kez yukarı taşır. Sunucuda
     bu yüzey için kayıt varsa içe aktarma atlanır; kopya geçmiş oluşmaz.
@@ -2716,7 +2825,7 @@ async def chat_history_import(request: Request, req: ChatHistoryImportRequest):
     tags=["chat"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_HISTORY_CLEAR))],
 )
-async def chat_history_clear(request: Request, user_id: str = Query(..., min_length=1)):
+def chat_history_clear(request: Request, user_id: str = Query(..., min_length=1)):
     """Sohbeti temizle: geçmiş her iki platformdan da silinir."""
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
@@ -2736,7 +2845,7 @@ async def chat_history_clear(request: Request, user_id: str = Query(..., min_len
     tags=["chat"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT))],
 )
-async def chat(request: Request, req: ChatRequest):
+def chat(request: Request, req: ChatRequest):
     """
     Interaktif sohbet endpoint'i.
     Kullanıcı sorusu -> Knowledge Base'den bağlam -> Gemini cevap
@@ -2760,10 +2869,10 @@ async def chat(request: Request, req: ChatRequest):
         "purpose": "Tedavi",
     })
 
-    knowledge_result = await execute_query_plan(query_plan)
-    knowledge_context = await get_targeted_context(knowledge_result, max_chars=2000)
+    knowledge_result = run_async(execute_query_plan, query_plan)
+    knowledge_context = run_async(get_targeted_context, knowledge_result, max_chars=2000)
 
-    reply = await chat_with_knowledge(
+    reply = run_async(chat_with_knowledge,
         user_message=req.message,
         knowledge_context=knowledge_context,
         history=req.history,
@@ -2786,7 +2895,7 @@ async def chat(request: Request, req: ChatRequest):
     tags=["chat"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
 )
-async def chat_assessment(request: Request, req: AssessmentChatRequest):
+def chat_assessment(request: Request, req: AssessmentChatRequest):
     """
     AI-driven cilt değerlendirmesi sohbeti.
     Temel bilgiler form ile toplanır, kalan değerlendirmeyi AI konuşarak yapar.
@@ -2803,73 +2912,62 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
     plus_chat_capped = plus and user_plus_chat_is_monthly_capped(request, req.user_id)
     plim = plus_chat_monthly_cap()
 
+    # Hak, model çağrısından önce atomik olarak alınır (paralel isteklerle kota aşılamaz); başarısız tur iade edilir.
+    hold = None
     if is_free and jwt_auth_enabled():
-        if not plus:
-            if free_chat_quota_exceeded(req.user_id):
-                uk, ur, ul, _ = _chat_usage_row(request, req.user_id)
-                return AssessmentChatResponse(
-                    reply=(
-                        "Bugünkü ücretsiz Rebi AI mesaj hakkın doldu. "
-                        "Sınırsız sohbet için Rebi Plus’a geçebilirsin; uygulamadaki "
-                        "«Abonelik / Rebi Plus» bölümünden devam et."
-                    ),
-                    is_complete=False,
-                    extracted_data=None,
-                    free_chat_remaining=0,
-                    free_chat_limit=lim,
-                    chat_quota_exceeded=True,
-                    usage_kind=uk,
-                    usage_remaining=ur,
-                    usage_limit=ul,
-                )
-        if plus_chat_capped:
-            if plus_chat_quota_exceeded(req.user_id):
-                return AssessmentChatResponse(
-                    reply=(
-                        "Bu ayki Plus sohbet kotan doldu (paket sınırı). "
-                        "Sınırsız sohbet içeren üst pakete geçebilirsin; uygulamada «Abonelik / Rebi Plus» bölümüne bak."
-                    ),
-                    is_complete=False,
-                    extracted_data=None,
-                    free_chat_remaining=0,
-                    free_chat_limit=None,
-                    chat_quota_exceeded=True,
-                    usage_kind="plus_monthly",
-                    usage_remaining=0,
-                    usage_limit=plim,
-                )
+        reservation = reserve_chat_turn(req.user_id, plus=plus, plus_capped=plus_chat_capped)
+        if reservation.exceeded == "free_daily":
+            uk, ur, ul, _ = _chat_usage_row(request, req.user_id)
+            return AssessmentChatResponse(
+                reply=(
+                    "Bugünkü ücretsiz Rebi AI mesaj hakkın doldu. "
+                    "Sınırsız sohbet için Rebi Plus’a geçebilirsin; uygulamadaki "
+                    "«Abonelik / Rebi Plus» bölümünden devam et."
+                ),
+                is_complete=False,
+                extracted_data=None,
+                free_chat_remaining=0,
+                free_chat_limit=lim,
+                chat_quota_exceeded=True,
+                usage_kind=uk,
+                usage_remaining=ur,
+                usage_limit=ul,
+            )
+        if reservation.exceeded == "plus_monthly":
+            return AssessmentChatResponse(
+                reply=(
+                    "Bu ayki Plus sohbet kotan doldu (paket sınırı). "
+                    "Sınırsız sohbet içeren üst pakete geçebilirsin; uygulamada «Abonelik / Rebi Plus» bölümüne bak."
+                ),
+                is_complete=False,
+                extracted_data=None,
+                free_chat_remaining=0,
+                free_chat_limit=None,
+                chat_quota_exceeded=True,
+                usage_kind="plus_monthly",
+                usage_remaining=0,
+                usage_limit=plim,
+            )
+        hold = reservation.hold
 
     from rag_service import assessment_chat
-    result = await assessment_chat(
-        user_message=req.message,
-        history=req.history,
-        user_profile=profile,
-        user_id=req.user_id,
-    )
+    with hold or nullcontext():  # istisna çıkarsa hak otomatik iade edilir
+        result = run_async(assessment_chat,
+            user_message=req.message,
+            history=req.history,
+            user_profile=profile,
+            user_id=req.user_id,
+        )
+        if hold is not None and _reply_looks_failed(result.get("reply"), _ASSESSMENT_ERROR_PREFIXES):
+            hold.release()
 
     remaining: Optional[int] = None
     usage_kind: Optional[str] = None
     usage_remaining: Optional[int] = None
     usage_limit: Optional[int] = None
     if is_free and jwt_auth_enabled():
-        reply = (result.get("reply") or "").strip()
-        err_like = (
-            not reply
-            or reply.startswith("Bir hata oluştu")
-            or reply.startswith("Bağlantı kurulamadı")
-            or reply.startswith("Şu an güvenli bir yanıt üretilemedi")
-            or reply.startswith("Şu an kısa bir yanıt üretilemedi")
-            or reply.startswith("Üzgünüm, şu anda cevap veremiyorum")
-            or reply.startswith("Şu an çok yoğunuz")
-            or reply.startswith("İşlem tamamlanamadı")
-        )
         if not plus:
-            if not err_like:
-                free_chat_record_successful_turn(req.user_id)
             remaining = free_chat_remaining(req.user_id)
-        elif plus_chat_capped:
-            if not err_like:
-                plus_chat_record_successful_turn(req.user_id)
         usage_kind, usage_remaining, usage_limit, _ = _chat_usage_row(request, req.user_id)
 
     return AssessmentChatResponse(
@@ -2885,53 +2983,12 @@ async def chat_assessment(request: Request, req: AssessmentChatRequest):
     )
 
 
-@app.post(
-    "/chat_general",
-    response_model=ChatGeneralResponse,
-    tags=["chat"],
-    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
-)
-async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
+def _generate_chat_general_reply(request: Request, req: ChatGeneralRequest) -> tuple[str, dict]:
     """
-    Rebi Chat (genel): rutin motorundan ayrı, serbest soru-cevap.
-    Kota/Plus mantığı chat_assessment ile aynıdır.
+    Profil ipuçlarını toplar ve Rebi Chat yanıtını üretir. Döner: (yanıt, kanıt paketi).
+    Kota rezervasyonu çağıranda tutulur: buradan istisna çıkarsa hak iade edilir.
     """
-    enforce_supabase_user(request, req.user_id)
-    _require_privacy_permission(req.user_id, "ai")
-    lim = free_chat_limit()
-    plus = user_is_rebi_plus(request, req.user_id)
-    plus_chat_capped = plus and user_plus_chat_is_monthly_capped(request, req.user_id)
-    plim = plus_chat_monthly_cap()
-
-    if jwt_auth_enabled():
-        if not plus:
-            if free_chat_quota_exceeded(req.user_id):
-                uk, ur, ul, _ = _chat_usage_row(request, req.user_id)
-                return ChatGeneralResponse(
-                    reply=(
-                        "Bugünkü ücretsiz Rebi AI mesaj hakkın doldu. "
-                        "Sınırsız sohbet için Rebi Plus’a geçebilirsin."
-                    ),
-                    chat_quota_exceeded=True,
-                    usage_kind=uk,
-                    usage_remaining=ur,
-                    usage_limit=ul,
-                )
-        if plus_chat_capped and plus_chat_quota_exceeded(req.user_id):
-            return ChatGeneralResponse(
-                reply=(
-                    "Bu ayki Plus sohbet kotan doldu (paket sınırı). "
-                    "Sınırsız sohbet içeren üst pakete geçebilirsin."
-                ),
-                chat_quota_exceeded=True,
-                usage_kind="plus_monthly",
-                usage_remaining=0,
-                usage_limit=plim,
-            )
-
     from rag_service import chat_general as rebi_chat_general
-    from rag_service import _build_free_chat_evidence_bundle as _build_ev_bundle
-    from rag_service import _EVIDENCE_OK_THRESHOLD as _EV_OK
 
     # Hafif profil hafızası: profiles + en son assessment concern (varsa) + (varsa) aktif rutin özeti
     profile_hint = {}
@@ -3011,47 +3068,90 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
     except Exception:
         profile_hint = {}
 
-    today_summary = await _chat_today_summary(get_supabase(), req.user_id, req.utc_offset_minutes)
+    today_summary = run_async(_chat_today_summary, get_supabase(), req.user_id, req.utc_offset_minutes)
     if today_summary:
         profile_hint["today_summary"] = today_summary
 
-    reply = await rebi_chat_general(
+    # chat_general kanıt paketini kendi kurar; metaveriyi yeniden hesaplamak DB + embedding maliyetini ikiye katlardı.
+    ev_holder: dict = {}
+    reply = run_async(rebi_chat_general,
         user_message=req.message,
         history=req.history,
         user_id=req.user_id,
         profile_hint=profile_hint,
         accept_lang=_primary_lang_from_header(request.headers.get("accept-language") or "tr"),
+        evidence_out=ev_holder,
     )
+    return reply, ev_holder
 
-    # Evidence metadata (best-effort; does not affect the reply)
+
+@app.post(
+    "/chat_general",
+    response_model=ChatGeneralResponse,
+    tags=["chat"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
+)
+def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
+    """
+    Rebi Chat (genel): rutin motorundan ayrı, serbest soru-cevap.
+    Kota/Plus mantığı chat_assessment ile aynıdır.
+    """
+    enforce_supabase_user(request, req.user_id)
+    _require_privacy_permission(req.user_id, "ai")
+    lim = free_chat_limit()
+    plus = user_is_rebi_plus(request, req.user_id)
+    plus_chat_capped = plus and user_plus_chat_is_monthly_capped(request, req.user_id)
+    plim = plus_chat_monthly_cap()
+
+    # Hak, model çağrısından önce atomik olarak alınır (paralel isteklerle kota aşılamaz); başarısız tur iade edilir.
+    hold = None
+    if jwt_auth_enabled():
+        reservation = reserve_chat_turn(req.user_id, plus=plus, plus_capped=plus_chat_capped)
+        if reservation.exceeded == "free_daily":
+            uk, ur, ul, _ = _chat_usage_row(request, req.user_id)
+            return ChatGeneralResponse(
+                reply=(
+                    "Bugünkü ücretsiz Rebi AI mesaj hakkın doldu. "
+                    "Sınırsız sohbet için Rebi Plus’a geçebilirsin."
+                ),
+                chat_quota_exceeded=True,
+                usage_kind=uk,
+                usage_remaining=ur,
+                usage_limit=ul,
+            )
+        if reservation.exceeded == "plus_monthly":
+            return ChatGeneralResponse(
+                reply=(
+                    "Bu ayki Plus sohbet kotan doldu (paket sınırı). "
+                    "Sınırsız sohbet içeren üst pakete geçebilirsin."
+                ),
+                chat_quota_exceeded=True,
+                usage_kind="plus_monthly",
+                usage_remaining=0,
+                usage_limit=plim,
+            )
+        hold = reservation.hold
+
+    from rag_service import _EVIDENCE_OK_THRESHOLD as _EV_OK
+
+    with hold or nullcontext():  # istisna çıkarsa hak otomatik iade edilir
+        reply, ev_holder = _generate_chat_general_reply(request, req)
+        r = (reply or "").strip()
+        err_like = _reply_looks_failed(r, _GENERAL_ERROR_PREFIXES)
+        if hold is not None and err_like:
+            hold.release()
+
+    # Evidence metadata (best-effort; does not affect the reply). Kanıt aranmadıysa (sınır yanıtı vb.) boş kalır.
     evidence_used = None
     evidence_score = None
     evidence_sources = None
-    try:
-        ev = _build_ev_bundle(req.user_id, req.message, req.history)
-        evidence_score = float((ev or {}).get("score") or 0.0)
-        evidence_sources = (ev or {}).get("sources") or []
-        evidence_used = bool(evidence_score >= float(_EV_OK))
-    except Exception:
-        evidence_used, evidence_score, evidence_sources = None, None, None
-
-    r = (reply or "").strip()
-    err_like = (
-        not r
-        or r.startswith("Bir hata oluştu")
-        or r.startswith("Bağlantı kurulamadı")
-        or r.startswith("Şu an çok yoğunuz")
-        or r.startswith("İşlem tamamlanamadı")
-    )
-
-    if jwt_auth_enabled():
-        # Başarılı tur sayımı (free / plus capped)
-        if not plus:
-            if not err_like:
-                free_chat_record_successful_turn(req.user_id)
-        elif plus_chat_capped:
-            if not err_like:
-                plus_chat_record_successful_turn(req.user_id)
+    if ev_holder:
+        try:
+            evidence_score = float(ev_holder.get("score") or 0.0)
+            evidence_sources = ev_holder.get("sources") or []
+            evidence_used = bool(evidence_score >= float(_EV_OK))
+        except Exception:
+            evidence_used, evidence_score, evidence_sources = None, None, None
 
     if not err_like:
         _persist_chat_turn(req.user_id, "general", req.message, r)
@@ -3075,7 +3175,7 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
     tags=["chat"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
 )
-async def chat_usage(request: Request, user_id: str = Query(..., min_length=1)):
+def chat_usage(request: Request, user_id: str = Query(..., min_length=1)):
     """Rebi AI sohbet kotası — açılışta üst sayaç için."""
     enforce_supabase_user(request, user_id)
     kind, rem, lim, period = _chat_usage_row(request, user_id)
@@ -3089,7 +3189,7 @@ async def chat_usage(request: Request, user_id: str = Query(..., min_length=1)):
     tags=["routine"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_CHAT_ASSESSMENT))],
 )
-async def translate_routine_items_endpoint(request: Request, req: TranslateRoutineItemsRequest):
+def translate_routine_items_endpoint(request: Request, req: TranslateRoutineItemsRequest):
     """
     Frontend can store routines in DB/local snapshot in Turkish.
     This endpoint adds `action_localized` and `detail_localized` for the selected UI language.
@@ -3099,7 +3199,7 @@ async def translate_routine_items_endpoint(request: Request, req: TranslateRouti
     from rag_service import translate_routine_items, _primary_lang_from_header
 
     target_lang = _primary_lang_from_header(request.headers.get("accept-language", "") or "")
-    items = await translate_routine_items(req.routine_items or [], target_lang=target_lang)
+    items = run_async(translate_routine_items, req.routine_items or [], target_lang=target_lang)
     return {"routine_items": items}
 
 
@@ -3108,7 +3208,7 @@ async def translate_routine_items_endpoint(request: Request, req: TranslateRouti
     tags=["checkin"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_CHECKIN_STATUS))],
 )
-async def daily_checkin_status(
+def daily_checkin_status(
     request: Request,
     user_id: str,
     utc_offset_minutes: Optional[int] = Query(None, ge=-840, le=840),
@@ -3145,7 +3245,7 @@ async def daily_checkin_status(
     tags=["checkin"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_CHECKIN))],
 )
-async def daily_checkin(request: Request, req: DailyCheckinRequest):
+def daily_checkin(request: Request, req: DailyCheckinRequest):
     """
     Günlük check-in: 3-5 hızlı soru ile cilt durumu takibi.
     Akış: Check-in → daily_logs kaydet → hava durumu → risk skoru → AI adaptasyon → rutin güncelle
@@ -3188,7 +3288,7 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
     # 1. Hava durumu
     weather_data = {"humidity": 50, "uv_index": 3, "temperature": 20}
     if req.location_lat and req.location_lon:
-        weather_data = await fetch_weather(req.location_lat, req.location_lon)
+        weather_data = run_async(fetch_weather, req.location_lat, req.location_lon)
 
     # 2. Mevcut aktif rutini Supabase'den çek
     current_routine = []
@@ -3441,7 +3541,7 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
     if adaptation["adaptation_type"] == "major" or req.skin_feeling in ("irritasyon", "kirik"):
         try:
             from rag_service import adapt_routine_with_ai
-            ai_note = await adapt_routine_with_ai(
+            ai_note = run_async(adapt_routine_with_ai,
                 current_routine=current_routine,
                 daily_data=daily_data,
                 risk_score=risk_info["score"],
@@ -3714,7 +3814,7 @@ async def _auth_admin_delete_user(user_id: str) -> None:
 
 
 @app.get("/legal-consent/status", tags=["account"])
-async def legal_consent_status(
+def legal_consent_status(
     request: Request,
     user_id: str,
     document_version: str = _LEGAL_CONSENT_VERSION,
@@ -3752,7 +3852,7 @@ async def legal_consent_status(
 
 
 @app.post("/legal-consent/accept", tags=["account"])
-async def accept_legal_consent(request: Request, req: LegalConsentAcceptRequest):
+def accept_legal_consent(request: Request, req: LegalConsentAcceptRequest):
     enforce_supabase_user(request, req.user_id)
     if (
         req.document_version != _LEGAL_CONSENT_VERSION
@@ -3807,7 +3907,7 @@ async def accept_legal_consent(request: Request, req: LegalConsentAcceptRequest)
 
 
 @app.get("/privacy-preferences", tags=["account"])
-async def privacy_preferences_get(request: Request, user_id: str):
+def privacy_preferences_get(request: Request, user_id: str):
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
     if not supabase:
@@ -3836,7 +3936,7 @@ async def privacy_preferences_get(request: Request, user_id: str):
 
 
 @app.post("/privacy-preferences", tags=["account"])
-async def privacy_preferences_update(request: Request, req: PrivacyPreferencesRequest):
+def privacy_preferences_update(request: Request, req: PrivacyPreferencesRequest):
     enforce_supabase_user(request, req.user_id)
     if not req.ai_processing_allowed:
         raise HTTPException(
@@ -3866,7 +3966,7 @@ async def privacy_preferences_update(request: Request, req: PrivacyPreferencesRe
     tags=["account"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_ACCOUNT_DELETE))],
 )
-async def account_delete(request: Request, req: AccountDeleteRequest):
+def account_delete(request: Request, req: AccountDeleteRequest):
     """
     Oturum sahibinin Supabase auth kullanıcısını ve ilişkili uygulama verisini kaldırır
     (şema ON DELETE CASCADE). Storage’daki cilt fotoğrafları ayrıca temizlenir.
@@ -3894,7 +3994,7 @@ async def account_delete(request: Request, req: AccountDeleteRequest):
 
     _delete_skin_photos_for_user(supabase, uid)
     _delete_user_application_data(supabase, uid)
-    await _auth_admin_delete_user(uid)
+    run_async(_auth_admin_delete_user, uid)
     log.info("Hesap ve ilişkili kişisel veriler kalıcı silindi")
     return {"ok": True}
 
@@ -3904,7 +4004,7 @@ async def account_delete(request: Request, req: AccountDeleteRequest):
     tags=["media"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_UPLOAD_PHOTO))],
 )
-async def upload_photo(request: Request, user_id: str, file: UploadFile = File(...)):
+def upload_photo(request: Request, user_id: str, file: UploadFile = File(...)):
     """Fotoğraf yükleme endpoint'i."""
     enforce_supabase_user(request, user_id)
     _require_privacy_permission(user_id, "photo")
@@ -3921,7 +4021,8 @@ async def upload_photo(request: Request, user_id: str, file: UploadFile = File(.
                 status_code=400,
                 detail="İzin verilen formatlar: jpeg, png, webp, heic",
             )
-        contents = await file.read()
+        # Sınırdan bir bayt fazla okunur: büyük dosya tamamen belleğe alınmadan reddedilir.
+        contents = file.file.read(_MAX_PHOTO_BYTES + 1)
         if len(contents) > _MAX_PHOTO_BYTES:
             raise HTTPException(
                 status_code=400,
