@@ -83,7 +83,23 @@ class RedisFixedWindowLimiter:
         return n <= self.max_requests
 
 
-def _make_limiter(max_requests: int, window_seconds: float, name: str) -> SupportsRateLimit:
+def ip_multiplier() -> float:
+    """
+    IP başına sınırların çarpanı (RATE_LIMIT_IP_MULTIPLIER, varsayılan 4). Türkiye'de mobil operatörler çok sayıda
+    kullanıcıyı tek IP'ye toplar (CGNAT): sabah uygulama açılışlarında ya da akşam check-in'lerinde aynı IP'den
+    yüzlerce meşru istek gelir ve dar bir IP sınırı onları kilitler. Gerçek koruma kullanıcı başınadır (yapay zekâ
+    bütçesi, olay yazımı); IP sınırı yalnızca kaba bir üst sınırdır. 1 = eski, sıkı değerler.
+    """
+    try:
+        return max(1.0, float(os.getenv("RATE_LIMIT_IP_MULTIPLIER") or 4.0))
+    except ValueError:
+        return 4.0
+
+
+def _make_limiter(max_requests: int, window_seconds: float, name: str, scale: bool = True) -> SupportsRateLimit:
+    """`scale=False`: çarpan uygulanmaz (kullanıcı başına ya da güvenlik amaçlı sıkı sınırlar)."""
+    if scale:
+        max_requests = max(1, int(round(max_requests * ip_multiplier())))
     url = os.getenv("REDIS_URL", "").strip()
     if url:
         # Redis takılırsa ya da kapanırsa istekler 500 vermesin: süreç içi sınırlayıcıya düşülür.
@@ -122,10 +138,10 @@ LIMIT_CHAT_HISTORY_IMPORT = _make_limiter(10, 3600.0, "chat_history_import")
 LIMIT_USER_DATA = _make_limiter(90, 60.0, "user_data")
 LIMIT_USER_PROFILE_WRITE = _make_limiter(30, 3600.0, "user_profile_write")
 LIMIT_DEVICE_REGISTER = _make_limiter(120, 60.0, "device_register")
-LIMIT_PUSH_DISPATCH = _make_limiter(30, 60.0, "push_dispatch")
+LIMIT_PUSH_DISPATCH = _make_limiter(30, 60.0, "push_dispatch", scale=False)
 LIMIT_UPLOAD_PHOTO = _make_limiter(40, 3600.0, "upload_photo")
-LIMIT_ACCOUNT_DELETE = _make_limiter(3, 3600.0, "account_delete")
-LIMIT_INTRO_SEEN = _make_limiter(60, 60.0, "intro_seen")
+LIMIT_ACCOUNT_DELETE = _make_limiter(3, 3600.0, "account_delete", scale=False)
+LIMIT_INTRO_SEEN = _make_limiter(60, 60.0, "intro_seen", scale=False)
 
 
 def _int_env(name: str, default: int) -> int:
@@ -138,8 +154,24 @@ def _int_env(name: str, default: int) -> int:
 # Yapay zekâ uçları için KULLANICI başına bütçe (IP'den bağımsız: IP değiştirerek aşılamaz). Gerçek bir
 # sohbet dakikada birkaç mesajı geçmez; sınırsız Plus kullanıcısının tek hesapla model bütçesini tüketmesini
 # bu sınır engeller. Sohbet, çeviri, rutin üretimi ve check-in aynı bütçeyi paylaşır.
-LIMIT_AI_USER_MINUTE = _make_limiter(_int_env("AI_USER_LIMIT_PER_MINUTE", 20), 60.0, "ai_user_min")
-LIMIT_AI_USER_HOUR = _make_limiter(_int_env("AI_USER_LIMIT_PER_HOUR", 200), 3600.0, "ai_user_hour")
+LIMIT_AI_USER_MINUTE = _make_limiter(_int_env("AI_USER_LIMIT_PER_MINUTE", 20), 60.0, "ai_user_min", scale=False)
+LIMIT_AI_USER_HOUR = _make_limiter(_int_env("AI_USER_LIMIT_PER_HOUR", 200), 3600.0, "ai_user_hour", scale=False)
+
+# Olay yazımı için kullanıcı başına üst sınır: IP sınırı gevşetildiği için tek bir yetkili hesabın veritabanını
+# olayla doldurması başka türlü engellenmezdi. Gerçek kullanım dakikada onlarcadır; çevrimdışı kuyruğun toplu
+# gönderimi bile (en fazla 200 olay) bu sınırın altında kalır.
+LIMIT_INGEST_USER = _make_limiter(_int_env("INGEST_USER_LIMIT_PER_MINUTE", 300), 60.0, "ingest_user", scale=False)
+
+
+def enforce_ingest_user_limit(user_id: str) -> None:
+    """Kullanıcı başına olay yazım sınırı; aşılırsa 429 (mobil bunu "yeniden dene" sayıp kuyrukta tutar)."""
+    uid = (user_id or "").strip()
+    if uid and not LIMIT_INGEST_USER.allow(uid):
+        raise HTTPException(
+            status_code=429,
+            detail="Çok fazla kayıt gönderildi. Kısa süre sonra yeniden denenecek.",
+            headers={"Retry-After": "15"},
+        )
 
 
 def enforce_ai_user_limit(user_id: str) -> None:

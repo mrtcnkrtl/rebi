@@ -50,6 +50,11 @@ class WeatherDecisionsCard extends StatelessWidget {
           ],
           const SizedBox(height: 8),
           Text(i18n.t('mobileToday.advice.source.$sourceKey'), style: tx(10.5, c: Tw.gray500)),
+          // Open-Meteo verisi CC BY 4.0 lisanslıdır: gerçek hava gösterilirken kaynak belirtilir (varsayılan değerlerde veri yok).
+          if (plan.hasRealWeather) ...[
+            const SizedBox(height: 2),
+            Text(i18n.t('mobileToday.advice.attribution'), style: tx(10.5, c: Tw.gray500)),
+          ],
           if (!plan.hasRealWeather) ...[
             const SizedBox(height: 4),
             Text(i18n.t('mobileToday.advice.locationHint'), style: tx(10.5, c: Tw.gray500, h: relaxed)),

@@ -173,9 +173,27 @@ class FakeTable:
             self._reset()
 
 
+class _Rpc:
+    def __init__(self, handler, params):
+        self._handler, self._params = handler, params
+
+    def execute(self):
+        return Result(self._handler(self._params))
+
+
 class FakeSupabase:
     def __init__(self, **tables: list[dict]):
         self.tables = {name: FakeTable(rows) for name, rows in tables.items()}
+        # RPC işlevleri: ad -> çağrılabilir(params) -> dönüş verisi. Çağrılar `rpc_calls`ta tutulur.
+        self.rpc_handlers: dict = {}
+        self.rpc_calls: list = []
+
+    def rpc(self, name: str, params=None):
+        self.rpc_calls.append(name)
+        handler = self.rpc_handlers.get(name)
+        if handler is None:
+            raise RuntimeError(f"rpc tanımlı değil: {name}")
+        return _Rpc(handler, params)
 
     def table(self, name: str) -> FakeTable:
         return self.tables.setdefault(name, FakeTable())._reset()

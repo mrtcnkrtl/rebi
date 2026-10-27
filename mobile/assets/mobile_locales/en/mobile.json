@@ -48,6 +48,7 @@
       "title": "For today's weather",
       "weatherLine": "{{temp}}°C · UV {{uv}} · humidity {{humidity}}%",
       "locationHint": "Estimated weather values are in use. Allow location access to get advice based on live weather.",
+      "attribution": "Weather data: Open-Meteo.com",
       "source": {
         "live": "Live weather (your location)",
         "tracking": "Weather logged today",

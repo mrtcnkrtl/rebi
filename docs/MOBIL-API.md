@@ -237,6 +237,13 @@ Akşam check-in'i; rutini risk skoruna göre uyarlar. Yapay zekâ izni gerekir.
   (`/me/reminder-settings` ile aynı; yoksa 2000). Geçmiş ekranı grafik referansını ve "hedefi tutturulan gün" sayısını bununla
   hesaplar; alanı bilmeyen eski sunucuda mobil 2000 kullanır.
 
+## Olay yazımı: hata davranışı
+
+`POST /daily_tracking/ingest` veritabanına yazamazsa **503** döner (olay sessizce süreç belleğine yazılıp "tamam" denmez).
+İstemci olayı aynı `client_event_id` ile kuyrukta tutup yeniden denemelidir; tekrar yazım olayı iki kez saydırmaz.
+Kullanıcı başına dakikada 300 olaydan fazlası **429** (`Retry-After: 15`) alır; çevrimdışı kuyruğun toplu gönderimi
+(en fazla 200 olay) bu sınırın altındadır.
+
 ## Sohbet
 
 Sohbet geçmişi sunucuda tutulur; web ve mobil aynı konuşmayı görür.

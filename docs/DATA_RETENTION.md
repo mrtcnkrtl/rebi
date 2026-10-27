@@ -19,7 +19,9 @@ Teknik uygulama `supabase/migrations/20260920174000_data_retention.sql` içinded
 - Tarayıcı check-in özeti: en fazla 120 gün
 - Tarayıcı sohbet geçmişi: kullanıcı başına son 30 mesaj; kullanıcı temizleyene veya hesabını silene kadar
 
-`pg_cron` bulunan Supabase projelerinde temizlik günlük otomatik zamanlanır.
+`pg_cron` bulunan Supabase projelerinde temizlik günlük otomatik zamanlanır. `GET /health` içindeki `db_integrity.retention`
+alanı bunu gösterir (`pg_cron` = zamanlanmış). pg_cron kapalıysa `deploy/.env.api`'ye `RETENTION_PURGE_DAILY=1` eklenir:
+push-cron servisi günde bir `POST /maintenance/purge` çağırır (pg_cron aktifse çağrı atlanır; çift temizlik olmaz).
 Bulunmayan ortamlarda operasyon görevi günlük olarak şu fonksiyonu çağırmalıdır:
 
 ```sql

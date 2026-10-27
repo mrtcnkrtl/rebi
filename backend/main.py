@@ -23,7 +23,7 @@ from datetime import date, datetime, timedelta, timezone
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
 from supabase_client import get_shared_client
 from async_bridge import configure_threadpool, run_async, run_sync
-from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather, fetch_weather_live
+from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather_live
 from today_plan import (
     CATEGORY_NAMES,
     DEFAULT_REMINDER_SETTINGS,
@@ -90,6 +90,7 @@ from plus_chat_quota import (
 )
 from chat_quota import reserve_chat_turn
 from redis_client import redis_status
+from db_integrity import get_integrity, refresh_in_background as _refresh_db_integrity, summary_nowait
 from demo_users import (
     demo_checkin_already_today,
     demo_checkin_mark,
@@ -120,6 +121,7 @@ from rate_limit import (
     LIMIT_INTRO_SEEN,
     get_client_ip,
     enforce_ai_user_limit,
+    enforce_ingest_user_limit,
 )
 
 log = get_logger("api")
@@ -220,6 +222,11 @@ def _bootstrap_database_schema() -> None:
     except Exception as e:
         _DB_SCHEMA_STATUS = "error"
         log.warning("DB bootstrap çalıştırılamadı (yok sayılıyor): %s", e)
+    # Eksik indeks/fonksiyon açılışta günlüğe düşsün; arka planda çalışır, açılışı geciktirmez.
+    try:
+        _refresh_db_integrity(force=True)
+    except Exception as e:
+        log.warning("DB öz-denetimi başlatılamadı (yok sayılıyor): %s", e)
 
 
 def get_supabase():
@@ -707,6 +714,15 @@ async def _weather_for_coords(lat: float, lon: float) -> Optional[dict]:
     ttl = _WEATHER_TTL_SECONDS if data else _WEATHER_FAILURE_TTL_SECONDS
     _WEATHER_CACHE[key] = (now + ttl, data)
     return dict(data) if data else None
+
+
+async def _weather_cached(lat: float, lon: float) -> dict:
+    """
+    Rutin üretimi ve check-in için hava: `fetch_weather` ile aynı sözleşme (kaynak yanıt vermezse varsayılan değer),
+    ama aynı 0,1° hücre için 30 dk önbellekli; başarısız çekim 2 dk saklanır. Eskiden her rutin/check-in isteği
+    sağlayıcıya ayrı çağrı yapardı (ücretli planda ay sonu çağrı sayısı).
+    """
+    return await _weather_for_coords(lat, lon) or dict(WEATHER_FALLBACK)
 
 
 async def _weather_from_profile(supabase, user_id: str) -> Optional[dict]:
@@ -1604,6 +1620,8 @@ async def health():
         "rate_limit_backend": rate_limit_backend_label(),
         # Redis erişilebilir mi? "down": uygulama çalışır ama kota/hız sınırı süreç içine düşmüştür.
         "redis": await run_sync(redis_status),
+        # Canlı DB öz-denetimi (eksik indeks/fonksiyon, retention cron'u). Önbellekten döner, DB'yi beklemez.
+        "db_integrity": summary_nowait(),
         "push": "configured" if push_configured() else "off",
         "push_dispatch": _PUSH_LAST_RUN or None,
         "db_schema": _DB_SCHEMA_STATUS,
@@ -1625,6 +1643,7 @@ def daily_tracking_ingest(request: Request, req: DailyTrackingIngestRequest):
     Supabase varsa daily_events tablosuna yazar; yoksa bellek içi saklar.
     """
     enforce_supabase_user(request, req.user_id)
+    _enforce_ingest_user_limit(req.user_id)
     payload_has_coords = (req.payload or {}).get("lat") is not None
     if req.type == "location" or payload_has_coords:
         # Koordinat hem saklanıyor hem hava durumu sağlayıcısına gidiyor.
@@ -1644,7 +1663,8 @@ def daily_tracking_ingest(request: Request, req: DailyTrackingIngestRequest):
 
     supabase = get_supabase()
     wrote_remote = False
-    if should_use_supabase_db(supabase, req.user_id):
+    db_backed = should_use_supabase_db(supabase, req.user_id)
+    if db_backed:
         try:
             table = supabase.table("daily_events")
             if req.client_event_id:
@@ -1657,9 +1677,14 @@ def daily_tracking_ingest(request: Request, req: DailyTrackingIngestRequest):
                 table.insert(event).execute()
             wrote_remote = True
         except Exception as e:
-            log.error("daily_events insert hatası (fallback to memory): %s", e)
+            log.error("daily_events insert hatası: %s", e)
 
     if not wrote_remote:
+        if db_backed:
+            # Gerçek kullanıcıda olayı süreç belleğine yazıp "tamam" demek sessiz veri kaybıdır: bellek yeniden
+            # başlatmada silinir ve gün okumaları hep veritabanından yapılır (bellek hiç okunmaz). 503 dönersek
+            # mobil olayı aynı `client_event_id` ile kuyruğa alıp yeniden dener (tekrar yazım olayı iki kez saydırmaz).
+            raise HTTPException(status_code=503, detail="Kayıt şu an yazılamadı; bağlantı düzelince yeniden denenecek.")
         _mem_append_event(req.user_id, log_date, event)
 
     # Location gelirse anlık weather snapshot ekle (opsiyonel ama değerli)
@@ -2735,6 +2760,36 @@ def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=50000))
 
 
 @app.post(
+    "/maintenance/purge",
+    tags=["maintenance"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_PUSH_DISPATCH))],
+)
+def maintenance_purge(request: Request, only_if_no_cron: bool = Query(True)):
+    """
+    Süresi dolan verileri siler (`purge_expired_rebi_data()`, süreler docs/DATA_RETENTION.md'de). Normalde Supabase
+    pg_cron günde bir çalıştırır; bu uç, pg_cron yoksa push-cron servisinin (RETENTION_PURGE_DAILY=1) çağıracağı güvenlik
+    ağıdır. `only_if_no_cron` (varsayılan): pg_cron işi aktifse hiçbir şey yapmaz. Dağıtım anahtarıyla korunur.
+    """
+    _require_push_dispatch_secret(request)
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=503, detail="Supabase bağlantısı yok")
+    if only_if_no_cron:
+        try:
+            if get_integrity().get("retention") == "pg_cron":
+                return {"ok": True, "skipped": "pg_cron_active"}
+        except Exception as e:
+            log.warning("pg_cron durumu okunamadı, temizlik yine de çalışacak: %s", type(e).__name__)
+    try:
+        deleted = supabase.rpc("purge_expired_rebi_data").execute().data
+    except Exception as e:
+        log.error("Retention temizliği başarısız: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Temizlik şu an çalıştırılamadı.")
+    log.info("Retention temizliği tamam: %s", deleted)
+    return {"ok": True, "deleted": deleted}
+
+
+@app.post(
     "/generate_routine",
     response_model=RoutineResponse,
     tags=["routine"],
@@ -2759,7 +2814,7 @@ def generate_routine(request: Request, req: AssessmentRequest):
     # ADIM 1: Hava Durumu
     weather_data = {"humidity": 50, "uv_index": 3, "temperature": 20, "description": "N/A"}
     if req.location_lat and req.location_lon:
-        weather_data = run_async(fetch_weather, req.location_lat, req.location_lon)
+        weather_data = run_async(_weather_cached, req.location_lat, req.location_lon)
 
     # ADIM 2: Flow Engine (0 TOKEN)
     flow_result = run_flow(
@@ -3627,7 +3682,7 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
     # 1. Hava durumu
     weather_data = {"humidity": 50, "uv_index": 3, "temperature": 20}
     if req.location_lat and req.location_lon:
-        weather_data = run_async(fetch_weather, req.location_lat, req.location_lon)
+        weather_data = run_async(_weather_cached, req.location_lat, req.location_lon)
 
     # 2. Mevcut aktif rutini Supabase'den çek
     current_routine = []
@@ -4011,6 +4066,13 @@ def _photo_content_matches_extension(contents: bytes, ext: str) -> bool:
     if ext in {"heic", "heif"}:
         return len(contents) >= 12 and contents[4:8] == b"ftyp"
     return False
+
+
+def _enforce_ingest_user_limit(user_id: str) -> None:
+    """Olay yazımında kullanıcı başına sınır. Demo kimlikleri ortaktır: atlanır."""
+    if is_demo_user_id(user_id):
+        return
+    enforce_ingest_user_limit(user_id)
 
 
 def _enforce_ai_user_limit(user_id: str) -> None:

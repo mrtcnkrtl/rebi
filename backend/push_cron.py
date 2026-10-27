@@ -22,6 +22,7 @@ import os
 import sys
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 
 DEFAULT_URL = "http://api:8000/push/dispatch?max_users=20000"
@@ -77,6 +78,54 @@ def describe(result: dict, max_users_hint: int = 20000) -> str:
     return text
 
 
+# ── Günlük retention temizliği (güvenlik ağı) ─────────────────────────────────────────────────────
+# Süresi dolan verinin silinmesi (docs/DATA_RETENTION.md) normalde Supabase pg_cron ile yapılır. pg_cron kapalıysa
+# hiçbir şey silinmez ve fark edilmez. RETENTION_PURGE_DAILY=1 verilirse bu servis günde bir kez API'nin
+# /maintenance/purge ucunu çağırır; uç pg_cron aktifse kendiliğinden atlar (çift temizlik olmaz). Varsayılan KAPALI:
+# silme işlemi açıkça istenmeden başlamaz.
+
+PURGE_AFTER_UTC_MINUTE = 3 * 60 + 20  # pg_cron'un varsayılan saati (03:20 UTC) ile aynı
+PURGE_RETRY_SECONDS = 1800  # başarısız denemeden sonra 30 dk bekle (her 5 dk'da API'yi dövme)
+
+
+def purge_enabled() -> bool:
+    return (os.getenv("RETENTION_PURGE_DAILY") or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def purge_url(dispatch_url: str) -> str:
+    """Dağıtım adresinden aynı sunucudaki temizlik ucunun adresini türetir (RETENTION_PURGE_URL ile ezilebilir)."""
+    override = (os.getenv("RETENTION_PURGE_URL") or "").strip()
+    if override:
+        return override
+    parts = urllib.parse.urlsplit(dispatch_url)
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, "/maintenance/purge", "only_if_no_cron=1", ""))
+
+
+def maybe_purge(now: float, url: str, secret: str, state: dict, opener=urllib.request.urlopen) -> bool:
+    """
+    Bugünkü temizlik zamanı geldiyse ve henüz başarıyla yapılmadıysa uca bir kez istek atar.
+    `state`: {"done_day": "YYYY-MM-DD", "last_attempt": epoch}. Dönüş: istek denendi mi.
+    """
+    if not purge_enabled():
+        return False
+    utc = time.gmtime(now)
+    today = time.strftime("%Y-%m-%d", utc)
+    if state.get("done_day") == today:
+        return False
+    if utc.tm_hour * 60 + utc.tm_min < PURGE_AFTER_UTC_MINUTE:
+        return False
+    if now - float(state.get("last_attempt") or 0) < PURGE_RETRY_SECONDS:
+        return False
+    state["last_attempt"] = now
+    result = dispatch_once(purge_url(url), secret, opener)
+    if result is not None and result.get("ok"):
+        state["done_day"] = today
+        log(f"retention temizliği: {result.get('skipped') or result.get('deleted')}")
+    else:
+        log("retention temizliği başarısız; 30 dk sonra yeniden denenecek")
+    return True
+
+
 def touch_alive() -> None:
     try:
         with open(ALIVE_FILE, "a"):
@@ -98,11 +147,19 @@ def main() -> int:
     interval = int(os.getenv("PUSH_DISPATCH_INTERVAL_SECONDS") or DEFAULT_INTERVAL_SECONDS)
     log(f"başladı: her {interval} sn, {url.split('?')[0]}")
 
+    purge_state: dict = {}
+    if purge_enabled():
+        log("retention temizliği açık: günde bir kez (pg_cron aktif değilse) /maintenance/purge çağrılır")
+
     while True:
         time.sleep(seconds_until_next_tick(time.time(), interval))
         result = dispatch_once(url, secret)
         if result is not None:
             log(describe(result))
+        try:
+            maybe_purge(time.time(), url, secret, purge_state)
+        except Exception as e:  # temizlik hatası bildirim döngüsünü asla durdurmaz
+            log(f"retention temizliği hatası: {type(e).__name__}")
         touch_alive()
 
 

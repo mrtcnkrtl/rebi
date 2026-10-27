@@ -48,6 +48,7 @@
       "title": "Bugünün havasına göre",
       "weatherLine": "{{temp}}°C · UV {{uv}} · nem %{{humidity}}",
       "locationHint": "Tahmini hava değerleri kullanılıyor. Konum izni verirsen canlı hava durumuna göre öneri alırsın.",
+      "attribution": "Hava verisi: Open-Meteo.com",
       "source": {
         "live": "Canlı hava (konumun)",
         "tracking": "Bugün kaydedilen hava",

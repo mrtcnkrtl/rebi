@@ -821,6 +821,11 @@ export default function Dashboard() {
               <div className="bg-white/70 rounded-xl p-2.5 text-center"><Sun className="w-4 h-4 text-amber-500 mx-auto mb-0.5" /><p className="text-base font-bold text-gray-800">{weather.uv_index}</p><p className="text-[10px] text-gray-500">UV</p></div>
               <div className="bg-white/70 rounded-xl p-2.5 text-center"><Droplets className="w-4 h-4 text-blue-500 mx-auto mb-0.5" /><p className="text-base font-bold text-gray-800">%{weather.humidity}</p></div>
             </div>
+            {/* Open-Meteo verisi CC BY 4.0 lisanslıdır: kaynak belirtilir. */}
+            <p className="text-[10px] text-gray-400 mt-2">
+              {t("dashboard.weatherAttribution")}{" "}
+              <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer" className="underline">Open-Meteo.com</a>
+            </p>
           </div>
         )}
 

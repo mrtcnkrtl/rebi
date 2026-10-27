@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Literal, Optional, Tuple
 from google.genai import types
 from config import GEMINI_API_KEY, GEMINI_MODEL, KNOWLEDGE_CATALOG_USER_ID, get_logger
 from async_bridge import run_sync
-from ai_client import REQUEST_TIMEOUT_SECONDS, get_client as get_gemini_client, record_error, record_usage
+from ai_client import REQUEST_TIMEOUT_SECONDS, check_budget, get_client as get_gemini_client, record_error, record_usage
 from flow_engine import sanitize_routine_items_details
 from knowledge.query_expand import expand_skin_query_for_vector_search, strip_conversational_turkish
 
@@ -2610,6 +2610,9 @@ async def _llm(label: str, **kwargs):
     Asenkron Gemini üretim çağrısı: olay döngüsünü bloklamaz, zaman aşımına uğrayabilir ve her çağrının
     token kullanımı `gemini_usage` satırı olarak günlüğe yazılır. `label` günlükte çağrı yerini gösterir.
     """
+    # Günlük bütçe dolduysa çağrı yapılmaz (GeminiBudgetExceeded); çağıranlar bunu model hatası gibi karşılayıp
+    # bilgi tabanı özetine düşer. Bütçe tanımlı değilse hiçbir şey yapmaz.
+    check_budget()
     started = time.perf_counter()
     try:
         response = await gemini_client.aio.models.generate_content(**kwargs)

@@ -339,6 +339,7 @@
       "Paz"
     ],
     "weatherTitle": "Hava",
+    "weatherAttribution": "Hava verisi:",
     "routineByDayTitle": "Gün gün rutin",
     "routineByDaySubtitle": "Her gün için sabah ve akşam adımları; sıra numarası uygulama sırasını gösterir.",
     "activePlanTitle": "Bu rutindeki aktifler",

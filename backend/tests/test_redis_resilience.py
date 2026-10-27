@@ -203,7 +203,7 @@ def test_proxy_logs_an_outage_once_a_minute_not_once_per_request(caplog):
 
 def test_limiter_counts_in_redis_with_one_round_trip_and_sets_an_expiry(redis_env):
     fake, _ = redis_env
-    limiter = rate_limit._make_limiter(3, 60, "deneme")
+    limiter = rate_limit._make_limiter(3, 60, "deneme", scale=False)
 
     assert [limiter.allow("ip") for _ in range(5)] == [True, True, True, False, False]
     key = next(iter(fake.data))
@@ -212,7 +212,7 @@ def test_limiter_counts_in_redis_with_one_round_trip_and_sets_an_expiry(redis_en
 
 def test_limiter_keeps_enforcing_from_memory_while_redis_is_down_then_returns(redis_env):
     fake, _ = redis_env
-    limiter = rate_limit._make_limiter(3, 60, "deneme")
+    limiter = rate_limit._make_limiter(3, 60, "deneme", scale=False)
     assert [limiter.allow("ip") for _ in range(4)] == [True, True, True, False]
 
     fake.down = True
@@ -226,7 +226,7 @@ def test_limiter_keeps_enforcing_from_memory_while_redis_is_down_then_returns(re
 def test_every_module_level_limiter_survives_a_dead_redis(redis_env):
     fake, _ = redis_env
     fake.down = True
-    limiter = rate_limit._make_limiter(2, 60, "x")
+    limiter = rate_limit._make_limiter(2, 60, "x", scale=False)
     assert limiter.allow("ip") and limiter.allow("ip") and not limiter.allow("ip")
 
 

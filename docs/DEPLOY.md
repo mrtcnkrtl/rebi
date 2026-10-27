@@ -31,6 +31,19 @@ Tek sunucu için hazır `docker-compose.yml` ve adım adım Türkçe rehber: **[
       Not: son push turu özeti ve devam imleci hâlâ süreç içidir; birden çok işçiye geçmeden önce bunlar da Redis'e taşınmalı.
 - [ ] Süreç yöneticisi: `uvicorn main:app --host 0.0.0.0 --port 8000` veya benzeri; reverse proxy arkasında TLS.
 - [ ] Sağlık: `GET /health` (`jwt_auth`, `rate_limit_backend`, `supabase`).
+- [ ] **Veritabanı öz-denetimi:** `GET /health` içinde `db_integrity` (`ok` | `slow` | `degraded` | `unknown`) eksik indeks/fonksiyonu
+      ve retention zamanlayıcısını (`retention`: `pg_cron` | `no_cron_job` | `no_pg_cron`) gösterir; adlar yalnızca günlüktedir.
+      `degraded` ise veri güvenliği riski vardır (ör. olay idempotansı indeksi yok): `scripts/db_checks.sql` ile bakıp ilgili
+      migration'ı çalıştırın. Retention `no_pg_cron` ise pg_cron'u açın ya da `RETENTION_PURGE_DAILY=1` verin.
+- [ ] **Retention güvenlik ağı:** `RETENTION_PURGE_DAILY=1` iken push-cron günde bir `POST /maintenance/purge` çağırır
+      (dağıtım anahtarıyla korunur; pg_cron aktifse atlar). İlk temizlikten önce `scripts/db_checks.sql` bölüm 6 ile silinecek
+      satır sayısına bakın; sayı büyükse ilk temizliği SQL Editor'da elle çalıştırın.
+- [ ] **Hava sağlayıcısı hacmi:** her sağlayıcı çağrısı `weather_call provider=… ok=… ms=…` satırı yazar
+      (`docker compose logs api | grep -c weather_call`). Open-Meteo ücretsiz API ticari kullanıma kapalıdır; Standard plan ayda 1 milyon çağrıdır.
+      Veri CC BY 4.0 lisanslıdır: uygulamada ve web panelinde "Hava verisi: Open-Meteo.com" atfı gösterilir.
+- [ ] **Gemini günlük bütçe kesicisi:** `GEMINI_DAILY_BUDGET_USD` tanımlıysa tahmini günlük harcama bu değere ulaşınca yeni
+      Gemini çağrıları durur ve sohbet bilgi tabanı özetine düşer (`gemini_budget` günlük satırları: %80 uyarısı ve "DOLDU").
+- [ ] **Yük testi:** `docs/YUK-TESTI.md`.
 - [ ] **Token harcaması:** her Gemini çağrısı günlüğe `gemini_usage label=… in=… out=… cost_usd=…` satırı yazar
       (`docker compose logs api | grep gemini_usage`). Etiket çağrı yerini gösterir (`chat_slots`, `chat_compose`,
       `routine_polish`, `checkin_note` …). Zaman aşımı/hata: `gemini_error label=… kind=…`.

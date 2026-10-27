@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import os
 import threading
+from datetime import date
 from typing import Optional
 
 from config import GEMINI_API_KEY, get_logger
+from redis_client import FallbackProxy, get_redis, redis_url
 
 log = get_logger("ai_client")
 
@@ -65,6 +67,122 @@ def get_client(batch: bool = False):
     return client
 
 
+# ── Günlük bütçe kesicisi ────────────────────────────────────────────────────────────────────────
+# GEMINI_DAILY_BUDGET_USD tanımlıysa (0 / boş = kapalı), tahmini günlük harcama bu değere ulaşınca yeni Gemini
+# çağrıları yapılmaz. Sohbet çökmez: çağıranlar zaten model hatasında bilgi tabanı özetine düşer. Böylece
+# kullanıcı sayısı, sahte hesaplar ya da bir hata ne olursa olsun günlük fatura üst sınırı olur.
+# Harcama Redis'te tutulur (varsa; çok işçi/yeniden başlatma boyunca sürer), yoksa süreç belleğinde.
+
+
+class GeminiBudgetExceeded(Exception):
+    """Günlük yapay zekâ bütçesi doldu; çağrı yapılmadı."""
+
+
+def daily_budget_usd() -> float:
+    try:
+        return max(0.0, float(os.getenv("GEMINI_DAILY_BUDGET_USD") or 0))
+    except ValueError:
+        return 0.0
+
+
+class _SpendMemory:
+    def __init__(self) -> None:
+        self._micro: dict[str, int] = {}
+        self._lock = threading.Lock()
+
+    def add(self, day: str, micro: int) -> int:
+        with self._lock:
+            self._micro = {day: self._micro.get(day, 0) + micro}  # yalnızca bugünün sayacı tutulur
+            return self._micro[day]
+
+    def get(self, day: str) -> int:
+        with self._lock:
+            return self._micro.get(day, 0)
+
+
+class _SpendRedis:
+    def __init__(self, client) -> None:
+        self._r = client
+
+    def add(self, day: str, micro: int) -> int:
+        key = f"rebi:gemini:spend:{day}"
+        total = int(self._r.incrby(key, micro))
+        if total == micro:
+            self._r.expire(key, 172800)
+        return total
+
+    def get(self, day: str) -> int:
+        return int(self._r.get(f"rebi:gemini:spend:{day}") or 0)
+
+
+_spend_backend = None
+_spend_lock = threading.Lock()
+_warned: dict[str, set] = {}
+
+
+def _spend():
+    global _spend_backend
+    if _spend_backend is None:
+        with _spend_lock:
+            if _spend_backend is None:
+                memory = _SpendMemory()
+                _spend_backend = FallbackProxy(_SpendRedis(get_redis()), memory, "Gemini günlük harcama") if redis_url() else memory
+    return _spend_backend
+
+
+def spent_today_usd() -> float:
+    return _spend().get(date.today().isoformat()) / 1_000_000
+
+
+def check_budget() -> None:
+    """Bütçe tanımlı ve dolmuşsa GeminiBudgetExceeded yükseltir. Okuma hata verirse çağrıya izin verilir (bütçe yardımcıdır)."""
+    limit = daily_budget_usd()
+    if limit <= 0:
+        return
+    try:
+        spent = spent_today_usd()
+    except Exception:
+        return
+    if spent >= limit:
+        _warn_once("limit", spent, limit)
+        raise GeminiBudgetExceeded(f"günlük yapay zekâ bütçesi doldu ({spent:.2f}/{limit:.2f} USD)")
+
+
+def _warn_once(kind: str, spent: float, limit: float) -> None:
+    day = date.today().isoformat()
+    done = _warned.setdefault(day, set())
+    if kind in done:
+        return
+    done.add(kind)
+    for old in [d for d in _warned if d != day]:
+        _warned.pop(old, None)
+    if kind == "limit":
+        log.error("gemini_budget DOLDU spent_usd=%.2f limit_usd=%.2f: yeni Gemini çağrıları bugün durduruldu", spent, limit)
+    else:
+        log.warning("gemini_budget %%80 spent_usd=%.2f limit_usd=%.2f", spent, limit)
+
+
+def _add_spend(cost_usd: float) -> None:
+    """Çağrı maliyetini günlük sayaca ekler (hata verirse yok sayılır) ve %80 eşiğinde uyarır."""
+    limit = daily_budget_usd()
+    if limit <= 0 or cost_usd <= 0:
+        return
+    try:
+        total = _spend().add(date.today().isoformat(), int(round(cost_usd * 1_000_000))) / 1_000_000
+    except Exception:
+        return
+    if total >= limit * 0.8:
+        _warn_once("80", total, limit)
+
+
+def reset_budget() -> None:
+    """Testler için."""
+    global _spend_backend
+    with _spend_lock:
+        _spend_backend = None
+    _warned.clear()
+
+
 # ── Kullanım günlüğü ─────────────────────────────────────────────────────────────────────────────
 
 _totals: dict[str, dict[str, float]] = {}
@@ -93,6 +211,7 @@ def record_usage(label: str, model: Optional[str], response, elapsed_seconds: fl
     tokens_out = _int(getattr(meta, "candidates_token_count", 0))
     thoughts = _int(getattr(meta, "thoughts_token_count", 0))
     cost = estimate_cost_usd(tokens_in, tokens_out + thoughts)
+    _add_spend(cost)
     with _totals_lock:
         t = _totals.setdefault(label, {"calls": 0, "errors": 0, "in": 0, "out": 0, "cost_usd": 0.0})
         t["calls"] += 1

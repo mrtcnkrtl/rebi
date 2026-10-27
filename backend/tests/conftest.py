@@ -26,7 +26,7 @@ def _fresh_ai_user_budget():
     """Kullanıcı başına yapay zekâ bütçesi süreç genelidir; testler birbirinin bütçesini tüketmesin."""
     import rate_limit
 
-    for limiter in (rate_limit.LIMIT_AI_USER_MINUTE, rate_limit.LIMIT_AI_USER_HOUR):
+    for limiter in (rate_limit.LIMIT_AI_USER_MINUTE, rate_limit.LIMIT_AI_USER_HOUR, rate_limit.LIMIT_INGEST_USER):
         if hasattr(limiter, "_hits"):
             limiter._hits.clear()
     yield

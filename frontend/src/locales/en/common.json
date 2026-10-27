@@ -339,6 +339,7 @@
       "Sun"
     ],
     "weatherTitle": "Weather",
+    "weatherAttribution": "Weather data:",
     "routineByDayTitle": "Day-by-day routine",
     "routineByDaySubtitle": "AM/PM steps per day; the number indicates the application order.",
     "activePlanTitle": "Actives in this routine",
