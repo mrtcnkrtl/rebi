@@ -8,6 +8,10 @@ services:
       dockerfile: Dockerfile
     env_file:
       - ./deploy/.env.api
+    environment:
+      # Hız sınırı ve sohbet kotası sayaçları Redis'te tutulur (yeniden başlatma/deploy sayaçları sıfırlamaz).
+      # Redis kapanırsa API çalışmaya devam eder, sayaçlar o süre süreç içine düşer. Redis'siz çalışmak için bu satırı silin.
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - ./supabase/migrations:/supabase/migrations:ro
     expose:
@@ -32,7 +36,7 @@ services:
     env_file:
       - ./deploy/.env.api
     environment:
-      PUSH_DISPATCH_URL: http://api:8000/push/dispatch?max_users=1000
+      PUSH_DISPATCH_URL: http://api:8000/push/dispatch?max_users=20000
     depends_on:
       api:
         condition: service_healthy
@@ -46,6 +50,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 360s
+
+  # Hız sınırı ve sohbet kotası sayaçları (backend/redis_client.py). Yalnızca iç ağdan erişilir, dışarı port açılmaz.
+  # AOF açık: yeniden başlatmada sayaçlar korunur. Sayaçların hepsi süreli anahtardır; 128 MB çok fazlasıyla yeter.
+  redis:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - noeviction
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
   web:
     build:
@@ -61,3 +86,6 @@ services:
       api:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  redis-data:

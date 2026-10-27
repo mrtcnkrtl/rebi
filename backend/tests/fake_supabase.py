@@ -1,7 +1,10 @@
 """supabase-py sorgu zincirinin test amaçlı küçük bir taklidi.
 
 Yalnızca backend'in kullandığı zincir parçalarını destekler:
-select/insert/upsert/delete + eq/in_/gt/gte/lte/order/limit/execute.
+select/insert/upsert/delete + eq/in_/gt/gte/lte/order (çoklu)/limit/range/execute.
+
+`max_rows` verilirse PostgREST'in `db-max-rows` sınırı taklit edilir: bir select, istenen `limit`/`range`
+ne olursa olsun en fazla bu kadar satır döndürür (Supabase varsayılanı 1000). Sayfalamayı sınamak için.
 """
 
 from __future__ import annotations
@@ -20,6 +23,11 @@ class FakeTable:
         self.inserted: list[dict] = []
         self.upserted: list[dict] = []
         self.deleted_count = 0
+        self.max_rows: int | None = None
+        self.select_calls = 0
+        self.upsert_calls = 0
+        # Her select'in süzgeçleri: toplu sorguların URL'ye kaç kimlik yazdığını sınamak için.
+        self.query_log: list[list[tuple[str, str, object]]] = []
         self.last_conflict = ""
         self.last_ignore_duplicates = False
         self.filters: list[tuple[str, str, object]] = []
@@ -29,9 +37,9 @@ class FakeTable:
         self._op = "select"
         self._payload = None
         self.filters = []
-        self._order = None
-        self._desc = False
+        self._orders: list[tuple[str, bool]] = []
         self._limit = None
+        self._range: tuple[int, int] | None = None
         return self
 
     def select(self, *_args, **_kwargs):
@@ -44,6 +52,7 @@ class FakeTable:
         return self
 
     def upsert(self, payload, on_conflict: str = "", ignore_duplicates: bool = False):
+        self.upsert_calls += 1
         self._op = "upsert"
         self._payload = payload
         self.last_conflict = on_conflict
@@ -75,12 +84,15 @@ class FakeTable:
         return self
 
     def order(self, column, desc: bool = False):
-        self._order = column
-        self._desc = desc
+        self._orders.append((column, desc))
         return self
 
     def limit(self, count):
         self._limit = count
+        return self
+
+    def range(self, start, end):
+        self._range = (int(start), int(end))
         return self
 
     def _matches(self, row: dict) -> bool:
@@ -106,11 +118,19 @@ class FakeTable:
         payload = self._payload
         try:
             if op == "select":
+                self.select_calls += 1
+                self.query_log.append(list(self.filters))
                 found = [dict(r) for r in self.rows if self._matches(r)]
-                if self._order:
-                    found.sort(key=lambda r: r.get(self._order), reverse=self._desc)
+                # Çoklu sıralama: son anahtardan başlayarak kararlı sıralamalar (Postgres'in ORDER BY a, b'si gibi).
+                for column, desc in reversed(self._orders):
+                    found.sort(key=lambda r, c=column: (r.get(c) is None, r.get(c)), reverse=desc)
+                if self._range is not None:
+                    start, end = self._range
+                    found = found[start : end + 1]
                 if self._limit is not None:
                     found = found[: self._limit]
+                if self.max_rows is not None:
+                    found = found[: self.max_rows]
                 return Result(found)
 
             new_rows = payload if isinstance(payload, list) else [payload]

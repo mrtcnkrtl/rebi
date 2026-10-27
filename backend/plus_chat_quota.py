@@ -13,6 +13,8 @@ import threading
 from datetime import date
 from typing import Optional, Protocol
 
+from redis_client import FallbackProxy, get_redis
+
 
 def plus_chat_monthly_cap() -> int:
     try:
@@ -60,10 +62,12 @@ class _MemoryMonthlyQuota:
 
 
 class _RedisMonthlyQuota:
-    def __init__(self, redis_url: str) -> None:
-        import redis
+    def __init__(self, redis_url: str, client=None) -> None:
+        if client is None:
+            import redis
 
-        self._r = redis.from_url(redis_url, decode_responses=True)
+            client = redis.from_url(redis_url, decode_responses=True)
+        self._r = client
         self._prefix = "rebi:pluschat:v1:"
 
     def _key(self, user_id: str, month_key: str) -> str:
@@ -102,7 +106,8 @@ def _get_backend() -> _MonthlyQuotaBackend:
         return _backend
     url = os.getenv("REDIS_URL", "").strip()
     if url:
-        _backend = _RedisMonthlyQuota(url)
+        # Redis kapanırsa sohbet durmasın: süreç içi sayaca düşülür (kota o süre boyunca süreç başınadır).
+        _backend = FallbackProxy(_RedisMonthlyQuota(url, client=get_redis()), _MemoryMonthlyQuota(), "Plus aylık kotası")
     else:
         _backend = _MemoryMonthlyQuota()
     return _backend

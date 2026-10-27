@@ -65,4 +65,8 @@ def test_summary_line_flags_unconfigured_push_and_the_user_cap():
     assert "kullanıcı=3" in line and "bildirim=4" in line and "başarısız=1" in line
     assert "UYARI" not in line
 
-    assert "UYARI" in push_cron.describe({"users_considered": 1000, "push_configured": True})
+    assert "UYARI" in push_cron.describe({"users_considered": 1000, "push_configured": True}, max_users_hint=1000)
+    assert "UYARI" not in push_cron.describe({"users_considered": 1000, "push_configured": True})
+
+    cut = push_cron.describe({"users_considered": 300, "truncated": True, "users_skipped": 2, "push_configured": True})
+    assert "yarım kaldı" in cut and "atlanan=2" in cut

@@ -24,7 +24,11 @@ Tek sunucu için hazır `docker-compose.yml` ve adım adım Türkçe rehber: **[
 - [ ] **JWT (zorunlu):** `SUPABASE_JWT_SECRET` tanımlı; eksikse `/health` 503 verir.
 - [ ] `API_ALLOW_INSECURE_AUTH=0`; `API_JWT_BYPASS_USER_IDS` üretimde boş.
 - [ ] `API_DEMO_USER_IDS`: demo kullanıcıların DB yazımını atlar; üretimde boş veya kaldırılmalı.
-- [ ] **Rate limit:** çok süreç için `REDIS_URL`; yoksa bellek içi (tek worker).
+- [ ] **Rate limit ve sohbet kotası:** `docker-compose.yml` içindeki `redis` servisi (yalnızca iç ağ, AOF açık) bu sayaçları
+      tutar; `api` servisine `REDIS_URL` compose'dan verilir. Böylece deploy/yeniden başlatma kotaları sıfırlamaz ve çok
+      işçiye geçilebilir. Redis kapanırsa API çalışmaya devam eder: sayaçlar o süre süreç içine düşer (kota gevşer) ve
+      `GET /health` içinde `"redis": "down"` görünür. `REDIS_URL` yoksa her şey bellekte kalır (`"redis": "off"`).
+      Not: son push turu özeti ve devam imleci hâlâ süreç içidir; birden çok işçiye geçmeden önce bunlar da Redis'e taşınmalı.
 - [ ] Süreç yöneticisi: `uvicorn main:app --host 0.0.0.0 --port 8000` veya benzeri; reverse proxy arkasında TLS.
 - [ ] Sağlık: `GET /health` (`jwt_auth`, `rate_limit_backend`, `supabase`).
 - [ ] **Token harcaması:** her Gemini çağrısı günlüğe `gemini_usage label=… in=… out=… cost_usd=…` satırı yazar

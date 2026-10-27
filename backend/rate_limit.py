@@ -13,6 +13,8 @@ from typing import Deque, Dict, Protocol
 
 from fastapi import HTTPException, Request
 
+from redis_client import FallbackProxy, get_redis
+
 
 def get_client_ip(request: Request) -> str:
     forwarded = request.headers.get("X-Forwarded-For") or request.headers.get("x-forwarded-for")
@@ -58,28 +60,38 @@ class RedisFixedWindowLimiter:
         window_seconds: float,
         redis_url: str,
         name: str,
+        client=None,
     ) -> None:
-        import redis
-
         self.max_requests = max(1, max_requests)
         self.window_seconds = max(1, int(round(window_seconds)))
         self._prefix = f"rebi:rl:{name}:"
-        self._r = redis.from_url(redis_url, decode_responses=True)
+        if client is None:
+            import redis
+
+            client = redis.from_url(redis_url, decode_responses=True)
+        self._r = client
 
     def allow(self, key: str) -> bool:
         now = time.time()
         bucket = int(now // self.window_seconds)
         rk = f"{self._prefix}{key}:{bucket}"
-        n = self._r.incr(rk)
-        if n == 1:
-            self._r.expire(rk, self.window_seconds + 1)
+        # Tek gidiş-dönüşte artır + süre koy (pencere kovası zamana bağlı olduğundan her çağrıda koymak zararsız).
+        pipe = self._r.pipeline()
+        pipe.incr(rk)
+        pipe.expire(rk, self.window_seconds + 1)
+        n = pipe.execute()[0]
         return n <= self.max_requests
 
 
 def _make_limiter(max_requests: int, window_seconds: float, name: str) -> SupportsRateLimit:
     url = os.getenv("REDIS_URL", "").strip()
     if url:
-        return RedisFixedWindowLimiter(max_requests, window_seconds, url, name)
+        # Redis takılırsa ya da kapanırsa istekler 500 vermesin: süreç içi sınırlayıcıya düşülür.
+        return FallbackProxy(
+            RedisFixedWindowLimiter(max_requests, window_seconds, url, name, client=get_redis()),
+            SlidingWindowLimiter(max_requests, window_seconds),
+            f"hız sınırı:{name}",
+        )
     return SlidingWindowLimiter(max_requests, window_seconds)
 
 
@@ -114,6 +126,34 @@ LIMIT_PUSH_DISPATCH = _make_limiter(30, 60.0, "push_dispatch")
 LIMIT_UPLOAD_PHOTO = _make_limiter(40, 3600.0, "upload_photo")
 LIMIT_ACCOUNT_DELETE = _make_limiter(3, 3600.0, "account_delete")
 LIMIT_INTRO_SEEN = _make_limiter(60, 60.0, "intro_seen")
+
+
+def _int_env(name: str, default: int) -> int:
+    try:
+        return max(1, int(os.getenv(name, "") or default))
+    except ValueError:
+        return default
+
+
+# Yapay zekâ uçları için KULLANICI başına bütçe (IP'den bağımsız: IP değiştirerek aşılamaz). Gerçek bir
+# sohbet dakikada birkaç mesajı geçmez; sınırsız Plus kullanıcısının tek hesapla model bütçesini tüketmesini
+# bu sınır engeller. Sohbet, çeviri, rutin üretimi ve check-in aynı bütçeyi paylaşır.
+LIMIT_AI_USER_MINUTE = _make_limiter(_int_env("AI_USER_LIMIT_PER_MINUTE", 20), 60.0, "ai_user_min")
+LIMIT_AI_USER_HOUR = _make_limiter(_int_env("AI_USER_LIMIT_PER_HOUR", 200), 3600.0, "ai_user_hour")
+
+
+def enforce_ai_user_limit(user_id: str) -> None:
+    """Kullanıcının yapay zekâ bütçesi dolmuşsa 429 yükseltir. Kota ve model çağrısından ÖNCE çağrılır."""
+    uid = (user_id or "").strip()
+    if not uid:
+        return
+    # Dakikalık sınır reddederse saatlik sayaç artmaz (reddedilen istek bütçeden düşmesin).
+    if not LIMIT_AI_USER_MINUTE.allow(uid) or not LIMIT_AI_USER_HOUR.allow(uid):
+        raise HTTPException(
+            status_code=429,
+            detail="Çok hızlı mesaj gönderiyorsun. Birkaç saniye bekleyip tekrar dene.",
+            headers={"Retry-After": "30"},
+        )
 
 
 def rate_limit_backend_label() -> str:

@@ -5,6 +5,7 @@ Mimari: Flow Engine (deterministik) -> Knowledge Router (metadata) -> AI (polish
 Yeni: /daily_checkin endpoint, adaptif rutin sistemi, risk skoru
 """
 
+import asyncio
 import httpx
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
@@ -88,6 +89,7 @@ from plus_chat_quota import (
     plus_chat_remaining,
 )
 from chat_quota import reserve_chat_turn
+from redis_client import redis_status
 from demo_users import (
     demo_checkin_already_today,
     demo_checkin_mark,
@@ -117,6 +119,7 @@ from rate_limit import (
     LIMIT_ACCOUNT_DELETE,
     LIMIT_INTRO_SEEN,
     get_client_ip,
+    enforce_ai_user_limit,
 )
 
 log = get_logger("api")
@@ -242,6 +245,42 @@ def _safe_date_from_timestamp(ts: Optional[str]) -> str:
         return str(date.today())
 
 
+# `.in_()` filtreleri URL'ye yazılır: yüzlerce UUID ~37 bayt/kimlik tutar ve ağ geçidi sınırını aşabilir.
+_BULK_IN_CHUNK = 50
+
+
+def _chunks(items: list, size: int):
+    for i in range(0, len(items), size):
+        yield items[i : i + size]
+
+
+def _postgrest_page_size() -> int:
+    """PostgREST bir yanıtta en fazla `db-max-rows` satır döner (Supabase varsayılanı 1000)."""
+    try:
+        return max(10, int(os.getenv("POSTGREST_MAX_ROWS") or 1000))
+    except ValueError:
+        return 1000
+
+
+def _fetch_paged(make_query, max_pages: int = 20) -> list[dict]:
+    """
+    Sınırın üstündeki sonuçları sayfa sayfa okur (`range`). Yoksa fazla satır sessizce kesilir ve en yeni
+    kayıtlar kaybolur. `make_query` her çağrıda aynı sorguyu yeniden kurar ve BENZERSİZ bir anahtarla
+    (ör. `id`) bitirir: eşit sıralı satırlar sayfa sınırında kaybolmasın ya da tekrarlanmasın.
+    """
+    size = _postgrest_page_size()
+    rows: list[dict] = []
+    for page in range(max_pages):
+        batch = make_query().range(page * size, page * size + size - 1).execute().data or []
+        rows.extend(batch)
+        if len(batch) < size:
+            break
+    else:
+        # Üst sınır, kötü niyetli ya da bozuk bir hesabın (yüz binlerce olay) isteği sonsuza dek şişirmesini önler.
+        log.error("Sayfalı okuma %d sayfada bitmedi; sonuç eksik olabilir.", max_pages)
+    return rows
+
+
 def _local_today(utc_offset_minutes: Optional[int] = None) -> date:
     """
     Kullanıcının bugünü. İstemci `utc_offset_minutes` gönderirse onun yerel günü,
@@ -290,19 +329,21 @@ def _load_reminder_settings(supabase, user_id: str) -> dict:
 
 
 def _load_reminder_settings_bulk(supabase, user_ids: list[str]) -> dict[str, dict]:
-    """Push dağıtımı için birden çok kullanıcının ayarı tek sorguda; kayıtsızlar varsayılan alır."""
+    """
+    Push dağıtımı için birden çok kullanıcının ayarı toplu okunur; kayıtsızlar varsayılan alır.
+    Okuma başarısız olursa istisna yükselir: varsayılan ayara düşmek kullanıcının kapattığı kategorileri
+    ve sessiz saatlerini yok sayıp onlara istemedikleri bildirimi gönderirdi; çağıran bu kullanıcıları atlar.
+    """
     stored: dict[str, dict] = {}
     if supabase and user_ids:
-        try:
+        for chunk in _chunks(list(user_ids), _BULK_IN_CHUNK):
             rows = (
                 supabase.table("reminder_settings")
                 .select("user_id,settings")
-                .in_("user_id", user_ids)
+                .in_("user_id", chunk)
                 .execute()
             ).data or []
-            stored = {str(r.get("user_id")): r.get("settings") for r in rows}
-        except Exception as e:
-            log.error("reminder_settings toplu okunamadı (varsayılan kullanılır): %s", type(e).__name__)
+            stored.update({str(r.get("user_id")): r.get("settings") for r in rows})
     return {uid: normalize_reminder_settings(stored.get(uid)) for uid in user_ids}
 
 # Tek bir su kaydının sınırı; negatif değer yanlış girişi düzeltir (ör. -250).
@@ -450,15 +491,15 @@ def _load_daily_events(supabase, user_id: str, log_date: str) -> list[dict]:
     """Günün olayları: Supabase varsa oradan, yoksa bellekten."""
     if should_use_supabase_db(supabase, user_id):
         try:
-            r = (
+            # Sayfalı: tek sorgu yanıt sınırında kesilirse eskiden yeniye sıralı listenin SON (en yeni) olayları kaybolurdu.
+            return _fetch_paged(lambda: (
                 supabase.table("daily_events")
                 .select("event_time,type,payload,source")
                 .eq("user_id", user_id)
                 .eq("log_date", log_date)
-                .order("event_time", desc=False)
-                .execute()
-            )
-            return r.data or []
+                .order("event_time")
+                .order("id")
+            ))
         except Exception as e:
             log.error("daily_events okuma hatası (fallback memory): %s", e)
     return _MEM_DAILY_EVENTS.get((user_id, log_date), [])
@@ -469,16 +510,15 @@ def _load_shelf_events(supabase, user_id: str, today: date) -> list[dict]:
     since = str(today - timedelta(days=SHELF_LOOKBACK_DAYS))
     if should_use_supabase_db(supabase, user_id):
         try:
-            r = (
+            return _fetch_paged(lambda: (
                 supabase.table("daily_events")
                 .select("event_time,log_date,type,payload")
                 .eq("user_id", user_id)
                 .in_("type", list(SHELF_EVENT_TYPES))
                 .gte("log_date", since)
-                .order("event_time", desc=False)
-                .execute()
-            )
-            return r.data or []
+                .order("event_time")
+                .order("id")
+            ))
         except Exception as e:
             log.error("Rafım olayları okunamadı (bellek yedeği): %s", type(e).__name__)
     rows = [
@@ -1377,6 +1417,10 @@ class PushDispatchResponse(BaseModel):
     push_configured: bool
     # Hiçbir cihaza ulaşmayan ve sonraki turda yeniden denenecek hatırlatıcılar.
     deliveries_failed: int = 0
+    # Verisi okunamadığı için bu turda atlanan kullanıcılar (yanlış bildirim göndermektense susulur).
+    users_skipped: int = 0
+    # Süre bütçesi ya da `max_users` yüzünden tur bitmedi; kalan kullanıcılar sonraki turda devam eder.
+    truncated: bool = False
 
 
 # Son dağıtım turunun özeti (bellekte): /health izleyicisi dağıtımın çalışıp çalışmadığını görsün.
@@ -1558,6 +1602,8 @@ async def health():
             else ("insecure_development" if insecure_auth_allowed() else "blocked")
         ),
         "rate_limit_backend": rate_limit_backend_label(),
+        # Redis erişilebilir mi? "down": uygulama çalışır ama kota/hız sınırı süreç içine düşmüştür.
+        "redis": await run_sync(redis_status),
         "push": "configured" if push_configured() else "off",
         "push_dispatch": _PUSH_LAST_RUN or None,
         "db_schema": _DB_SCHEMA_STATUS,
@@ -1649,15 +1695,14 @@ def daily_tracking_ingest(request: Request, req: DailyTrackingIngestRequest):
     events = []
     if should_use_supabase_db(supabase, req.user_id):
         try:
-            r = (
+            events = _fetch_paged(lambda: (
                 supabase.table("daily_events")
                 .select("event_time,type,payload,source")
                 .eq("user_id", req.user_id)
                 .eq("log_date", log_date)
-                .order("event_time", desc=False)
-                .execute()
-            )
-            events = r.data or []
+                .order("event_time")
+                .order("id")
+            ))
         except Exception as e:
             log.error("daily_events read hatası (fallback memory): %s", e)
             events = _MEM_DAILY_EVENTS.get((req.user_id, log_date), [])
@@ -1899,15 +1944,16 @@ def me_history(
         )
 
     try:
-        events = (
+        # 90 günde olay sayısı PostgREST yanıt sınırını (1000) kolayca aşar: sayfalanmazsa en yeni günler sessizce kaybolurdu.
+        events = _fetch_paged(lambda: (
             supabase.table("daily_events")
             .select("event_time,type,payload,log_date")
             .eq("user_id", user_id)
             .gte("log_date", str(from_date))
             .lte("log_date", str(to_date))
-            .order("event_time", desc=False)
-            .execute()
-        ).data or []
+            .order("event_time")
+            .order("id")
+        ))
         logs = (
             supabase.table("daily_logs")
             .select("log_date,applied_routine,skin_feeling,sleep_hours,stress_level,risk_score")
@@ -2204,12 +2250,12 @@ def _release_push_slot(supabase, user_id: str, reminder_id: str, log_date: str, 
 
 def _remove_invalid_device_tokens(supabase, tokens: list[str]) -> int:
     removed = 0
-    for token in tokens:
+    for chunk in _chunks(list(tokens), _BULK_IN_CHUNK):
         try:
-            supabase.table("device_tokens").delete().eq("token", token).execute()
-            removed += 1
+            supabase.table("device_tokens").delete().in_("token", chunk).execute()
+            removed += len(chunk)
         except Exception as e:
-            log.error("Geçersiz cihaz kaydı silinemedi: %s", type(e).__name__)
+            log.error("Geçersiz cihaz kayıtları silinemedi: %s", type(e).__name__)
     return removed
 
 
@@ -2271,17 +2317,355 @@ def device_unregister(
     return {"ok": True, "synced": True}
 
 
+# ── Push dağıtımı ────────────────────────────────────────────────────────────────────────────────
+# Kullanıcılar sayfa sayfa işlenir. Her sayfa için ayarlar, günün olayları, check-in, konum ve raf verisi
+# kullanıcı başına ayrı değil TOPLU sorgularla okunur (sayfa başına ~10 sorgu, kullanıcı başına ~4 yerine).
+# Hatırlatıcılar önce hepsi için hesaplanır, sonra gönderimler eşzamanlı yapılır. Süre bütçesi aşılırsa tur
+# yarım kalır ve bir sonraki tur kaldığı kullanıcıdan devam eder; sondaki kullanıcılar aç kalmaz.
+
+_PUSH_PAGE_USERS = 100
+_PUSH_SEND_CONCURRENCY = 10
+_PUSH_WEATHER_CONCURRENCY = 8
+# Bütçe aşılmış turun kaldığı yer (bellekte; tek süreç). None: sıradaki tur baştan başlar.
+_PUSH_CURSOR: dict = {"after": None}
+
+
+def _push_clock() -> float:
+    """Tur süresi ölçümü (testler sahte saat takar; olay döngüsünün zamanlayıcılarına dokunmaz)."""
+    return time.monotonic()
+
+
+def _push_budget_seconds() -> float:
+    """Bir turun en fazla süresi. push-cron isteği 240 sn sonra bırakır; bütçe bunun altında tutulur."""
+    try:
+        return max(5.0, float(os.getenv("PUSH_DISPATCH_BUDGET_SECONDS") or 200))
+    except ValueError:
+        return 200.0
+
+
+def _load_push_page(supabase, after: Optional[str], max_users: int) -> tuple[dict[str, dict], Optional[str], bool]:
+    """
+    `after`'dan sonraki, push'u açık en fazla `max_users` kullanıcı (kullanıcı kimliğine göre sıralı).
+    Döner: ({kullanıcı: {"tokens": [...], "offset": dk}}, son kullanıcı kimliği, liste bitti mi).
+    Her kullanıcının cihazları kimlik sırasında ardışıktır; en son görülen cihaz önce gelir ve saat farkı ondan alınır.
+    """
+    row_limit = max_users * _PUSH_MAX_TOKENS_PER_USER + 1
+    query = (
+        supabase.table("device_tokens")
+        .select("user_id,token,utc_offset_minutes")
+        .eq("push_enabled", True)
+    )
+    if after:
+        query = query.gt("user_id", after)
+    rows = query.order("user_id").order("last_seen_at", desc=True).limit(row_limit).execute().data or []
+
+    users: dict[str, dict] = {}
+    for row in rows:
+        uid, token = str(row.get("user_id") or ""), str(row.get("token") or "")
+        if not uid or not token:
+            continue
+        entry = users.setdefault(uid, {"tokens": [], "offset": int(row.get("utc_offset_minutes") or 0)})
+        if len(entry["tokens"]) < _PUSH_MAX_TOKENS_PER_USER:
+            entry["tokens"].append(token)
+
+    full = len(rows) >= row_limit
+    if full and len(users) > 1:
+        # Sayfa dolduysa son kullanıcının cihazları yarım kalmış olabilir: bir sonraki sayfada baştan okunur.
+        users.pop(next(reversed(users)))
+    more = full
+    if len(users) > max_users:
+        users = dict(list(users.items())[:max_users])
+        more = True
+    last_uid = next(reversed(users)) if users else None
+    return users, last_uid, not more
+
+
+def _load_daily_events_bulk(supabase, user_ids: list[str], log_date: str) -> dict[str, list[dict]]:
+    """Kullanıcıların `log_date` günündeki olayları (kullanıcı başına eskiden yeniye). Yanıt sınırını aşarsa sayfalanır."""
+    out: dict[str, list[dict]] = {uid: [] for uid in user_ids}
+    for chunk in _chunks(list(user_ids), _BULK_IN_CHUNK):
+        rows = _fetch_paged(lambda c=chunk: (
+            supabase.table("daily_events")
+            .select("user_id,event_time,type,payload,source")
+            .in_("user_id", c)
+            .eq("log_date", log_date)
+            .order("user_id")
+            .order("event_time")
+            .order("id")
+        ))
+        for row in rows:
+            out.setdefault(str(row.get("user_id")), []).append(row)
+    return out
+
+
+def _checkins_done_bulk(supabase, user_ids: list[str], log_date: str) -> set[str]:
+    """`log_date` gününde check-in yapmış kullanıcılar."""
+    done: set[str] = set()
+    for chunk in _chunks(list(user_ids), _BULK_IN_CHUNK):
+        rows = (
+            supabase.table("daily_logs")
+            .select("user_id")
+            .in_("user_id", chunk)
+            .eq("log_date", log_date)
+            .execute()
+        ).data or []
+        done.update(str(r.get("user_id")) for r in rows)
+    return done
+
+
+def _products_out_bulk(supabase, today_by_user: dict[str, date]) -> dict[str, list[dict]]:
+    """Rafım: kullanıcıların bitmiş/yenisi alınmamış ürünleri (her biri kendi yerel gününe göre)."""
+    user_ids = list(today_by_user)
+    since_by_user = {uid: str(today - timedelta(days=SHELF_LOOKBACK_DAYS)) for uid, today in today_by_user.items()}
+    since_min = min(since_by_user.values())
+    events: dict[str, list[dict]] = {uid: [] for uid in user_ids}
+    for chunk in _chunks(user_ids, 25):
+        rows = _fetch_paged(lambda c=chunk: (
+            supabase.table("daily_events")
+            .select("user_id,event_time,log_date,type,payload")
+            .in_("user_id", c)
+            .in_("type", list(SHELF_EVENT_TYPES))
+            .gte("log_date", since_min)
+            .order("user_id")
+            .order("event_time")
+            .order("id")
+        ))
+        for row in rows:
+            uid = str(row.get("user_id"))
+            if uid in events and str(row.get("log_date") or "") >= since_by_user[uid]:
+                events[uid].append(row)
+    return {uid: derive_products_out(evs, today_by_user[uid]) for uid, evs in events.items()}
+
+
+async def _weather_for_cells(coords: list[tuple[float, float]]) -> dict[tuple, Optional[dict]]:
+    """Birkaç koordinat hücresinin havası eşzamanlı alınır (önbellekli); hücre = 0,1° (~11 km)."""
+    sem = asyncio.Semaphore(_PUSH_WEATHER_CONCURRENCY)
+
+    async def one(lat: float, lon: float):
+        async with sem:
+            try:
+                return await _weather_for_coords(lat, lon)
+            except Exception as e:
+                log.error("Push: hava alınamadı: %s", type(e).__name__)
+                return None
+
+    results = await asyncio.gather(*(one(lat, lon) for lat, lon in coords))
+    return {(round(float(lat), 1), round(float(lon), 1)): w for (lat, lon), w in zip(coords, results)}
+
+
+def _weather_for_users(supabase, user_ids: list[str]) -> dict[str, dict]:
+    """
+    Konum izni vermiş kullanıcıların profildeki son koordinatından hava. Aynı hücredeki kullanıcılar tek
+    sağlayıcı çağrısını paylaşır. Hata olursa havaya bağlı hatırlatıcılar o tur çıkmaz (varsayılan UV 3).
+    """
+    try:
+        allowed: set[str] = set()
+        for chunk in _chunks(list(user_ids), _BULK_IN_CHUNK):
+            rows = (
+                supabase.table("privacy_preferences")
+                .select("user_id")
+                .in_("user_id", chunk)
+                .eq("location_processing_allowed", True)
+                .execute()
+            ).data or []
+            allowed.update(str(r.get("user_id")) for r in rows)
+        coords: dict[str, tuple[float, float]] = {}
+        for chunk in _chunks(sorted(allowed), _BULK_IN_CHUNK):
+            rows = (
+                supabase.table("profiles")
+                .select("id,location_lat,location_lon")
+                .in_("id", chunk)
+                .execute()
+            ).data or []
+            for row in rows:
+                if row.get("location_lat") is not None and row.get("location_lon") is not None:
+                    coords[str(row["id"])] = (float(row["location_lat"]), float(row["location_lon"]))
+        if not coords:
+            return {}
+        cells = {(round(lat, 1), round(lon, 1)): (lat, lon) for lat, lon in coords.values()}
+        fetched = run_async(_weather_for_cells, list(cells.values()))
+    except Exception as e:
+        log.error("Push: konum/hava okunamadı (havaya bağlı hatırlatıcılar atlanır): %s", type(e).__name__)
+        return {}
+    out: dict[str, dict] = {}
+    for uid, (lat, lon) in coords.items():
+        weather = fetched.get((round(lat, 1), round(lon, 1)))
+        if weather:
+            out[uid] = dict(weather)
+    return out
+
+
+async def _send_push_jobs(jobs: list[dict]) -> list[dict]:
+    """Bir sayfanın bildirimlerini eşzamanlı (sınırlı) gönderir; biri çökse diğerleri etkilenmez."""
+    sem = asyncio.Semaphore(_PUSH_SEND_CONCURRENCY)
+
+    async def one(job: dict) -> dict:
+        async with sem:
+            try:
+                return await send_push(job["tokens"], job["title"], job["body"], job["data"])
+            except Exception as e:
+                log.error("Push gönderimi başarısız: %s", type(e).__name__)
+                return {"status": "error", "sent": 0, "invalid_tokens": []}
+
+    return list(await asyncio.gather(*(one(j) for j in jobs)))
+
+
+_PUSH_CLAIM_CHUNK = 200
+
+
+def _claim_push_slots(supabase, candidates: list[dict]) -> list[dict]:
+    """
+    Aday hatırlatıcıları gönderim defterine TOPLU yazar ve yalnızca bu çağrıda yeni yazılanları döner.
+    `ignore_duplicates` (Prefer: resolution=ignore-duplicates) çakışan satırları atlar ve yalnızca eklenenleri
+    geri verir; böylece tek istekte "hangisi daha önce gönderilmiş" öğrenilir (kullanıcı başına bir ekleme yerine).
+    Defter yazılamıyorsa tekrarı önleyemeyiz: o grup gönderilmez (susmak, iki kez göndermekten iyidir).
+    """
+    claimed: set[tuple] = set()
+    for chunk in _chunks(candidates, _PUSH_CLAIM_CHUNK):
+        rows = [
+            {"user_id": c["uid"], "reminder_id": c["reminder_id"], "log_date": c["log_date"], "slot": c["slot"]}
+            for c in chunk
+        ]
+        try:
+            written = (
+                supabase.table("push_sends")
+                .upsert(rows, on_conflict="user_id,reminder_id,log_date,slot", ignore_duplicates=True)
+                .execute()
+            ).data or []
+            claimed.update(
+                (str(r.get("user_id")), r.get("reminder_id"), str(r.get("log_date")), r.get("slot")) for r in written
+            )
+        except Exception as e:
+            text = str(e)
+            if "42P10" in text or "ON CONFLICT" in text.upper():
+                # Veritabanında beklenen benzersiz indeks yok: eski, satır satır yola düşülür (her satır kendi çakışmasını bilir).
+                log.warning("push_sends toplu yazımı desteklenmiyor, satır satır yazılacak: %s", type(e).__name__)
+                for c in chunk:
+                    if _claim_push_slot(supabase, c["uid"], c["reminder_id"], c["log_date"], c["slot"]):
+                        claimed.add((c["uid"], c["reminder_id"], c["log_date"], c["slot"]))
+            else:
+                log.error(
+                    "Gönderim defterine yazılamadı (%d hatırlatıcı atlandı): %s", len(chunk), type(e).__name__
+                )
+    return [c for c in candidates if (c["uid"], c["reminder_id"], c["log_date"], c["slot"]) in claimed]
+
+
+def _dispatch_page(supabase, users: dict[str, dict], totals: dict) -> None:
+    """Bir kullanıcı sayfasının zamanı gelen hatırlatıcılarını hesaplar, deftere yazar ve gönderir."""
+    uids = list(users)
+    totals["considered"] += len(uids)
+    try:
+        settings_by_user = _load_reminder_settings_bulk(supabase, uids)
+    except Exception as e:
+        log.error("Push: ayarlar okunamadı, %d kullanıcı bu turda atlandı: %s", len(uids), type(e).__name__)
+        totals["skipped"] += len(uids)
+        return
+
+    now_utc = datetime.now(timezone.utc)
+    local_now = {uid: now_utc + timedelta(minutes=users[uid]["offset"]) for uid in uids}
+    by_date: dict[str, list[str]] = {}
+    for uid in uids:
+        by_date.setdefault(local_now[uid].date().isoformat(), []).append(uid)
+
+    events_by_user: dict[str, list[dict]] = {}
+    checkin_done: set[str] = set()
+    skip: set[str] = set()
+    for log_date, date_uids in by_date.items():
+        try:
+            events_by_user.update(_load_daily_events_bulk(supabase, date_uids, log_date))
+            checkin_done |= _checkins_done_bulk(supabase, date_uids, log_date)
+        except Exception as e:
+            # Günün durumunu bilmeden hatırlatmak, yapılmış işi tekrar hatırlatmak demek: bu kullanıcılar atlanır.
+            log.error("Push: günün verisi okunamadı, %d kullanıcı atlandı: %s", len(date_uids), type(e).__name__)
+            skip.update(date_uids)
+    totals["skipped"] += len(skip)
+    active = [uid for uid in uids if uid not in skip]
+    aggregated = {uid: _aggregate_daily_events(events_by_user.get(uid, [])) for uid in active}
+
+    # Havaya bağlı tek hatırlatıcılar SPF (11–16) ve balsam (12–13): sağlayıcıya yalnızca gün ortasında başvurulur.
+    need_weather = [
+        uid for uid in active
+        if not aggregated[uid].get("weather") and _PUSH_WEATHER_HOURS[0] <= local_now[uid].hour <= _PUSH_WEATHER_HOURS[1]
+    ]
+    weather_by_user = _weather_for_users(supabase, need_weather) if need_weather else {}
+
+    # Rafım sorgusu yalnızca "yenisini aldın mı" penceresi açıkken yapılır.
+    shelf_today = {
+        uid: local_now[uid].date()
+        for uid in active
+        if settings_by_user.get(uid) and _restock_window_open(settings_by_user[uid], local_now[uid])
+    }
+    products_by_user: dict[str, list[dict]] = {}
+    if shelf_today:
+        try:
+            products_by_user = _products_out_bulk(supabase, shelf_today)
+        except Exception as e:
+            log.error("Push: Rafım okunamadı (yenisini aldın mı atlanır): %s", type(e).__name__)
+
+    candidates: list[dict] = []
+    for uid in active:
+        user_settings = settings_by_user.get(uid)
+        log_date = local_now[uid].date().isoformat()
+        weather = aggregated[uid].get("weather") or weather_by_user.get(uid)
+        plan = build_reminders(
+            weather or dict(WEATHER_FALLBACK),
+            aggregated[uid],
+            uid in checkin_done,
+            user_settings,
+            products_by_user.get(uid),
+        )
+        for reminder in due_reminders(
+            plan,
+            local_now[uid].strftime("%H:%M"),
+            _PUSH_DISPATCH_TOLERANCE_MINUTES,
+            quiet=(user_settings or {}).get("quiet"),
+        ):
+            candidates.append({
+                "uid": uid,
+                "reminder_id": reminder["id"],
+                "log_date": log_date,
+                "slot": reminder["slot"],
+                "tokens": users[uid]["tokens"],
+                "title": reminder["title"],
+                "body": reminder["body"],
+                "data": {
+                    "reminder_id": reminder["id"],
+                    "log_event": reminder.get("log_event") or "",
+                    "log_date": log_date,
+                },
+            })
+
+    # Defter toplu yazılır: yalnızca bu turda YENİ yazılanlar gönderilir (başka tur/işçi önceden aldıysa atlanır).
+    jobs = _claim_push_slots(supabase, candidates)
+    if not jobs:
+        return
+    invalid: set[str] = set()
+    for job, result in zip(jobs, run_async(_send_push_jobs, jobs)):
+        sent = int(result.get("sent") or 0)
+        totals["notifications"] += sent
+        if sent:
+            totals["reminders"] += 1
+        elif not result.get("invalid_tokens"):
+            # FCM'e ulaşılamadı / istek reddedildi: rezervi bırak, pencere bitmeden yeniden denensin.
+            _release_push_slot(supabase, job["uid"], job["reminder_id"], job["log_date"], job["slot"])
+            totals["failed"] += 1
+        invalid.update(result.get("invalid_tokens") or [])
+    if invalid:
+        totals["invalid"] += _remove_invalid_device_tokens(supabase, sorted(invalid))
+
+
 @app.post(
     "/push/dispatch",
     response_model=PushDispatchResponse,
     tags=["push"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_PUSH_DISPATCH))],
 )
-def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1000)):
+def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=50000)):
     """
-    Zamanı gelen hatırlatıcıları kayıtlı cihazlara gönderir. Sunucu cron'u
-    tarafından 10 dakikada bir çağrılmak üzere tasarlandı; her hatırlatıcı
-    gün içinde tek kez gider (`push_sends` defteri).
+    Zamanı gelen hatırlatıcıları kayıtlı cihazlara gönderir. Sunucu cron'u tarafından 5 dakikada bir
+    çağrılmak üzere tasarlandı; her hatırlatıcı gün içinde tek kez gider (`push_sends` defteri).
+    `max_users`: bir turda işlenecek en fazla kullanıcı. Tur süre bütçesini (`PUSH_DISPATCH_BUDGET_SECONDS`)
+    aşarsa `truncated` döner ve sonraki tur kaldığı kullanıcıdan devam eder.
     """
     _require_push_dispatch_secret(request)
     if not push_configured():
@@ -2296,108 +2680,57 @@ def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1000)):
     supabase = get_supabase()
     if not supabase:
         raise HTTPException(status_code=503, detail="Supabase bağlantısı yok")
-    try:
-        rows = (
-            supabase.table("device_tokens")
-            .select("user_id,token,utc_offset_minutes")
-            .eq("push_enabled", True)
-            .order("last_seen_at", desc=True)
-            .limit(max_users * _PUSH_MAX_TOKENS_PER_USER)
-            .execute()
-        ).data or []
-    except Exception as e:
-        log.error("Cihaz listesi okunamadı: %s", type(e).__name__)
-        raise HTTPException(status_code=502, detail="Cihaz listesi okunamadı.")
 
-    by_user: dict[str, dict] = {}
-    for row in rows:
-        uid = str(row.get("user_id") or "")
-        token = str(row.get("token") or "")
-        if not uid or not token:
-            continue
-        # İlk satır en son görülen cihaz olduğu için saat farkı ondan alınır.
-        entry = by_user.setdefault(
-            uid, {"tokens": [], "offset": int(row.get("utc_offset_minutes") or 0)}
-        )
-        if len(entry["tokens"]) < _PUSH_MAX_TOKENS_PER_USER:
-            entry["tokens"].append(token)
+    started = _push_clock()
+    budget = _push_budget_seconds()
+    totals = {"considered": 0, "skipped": 0, "reminders": 0, "notifications": 0, "invalid": 0, "failed": 0}
+    after = _PUSH_CURSOR.get("after")
+    truncated = False
+    first_page = True
+    while True:
+        remaining = max_users - totals["considered"]
+        if remaining <= 0 or _push_clock() - started > budget:
+            truncated = True
+            break
+        try:
+            users, last_uid, exhausted = _load_push_page(supabase, after, min(_PUSH_PAGE_USERS, remaining))
+        except Exception as e:
+            log.error("Cihaz listesi okunamadı: %s", type(e).__name__)
+            if first_page:
+                raise HTTPException(status_code=502, detail="Cihaz listesi okunamadı.")
+            truncated = True
+            break
+        first_page = False
+        if users:
+            _dispatch_page(supabase, users, totals)
+        if exhausted:
+            after = None
+            break
+        after = last_uid
 
-    reminders_sent = 0
-    notifications_sent = 0
-    invalid_removed = 0
-    deliveries_failed = 0
-    users = list(by_user.items())[:max_users]
-    settings_by_user = _load_reminder_settings_bulk(supabase, [uid for uid, _ in users])
-
-    for uid, entry in users:
-        local_now = datetime.now(timezone.utc) + timedelta(minutes=entry["offset"])
-        log_date = local_now.date().isoformat()
-        aggregated = _aggregate_daily_events(_load_daily_events(supabase, uid, log_date))
-        weather = aggregated.get("weather")
-        # Havaya bağlı tek hatırlatıcılar SPF (11–16) ve balsam (12–13) olduğu
-        # için sağlayıcıya yalnızca gün ortası penceresinde başvurulur.
-        if not weather and _PUSH_WEATHER_HOURS[0] <= local_now.hour <= _PUSH_WEATHER_HOURS[1]:
-            weather = run_async(_weather_from_profile, supabase, uid)
-        user_settings = settings_by_user.get(uid)
-        products_out = (
-            _products_out(supabase, uid, local_now.date())
-            if user_settings and _restock_window_open(user_settings, local_now)
-            else None
-        )
-        plan = build_reminders(
-            weather or dict(WEATHER_FALLBACK),
-            aggregated,
-            _checkin_done_today(supabase, uid, log_date),
-            user_settings,
-            products_out,
-        )
-        for reminder in due_reminders(
-            plan,
-            local_now.strftime("%H:%M"),
-            _PUSH_DISPATCH_TOLERANCE_MINUTES,
-            quiet=(user_settings or {}).get("quiet"),
-        ):
-            if not _claim_push_slot(supabase, uid, reminder["id"], log_date, reminder["slot"]):
-                continue
-            result = run_async(send_push,
-                entry["tokens"],
-                reminder["title"],
-                reminder["body"],
-                {
-                    "reminder_id": reminder["id"],
-                    "log_event": reminder.get("log_event") or "",
-                    "log_date": log_date,
-                },
-            )
-            sent = int(result.get("sent") or 0)
-            notifications_sent += sent
-            if sent:
-                reminders_sent += 1
-            elif not result.get("invalid_tokens"):
-                # FCM'e ulaşılamadı / istek reddedildi: rezervi bırak, pencere bitmeden yeniden denensin.
-                _release_push_slot(supabase, uid, reminder["id"], log_date, reminder["slot"])
-                deliveries_failed += 1
-            invalid_removed += _remove_invalid_device_tokens(
-                supabase, result.get("invalid_tokens") or []
-            )
+    # Tur tamamlandıysa baştan, yarım kaldıysa kaldığı kullanıcıdan devam.
+    _PUSH_CURSOR["after"] = after if truncated else None
 
     summary = PushDispatchResponse(
-        users_considered=len(users),
-        reminders_sent=reminders_sent,
-        notifications_sent=notifications_sent,
-        invalid_tokens_removed=invalid_removed,
+        users_considered=totals["considered"],
+        reminders_sent=totals["reminders"],
+        notifications_sent=totals["notifications"],
+        invalid_tokens_removed=totals["invalid"],
         push_configured=True,
-        deliveries_failed=deliveries_failed,
+        deliveries_failed=totals["failed"],
+        users_skipped=totals["skipped"],
+        truncated=truncated,
     )
     # clear() kullanılmaz: /health başka iş parçacığında okurken sözlük bir an boş görünmesin (anahtarlar her turda aynı).
     _PUSH_LAST_RUN.update(summary.model_dump(), at=_utc_now_iso())
     log.info(
-        "Push dağıtımı: kullanıcı=%d hatırlatıcı=%d bildirim=%d geçersiz_token=%d başarısız=%d",
+        "Push dağıtımı: kullanıcı=%d hatırlatıcı=%d bildirim=%d geçersiz_token=%d başarısız=%d atlanan=%d süre=%.1fsn",
         summary.users_considered, summary.reminders_sent, summary.notifications_sent,
-        summary.invalid_tokens_removed, summary.deliveries_failed,
+        summary.invalid_tokens_removed, summary.deliveries_failed, summary.users_skipped,
+        _push_clock() - started,
     )
-    if len(by_user) > max_users:
-        log.warning("Push dağıtımı: %d kullanıcıdan yalnız %d işlendi (max_users)", len(by_user), max_users)
+    if truncated:
+        log.warning("Push dağıtımı yarım kaldı (süre bütçesi ya da max_users); sonraki tur kaldığı yerden devam eder.")
     return summary
 
 
@@ -2417,6 +2750,7 @@ def generate_routine(request: Request, req: AssessmentRequest):
     5. Kesinlik kuralları tekrar (AI sonrası zorunlu) + detay sanitize
     """
     enforce_supabase_user(request, req.user_id)
+    _enforce_ai_user_limit(req.user_id)
     _require_privacy_permission(req.user_id, "ai")
     if req.location_lat is not None or req.location_lon is not None:
         _require_privacy_permission(req.user_id, "location")
@@ -2852,6 +3186,7 @@ def chat(request: Request, req: ChatRequest):
     Token: ~200-400/mesaj
     """
     enforce_supabase_user(request, req.user_id)
+    _enforce_ai_user_limit(req.user_id)
     _require_privacy_permission(req.user_id, "ai")
     log.info("Chat isteği: concern=%s message_chars=%d", req.concern, len(req.message or ""))
 
@@ -2902,6 +3237,7 @@ def chat_assessment(request: Request, req: AssessmentChatRequest):
     AI birkaç soru sorar, yeterli bilgi topladığında is_complete=True döndürür.
     """
     enforce_supabase_user(request, req.user_id)
+    _enforce_ai_user_limit(req.user_id)
     _require_privacy_permission(req.user_id, "ai")
     log.info("Assessment chat isteği: message_chars=%d", len(req.message or ""))
 
@@ -3097,6 +3433,7 @@ def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
     Kota/Plus mantığı chat_assessment ile aynıdır.
     """
     enforce_supabase_user(request, req.user_id)
+    _enforce_ai_user_limit(req.user_id)
     _require_privacy_permission(req.user_id, "ai")
     lim = free_chat_limit()
     plus = user_is_rebi_plus(request, req.user_id)
@@ -3195,6 +3532,7 @@ def translate_routine_items_endpoint(request: Request, req: TranslateRoutineItem
     This endpoint adds `action_localized` and `detail_localized` for the selected UI language.
     """
     enforce_supabase_user(request, req.user_id)
+    _enforce_ai_user_limit(req.user_id)
     _require_privacy_permission(req.user_id, "ai")
     from rag_service import translate_routine_items, _primary_lang_from_header
 
@@ -3251,6 +3589,7 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
     Akış: Check-in → daily_logs kaydet → hava durumu → risk skoru → AI adaptasyon → rutin güncelle
     """
     enforce_supabase_user(request, req.user_id)
+    _enforce_ai_user_limit(req.user_id)
     _require_privacy_permission(req.user_id, "ai")
     if req.location_lat is not None or req.location_lon is not None:
         _require_privacy_permission(req.user_id, "location")
@@ -3672,6 +4011,13 @@ def _photo_content_matches_extension(contents: bytes, ext: str) -> bool:
     if ext in {"heic", "heif"}:
         return len(contents) >= 12 and contents[4:8] == b"ftyp"
     return False
+
+
+def _enforce_ai_user_limit(user_id: str) -> None:
+    """Yapay zekâ uçlarında kullanıcı başına dakikalık/saatlik bütçe (IP'den bağımsız). Demo kimlikleri ortaktır: atlanır."""
+    if is_demo_user_id(user_id):
+        return
+    enforce_ai_user_limit(user_id)
 
 
 def _require_privacy_permission(user_id: str, permission: str) -> None:

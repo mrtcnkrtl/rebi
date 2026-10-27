@@ -7,7 +7,7 @@ docker compose'ta `push-cron` servisi olarak çalışır (sunucuda elle crontab 
 
 Ortam değişkenleri:
 - `PUSH_DISPATCH_SECRET`  zorunlu; boşsa dağıtıcı kapalı kalır (konteyner çökmez, bir kez bildirir).
-- `PUSH_DISPATCH_URL`     varsayılan `http://api:8000/push/dispatch?max_users=1000`
+- `PUSH_DISPATCH_URL`     varsayılan `http://api:8000/push/dispatch?max_users=20000`
 - `PUSH_DISPATCH_INTERVAL_SECONDS`  varsayılan 300 (5 dk). Saat başlarına hizalanır
   (:00, :05, :10 …); aynı hatırlatıcı gönderim defteri yüzünden iki kez gitmez.
 
@@ -24,7 +24,7 @@ import time
 import urllib.error
 import urllib.request
 
-DEFAULT_URL = "http://api:8000/push/dispatch?max_users=1000"
+DEFAULT_URL = "http://api:8000/push/dispatch?max_users=20000"
 DEFAULT_INTERVAL_SECONDS = 300
 REQUEST_TIMEOUT_SECONDS = 240
 ALIVE_FILE = os.getenv("PUSH_CRON_ALIVE_FILE", "/tmp/push_cron_alive")
@@ -57,7 +57,7 @@ def dispatch_once(url: str, secret: str, opener=urllib.request.urlopen) -> dict 
     return body if isinstance(body, dict) else None
 
 
-def describe(result: dict, max_users_hint: int = 1000) -> str:
+def describe(result: dict, max_users_hint: int = 20000) -> str:
     if not result.get("push_configured", True):
         return "sunucuda FCM yapılandırılmamış (FCM_SERVICE_ACCOUNT_JSON); gönderim yok"
     text = (
@@ -67,7 +67,12 @@ def describe(result: dict, max_users_hint: int = 1000) -> str:
         f"geçersiz_token={result.get('invalid_tokens_removed', 0)} "
         f"başarısız={result.get('deliveries_failed', 0)}"
     )
-    if int(result.get("users_considered", 0)) >= max_users_hint:
+    if int(result.get("users_skipped", 0)):
+        text += f" atlanan={result['users_skipped']}"
+    if result.get("truncated"):
+        # Sunucu süre bütçesini aştı ya da max_users'a ulaştı; sonraki tur kaldığı kullanıcıdan devam eder.
+        text += " — UYARI: tur yarım kaldı, sonraki tur devam edecek"
+    elif int(result.get("users_considered", 0)) >= max_users_hint:
         text += " — UYARI: kullanıcı sınırına ulaşıldı"
     return text
 

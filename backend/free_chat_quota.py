@@ -14,6 +14,8 @@ import threading
 from datetime import date
 from typing import Optional, Protocol
 
+from redis_client import FallbackProxy, get_redis
+
 
 def _limit() -> int:
     try:
@@ -75,10 +77,12 @@ class _MemoryDailyQuota:
 
 
 class _RedisDailyQuota:
-    def __init__(self, redis_url: str) -> None:
-        import redis
+    def __init__(self, redis_url: str, client=None) -> None:
+        if client is None:
+            import redis
 
-        self._r = redis.from_url(redis_url, decode_responses=True)
+            client = redis.from_url(redis_url, decode_responses=True)
+        self._r = client
         self._prefix = "rebi:freechat:v1:"
 
     def _key(self, user_id: str, day: str) -> str:
@@ -116,7 +120,8 @@ def _get_backend() -> _DailyQuotaBackend:
         return _backend
     url = os.getenv("REDIS_URL", "").strip()
     if url:
-        _backend = _RedisDailyQuota(url)
+        # Redis kapanırsa sohbet durmasın: süreç içi sayaca düşülür (kota o süre boyunca süreç başınadır).
+        _backend = FallbackProxy(_RedisDailyQuota(url, client=get_redis()), _MemoryDailyQuota(), "ücretsiz sohbet kotası")
     else:
         _backend = _MemoryDailyQuota()
     return _backend

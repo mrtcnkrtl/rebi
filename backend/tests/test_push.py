@@ -299,7 +299,7 @@ def test_ledger_write_error_is_not_mistaken_for_an_already_sent_reminder(monkeyp
     sender = _Sender()
     db = _one_device(monkeypatch, sender)
 
-    def broken_insert(_payload):
+    def broken_write(*_args, **_kwargs):
         raise RuntimeError("connection reset")
 
     original_table = db.table
@@ -307,7 +307,9 @@ def test_ledger_write_error_is_not_mistaken_for_an_already_sent_reminder(monkeyp
     def table(name):
         t = original_table(name)
         if name == "push_sends":
-            t.insert = broken_insert
+            # Defter toplu `upsert` ile yazılır; yedek yol (satır satır) `insert` kullanır: ikisi de bozuk.
+            t.upsert = broken_write
+            t.insert = broken_write
         return t
 
     db.table = table

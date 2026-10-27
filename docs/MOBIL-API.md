@@ -247,6 +247,10 @@ Sohbet geçmişi sunucuda tutulur; web ve mobil aynı konuşmayı görür.
   `message` en fazla 4000 karakter; `history` son 20 tur, her turun metni en fazla 1500
   karakter. Sunucu zaten yalnızca son birkaç turu kullanır; istemci tüm geçmişi göndermek
   zorunda değildir.
+  **Kullanıcı başına hız sınırı:** yapay zekâ uçları (`/chat_general`, `/chat_assessment`, `/chat`,
+  `/routine/translate_items`, `/generate_routine`, `/daily_checkin`) kullanıcı başına dakikada 20 ve saatte 200
+  istekle sınırlıdır (IP'den bağımsız; sınırsız Plus dahil). Aşılırsa `429` ve `Retry-After: 30` döner; bu istekler
+  günlük/aylık sohbet kotasından düşmez. İstemci bir süre bekleyip yeniden denemelidir.
 - `GET /chat/history?user_id=...&limit=50&after_seq=&surface=general` — eskiden yeniye
   mesajlar ve `cursor`. `after_seq` verilirse yalnızca o imleçten sonrakiler gelir;
   cihaz `cursor` değerini saklayıp her açılışta tüm geçmişi indirmemelidir.
@@ -312,14 +316,19 @@ her 5 dakikada bir (saat başlarına hizalı) bu ucu çağırır; sunucuda elle 
 Elle denemek için:
 
 ```bash
-curl -fsS -X POST -H "X-Push-Dispatch-Token: $PUSH_DISPATCH_SECRET"   "https://rebiovil.com/api/push/dispatch?max_users=1000"
+curl -fsS -X POST -H "X-Push-Dispatch-Token: $PUSH_DISPATCH_SECRET"   "https://rebiovil.com/api/push/dispatch?max_users=20000"
 ```
 
 Yanıt: `users_considered`, `reminders_sent`, `notifications_sent`, `invalid_tokens_removed`,
-`push_configured` ve **`deliveries_failed`** (FCM'e ulaşılamadığı için gitmeyen; gönderim rezervi geri alınır
-ve pencere bitmeden sonraki turda yeniden denenir). Son turun özeti `GET /health` içinde
-`push_dispatch` altında görünür (`at` zamanı bayatlarsa dağıtıcı çalışmıyordur).
-`max_users` sınırına ulaşılırsa sunucu günlüğüne uyarı düşer.
+`push_configured`, **`deliveries_failed`** (FCM'e ulaşılamadığı için gitmeyen; gönderim rezervi geri alınır
+ve pencere bitmeden sonraki turda yeniden denenir), **`users_skipped`** (verisi okunamadığı için bu turda atlanan
+kullanıcılar: yapılmış işi tekrar hatırlatmamak için susulur) ve **`truncated`**. Son turun özeti `GET /health`
+içinde `push_dispatch` altında görünür (`at` zamanı bayatlarsa dağıtıcı çalışmıyordur).
+
+Kullanıcılar 100'lük sayfalarla işlenir; her sayfa için ayar, olay, check-in, konum ve raf verisi toplu
+sorgularla okunur. Tur `PUSH_DISPATCH_BUDGET_SECONDS` (varsayılan 200 sn) ya da `max_users` sınırını aşarsa
+`truncated: true` döner ve sunucu günlüğüne uyarı düşer; sonraki tur kaldığı kullanıcıdan devam eder, sondaki
+kullanıcılar aç kalmaz.
 
 Her hatırlatıcı gün içinde bir kez gider (`push_sends` defteri). Bildirim verisinde
 `reminder_id`, `log_event` ve `log_date` taşınır; kullanıcı bildirime dokunduğunda
