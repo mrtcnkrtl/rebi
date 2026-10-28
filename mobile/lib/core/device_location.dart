@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -36,6 +38,99 @@ set deviceLocationLookup(LocationLookup lookup) => _lookup = lookup;
 
 @visibleForTesting
 void resetDeviceLocationLookup() => _lookup = _lookupGrantedLocation;
+
+/// Konum alınamamasının nedeni: kullanıcıya her biri için ayrı, uygulanabilir bir cümle söylenir.
+enum LocationFailure {
+  /// Telefonun konum servisi (GPS / konum) kapalı.
+  serviceOff,
+
+  /// İzin verilmedi (sistem penceresi reddedildi); tekrar sorulabilir.
+  denied,
+
+  /// İzin kalıcı reddedilmiş: yalnızca telefon ayarlarından açılır.
+  blocked,
+
+  /// Konum belirli süre içinde alınamadı (kapalı alan, zayıf sinyal).
+  timeout,
+}
+
+typedef LocationOutcome = ({Coordinates? at, LocationFailure? failure});
+
+/// Son bilinen konum bu kadar eskiyse (hava için ~1 km yeter) yeni konum beklenir.
+const _freshLastKnown = Duration(hours: 6);
+
+/// Konumu **izin isteyerek** alır (kullanıcı "konumumu paylaş" dediğinde). Önce telefonun son bilinen konumuna bakar
+/// (anında ve kapalı alanda da çalışır), yoksa ya da çok eskiyse yeni konum ister. Başarısızlıkta nedeni söyler.
+Future<LocationOutcome> _acquireDeviceLocation() async {
+  try {
+    if (!await Geolocator.isLocationServiceEnabled()) return (at: null, failure: LocationFailure.serviceOff);
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.deniedForever) return (at: null, failure: LocationFailure.blocked);
+    if (permission != LocationPermission.whileInUse && permission != LocationPermission.always) {
+      return (at: null, failure: LocationFailure.denied);
+    }
+    Position? last;
+    try {
+      last = await Geolocator.getLastKnownPosition();
+    } catch (_) {
+      last = null; // desteklenmeyen platform: yeni konum denenir
+    }
+    final lastIsFresh = last != null && DateTime.now().difference(last.timestamp) < _freshLastKnown;
+    if (last != null && lastIsFresh) return (at: _round(last), failure: null);
+    try {
+      final now = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 20)),
+      );
+      return (at: _round(now), failure: null);
+    } on TimeoutException {
+      // Yeni konum gelmedi: eski ama gerçek bir konum, hiç konumdan iyidir.
+      if (last != null) return (at: _round(last), failure: null);
+      return (at: null, failure: LocationFailure.timeout);
+    }
+  } on LocationServiceDisabledException {
+    return (at: null, failure: LocationFailure.serviceOff);
+  } on PermissionDeniedException {
+    return (at: null, failure: LocationFailure.denied);
+  } catch (_) {
+    return (at: null, failure: LocationFailure.timeout);
+  }
+}
+
+Coordinates _round(Position p) => (lat: roundCoordinate(p.latitude), lon: roundCoordinate(p.longitude));
+
+Future<LocationOutcome> Function() _acquire = _acquireDeviceLocation;
+
+/// Konumu izin isteyerek alır; sonuç koordinat ya da [LocationFailure] nedenidir.
+Future<LocationOutcome> acquireDeviceLocation() => _acquire();
+
+/// Başarısızlığın düzeltildiği telefon ayarı sayfasını açar ([LocationFailure.serviceOff] → konum ayarları,
+/// [LocationFailure.blocked] → uygulama ayarları). Açılabildiyse true.
+Future<bool> openLocationFixSettings(LocationFailure failure) async {
+  try {
+    return failure == LocationFailure.serviceOff ? await Geolocator.openLocationSettings() : await Geolocator.openAppSettings();
+  } catch (_) {
+    return false;
+  }
+}
+
+Future<bool> Function(LocationFailure) _openSettings = openLocationFixSettings;
+
+/// Ayar sayfasını açar (testte sahtelenebilir).
+Future<bool> openLocationSettingsFor(LocationFailure failure) => _openSettings(failure);
+
+/// Testlerde gerçek konum eklentisi yerine sabit sonuç vermek için.
+@visibleForTesting
+void setDeviceLocationAcquirer({Future<LocationOutcome> Function()? acquire, Future<bool> Function(LocationFailure)? openSettings}) {
+  if (acquire != null) _acquire = acquire;
+  if (openSettings != null) _openSettings = openSettings;
+}
+
+@visibleForTesting
+void resetDeviceLocationAcquirer() {
+  _acquire = _acquireDeviceLocation;
+  _openSettings = openLocationFixSettings;
+}
 
 /// Konum izninin şu anki durumu (sormadan okunur).
 enum LocationAccess {

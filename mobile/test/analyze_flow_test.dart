@@ -1,8 +1,9 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:flutter/material.dart' show Key, MaterialLocalizations, Scaffold, Size, TextField;
+import 'package:flutter/material.dart' show AppLifecycleState, Key, MaterialLocalizations, Scaffold, Size, TextField;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rebi/core/device_location.dart';
 import 'package:rebi/screens/analyze/analyze_form.dart';
 import 'package:rebi/ui/tw.dart';
 
@@ -323,8 +324,8 @@ void main() {
       expect(find.text(tr('mobileAnalyze.skinType.title')), findsOneWidget);
     });
 
-    testWidgets('konum: izin/servis yoksa nedeni söylenir, rutin yine oluşturulabilir', (tester) async {
-      final h = await pumpApp(tester, location: '/dashboard/analyze');
+    /// Özet ekranına kadar en kısa yol (erkek, normal cilt, genel bakım, hepsi "yok").
+    Future<void> toSummary(WidgetTester tester) async {
       await _toGender(tester);
       await tapText(tester, packS('gender.male'));
       await tapText(tester, packS('skinPicker.normal.label'));
@@ -338,12 +339,113 @@ void main() {
       await tapText(tester, packS('activesExperience.none'));
       await _next(tester); // ürün tepkileri
       await _next(tester); // fotoğraf
+    }
+
+    setUp(() => setDeviceLocationAcquirer(acquire: () async => (at: (lat: 41.01, lon: 28.97), failure: null)));
+    tearDown(resetDeviceLocationAcquirer);
+
+    testWidgets('konum: sunucuda izin açıksa doğrudan alınır ve rutine koordinat olarak gider', (tester) async {
+      final backend = FakeBackend()..privacyLocation = true;
+      final h = await pumpApp(tester, location: '/dashboard/analyze', backend: backend);
+      await toSummary(tester);
       await _key(tester, 'flow-location');
       await settle(tester, 8);
-      expect(find.text(packS('errors.locationFailed')), findsOneWidget);
+      expect(find.text(tr('mobileAnalyze.summary.locationSet')), findsOneWidget);
+      expect(backend.calls('/privacy-preferences').where((r) => r.method == 'POST'), isEmpty, reason: 'izin zaten açık: tekrar sorulmaz');
       await _next(tester);
       await settle(tester, 20);
-      expect(h.backend.bodyOf('/generate_routine')['location_lat'], isNull);
+      final body = h.backend.bodyOf('/generate_routine');
+      expect(body['location_lat'], 41.01);
+      expect(body['location_lon'], 28.97);
+    });
+
+    testWidgets('konum: sunucuda izin kapalıysa önce nedeni söylenip istenir; onaylanırsa kaydedilir ve konum alınır', (tester) async {
+      final backend = FakeBackend()..privacyPhoto = true;
+      await pumpApp(tester, location: '/dashboard/analyze', backend: backend);
+      await toSummary(tester);
+      await _key(tester, 'flow-location');
+      expect(find.text(tr('mobileAnalyze.location.consentTitle')), findsOneWidget);
+      await _key(tester, 'flow-location-allow');
+      await settle(tester, 8);
+      expect(backend.privacyLocation, isTrue);
+      expect(backend.privacyPhoto, isTrue, reason: 'fotoğraf izni bozulmaz');
+      expect(find.text(tr('mobileAnalyze.summary.locationSet')), findsOneWidget);
+    });
+
+    testWidgets('konum: izin istenince "şimdi değil" denirse konum alınmaz, hata da gösterilmez', (tester) async {
+      final backend = FakeBackend();
+      await pumpApp(tester, location: '/dashboard/analyze', backend: backend);
+      await toSummary(tester);
+      await _key(tester, 'flow-location');
+      await _key(tester, 'flow-location-later');
+      await settle(tester, 6);
+      expect(backend.privacyLocation, isFalse);
+      expect(find.text(tr('mobileAnalyze.summary.locationSet')), findsNothing);
+      expect(find.text(tr('mobileAnalyze.location.consentFailed')), findsNothing);
+      expect(find.text(tr('mobileAnalyze.summary.location')), findsOneWidget, reason: 'satır yeniden denenebilir kalır');
+    });
+
+    testWidgets('konum: izin durumu okunamazsa neden söylenir', (tester) async {
+      final backend = FakeBackend()..privacyFails = true;
+      await pumpApp(tester, location: '/dashboard/analyze', backend: backend);
+      await toSummary(tester);
+      await _key(tester, 'flow-location');
+      await settle(tester, 8);
+      expect(find.text(tr('mobileAnalyze.location.consentFailed')), findsOneWidget);
+    });
+
+    for (final failure in LocationFailure.values) {
+      testWidgets('konum: ${failure.name} → nedenine özel cümle; rutin yine oluşturulabilir', (tester) async {
+        setDeviceLocationAcquirer(acquire: () async => (at: null, failure: failure));
+        final backend = FakeBackend()..privacyLocation = true;
+        final h = await pumpApp(tester, location: '/dashboard/analyze', backend: backend);
+        await toSummary(tester);
+        await _key(tester, 'flow-location');
+        await settle(tester, 8);
+        expect(find.text(tr('mobileAnalyze.location.${failure.name}')), findsOneWidget);
+        expect(find.text(packS('errors.locationFailed')), findsNothing, reason: 'genel "alınamadı" yerine neden söylenir');
+        final fix = switch (failure) {
+          LocationFailure.serviceOff => 'mobileAnalyze.location.openSettings',
+          LocationFailure.blocked => 'mobileAnalyze.location.openAppSettings',
+          _ => 'mobileAnalyze.location.retry',
+        };
+        expect(find.text(tr(fix)), findsOneWidget, reason: 'satır çözümü söyler');
+        await _next(tester);
+        await settle(tester, 20);
+        expect(h.backend.bodyOf('/generate_routine')['location_lat'], isNull);
+      });
+    }
+
+    testWidgets('konum: servis kapalıyken satır ayarı açar; ayardan dönülünce satır yeniden "konumumu paylaş" olur', (tester) async {
+      final opened = <LocationFailure>[];
+      setDeviceLocationAcquirer(
+        acquire: () async => (at: null, failure: LocationFailure.serviceOff),
+        openSettings: (f) async {
+          opened.add(f);
+          return true;
+        },
+      );
+      await pumpApp(tester, location: '/dashboard/analyze', backend: FakeBackend()..privacyLocation = true);
+      await toSummary(tester);
+      await _key(tester, 'flow-location');
+      await settle(tester, 6);
+      await _key(tester, 'flow-location');
+      expect(opened, [LocationFailure.serviceOff]);
+
+      // Kullanıcı ayardan uygulamaya döner.
+      for (final st in const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+        AppLifecycleState.hidden,
+        AppLifecycleState.inactive,
+        AppLifecycleState.resumed,
+      ]) {
+        tester.binding.handleAppLifecycleStateChanged(st);
+      }
+      await settle(tester, 6);
+      expect(find.text(tr('mobileAnalyze.summary.location')), findsOneWidget);
+      expect(find.text(tr('mobileAnalyze.location.serviceOff')), findsNothing);
     });
 
     testWidgets('bağlantı hatasında analiz özette kalır, hata gösterilir ve tekrar denenebilir', (tester) async {

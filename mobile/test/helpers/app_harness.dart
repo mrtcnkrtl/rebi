@@ -117,6 +117,11 @@ class FakeBackend {
   /// Açılış paketi isteği hata (ör. çevrimdışı sunucu) döndürsün.
   bool snapshotFails = false;
 
+  /// `GET/POST /privacy-preferences`: sunucudaki konum / fotoğraf işleme izinleri. [privacyFails] true ise ikisi de hata verir.
+  bool privacyLocation = false;
+  bool privacyPhoto = false;
+  bool privacyFails = false;
+
   /// `POST /generate_routine` (analiz sihirbazı) hata döndürsün.
   bool generateFails = false;
 
@@ -367,6 +372,15 @@ class FakeBackend {
               'usage_remaining': 3,
               'usage_limit': 5,
             });
+          case 'GET /privacy-preferences':
+            if (privacyFails) return http.Response('{"detail":"hata"}', 502);
+            return ok({'location_processing_allowed': privacyLocation, 'photo_processing_allowed': privacyPhoto});
+          case 'POST /privacy-preferences':
+            if (privacyFails) return http.Response('{"detail":"hata"}', 502);
+            final sent = (jsonDecode(req.body) as Map).cast<String, dynamic>();
+            privacyLocation = sent['location_processing_allowed'] == true;
+            privacyPhoto = sent['photo_processing_allowed'] == true;
+            return ok({'location_processing_allowed': privacyLocation, 'photo_processing_allowed': privacyPhoto});
           case 'POST /generate_routine':
             if (generateFails) return http.Response('{"detail":"hata"}', 502);
             return ok(routineFixture);

@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
@@ -14,9 +13,10 @@ import '../../core/api.dart';
 import '../../core/consent_recovery.dart';
 import '../../core/daily_tracking.dart';
 import '../../core/demo_user.dart';
-import '../../core/device_location.dart' show roundCoordinate;
+import '../../core/device_location.dart';
 import '../../core/i18n.dart';
 import '../../core/image_quality.dart';
+import '../../core/privacy_preferences.dart';
 import '../../core/routine_tracking.dart';
 import '../../state/auth_controller.dart';
 import '../../state/theme_controller.dart';
@@ -58,7 +58,7 @@ class AnalyzeScreen extends StatefulWidget {
   State<AnalyzeScreen> createState() => _AnalyzeScreenState();
 }
 
-class _AnalyzeScreenState extends State<AnalyzeScreen> implements FlowHost {
+class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserver implements FlowHost {
   late final AnalyzeForm _form;
   String _pageId = 'intro';
 
@@ -74,11 +74,13 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> implements FlowHost {
   bool _stressTest = false;
   bool _locating = false;
   String _locationError = '';
+  LocationFailure? _locationFailure;
   Timer? _autoTimer;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final meta = context.read<AuthController>().user?.userMetadata;
     _form = AnalyzeForm(name: (meta?['full_name'] ?? '').toString());
     _form.name.addListener(_rebuild);
@@ -91,6 +93,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> implements FlowHost {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _autoTimer?.cancel();
     _form.dispose();
     super.dispose();
@@ -115,6 +118,21 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> implements FlowHost {
 
   @override
   String get locationError => _locationError;
+
+  @override
+  LocationFailure? get locationFailure => _locationFailure;
+
+  /// Ayarlardan dönülünce (servis açıldı / izin verildi) hata kalkar; satır yeniden "Konumumu paylaş" olur.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final f = _locationFailure;
+    if (state == AppLifecycleState.resumed && (f == LocationFailure.serviceOff || f == LocationFailure.blocked)) {
+      setState(() {
+        _locationFailure = null;
+        _locationError = '';
+      });
+    }
+  }
 
   @override
   void refresh(VoidCallback change) => setState(change);
@@ -237,32 +255,82 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> implements FlowHost {
 
   // ═══ Eylemler ═══
 
+  /// "Konumumu paylaş": önce sunucudaki konum izni (yoksa açıkça sorulur: rutin konum bilgisiyle gönderilirken sunucu
+  /// izin ister), sonra telefon izni ve konum. Başarısızlıkta nedeni söylenir; ayar gerekiyorsa satır ayarı açar.
   @override
   Future<void> locate() async {
+    if (_locating) return;
+    final fix = _locationFailure;
+    if (fix == LocationFailure.serviceOff || fix == LocationFailure.blocked) {
+      await openLocationSettingsFor(fix!);
+      return;
+    }
     setState(() {
       _locating = true;
       _locationError = '';
+      _locationFailure = null;
     });
+    final uid = context.read<AuthController>().user?.id;
+    if (uid != null && uid != demoUserId && !await _ensureLocationConsent(uid)) {
+      if (mounted) setState(() => _locating = false);
+      return;
+    }
+    final r = await acquireDeviceLocation();
+    if (!mounted) return;
+    setState(() {
+      _locating = false;
+      final at = r.at;
+      if (at != null) {
+        _form.lat = at.lat;
+        _form.lon = at.lon;
+      } else {
+        _locationFailure = r.failure;
+        _locationError = i18n.t('mobileAnalyze.location.${(r.failure ?? LocationFailure.timeout).name}');
+      }
+    });
+  }
+
+  /// Konum işleme izni sunucuda açık mı; değilse nedenini söyleyip kullanıcıdan ister. false: konum alınmayacak.
+  Future<bool> _ensureLocationConsent(String uid) async {
+    var photoAllowed = false;
     try {
-      if (!await Geolocator.isLocationServiceEnabled()) throw Exception('disabled');
-      var perm = await Geolocator.checkPermission();
-      if (perm == LocationPermission.denied) perm = await Geolocator.requestPermission();
-      if (perm == LocationPermission.denied || perm == LocationPermission.deniedForever) throw Exception('denied');
-      final p = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low, timeLimit: Duration(seconds: 10)),
-      );
-      if (!mounted) return;
-      setState(() {
-        _form.lat = roundCoordinate(p.latitude);
-        _form.lon = roundCoordinate(p.longitude);
-        _locating = false;
-      });
+      final prefs = await getPrivacyPreferences(uid);
+      if (prefs['location_processing_allowed'] == true) return true;
+      photoAllowed = prefs['photo_processing_allowed'] == true;
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _locationError = pack.s('errors.locationFailed');
-        _locating = false;
-      });
+      if (mounted) setState(() => _locationError = i18n.t('mobileAnalyze.location.consentFailed'));
+      return false;
+    }
+    if (!mounted) return false;
+    final allow = await AppSheet.show<bool>(
+      context,
+      title: i18n.t('mobileAnalyze.location.consentTitle'),
+      subtitle: i18n.t('mobileAnalyze.location.consentBody'),
+      body: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PrimaryButton(
+            key: const Key('flow-location-allow'),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            color: context.read<ThemeController>().theme.primary,
+            label: i18n.t('mobileAnalyze.location.consentAllow'),
+          ),
+          const SizedBox(height: 10),
+          SecondaryButton(
+            key: const Key('flow-location-later'),
+            onPressed: () => Navigator.of(ctx).pop(false),
+            label: i18n.t('mobileAnalyze.location.consentLater'),
+          ),
+        ],
+      ),
+    );
+    if (allow != true) return false;
+    try {
+      await updatePrivacyPreferences(uid, location: true, photo: photoAllowed);
+      return true;
+    } catch (_) {
+      if (mounted) setState(() => _locationError = i18n.t('mobileAnalyze.location.consentFailed'));
+      return false;
     }
   }
 

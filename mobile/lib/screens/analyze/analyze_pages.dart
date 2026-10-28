@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/device_location.dart' show LocationFailure;
 import '../../core/i18n.dart';
 import '../../state/theme_controller.dart';
 import '../../ui/brand/glyphs.dart';
@@ -32,6 +33,7 @@ abstract class FlowHost {
   void answer(VoidCallback change, {bool advance = true});
   bool get locating;
   String get locationError;
+  LocationFailure? get locationFailure;
   Future<void> pickDate();
   Future<void> pickPhoto(ImageSource source, CameraDevice camera);
   Future<void> locate();
@@ -865,9 +867,21 @@ class _LocationRow extends StatelessWidget {
     final f = host.form;
     final theme = context.watch<ThemeController>().theme;
     final set = f.locationSet;
+    final failure = host.locationFailure;
+    final hasError = host.locationError.isNotEmpty;
+    // Başarısızlıktan sonra satır, çözümü söyler: ayarı aç ya da tekrar dene.
+    final title = set
+        ? _t(host, 'summary.locationSet')
+        : switch (failure) {
+            LocationFailure.serviceOff => _t(host, 'location.openSettings'),
+            LocationFailure.blocked => _t(host, 'location.openAppSettings'),
+            null => _t(host, 'summary.location'),
+            _ => _t(host, 'location.retry'),
+          };
+    final hint = hasError ? host.locationError : _t(host, 'summary.locationHint');
     return Semantics(
       button: !set,
-      label: set ? _t(host, 'summary.locationSet') : '${_t(host, 'summary.location')}. ${_t(host, 'summary.locationHint')}',
+      label: set ? title : '$title. $hint',
       excludeSemantics: true,
       child: Material(
         color: Colors.transparent,
@@ -891,13 +905,10 @@ class _LocationRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(set ? _t(host, 'summary.locationSet') : _t(host, 'summary.location'), style: tx(15.5, w: 6, c: Tw.gray900)),
+                      Text(title, style: tx(15.5, w: 6, c: Tw.gray900)),
                       if (!set) ...[
                         const SizedBox(height: 2),
-                        Text(
-                          host.locationError.isNotEmpty ? host.locationError : _t(host, 'summary.locationHint'),
-                          style: tx(13.5, c: host.locationError.isNotEmpty ? Tw.red600 : Tw.gray500, h: 1.35),
-                        ),
+                        Text(hint, style: tx(13.5, c: hasError ? Tw.red700 : Tw.gray500, h: 1.35)),
                       ],
                     ],
                   ),

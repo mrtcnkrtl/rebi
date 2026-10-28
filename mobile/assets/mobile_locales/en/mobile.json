@@ -888,6 +888,20 @@
       "tip": "Take it in natural light with your face straight on. You can also continue without a photo.",
       "stored": "Your photo is kept private, in a secure area only you can access."
     },
+    "location": {
+      "serviceOff": "Your phone’s location service is off. Turn it on and try again.",
+      "denied": "Location permission was not granted. You can try again or create the routine without location.",
+      "blocked": "Location permission is off. Allow it for Rebi in Settings, then come back here.",
+      "timeout": "Couldn’t get your location right now. Try again in an open area; you can also create the routine without it.",
+      "openSettings": "Open location settings",
+      "openAppSettings": "Open app settings",
+      "retry": "Try again",
+      "consentTitle": "Use your location for the weather?",
+      "consentBody": "To adjust your routine to local temperature, humidity and UV, we send your approximate location (≈1 km) to the weather service. You can turn it off any time in Me → Account and privacy.",
+      "consentAllow": "Allow and get location",
+      "consentLater": "Not now",
+      "consentFailed": "Couldn’t save the permission. Check your connection and try again."
+    },
     "summary": {
       "title": "We’re ready, {{name}}.",
       "titleNoName": "We’re ready.",

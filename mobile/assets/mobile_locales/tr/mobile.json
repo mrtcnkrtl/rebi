@@ -888,6 +888,20 @@
       "tip": "Doğal ışıkta, yüzünü düz tutarak çek. Fotoğraf eklemeden de devam edebilirsin.",
       "stored": "Fotoğrafın yalnızca sana özel, güvenli alanda saklanır."
     },
+    "location": {
+      "serviceOff": "Telefonunun konum servisi kapalı. Açıp tekrar dene.",
+      "denied": "Konum izni verilmedi. Tekrar deneyebilir ya da rutini konumsuz oluşturabilirsin.",
+      "blocked": "Konum izni kapalı. Ayarlardan Rebi’ye konum izni ver, sonra buraya dön.",
+      "timeout": "Konum şu an alınamadı. Açık bir yerde tekrar dene; rutini konumsuz da oluşturabilirsin.",
+      "openSettings": "Konum ayarlarını aç",
+      "openAppSettings": "Uygulama ayarlarını aç",
+      "retry": "Tekrar dene",
+      "consentTitle": "Hava durumu için konumunu kullanalım mı?",
+      "consentBody": "Rutinini bulunduğun yerin sıcaklık, nem ve UV bilgisine göre ayarlamak için yaklaşık konumunu (≈1 km) hava servisine iletiriz. İstediğin zaman Ben → Hesap ve gizlilik’ten kapatabilirsin.",
+      "consentAllow": "İzin ver ve konumu al",
+      "consentLater": "Şimdi değil",
+      "consentFailed": "İzin kaydedilemedi. Bağlantını kontrol edip tekrar dene."
+    },
     "summary": {
       "title": "Hazırız, {{name}}.",
       "titleNoName": "Hazırız.",
