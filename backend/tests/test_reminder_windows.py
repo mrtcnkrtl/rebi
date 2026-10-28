@@ -302,7 +302,7 @@ class _Sender:
     def __init__(self):
         self.calls: list[dict] = []
 
-    async def __call__(self, tokens, title, body, data=None):
+    async def __call__(self, tokens, title, body, data=None, **_kwargs):
         self.calls.append({"tokens": list(tokens), "data": data or {}})
         return {"status": "sent", "sent": 1, "invalid_tokens": []}
 

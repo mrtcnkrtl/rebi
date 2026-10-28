@@ -532,12 +532,166 @@ def _extract_strength_pct_from_text(text: str) -> Optional[str]:
     return m.group(1).replace(" ", "")
 
 
+_CHOICE_CANONICAL_KEEP = (
+    "3:1:1",
+    "cef",
+    "ferulik",
+    "tokoferol",
+)
+_CHOICE_VEYA_SKIP = (
+    "göre",
+    "sonra",
+    "daha",
+    "haftada",
+    "gerekirse",
+    "hekim",
+    "eczane",
+    "check-in",
+    "sırayla",
+    "tek formül",
+    "tek formul",
+)
+
+
+def _strip_trailing_paren(text: str) -> str:
+    return re.sub(r"\s*\([^)]*\)\s*$", "", text or "").strip()
+
+
+def _short_choice_label(part: str) -> str:
+    cleaned = re.sub(r"\s*\([^)]*\)", "", part or "").strip()
+    return cleaned or (part or "").strip()
+
+
+def _split_plus_parts(text: str) -> list:
+    body = _strip_trailing_paren(text)
+    return [p.strip() for p in re.split(r"\s*\+\s*", body) if p.strip()]
+
+
+def _choice_pair(id_a, label_a, hint_a, action_a, id_b, label_b, hint_b, action_b) -> list:
+    return [
+        {"id": id_a, "label": label_a, "hint": hint_a, "action": action_a},
+        {"id": id_b, "label": label_b, "hint": hint_b, "action": action_b},
+    ]
+
+
+def choices_for_routine_item(it: dict) -> Optional[list]:
+    """
+    Kullanıcının gerçekten seçebileceği 2 yol varsa kart üretir.
+    CEF / 3:1:1 / 3+ içerikli bariyer formülleri tek ürün olarak kalır.
+    """
+    if not isinstance(it, dict):
+        return None
+    existing = it.get("choices")
+    if isinstance(existing, list) and len(existing) >= 2:
+        return None
+    if it.get("category") not in ("Bakım", "Koruma"):
+        return None
+    action = (it.get("action") or "").strip()
+    if not action:
+        return None
+    al = action.lower()
+
+    if "sırayla veya tek formül" in al or "sirayla veya tek formul" in al:
+        cleaned = re.sub(
+            r"\s*\((?:sırayla veya tek formül|sirayla veya tek formul)\)\s*",
+            "",
+            action,
+            flags=re.I,
+        ).strip()
+        parts = _split_plus_parts(cleaned)
+        if len(parts) >= 2:
+            a_lbl = _short_choice_label(parts[0])
+            b_lbl = _short_choice_label(parts[1])
+            return _choice_pair(
+                "single",
+                "Tek formül",
+                "İkisini aynı üründe ara.",
+                cleaned,
+                "sequence",
+                "Sırayla iki adım",
+                f"Önce {a_lbl}, kuruyunca {b_lbl}.",
+                f"{parts[0]} → sonra {parts[1]}",
+            )
+
+    if any(m in al for m in _CHOICE_CANONICAL_KEEP):
+        return None
+
+    prefix = ""
+    body = action
+    if ":" in action:
+        prefix = action.split(":", 1)[0].strip() + ": "
+        body = action.split(":", 1)[1].strip()
+
+    is_moist = (
+        it.get("step_order") in (30, 35)
+        or al.startswith("nemlendirici")
+        or al.startswith("gece:")
+        or al.startswith("gece (")
+    )
+    if is_moist and "+" in body:
+        parts = _split_plus_parts(body)
+        if len(parts) == 2:
+            a_lbl = _short_choice_label(parts[0])
+            b_lbl = _short_choice_label(parts[1])
+            return _choice_pair(
+                "opt_a",
+                a_lbl,
+                "Bu içeriği öne alan bir nemlendirici seç.",
+                prefix + parts[0],
+                "opt_b",
+                b_lbl,
+                "Bu içeriği öne alan bir nemlendirici seç.",
+                prefix + parts[1],
+            )
+
+    is_cleanser = it.get("step_order") == 10 or "temizleme" in al or "temizleyici" in al
+    if is_cleanser and " veya " in body.lower():
+        if any(tok in body.lower() for tok in _CHOICE_VEYA_SKIP):
+            return None
+        parts = [p.strip() for p in re.split(r"\s+veya\s+", body, maxsplit=1, flags=re.I) if p.strip()]
+        if len(parts) == 2:
+            a_lbl = _short_choice_label(parts[0])
+            b_lbl = _short_choice_label(parts[1])
+            return _choice_pair(
+                "opt_a",
+                a_lbl,
+                "Bu temizleyiciyi kullan.",
+                prefix + parts[0],
+                "opt_b",
+                b_lbl,
+                "Bu temizleyiciyi kullan.",
+                prefix + parts[1],
+            )
+    return None
+
+
+def attach_step_choices_to_routine_items(items: list) -> None:
+    for it in items or []:
+        ch = choices_for_routine_item(it)
+        if not ch:
+            continue
+        it["choices"] = ch
+        it.setdefault(
+            "choice_key",
+            "|".join(
+                [
+                    str(it.get("time") or ""),
+                    str(it.get("step_order") if it.get("step_order") is not None else ""),
+                    ch[0]["id"],
+                    ch[1]["id"],
+                    (it.get("action") or "")[:100],
+                ]
+            ),
+        )
+
+
 def attach_structured_fields_to_routine_items(items: list) -> None:
     """
     Frontend'i bozmadan, rutin satırlarına makine-okunur ek alanlar ekle.
     - active_families: ["bha","retinol",...]
     - strength_pct: "10-15" / "0.25-0.3" / "1"
     - frequency_per_week: weekly_days sayısı
+    - choices: gerçek 2 yollu adımlarda seçilebilir kartlar
     """
     for it in items or []:
         cat = it.get("category")
@@ -553,6 +707,7 @@ def attach_structured_fields_to_routine_items(items: list) -> None:
         wd = it.get("weekly_days")
         if isinstance(wd, list) and wd:
             it.setdefault("frequency_per_week", len(wd))
+    attach_step_choices_to_routine_items(items)
 
 
 def _remove_routine_items_by_avoided_families(items: list, avoid: set) -> list:
@@ -899,16 +1054,20 @@ def _get_preferred_agents(concern: str, level: str, age_group: dict) -> dict:
             prefer.append(_fmt("petrolatum", "standart"))
 
     elif concern == "pores":
-        # Siyah nokta / gözenek: komedon tıkacı + sebum dengesi (akne kadar agresif değil)
-        prefer = [_fmt("salisilik_asit", "acne_hafif"), _fmt("niacinamid", "acne_genel"), "Çinko PCA"]
-        avoid = ["Sert fiziksel peeling", "Aşırı alkollü tonikler"]
+        # Komedon tıkacı: BHA çekirdek; BPO/inflamatuvar akne protokolü yok
+        prefer = [_fmt("salisilik_asit", "acne_hafif")]
+        avoid = ["Benzoil peroksit (gözenek ≠ inflamatuvar akne)", "Sert fiziksel peeling"]
+        if level in ("orta", "şiddetli"):
+            prefer.append(_fmt("niacinamid", "acne_genel"))
         if level == "şiddetli":
             prefer.append("Kaolin/kil maskesi (haftada 1-2)")
 
     elif concern == "oiliness":
-        # Yağlılık: sebum dengesi + gözenek desteği
-        prefer = [_fmt("niacinamid", "acne_genel"), "Çinko PCA", _fmt("salisilik_asit", "acne_hafif")]
-        avoid = ["Ağır yağlar", "Aşırı oklüzif katmanlar"]
+        # Sebum: niasinamid + çinko çekirdek; BHA yalnızca yüksek parlamada
+        prefer = [_fmt("niacinamid", "acne_genel"), "Çinko PCA"]
+        avoid = ["Ağır yağlar", "Aşırı oklüzif katmanlar", "Benzoil peroksit (kurutmasın)"]
+        if level == "şiddetli":
+            prefer.append(_fmt("salisilik_asit", "acne_hafif"))
 
     else:
         prefer = [_fmt("niacinamid", "acne_genel"), _fmt("hyaluronik_asit", "genel")]
@@ -943,8 +1102,8 @@ def _skin_ha(kind: str = "multi") -> str:
     return "Sodyum hyalüronat — hyaluronik asit (çoklu MW, INCI: Sodium Hyaluronate)"
 
 
-def _skin_salicylic_toner() -> str:
-    return "Salisilik asit %2 tonik (BHA, INCI: Salicylic Acid)"
+def _skin_salicylic_toner(pct: float = 2) -> str:
+    return f"Salisilik asit %{float(pct):g} tonik (BHA, INCI: Salicylic Acid)"
 
 
 def _skin_niacin_zinc() -> str:
@@ -955,12 +1114,13 @@ def _skin_niacinamide(pct: str) -> str:
     return f"Niasinamid {pct} serum (INCI: Niacinamide; niasin ile karıştırma)"
 
 
-def _skin_azelaic() -> str:
-    return "Azelaik asit %15-20 (INCI: Azelaic Acid; dikarboksilli asit)"
+def _skin_azelaic(pct_range: str = "%15-20") -> str:
+    label = pct_range if str(pct_range).startswith("%") else f"%{pct_range}"
+    return f"Azelaik asit {label} (INCI: Azelaic Acid; dikarboksilli asit)"
 
 
-def _skin_benzoyl() -> str:
-    return "Benzoil peroksit %5 kısa temas (INCI: Benzoyl Peroxide)"
+def _skin_benzoyl(pct: float = 5) -> str:
+    return f"Benzoil peroksit %{float(pct):g} kısa temas (INCI: Benzoyl Peroxide)"
 
 
 def _skin_glycolic(pct: float) -> str:
@@ -1073,6 +1233,8 @@ def get_base_skincare_routine(
     personalization: Optional[dict] = None,
     makeup_frequency: int = 0,
     makeup_removal: str = "cleanser",
+    guards: Optional[dict] = None,
+    concern_score: Optional[int] = None,
 ) -> list:
     """Concern + Şiddet + Yaş + Cilt tipine göre temel bakım rutini; kişisel puan tek kaynaktan."""
     _ = _normalize_actives_experience(actives_experience)
@@ -1119,7 +1281,10 @@ def get_base_skincare_routine(
         })
 
     # ── AKŞAM AKTİF TEDAVİ (yoğun serum / tedavi burada) ──
-    _add_evening_actives(items, concern, severity, age_group, skin_type, personalization)
+    _add_evening_actives(
+        items, concern, severity, age_group, skin_type, personalization,
+        guards=guards, concern_score=concern_score,
+    )
 
     # ── AKŞAM NEMLENDİRİCİ (tek kaynak: build_evening_moisturizer_item) ──
     items.append(build_evening_moisturizer_item(concern, severity, skin_type, personalization))
@@ -1154,13 +1319,8 @@ def _add_morning_actives(
         })
 
     elif concern == "pores":
-        # Gözenek/siyah nokta: sabah nazik, bariyeri yormadan
-        items.append({
-            "time": "Sabah", "category": "Bakım", "icon": "🕳️",
-            "action": _skin_niacinamide("%5"),
-            "detail": "Gözenek görünümü ve sebum dengesi için sabah hafif katman.",
-            "priority": 2, "step_order": 20,
-        })
+        # Gözenek: BHA akşam çekirdek; sabah ekstra niasinamid yok (yağlılıktan ayrılır)
+        pass
 
     elif concern == "general":
         # Genel bakım: sabah aktif şart değil; rutin temeli temizlik + nem + SPF
@@ -1251,112 +1411,153 @@ def _add_evening_actives(
     age_group,
     skin_type,
     personalization: Optional[dict] = None,
+    guards: Optional[dict] = None,
+    concern_score: Optional[int] = None,
 ):
     """Akşam aktif tedavilerini ekle - yaş ve cilt tipine uygun."""
     pers = personalization or {}
     compress = _personalization_compress_evening(pers)
+    g = guards or {}
+    _level_fallback = {"hafif": 3, "orta": 5, "şiddetli": 8}
+    score = int(concern_score if concern_score is not None else _level_fallback.get(severity.get("level"), 5))
 
     if concern == "acne":
-        if severity["level"] == "hafif":
+        from multi_concern import bha_for_acne
+
+        avoid_bpo = bool(g.get("avoid_bpo"))
+        prefer_azelaic = bool(g.get("prefer_azelaic"))
+        if severity["level"] == "hafif" or score <= 3:
+            pct, n = bha_for_acne(score, g)
             if compress:
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": f"{_skin_salicylic_toner()} → ardından {_skin_niacin_zinc()}",
+                    "action": f"{_skin_salicylic_toner(pct)} → ardından {_skin_niacin_zinc()}",
                     "detail": (
-                        "Kişisel puan (yüksek risk veya düşük tolerans): iki ayrı serum yerine aynı akşam sırayla "
-                        "veya tek üründe BHA+niasinamid+çinko aranan içerik. Pamukla BHA, kuruduktan sonra ince katman. "
-                        "Haftada 3-4 gece."
+                        f"Hafif inflamatuvar akne (şiddet {score}/10): BHA %{pct:g} + çinko, aynı akşam sırayla. "
+                        f"Haftada {n} gece. Gözenek/yağ protokolü değil — tıkanıklık + lezyon."
                     ),
                     "priority": 2, "step_order": 20,
                 })
             else:
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": _skin_salicylic_toner(),
-                    "detail": "BHA akşamda; sabahda asit kullanılmaz. Pamukla sür, göz çevresinden kaçın. Haftada 3-4 gece ile başla.",
+                    "action": _skin_salicylic_toner(pct),
+                    "detail": (
+                        f"Hafif akne (şiddet {score}/10): BHA %{pct:g}. Pamukla sür, göz çevresinden kaçın. "
+                        f"Haftada {n} gece ile başla."
+                    ),
                     "priority": 2, "step_order": 20,
                 })
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "🍯",
                     "action": _skin_niacin_zinc(),
-                    "detail": "BHA sonrası veya BHA olmayan gecelerde. Çinko sebumu dengeler.",
+                    "detail": "BHA sonrası veya BHA olmayan gecelerde. Çinko sebumu dengeler; lezyon gecelerinde asit artırılmaz.",
                     "priority": 2, "step_order": 25,
                 })
-        elif severity["level"] == "orta":
+        elif severity["level"] == "orta" or score <= 6:
+            az = "%10-15" if score <= 5 else "%15-20"
+            nia = "%5" if score <= 4 else "%10"
             if compress:
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": f"{_skin_niacinamide('%10')} + {_skin_azelaic()} (sırayla veya tek formül)",
+                    "action": f"{_skin_niacinamide(nia)} + {_skin_azelaic(az)} (sırayla veya tek formül)",
                     "detail": (
-                        "Kişisel puan: katman sayısını azalt. Önce niasinamid, kuruduktan sonra azelaik ince katman; "
-                        "mümkünse tek üründe ikisi. Haftada 3 gece azelaik ile başla."
+                        f"Orta akne (şiddet {score}/10): azelaik (lezyon+PIH), BHA yığılmaz. "
+                        "Haftada 3 gece azelaik ile başla."
                     ),
                     "priority": 2, "step_order": 20,
                 })
             else:
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": _skin_niacinamide("%10"),
-                    "detail": "Akşam sebum ve bariyer desteği; sabahda yüksek % niasinamid yok.",
+                    "action": _skin_niacinamide(nia),
+                    "detail": f"Orta akne (şiddet {score}/10): sebum/bariyer; sabahda yüksek % niasinamid yok.",
                     "priority": 2, "step_order": 20,
                 })
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": _skin_azelaic(),
-                    "detail": "Niasinamidden sonra ince katman. Haftada 3 gece başla.",
+                    "action": _skin_azelaic(az),
+                    "detail": "Niasinamidden sonra ince katman. Haftada 3 gece başla. BPO yok — orta şiddette azelaik yeter.",
                     "priority": 2, "step_order": 25,
                 })
         else:
-            if compress:
+            bpo_pct = 2.5 if score <= 8 else 5.0
+            az = "%15-20"
+            if avoid_bpo or prefer_azelaic:
+                items.append({
+                    "time": "Akşam", "category": "Bakım", "icon": "🎯",
+                    "action": _skin_azelaic(az),
+                    "detail": (
+                        f"Şiddetli akne (şiddet {score}/10): BPO diğer sorunu (hassasiyet/kuruluk) kötüleştirir; "
+                        "azelaik tam yüz. Haftada 3 gece."
+                    ),
+                    "priority": 2, "step_order": 20,
+                })
+            elif compress:
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "⚡",
-                    "action": f"{_skin_benzoyl()} → ardından/alternatif geceler {_skin_azelaic()}",
+                    "action": f"{_skin_benzoyl(bpo_pct)} → ardından/alternatif geceler {_skin_azelaic(az)}",
                     "detail": (
-                        "Kişisel puan: BP kısa temas (5-10 dk, yıka); aynı gece azelaik istemiyorsan alternatif geceler. "
-                        "Sabahda BP yok."
+                        f"Şiddetli akne (şiddet {score}/10): BP %{bpo_pct:g} kısa temas (5-10 dk, yıka); "
+                        "aynı gece azelaik yoksa alternatif geceler. Sabahda BP yok."
                     ),
                     "priority": 2, "step_order": 20,
                 })
             else:
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "⚡",
-                    "action": _skin_benzoyl(),
-                    "detail": "Akşam kısa temas; sabahda BP yok. Yüze sür, 5-10 dk bekle, yıka.",
+                    "action": _skin_benzoyl(bpo_pct),
+                    "detail": (
+                        f"Şiddetli akne (şiddet {score}/10): BP %{bpo_pct:g} akşam kısa temas. "
+                        "Yüze sür, 5-10 dk bekle, yıka. Sabahda BP yok."
+                    ),
                     "priority": 2, "step_order": 20,
                 })
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": _skin_azelaic(),
+                    "action": _skin_azelaic(az),
                     "detail": "BP sonrası veya alternatif gecelerde. Haftada 2-3 gece başla.",
                     "priority": 3, "step_order": 25,
                 })
 
     elif concern == "aging":
-        if age_group["group"] == "adolescent":
+        avoid_retinol = bool(g.get("avoid_retinol")) or not age_group.get("retinol_ok")
+        cap = str(g.get("max_retinol") or "0.5")
+        if age_group["group"] == "adolescent" or avoid_retinol:
             items.append({
                 "time": "Akşam", "category": "Bakım", "icon": "🌿",
-                "action": _skin_peptide_light(),
-                "detail": "Genç yaşta retinol gereksiz. Peptid ile cildin doğal yenilenme kapasitesini destekle.",
+                "action": _skin_peptide_light() if score < 7 else _skin_bakuchiol(),
+                "detail": (
+                    "Retinol bu planda diğer sorunu kötüleştireceği veya yaş grubuna uygun olmadığı için "
+                    "peptid/bakuchiol. Haftada 3 gece."
+                    if avoid_retinol and age_group["group"] != "adolescent" else
+                    "Genç yaşta retinol gereksiz. Peptid ile cildin doğal yenilenme kapasitesini destekle."
+                ),
                 "priority": 2, "step_order": 20,
             })
         elif age_group["group"] == "young_adult":
+            pct = "%0.25-0.3" if cap >= "0.3" else f"%{cap}"
             items.append({
                 "time": "Akşam", "category": "Bakım", "icon": "🔬",
-                "action": _skin_retinol("%0.25-0.3"),
+                "action": _skin_retinol(pct),
                 "detail": "Gece yaşlanma aktifi; yalnızca haftalık plandaki akşamlarda. Haftada 2 gece ile başla. Aynı gece ek asit ekleme.",
                 "priority": 2, "step_order": 20,
             })
         elif age_group["group"] == "adult":
+            pct = "%0.5" if "0.5" in cap or cap >= "0.5" else f"%{cap}"
             items.append({
                 "time": "Akşam", "category": "Bakım", "icon": "🔬",
-                "action": _skin_retinol("%0.5"),
+                "action": _skin_retinol(pct),
                 "detail": "Gece tek güçlü aktif. Haftada 3 gece ile başla; günler sistem tarafından atanır. Aynı gece ek asit yok.",
                 "priority": 2, "step_order": 20,
             })
         elif age_group["group"] == "mature":
+            pct = "%0.5-1" if "1" in cap or cap >= "0.5" else f"%{cap}"
+            if g.get("max_retinol") == "0.1-0.3":
+                pct = "%0.1-0.3"
             items.append({
                 "time": "Akşam", "category": "Bakım", "icon": "🔬",
-                "action": _skin_retinol("%0.5-1"),
+                "action": _skin_retinol(pct),
                 "detail": "Gece retinol. Haftada 2-3 gece; günler sistem tarafından atanır. Tahriş sinyalinde sıklık motor tarafından düşürülür.",
                 "priority": 2, "step_order": 20,
             })
@@ -1398,15 +1599,21 @@ def _add_evening_actives(
         aha_pct = min(age_group["aha_max_pct"], 10)
         has_peel_or_retinoid = False
         # Retinol ile AHA aynı rutinde netlik: şiddette retinol; orta/üstte AHA; hafifte ikisi yok
-        if severity["level"] == "şiddetli" and age_group["retinol_ok"]:
+        if (
+            severity["level"] == "şiddetli"
+            and age_group["retinol_ok"]
+            and not g.get("avoid_retinol")
+        ):
             has_peel_or_retinoid = True
+            cap = str(g.get("max_retinol") or "0.3")
+            r_pct = "%0.3" if "0.3" in cap or cap >= "0.3" else f"%{cap}"
             items.append({
                 "time": "Akşam", "category": "Bakım", "icon": "🔬",
-                "action": _skin_retinol("%0.3"),
+                "action": _skin_retinol(r_pct),
                 "detail": "Gece leke aktifi; yalnızca haftalık plandaki akşamlarda. Aynı rutinde AHA yok. Haftada 2 gece ile başla.",
                 "priority": 2, "step_order": 20,
             })
-        elif severity["level"] != "hafif":
+        elif severity["level"] != "hafif" and not g.get("avoid_aha"):
             has_peel_or_retinoid = True
             items.append({
                 "time": "Akşam", "category": "Bakım", "icon": "🔬",
@@ -1470,48 +1677,48 @@ def _add_evening_actives(
         pass
 
     elif concern == "oiliness":
-        # Yağlılık: akne gibi agresif değil; temel dengeleme
-        if compress:
+        from multi_concern import bha_for_oiliness
+
+        # Çekirdek: sebum (niasinamid+çinko). BHA yalnızca yüksek parlamada, asla BPO.
+        items.append({
+            "time": "Akşam", "category": "Bakım", "icon": "🍯",
+            "action": _skin_niacin_zinc(),
+            "detail": (
+                f"Yağlılık (şiddet {score}/10): parlama/sebum için çinko + niasinamid. "
+                "İnflamatuvar akne veya komedon protokolü değil."
+            ),
+            "priority": 2, "step_order": 20,
+        })
+        bha_pct, n = bha_for_oiliness(score, g)
+        if bha_pct is not None:
             items.append({
                 "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                "action": f"{_skin_salicylic_toner()} → ardından {_skin_niacin_zinc()}",
-                "detail": "Sebum/gözenek için BHA + niasinamid/çinko. Haftada 2-3 gece.",
-                "priority": 2, "step_order": 20,
-            })
-        else:
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                "action": _skin_salicylic_toner(),
-                "detail": "BHA akşamda; haftada 2-3 gece. Göz çevresinden kaçın.",
-                "priority": 2, "step_order": 20,
-            })
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🍯",
-                "action": _skin_niacin_zinc(),
-                "detail": "BHA sonrası veya BHA olmayan gecelerde. Sebumu dengelemeye destek olur.",
-                "priority": 2, "step_order": 25,
+                "action": _skin_salicylic_toner(bha_pct),
+                "detail": (
+                    f"Yüksek parlama (şiddet {score}/10): ek BHA %{bha_pct:g}, haftada {n} gece. "
+                    "Çinko geceleriyle aynı gece değil."
+                ),
+                "priority": 2, "step_order": 22,
             })
 
     elif concern == "pores":
-        # Siyah nokta/gözenek: ana hedef komedon tıkacı ve sebum dengesi
-        if compress:
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🕳️",
-                "action": f"{_skin_salicylic_toner()} → ardından {_skin_niacin_zinc()}",
-                "detail": "Siyah nokta ve tıkanıklık için BHA; ardından sebum dengesi için niasinamid/çinko. Haftada 2-3 gece.",
-                "priority": 2, "step_order": 20,
-            })
-        else:
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🕳️",
-                "action": _skin_salicylic_toner(),
-                "detail": "Siyah nokta için en direkt adım: BHA. Akşam haftada 2-3 gece.",
-                "priority": 2, "step_order": 20,
-            })
+        from multi_concern import bha_for_pores
+
+        pct, n = bha_for_pores(score, g)
+        items.append({
+            "time": "Akşam", "category": "Bakım", "icon": "🕳️",
+            "action": _skin_salicylic_toner(pct),
+            "detail": (
+                f"Gözenek/siyah nokta (şiddet {score}/10): komedon tıkacı BHA %{pct:g}. "
+                f"Haftada {n} gece. BPO yok — bu inflamatuvar akne protokolü değil."
+            ),
+            "priority": 2, "step_order": 20,
+        })
+        if score >= 7 and not compress:
             items.append({
                 "time": "Akşam", "category": "Bakım", "icon": "🍯",
                 "action": _skin_niacin_zinc(),
-                "detail": "BHA sonrası veya BHA olmayan gecelerde. Gözenek/sebum dengesine destek olur.",
+                "detail": "Yüksek gözenek skorunda BHA olmayan gecelerde sebum desteği; asit artırılmaz.",
                 "priority": 2, "step_order": 25,
             })
 
@@ -2036,12 +2243,14 @@ def compute_environment_branches(
     humidity: float,
     temperature: float,
     skin_type: dict,
+    min_spf: int = 30,
 ) -> list:
     """Hava durumu + cilt tipine göre çevresel öneriler."""
     items = []
 
     # ── UV Dalı (SPF = sabah rutininin SON adımı) ──
     spf_type = skin_type.get("spf_type", "geniş spektrumlu SPF")
+    force_50 = int(min_spf or 30) >= 50
     if uv_index >= 8:
         items.append({
             "time": "Sabah", "category": "Koruma", "icon": "🛡️",
@@ -2049,11 +2258,15 @@ def compute_environment_branches(
             "detail": f"UV tehlikeli ({uv_index}). Nemlendirici emildikten sonra bol miktarda sür. Her 2 saatte yenile.",
             "priority": 1, "step_order": 40,
         })
-    elif uv_index >= 5:
+    elif uv_index >= 5 or force_50:
         items.append({
             "time": "Sabah", "category": "Koruma", "icon": "☀️",
             "action": f"SPF 50 ({spf_type})",
-            "detail": f"UV yüksek ({uv_index}). Son adım olarak sür, öğlen direkt güneşten kaçın.",
+            "detail": (
+                f"Leke protokolü: SPF 50 taban (UV {uv_index}). Son adım, öğlen yenile."
+                if force_50 and uv_index < 5 else
+                f"UV yüksek ({uv_index}). Son adım olarak sür, öğlen direkt güneşten kaçın."
+            ),
             "priority": 1, "step_order": 40,
         })
     elif uv_index >= 3:
@@ -2321,6 +2534,47 @@ ACNE_ZONE_MAP = {
             },
         ],
     },
+    "undereye": {
+        "label": "Göz altı",
+        "causes": ["İnce deri", "Uykusuzluk", "Nem kaybı"],
+        "recommendations": [
+            {
+                "time": "Akşam", "category": "Yaşam", "icon": "👁️",
+                "action": "Göz altı: ayrı asit yok — nem/peptid, sürtmeden",
+                "detail": "Göz çevresine BHA/retinol sürme. Rutindeki nemlendiricinin ince katmanı yeterli; ovalama morluğu artırır.",
+                "priority": 3,
+            },
+        ],
+    },
+    "eye_corner": {
+        "label": "Göz kenarı",
+        "causes": ["Mimik (kaz ayağı)", "İnce deri", "UV"],
+        "recommendations": [
+            {
+                "time": "Akşam", "category": "Bakım", "icon": "✨",
+                "action": "Göz kenarı: asit/retinol yok — ince nem veya peptid",
+                "detail": (
+                    "Kaz ayağı bölgesi göz küresine yakın; BHA, AHA ve retinol buraya sürülmez. "
+                    "Rutindeki nem veya peptid katmanını dış köşeye parmak ucuyla, çekiştirmeden bırak. "
+                    "Gündüz SPF göz çevresini de örtsün."
+                ),
+                "priority": 2,
+                "step_order": 27,
+            },
+        ],
+    },
+    "lips": {
+        "label": "Dudak çevresi",
+        "causes": ["Perioral tahriş", "Asit kaçması", "Kuruluk"],
+        "recommendations": [
+            {
+                "time": "Akşam", "category": "Yaşam", "icon": "👄",
+                "action": "Dudak çevresi: asit tamponu (vazelin çizgisi)",
+                "detail": "BHA/retinol dudak kenarına taşmasın. Uygulamadan önce ince vazelin tamponu; çatlak varsa asiti o gece atla.",
+                "priority": 3,
+            },
+        ],
+    },
     "temples": {
         "label": "Şakaklar",
         "causes": ["Saç bakımı maddeleri", "Stres", "Böbrek/safra bağlantısı (geleneksel tıp)"],
@@ -2337,6 +2591,36 @@ ACNE_ZONE_MAP = {
 
 # Hafif aknede akşam rutininde zaten BHA var; bu bölgelerde ikinci BHA satırı oluşturma
 _ZONES_SKIP_BHA_WHEN_HAFIF_ACNE = frozenset({"forehead"})
+
+
+def _fold_zone_rows_to_targeting(items: list) -> list:
+    """Bölge satırı aynı molekülü ikinci ürün yapmasın; konum notuna çevir."""
+    core = []
+    for it in items:
+        act = (it.get("action") or "").lower()
+        is_zone = any(t in act for t in ("çene", "alın &", "hedefli", "yalnızca burun"))
+        if not is_zone:
+            core.append(act)
+    core_blob = " ".join(core)
+    out = []
+    for it in items:
+        act = (it.get("action") or "").lower()
+        it2 = it
+        if "çene" in act and "azelaik" in act and "azelaik" in core_blob:
+            it2 = dict(it)
+            it2["action"] = "Çene / alt çene odağı: gece tedavi katmanını bu bölgede 1-2 dk bırak"
+            it2["detail"] = (
+                "Ayrı ürün değil. Hormonal çene aknesi için mevcut azelaik/niasinamid "
+                "aynı molekül, konumlandırılmış uygulama."
+            )
+            it2["step_order"] = 27
+        elif "salisilik" in act and ("alın" in act or "hedefli" in act) and "salisilik" in core_blob:
+            it2 = dict(it)
+            it2["action"] = "Alın / T-bölge odağı: mevcut BHA'yı bu bölgeye pamukla uygula"
+            it2["detail"] = "İkinci BHA ürünü yok; aynı asit, konumlandırılmış uygulama."
+            it2["step_order"] = 18
+        out.append(it2)
+    return out
 
 
 def compute_acne_zone_recommendations(acne_zones: list, acne_severity_level: str = "") -> list:
@@ -2823,7 +3107,7 @@ def _split_plus_combined_conflicting_actives(routine_items: list) -> list:
 # ══════════════════════════════════════════════════════════════════════
 
 def _dedupe_duplicate_azelaik_bakim(items: list) -> list:
-    """Aynı rutinde iki kez Azelaik Asit listelenmesin (bölge + akşam tekrarı)."""
+    """Tam yüz azelaik bir kez; çene/alın gibi bölge satırları düşürülmez."""
     az_found = False
     out = []
     for it in items:
@@ -2832,6 +3116,10 @@ def _dedupe_duplicate_azelaik_bakim(items: list) -> list:
             continue
         act = (it.get("action") or "").lower()
         if "azelaik" in act:
+            is_zone = any(tag in act for tag in ("çene", "odağı", "hedefli", "yanak", "alın"))
+            if is_zone:
+                out.append(it)
+                continue
             if az_found:
                 continue
             az_found = True
@@ -2891,8 +3179,8 @@ def _deduplicate_and_limit(items: list) -> list:
     skincare_evening.sort(key=lambda x: (x.get("step_order", 50), x.get("priority", 5)))
     lifestyle.sort(key=lambda x: x.get("priority", 5))
 
-    # Akşam: temizlik + 1–2 aktif + nemlendirici/maske için en az 4–5 slot (sıra bozulmasın diye)
-    result = skincare_morning[:5] + skincare_evening[:5] + lifestyle[:3] + other[:2]
+    # Akşam: temizlik + birincil aktif(ler) + ikincil katman + nemlendirici
+    result = skincare_morning[:5] + skincare_evening[:6] + lifestyle[:5] + other[:2]
     return result
 
 
@@ -3076,6 +3364,11 @@ def run_flow(
     makeup_frequency: int = 0,
     makeup_removal: str = "cleanser",
     special_flags: Optional[dict] = None,
+    concerns: Optional[list] = None,
+    triggers: Optional[list] = None,
+    past_treatments: Optional[list] = None,
+    expectations: Optional[list] = None,
+    nutrition: Optional[dict] = None,
 ) -> dict:
     """
     Ana akış fonksiyonu. Tüm dalları çalıştırır, sıfır token harcar.
@@ -3103,6 +3396,44 @@ def run_flow(
 
     special_flags_norm = _normalize_special_flags(special_flags)
 
+    from multi_concern import (
+        add_secondary_actives,
+        build_guards,
+        normalize_concern_entries,
+        rank_concerns,
+    )
+
+    ranked = rank_concerns(
+        normalize_concern_entries(
+            concern=concern,
+            severity_score=severity_score,
+            acne_zones=acne_zones,
+            concerns=concerns,
+        )
+    )
+    primary = ranked[0]
+    concern = primary["id"]
+    severity_score = int(primary["score"])
+    guards = build_guards(
+        ranked,
+        stings_with_products=bool(special_flags_norm.get("stings_with_products")),
+        skin_type_key=skin_type_key,
+    )
+    from concern_history import (
+        apply_history_to_guards,
+        build_history_routine_items,
+        cap_weekly_days_from_timeline,
+        normalize_history_lists,
+    )
+
+    history = normalize_history_lists(
+        triggers=triggers,
+        past_treatments=past_treatments,
+        expectations=expectations,
+        nutrition=nutrition,
+    )
+    guards = apply_history_to_guards(guards, ranked, history)
+
     # 1. Concern route
     concern_map = CONCERN_KNOWLEDGE_MAP.get(concern, CONCERN_KNOWLEDGE_MAP["acne"])
 
@@ -3117,6 +3448,14 @@ def run_flow(
 
     # 5. Query plan for Supabase
     query_plan = build_query_plan(concern, severity)
+    seen_purposes = {p.get("purpose") for p in query_plan}
+    for extra in ranked[1:3]:
+        extra_sev = classify_severity(int(extra["score"]), extra["id"], age_group)
+        for q in build_query_plan(extra["id"], extra_sev):
+            if q.get("purpose") in seen_purposes:
+                continue
+            seen_purposes.add(q.get("purpose"))
+            query_plan.append(q)
 
     # 5.5 Risk skoru hesapla (INGREDIENT_DB entegrasyonu)
     from ingredient_db import compute_risk_score as _compute_risk
@@ -3159,6 +3498,8 @@ def run_flow(
     # UI netleştirme: ürünle batma/yanma işaretliyse daha yumuşak başlangıç (yüzde + sıklık)
     if special_flags_norm.get("stings_with_products"):
         _strength_stage = "starter"
+    if guards.get("force_starter"):
+        _strength_stage = "starter"
     _apply_niacinamide_pct_to_skin_profile(skin_type, _na_pct)
     personalization = compute_personalization_profile(
         risk_info, severity_score, skin_type_key, merged_actives_tol, concern
@@ -3171,7 +3512,10 @@ def run_flow(
         personalization=personalization,
         makeup_frequency=makeup_frequency,
         makeup_removal=makeup_removal,
+        guards=guards,
+        concern_score=severity_score,
     )
+    add_secondary_actives(routine_items, ranked[1:], guards, age_group)
 
     # Ingredient-level plan (no product recommendations)
     try:
@@ -3202,6 +3546,7 @@ def run_flow(
     )
     routine_items.extend(lifestyle_items)
     routine_items.append(risk_summary_item)
+    routine_items.extend(build_history_routine_items(ranked, history, gender=gender))
 
     # 7b. Zihin–beden protokolleri (su, nefes, uyku; endişeye göre antioksidan besin notu)
     routine_items.extend(
@@ -3217,7 +3562,10 @@ def run_flow(
     routine_items.extend(holistic_items)
 
     # 9. Environment branches
-    env_items = compute_environment_branches(uv_index, humidity, temperature, skin_type)
+    env_items = compute_environment_branches(
+        uv_index, humidity, temperature, skin_type,
+        min_spf=int(guards.get("min_spf") or 30),
+    )
     routine_items.extend(env_items)
 
     # 10. Hormonal modifiers (kadınlar için)
@@ -3231,15 +3579,35 @@ def run_flow(
             "items_added": len(hormonal_items),
         }
 
-    # 11. Acne zone analysis
+    # 11. Bölge analizi: seçilen tüm endişelerin zonları (akne olmasa da göz kenarı vb.)
     acne_zone_info = []
-    if concern == "acne" and acne_zones:
-        zone_items = compute_acne_zone_recommendations(acne_zones, severity.get("level", ""))
+    zone_ids = []
+    _seen_z = set()
+    for e in ranked:
+        for z in e.get("zones") or []:
+            if z in _seen_z:
+                continue
+            _seen_z.add(z)
+            zone_ids.append(z)
+    zone_entry = next((e for e in ranked if e["id"] == "acne" and e.get("zones")), None)
+    if not zone_entry:
+        zone_entry = next((e for e in ranked if e["id"] == "pores" and e.get("zones")), None)
+    if not zone_entry:
+        zone_entry = next((e for e in ranked if e.get("zones")), None)
+    if zone_ids:
+        zone_level = classify_severity(
+            int((zone_entry or ranked[0])["score"]),
+            (zone_entry or ranked[0])["id"],
+            age_group,
+        ).get("level", "")
+        zone_items = compute_acne_zone_recommendations(zone_ids, zone_level)
         routine_items.extend(zone_items)
+        routine_items = _fold_zone_rows_to_targeting(routine_items)
         acne_zone_info = [
             {"zone": z, "label": ACNE_ZONE_MAP.get(z, {}).get("label", z)}
-            for z in acne_zones
+            for z in zone_ids
         ]
+        acne_zones = zone_ids
 
     _apply_niacinamide_pct_to_routine_items(routine_items, _na_pct)
     _apply_active_strength_ramp(routine_items, _strength_stage)
@@ -3339,6 +3707,7 @@ def run_flow(
             wd = it.get("weekly_days")
             if isinstance(wd, list) and len(wd) > 3:
                 it["weekly_days"] = _spread_n_days_across_week(3)
+    cap_weekly_days_from_timeline(routine_items, ranked)
     _sync_morning_c_with_strong_evening_days(routine_items)
     _ensure_weekly_days_for_strong_evening_actives(routine_items)
     routine_items = _split_arrow_chained_evening_steps(routine_items)
@@ -3408,11 +3777,34 @@ def run_flow(
     )
     special_ctx = _special_flags_context_tr(special_flags_norm)
 
+    multi_ctx = ""
+    if len(ranked) > 1:
+        bits = []
+        for e in ranked:
+            lab = CONCERN_KNOWLEDGE_MAP.get(e["id"], {}).get("label_tr", e["id"])
+            bits.append(f"{lab} {e['score']}/10")
+        multi_ctx = (
+            f" Çoklu sorun (şiddete göre sıra): {', '.join(bits)}. "
+            "Birincil en yüksek skor; ikinciller birbirini kötüleştirmeyecek katman. "
+        )
+        if guards.get("notes"):
+            multi_ctx += "Kısıt: " + "; ".join(guards["notes"]) + "."
+    hist_bits = []
+    for e in ranked:
+        if e.get("duration") or e.get("frequency") or e.get("note"):
+            hist_bits.append(
+                f"{e['id']} süre={e.get('duration') or '-'} sıklık={e.get('frequency') or '-'}"
+            )
+    if history.get("triggers"):
+        hist_bits.append("tetik=" + ",".join(history["triggers"]))
+    if hist_bits:
+        multi_ctx += " Zaman çizelgesi: " + "; ".join(hist_bits) + "."
+
     context_summary = (
         f"Kullanıcı: {age} yaşında ({age_group['label_tr']}), {gender}, "
         f"cilt tipi: {skin_type['label_tr']}, "
         f"ana sorun: {concern_map['label_tr']}, "
-        f"şiddet: {severity['label_tr']} ({severity_score}/10). "
+        f"şiddet: {severity['label_tr']} ({severity_score}/10).{multi_ctx} "
         f"Aktif geçmişi: {exp_lbl}.{tol_ctx}{pers_ctx} "
         f"Stres: {stress_score}/16, uyku: {sleep_hours}s, su: {water_intake}L.{makeup_ctx}"
         f"Sigara: {'evet (' + str(smoking_per_day) + '/gün, ' + str(smoking_years) + ' yıl)' if smoking_per_day > 0 else 'hayır'}, "
@@ -3460,6 +3852,11 @@ def run_flow(
         "absolute_rules_catalog": get_absolute_rules_catalog(),
         "absolute_enforcement_report": absolute_enforcement_report,
         "special_flags_normalized": special_flags_norm,
+        "multi_concern": {
+            "ranked": ranked,
+            "primary": concern,
+            "guards": {k: v for k, v in guards.items() if k != "by_id"},
+        },
     }
 
 
@@ -4023,6 +4420,7 @@ def adapt_existing_routine(
 
     adapted = adjust_routine_for_risk(adapted, risk_level)
     sanitize_routine_items_details(adapted)
+    attach_structured_fields_to_routine_items(adapted)
 
     adaptation_type = "major" if len(changes) >= 3 or risk_level in ("high", "crisis") else "minor"
 

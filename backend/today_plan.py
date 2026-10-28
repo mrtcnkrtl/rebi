@@ -216,6 +216,67 @@ def reminder_windows(settings: dict | None = None) -> dict[str, tuple[str, str]]
     return windows
 
 
+def _action(action_id: str, label: str, log_event: str, payload: dict) -> dict:
+    return {"id": action_id, "label": label, "log_event": log_event, "payload": payload}
+
+
+# Bildirimin üzerindeki hazır cevaplar; mobil uygulamanın listesiyle aynıdır
+# (`mobile/lib/core/today_plan.dart` → `reminderActions`, yalnızca olay yazanlar).
+# Kimlikler uygulamanın çeviri anahtarları, etiketler Türkçe metinleridir.
+# Seçim ekranı açan cevaplar (makyaj temizliği, "Evet, yedim") buton değildir;
+# bildirime dokunmak o ekranı zaten açar. Android en fazla 3 buton gösterir.
+REMINDER_ACTIONS: dict[str, list[dict]] = {
+    "routine_morning": [
+        _action("done", "Yaptım", "routine_completed_block", {"morning": True}),
+    ],
+    "routine_evening": [
+        _action("done", "Yaptım", "routine_completed_block", {"evening": True}),
+    ],
+    "makeup_log": [
+        _action("yes", "Evet, yaptım", "makeup", {"used": True}),
+        _action("no", "Hayır", "makeup", {"used": False}),
+    ],
+    "water_intake": [
+        _action("water250", "+250 ml", "water_intake", {"ml": 250}),
+        _action("water500", "+500 ml", "water_intake", {"ml": 500}),
+    ],
+    "spf_refresh": [
+        _action("done", "Yaptım", "spf_refresh", {}),
+    ],
+    "nutrition_log": [
+        _action("junkNo", "Hayır", "nutrition", {"junk_food": False}),
+    ],
+}
+
+# Bildirime dokununca açılacak ekran (web yolu; mobil `routeForReminder` ile aynı).
+_OPEN_PATHS = {"daily_checkin": "/dashboard/checkin", "restock_check": "/dashboard/shelf"}
+DEFAULT_OPEN_PATH = "/dashboard"
+
+
+def reminder_actions(reminder_id: str) -> list[dict]:
+    return [dict(a, payload=dict(a["payload"])) for a in REMINDER_ACTIONS.get(reminder_id, [])]
+
+
+def resolve_reminder_action(reminder_id: str, action_id: str) -> dict | None:
+    """Uygulamanın bildirim düğmesi kimliği (`water_intake:water250`) de kabul edilir."""
+    prefix = f"{reminder_id}:"
+    if action_id.startswith(prefix):
+        action_id = action_id[len(prefix):]
+    for action in REMINDER_ACTIONS.get(reminder_id, []):
+        if action["id"] == action_id:
+            return dict(action, payload=dict(action["payload"]))
+    return None
+
+
+def reminder_category(reminder_id: str) -> str | None:
+    """iOS bildirim kategorisi; uygulama aynı adla kaydeder. Butonsuz hatırlatıcıda yok."""
+    return f"rebi_{reminder_id}" if reminder_id in REMINDER_ACTIONS else None
+
+
+def reminder_open_path(reminder_id: str) -> str:
+    return _OPEN_PATHS.get(reminder_id, DEFAULT_OPEN_PATH)
+
+
 def _reminder(
     reminder_id: str,
     title: str,
@@ -233,6 +294,9 @@ def _reminder(
         "end": end,
         "every_minutes": every_minutes,
         "log_event": log_event,
+        "category": reminder_category(reminder_id),
+        "actions": reminder_actions(reminder_id),
+        "open_path": reminder_open_path(reminder_id),
     }
 
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { API_URL } from "../lib/supabase";
@@ -7,7 +7,7 @@ import { apiAuthHeaders } from "../lib/apiAuth";
 import { DEMO_USER_ID } from "../lib/demoUser";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { isConsentError, requestConsentRecovery } from "../lib/consentRecovery";
-import { Bot, Send, Loader2, Sparkles, Crown, Lock, ArrowRight, X } from "lucide-react";
+import { Bot, Send, Loader2, Sparkles, Crown, Lock, ArrowRight, X, RotateCcw, ClipboardList } from "lucide-react";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import AiDisclaimer from "../components/AiDisclaimer";
 import { useTranslation } from "react-i18next";
@@ -31,6 +31,37 @@ function loadChatHistory(userId) {
   } catch {
     return [];
   }
+}
+
+/** Dokunmatik cihazda her cevaptan sonra odaklanmak klavyeyi açıp cevabı örtüyor. */
+function isCoarsePointer() {
+  try {
+    return window.matchMedia?.("(pointer: coarse)").matches === true;
+  } catch {
+    return false;
+  }
+}
+
+const URL_SPLIT = /(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
+
+function MessageText({ text, linkColor }) {
+  const parts = String(text || "").split(URL_SPLIT);
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <a
+        key={i}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline underline-offset-2 break-all"
+        style={linkColor ? { color: linkColor } : undefined}
+      >
+        {part}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
 }
 
 async function importLocalHistory(userId, auth) {
@@ -66,9 +97,12 @@ export default function Chat() {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const chatEndRef = useRef(null);
+  const lastReplyRef = useRef(null);
   const inputRef = useRef(null);
   const effectiveUserId = user?.id || DEMO_USER_ID;
+  const withBottomNav = Boolean(user) && location.pathname.startsWith("/dashboard");
 
   const [history, setHistory] = useState(() => loadChatHistory(effectiveUserId));
   const [historyOwnerId, setHistoryOwnerId] = useState(effectiveUserId);
@@ -89,13 +123,35 @@ export default function Chat() {
 
   const hasConversation = history.some((m) => m.role === "user");
 
+  // Yeni cevap gelince cevabın başını göster; uzun cevapta en alta atlayıp başını kaçırmasın.
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const last = history[history.length - 1];
+    if (!loading && last?.role === "assistant" && lastReplyRef.current) {
+      lastReplyRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [history, loading]);
 
   useEffect(() => {
-    if (!loading) inputRef.current?.focus();
-  }, [loading, history]);
+    if (!loading && !isCoarsePointer()) inputRef.current?.focus();
+  }, [loading]);
+
+  // Rutin adımından "Rebi'ye sor" ile gelen soru: kutuya yaz, göndermeyi kullanıcıya bırak.
+  useEffect(() => {
+    const q = new URLSearchParams(location.search).get("q");
+    if (!q) return;
+    setInput(q.slice(0, 500));
+    navigate(location.pathname, { replace: true });
+    window.setTimeout(() => inputRef.current?.focus(), 50);
+  }, [location.search, location.pathname, navigate]);
+
+  useEffect(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+  }, [input]);
 
   useEffect(() => {
     if (historyOwnerId !== effectiveUserId) return;
@@ -247,14 +303,16 @@ export default function Chat() {
     setUsage(null);
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading || paywallOpen) return;
-    const msg = input.trim();
-    setInput("");
+  const sendMessage = async (textOverride, baseHistory = history) => {
+    const msg = String(textOverride ?? input).trim();
+    if (!msg || loading || paywallOpen) return;
+    if (textOverride == null) setInput("");
     sentThisSessionRef.current = true;
-    const newHist = [...history, { role: "user", content: msg }];
+    const newHist = [...baseHistory, { role: "user", content: msg }];
     setHistory(newHist);
     setLoading(true);
+    const failWith = (content) =>
+      setHistory([...newHist, { role: "assistant", content, error: true, retryText: msg }]);
 
     try {
       const auth = await apiAuthHeaders();
@@ -264,7 +322,7 @@ export default function Chat() {
         body: JSON.stringify({
           user_id: user?.id || DEMO_USER_ID,
           message: msg,
-          history: newHist,
+          history: newHist.filter((m) => !m.error).map((m) => ({ role: m.role, content: m.content })),
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -285,7 +343,7 @@ export default function Chat() {
           errText =
             "Sunucu geçici olarak yanıt vermiyor. Biraz sonra tekrar dene. " + errText;
         }
-        setHistory([...newHist, { role: "assistant", content: `Şu an yanıt alınamadı: ${errText}` }]);
+        failWith(`${t("chat.errorNoReply")} ${errText}`);
         return;
       }
       if (data.chat_quota_exceeded) {
@@ -298,19 +356,25 @@ export default function Chat() {
       const reply = typeof data.reply === "string" ? data.reply : formatApiErrorDetail(data);
       setHistory([...newHist, { role: "assistant", content: reply }]);
     } catch (e) {
-      const net = isNetworkError(e);
-      setHistory([
-        ...newHist,
-        {
-          role: "assistant",
-          content: net
-            ? "Bağlantı kurulamadı. İnternetini ve API adresini kontrol et; backend çalışıyor mu?"
-            : "Bir hata oluştu, tekrar dener misin?",
-        },
-      ]);
+      failWith(isNetworkError(e) ? t("chat.errorNetwork") : t("chat.errorGeneric"));
     } finally {
       setLoading(false);
     }
+  };
+
+  const retryAt = (index) => {
+    const failed = history[index];
+    if (!failed?.retryText) return;
+    const prevIsSameUser = history[index - 1]?.role === "user" && history[index - 1]?.content === failed.retryText;
+    sendMessage(failed.retryText, history.slice(0, prevIsSameUser ? index - 1 : index));
+  };
+
+  const onInputKeyDown = (e) => {
+    if (e.key !== "Enter" || e.shiftKey || e.nativeEvent?.isComposing) return;
+    // Telefonda Enter yeni satır; gönderme butonla.
+    if (isCoarsePointer()) return;
+    e.preventDefault();
+    sendMessage();
   };
 
   const clearChat = async () => {
@@ -357,27 +421,18 @@ export default function Chat() {
           }
         : null;
 
-  const cornerUsageText =
-    usage?.kind === "free_daily" && usage.remaining != null && usage.limit != null
-      ? t("chat.usageBadgeDay", { rem: usage.remaining, lim: usage.limit })
-      : usage?.kind === "plus_monthly" && usage.remaining != null && usage.limit != null
-        ? t("chat.usageBadgeMonth", { rem: usage.remaining, lim: usage.limit })
-        : usage?.kind === "plus_unlimited"
-          ? t("chat.usageBadgeUnlimited")
-          : null;
+  const suggestionList = (key) => {
+    const v = t(key, { returnObjects: true });
+    return Array.isArray(v) ? v.filter((s) => typeof s === "string" && s.trim()) : [];
+  };
+  const suggestions = [
+    ...(user?.id && routineHasItems ? suggestionList("chat.suggestRoutine") : []),
+    ...suggestionList("chat.suggestGeneral"),
+  ].slice(0, 4);
 
   return (
-    <div className={`min-h-screen ${theme.bg} relative`}>
+    <div className={`${theme.bg} relative`}>
       <ThemePatternOverlay pattern={theme.pattern} />
-
-      {/* Köşe sayaç (özellikle web) */}
-      {cornerUsageText && (
-        <div className="fixed top-4 right-4 z-[30]">
-          <div className="bg-white/90 backdrop-blur-md border border-gray-200/80 shadow-sm rounded-full px-3 py-1 text-[11px] font-semibold tabular-nums text-gray-800">
-            {cornerUsageText}
-          </div>
-        </div>
-      )}
 
       {/* Sol açılır edge (web) */}
       {routineCorner && (
@@ -503,16 +558,18 @@ export default function Chat() {
         </>
       )}
 
-      <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-128px)] relative z-[1] w-full">
+      <div
+        className={`max-w-2xl mx-auto flex flex-col relative z-[1] w-full ${withBottomNav ? "chat-shell--with-nav" : "chat-shell"}`}
+      >
         {/* Header */}
-        <div className={`flex items-center gap-3 px-4 py-3 border-b ${theme.cardBorder} bg-white/70 backdrop-blur-md shrink-0`}>
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg"
+        <div className={`flex items-center gap-2.5 px-4 py-2.5 border-b ${theme.cardBorder} bg-white/70 backdrop-blur-md shrink-0`}>
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow"
             style={{ background: `linear-gradient(135deg, ${theme.accent}, ${theme.primary})` }}>
-            <Bot className="w-5 h-5 text-white" />
+            <Bot className="w-4 h-4 text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-gray-900 text-sm truncate">Rebi</h3>
+              <h3 className="font-bold text-gray-900 text-sm truncate">{t("nav.chat")}</h3>
               {usage && usage.kind === "free_daily" && usage.limit != null && usage.remaining != null && (
                 <span
                   className="text-[10px] font-semibold tabular-nums px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-200/80 shrink-0"
@@ -540,50 +597,99 @@ export default function Chat() {
             </div>
             <p className="text-[11px] text-gray-500 truncate">{t("chat.subtitle")}</p>
           </div>
-          <button
-            type="button"
-            onClick={clearChat}
-            disabled={!hasConversation}
-            className="text-[10px] text-gray-400 hover:text-gray-600 px-2 py-1 rounded-lg hover:bg-gray-100 transition-colors disabled:opacity-40 disabled:pointer-events-none shrink-0"
-          >
-            {t("chat.clear")}
-          </button>
+          {routineCorner && (
+            <Link
+              to={routineCorner.href}
+              className="sm:hidden inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-1.5 rounded-xl border shrink-0"
+              style={{ borderColor: theme.primaryLight, color: theme.primary }}
+            >
+              <ClipboardList className="w-3.5 h-3.5" />
+              {routineHasItems ? t("chat.routineChip") : t("chat.analyzeChip")}
+            </Link>
+          )}
+          {hasConversation && (
+            <button
+              type="button"
+              onClick={clearChat}
+              className="text-[11px] text-gray-500 hover:text-gray-700 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition-colors shrink-0"
+            >
+              {t("chat.clear")}
+            </button>
+          )}
         </div>
 
         {/* Boş: Claude/Gemini tarzı orta alan; mesaj var: klasik sohbet */}
         {!hasConversation ? (
-          <div className="flex-1 min-h-0 flex flex-col items-center justify-center px-5 sm:px-8 pb-6">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-xl mb-6 opacity-95"
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center px-5 sm:px-8 py-6">
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl mb-5 opacity-95"
               style={{ background: `linear-gradient(145deg, ${theme.accent}, ${theme.primary})` }}>
-              <Sparkles className="w-7 h-7 text-white" strokeWidth={1.75} />
+              <Sparkles className="w-6 h-6 text-white" strokeWidth={1.75} />
             </div>
-            <h1 className="text-center text-2xl sm:text-3xl font-semibold text-gray-900 tracking-tight leading-snug max-w-md">
+            <h1 className="text-center text-xl sm:text-3xl font-semibold text-gray-900 tracking-tight leading-snug max-w-md">
               {t("chat.emptyTitle")}
             </h1>
-            <p className="mt-3 text-center text-base text-gray-600 max-w-md leading-relaxed">
-              {t("chat.emptySubtitle")}
-            </p>
-            <p className="mt-6 text-center text-xs sm:text-sm text-gray-500 max-w-sm leading-relaxed">
+            <p className="mt-2 text-center text-sm sm:text-base text-gray-600 max-w-md leading-relaxed">
               {t("chat.dataHint")}
             </p>
+            {suggestions.length > 0 && (
+              <div className="mt-6 w-full max-w-md grid gap-2">
+                {suggestions.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => sendMessage(s)}
+                    disabled={loading || paywallOpen}
+                    className="w-full text-left rounded-2xl border border-gray-200 bg-white/90 hover:bg-white px-4 py-3 text-sm text-gray-800 shadow-sm transition-colors disabled:opacity-50"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-3">
-            {history.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div className={`max-w-[85%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                  msg.role === "user"
-                    ? "text-white rounded-br-md"
-                    : "bg-gray-100 text-gray-800 rounded-bl-md"
-                }`} style={msg.role === "user" ? { backgroundColor: theme.primary } : {}}>
-                  {msg.content}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
+            {history.map((msg, i) => {
+              const isUser = msg.role === "user";
+              const isLast = i === history.length - 1;
+              return (
+                <div
+                  key={i}
+                  ref={isLast && !isUser ? lastReplyRef : undefined}
+                  className={`flex flex-col ${isUser ? "items-end" : "items-start"} scroll-mt-3`}
+                >
+                  <div
+                    className={`max-w-[88%] px-4 py-3 rounded-2xl text-[15px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                      isUser
+                        ? "text-white rounded-br-md"
+                        : msg.error
+                          ? "bg-red-50 text-red-900 border border-red-100 rounded-bl-md"
+                          : "bg-gray-100 text-gray-800 rounded-bl-md"
+                    }`}
+                    style={isUser ? { backgroundColor: theme.primary } : {}}
+                  >
+                    <MessageText text={msg.content} linkColor={isUser ? undefined : theme.primary} />
+                  </div>
+                  {msg.error && msg.retryText && isLast && (
+                    <button
+                      type="button"
+                      onClick={() => retryAt(i)}
+                      disabled={loading || paywallOpen}
+                      className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl border bg-white disabled:opacity-50"
+                      style={{ borderColor: theme.primaryLight, color: theme.primary }}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      {t("chat.retry")}
+                    </button>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-2">
+                <div className="bg-gray-100 px-4 py-3 rounded-2xl rounded-bl-md flex items-center gap-2 text-xs text-gray-500">
                   <Loader2 className="w-4 h-4 animate-spin" style={{ color: theme.primary }} />
+                  {t("chat.thinking")}
                 </div>
               </div>
             )}
@@ -592,51 +698,51 @@ export default function Chat() {
         )}
 
         {/* Input — her iki modda altta sabit */}
-        <div className={`px-4 py-3 border-t ${theme.cardBorder} bg-white/90 backdrop-blur-md shrink-0`}>
-          <div className="flex gap-2">
-            <input
+        <div className={`px-3 sm:px-4 pt-2.5 pb-2 border-t ${theme.cardBorder} bg-white/90 backdrop-blur-md shrink-0`}>
+          <form
+            className="flex items-end gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              sendMessage();
+            }}
+          >
+            <textarea
               ref={inputRef}
-              type="text"
+              rows={1}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage()}
+              onKeyDown={onInputKeyDown}
               placeholder={t("chat.placeholder")}
-              className="flex-1 input-field !py-3 text-sm"
+              enterKeyHint="send"
+              aria-label={t("chat.placeholder")}
+              className="flex-1 input-field !py-3 text-base sm:text-sm resize-none leading-snug max-h-[132px]"
               disabled={loading || paywallOpen}
             />
             <button
-              onClick={sendMessage}
+              type="submit"
+              aria-label={t("chat.send")}
               disabled={loading || paywallOpen || !input.trim()}
               className="w-12 h-12 text-white rounded-2xl flex items-center justify-center transition-colors shrink-0 disabled:bg-gray-300"
               style={!loading && input.trim() ? { backgroundColor: theme.primary } : {}}
             >
               <Send className="w-5 h-5" />
             </button>
-          </div>
-          {usage?.kind === "free_daily" ? (
-            <p className="text-[10px] text-gray-500 text-center mt-1.5">
-              <Link
-                to={subscribeHref}
-                className="font-semibold underline-offset-2 hover:underline"
-                style={{ color: theme.primary }}
-              >
-                {t("chat.plusUpgradeLink")}
-              </Link>
-              {" · "}
-              <span className="text-gray-400">{t("chat.footerHintShort")}</span>
-            </p>
-          ) : usage?.kind === "plus_monthly" ? (
-            <p className="text-[10px] text-violet-800/90 text-center mt-1.5">
-              {t("chat.plusPack1000Footer")}
-            </p>
-          ) : usage?.kind === "plus_unlimited" ? (
-            <p className="text-[10px] text-emerald-800/85 text-center mt-1.5 font-medium">{t("chat.plusUnlimitedFooter")}</p>
-          ) : (
-            <p className="text-[10px] text-gray-400 text-center mt-1.5">
-              <Sparkles className="w-3 h-3 inline" /> {t("chat.footerHint")}
-            </p>
-          )}
-          <AiDisclaimer className="text-center mt-1.5" />
+          </form>
+          <p className="text-[10px] text-gray-400 text-center mt-1.5 leading-snug">
+            {usage?.kind === "free_daily" && (
+              <>
+                <Link
+                  to={subscribeHref}
+                  className="font-semibold underline-offset-2 hover:underline"
+                  style={{ color: theme.primary }}
+                >
+                  {t("chat.plusUpgradeLink")}
+                </Link>
+                {" · "}
+              </>
+            )}
+            <AiDisclaimer as="span" />
+          </p>
         </div>
       </div>
 
