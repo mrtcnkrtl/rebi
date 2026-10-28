@@ -56,6 +56,11 @@ Düzelttikten sonra 1.1'i tekrarla ve **hangi ayarın işe yaradığını** not 
 | 5.3 | Bir hatırlatıcı penceresini bekle | **Tek** bildirim gelir (çift yok) |
 | 5.4 | `push-cron` servisini durdur, 25 dk bekle, uygulamayı kapatıp aç | Kart "bu telefonda planlanır"a döner ve hatırlatmalar yerelden kurulur |
 | 5.5 | `push-cron`'u başlat, uygulamayı tekrar öne getir | Yerel bildirimler silinir, push'a dönülür |
+| 5.6 | Android: su penceresinde uygulamayı kapat, sunucu bildirimi gelince **+250 ml** | Bildirimde düğmeler var (yalnızca-veri mesajı, `rebiPushBackground`); uygulamayı açınca Bugün'de su 250 ml artmış |
+| 5.7 | Android: aynı bildirimi uygulama **açıkken** bekle | Bildirim yine düğmeleriyle görünür (`onMessage`); **Yaptım** Bugün ekranını hemen günceller |
+| 5.8 | iOS: sunucu bildirimini aşağı çek / uzun bas → **+250 ml** | Uygulama açılır, Bugün'de su 250 ml artmış (`AppDelegate` → `takePendingPushActions`) |
+| 5.9 | iOS: düğmeye basıp uygulama açılmadan oturumu kapat, başka hesapla gir | Kayıt yeni hesaba **yazılmaz** (bildirimin `user_id`'si eşleşmez) |
+| 5.10 | `device_tokens` tablosunda cihaz satırı | `actions_supported = true` |
 
 ## Sonuç tablosu
 

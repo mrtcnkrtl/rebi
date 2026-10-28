@@ -277,11 +277,12 @@ POST /devices/register
 }
 ```
 
-`actions_supported`: uygulama **sunucudan gelen** bildirimin butonlarını (aşağıya bakın)
-işleyebiliyorsa `true` gönderin. Bu durumda iOS mesajına `aps.category` eklenir; Android'e
-**yalnızca veri taşıyan** mesaj gider ve bildirimi butonlarıyla birlikte uygulama kendisi
-kurar. Varsayılan `false`'tur: kategori eklenmez (yoksa iOS, basınca kayıt yazmayan
-butonlar gösterir) ve sistem düz bildirimi gösterir.
+`actions_supported`: uygulama **sunucudan gelen** bildirimin butonlarını kendisi kurup
+işleyebiliyorsa `true`. Flutter uygulaması Firebase açık derlemelerde iki platformda da `true`
+gönderir (`PushClient.handlesNotificationActions`; akış aşağıda, "Bildirimden günlük veri
+toplama"). `true` olan Android cihaza **yalnızca veri taşıyan** mesaj gider, iOS cihaza
+`aps.category` eklenir. Varsayılan `false`: kategori eklenmez (yoksa iOS, basınca kayıt
+yazmayan butonlar gösterir) ve sistemin gösterdiği düz bildirim gider.
 
 `utc_offset_minutes` zorunludur: hatırlatıcı saatleri yerel olduğu için sunucu cihazın
 saat dilimini bilmek zorundadır. Uygulama açılışta, **saat farkı değişince** (yolculuk, yaz saati), **12 saatten uzun
@@ -344,66 +345,53 @@ Bildirim verisi (`data`, tüm değerler metin):
 | `slot` | `13:00` | pencere içindeki gönderim saati |
 | `open_path` | `/dashboard` | dokununca açılacak ekran (web yolu) |
 | `actions` | `[{"id":"water250","label":"+250 ml"}]` | JSON metni; buton yoksa `[]` |
-| `title`, `body` | | yalnızca Android `actions_supported` cihazlarda |
+| `user_id` | | bildirimin kullanıcısı; arka plan izolatında oturum olmadığı için kuyruk buna yazar |
+| `title`, `body` | | yalnızca Android `actions_supported` cihazlarda (yalnızca-veri mesajı) |
 
 `actions_supported` iOS cihazlarda `aps.category` = `rebi_<reminder_id>` olarak gelir
-(uygulamanın yerel bildirimde kullandığı kategori adıyla aynı).
+(uygulamanın `flutter_local_notifications` ile kaydettiği kategori adıyla aynı).
 
 ### Bildirimden günlük veri toplama
 
 Kullanıcı uygulamayı açmadan bildirimin üzerindeki butonla cevap verir; cevap günlük
 kayda (`daily_events`) yazılır ve hatırlatıcı planı buna göre güncellenir (ör. su hedefi
-dolunca su hatırlatıcısı susar, makyaj temizlendiyse temizlik hatırlatıcısı düşer).
+dolunca su hatırlatıcısı susar). Mobil uygulama **Flutter**'dır; bildirimler
+`flutter_local_notifications` (yerel) ve `firebase_messaging` (sunucu) ile çalışır.
 
-**1. Kategorileri kaydet.** iOS butonları ancak bildirim gelmeden önce kaydedilmiş
-kategoriden çizer. Açılışta `GET /push/actions` çağırın ve her kategoriyi
-`UNNotificationCategory` olarak kaydedin (kimlik doğrulaması gerekmez):
+**Butonların tek kaynağı uygulamadır.** Kimlik, kayıt tipi ve yük
+`mobile/lib/core/today_plan.dart` → `reminderActions` içindedir; düğme kimliği
+`<reminder_id>:<etiket>` (ör. `water_intake:water250`), iOS kategorisi `rebi_<reminder_id>`.
+Sunucunun listesi (`GET /push/actions`, `/today/plan` → `reminders[].actions`) bunun **olay
+yazan** eylemleriyle aynıdır; iki liste saparsa `backend/tests/test_push_actions.py` kırılır.
 
-```json
-{
-  "categories": [
-    { "id": "water_intake", "category": "rebi_water_intake", "open_path": "/dashboard",
-      "actions": [ { "id": "water250", "label": "+250 ml" }, { "id": "water500", "label": "+500 ml" } ] },
-    { "id": "nutrition_log", "category": "rebi_nutrition_log", "open_path": "/dashboard",
-      "actions": [ { "id": "junkNo", "label": "Hayır" } ] }
-  ]
-}
-```
+**Akış (Flutter):**
 
-Android'de `onMessageReceived` içinde `data.actions` listesinden `NotificationCompat`
-butonları kurulur. Butonlar arka planda çalışmalı (uygulamayı öne getirmeden).
+| durum | kim gösterir | butona dokunuş |
+| --- | --- | --- |
+| Yerel bildirim (FCM kapalı veya dağıtıcı susmuş) | `flutter_local_notifications` | Android: arka planda `rebiNotificationBackground` olayı kuyruğa yazar. iOS: düğme uygulamayı açar |
+| Sunucu push'u, Android | Yalnızca-veri mesajı → `FirebaseMessaging.onBackgroundMessage` (`rebiPushBackground`) ya da uygulama açıkken `onMessage` → `showPushReminder` aynı kanal ve düğmelerle yerel bildirim kurar | Yerel bildirimle aynı yol |
+| Sunucu push'u, iOS | Sistem; düğmeler `aps.category` ile uygulamanın kaydettiği `rebi_<reminder_id>` kategorisinden | `AppDelegate.swift` (`PushActionInbox`) dokunuşu yerel depoya yazar, uygulama açılır; `takePendingPushActions` okuyup gönderir |
 
-**2. Cevabı gönder.**
+Arka plan izolatında Supabase oturumu yoktur; düğme olayı cihazdaki kuyruğa yazılır ve uygulama
+açılınca `POST /daily_tracking/ingest` ile gönderilir (`client_event_id` ile tekrar sayılmaz).
 
-```
-POST /push/respond
-Authorization: Bearer <supabase_access_token>
-{
-  "user_id": "…",
-  "reminder_id": "water_intake",
-  "action_id": "water250",
-  "log_date": "2026-10-28",
-  "slot": "13:00"
-}
-```
+**iOS'ta sunucu bildiriminin düğmesi.** Kategoriler `flutter_local_notifications` ile
+kaydedildiği için sunucu mesajındaki `aps.category` düğmeleri gösterir; ama dokunuş
+`firebase_messaging` üzerinden Dart'a **düğme kimliği olmadan** (`onMessageOpenedApp`) gelir.
+Bu yüzden `AppDelegate` `userNotificationCenter(_:didReceive:)` içinde, yalnızca sunucu
+bildirimlerinde (`UNPushNotificationTrigger`), dokunuşu `flutter.rebi-pending-push-actions`
+anahtarına (`shared_preferences`'ın `UserDefaults` alanı) ekler ve olayı eklentilere aynen iletir.
+Uygulama oturum açılınca, öne gelince ve sunucu bildirimi açılınca bu listeyi okuyup siler ve
+uygulama içi dokunuşla aynı yoldan kaydeder. iOS düğmeleri uygulamayı öne getirir
+(`DarwinNotificationActionOption.foreground`), kayıt o anda gider.
 
-`log_date` ve `slot` bildirim verisinden aynen geri gönderilir. Hangi olayın hangi yükle
-yazılacağına sunucu karar verir; uygulama yük göndermez. Aynı bildirime (aynı
-`reminder_id` + `log_date` + `slot`) ikinci dokunuş sayılmaz, bu yüzden çevrimdışı
-kuyruğun tekrar denemesi güvenlidir. Kendi kimliğinizi kullanmak isterseniz
-`client_event_id` gönderebilirsiniz.
-
-Yanıt:
-
-```json
-{ "ok": true, "log_date": "2026-10-28", "log_event": "water_intake",
-  "aggregated": { "water_ml_total": 750, "…": "…" } }
-```
-
-| kod | anlamı |
-| --- | --- |
-| 422 | bu hatırlatıcıda böyle bir buton yok veya `slot` biçimi `SS:DD` değil |
-| 403 | `user_id` anahtarla uyuşmuyor |
+**`POST /push/respond` (isteğe bağlı).** Uygulamanın yükü bilmediği istemciler için sunucu
+tarafı karşılığıdır; Flutter uygulaması kullanmaz (kendi kuyruğuyla `/daily_tracking/ingest`'e
+yazar). Gövde: `{ user_id, reminder_id, action_id, log_date, slot }`. `action_id` hem `water250`
+hem `water_intake:water250` biçiminde kabul edilir; kaydı sunucu çözer ve aynı
+`reminder_id` + `log_date` + `slot` için ikinci dokunuş sayılmaz. Cevap gönderim defterine de
+yazılır, sunucu o pencereye ayrıca push göndermez. 422: böyle bir düğme yok ya da `slot`
+`SS:DD` değil; 403: `user_id` anahtarla uyuşmuyor. Yanıt: `{ ok, log_date, log_event, aggregated }`.
 
 Butonlar:
 
@@ -417,21 +405,8 @@ Butonlar:
 | `nutrition_log` | `junkNo` → abur cubur yemedi |
 | `makeup_removal`, `lip_balm`, `daily_checkin`, `restock_check` | buton yok; dokununca `open_path` açılır |
 
-Liste uygulamanın `reminderActions` listesindeki **olay yazan** eylemlerle aynıdır
-(kimlikler `mobileToday.actions.*` çeviri anahtarlarıdır). Seçim ekranı açan eylemler
-("Evet, yedim", "Temizledim") buton değildir. Uygulamanın düğme kimliği biçimi
-(`water_intake:water250`) da `action_id` olarak kabul edilir. İki liste birbirinden
-saparsa `backend/tests/test_push_actions.py` kırılır.
-
-**Yerel bildirimler.** Sunucuda FCM kapalıysa (`push_configured: false`) uygulama
-`GET /today/plan` yanıtındaki `reminders` ile yerel bildirim kurar; her hatırlatıcıda
-`category`, `actions` ve `open_path` aynı biçimde gelir. Cevap yine `POST /push/respond`
-ile gönderilir (`slot` = bildirimin kurulduğu saat). Cevap deftere de yazıldığı için
-sunucu aynı pencereye ayrıca push göndermez.
-
-**Arka planda oturum.** Buton arka planda çalıştığında erişim anahtarının süresi dolmuş
-olabilir; isteği göndermeden önce Supabase SDK'sıyla oturumu tazeleyin. İstek
-başarısız olursa cevabı kuyruğa alıp uygulama açıldığında tekrar gönderin.
+Seçim ekranı açan eylemler ("Evet, yedim", "Temizledim") buton değildir; bildirime dokunmak
+o ekranı açar.
 
 ## Rıza ve gizlilik
 

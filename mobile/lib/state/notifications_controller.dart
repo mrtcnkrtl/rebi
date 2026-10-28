@@ -9,6 +9,7 @@ import '../core/i18n.dart';
 import '../core/notification_actions.dart';
 import '../core/notification_ports.dart';
 import '../core/notification_prefs.dart';
+import '../core/push_action_inbox.dart';
 import '../core/reminder_schedule.dart';
 import '../core/reminder_text.dart';
 import '../core/silence_budget.dart';
@@ -48,7 +49,11 @@ class NotificationsController extends ChangeNotifier {
     _auth.addListener(_onAuth);
     _subs.add(_notifier.taps.listen(_open));
     _subs.add(_notifier.actions.listen((tap) => unawaited(_onAction(tap))));
-    _subs.add(_push.opened.listen(_open));
+    _subs.add(_push.opened.listen((route) {
+      _open(route);
+      // iOS: sunucu bildiriminin düğmesiyle açıldıysa dokunuş yerel depoda bekliyor.
+      unawaited(_drainPushActions());
+    }));
     _subs.add(_push.tokenRefreshes.listen((_) => unawaited(_register())));
     _onAuth();
     unawaited(_openFromLaunch());
@@ -116,8 +121,9 @@ class NotificationsController extends ChangeNotifier {
     if (next == null) {
       // Başka hesap açılınca önceki kullanıcının hatırlatmaları gelmesin.
       unawaited(_serialize(_notifier.cancelAll));
-    } else if (enabled) {
-      unawaited(_register());
+    } else {
+      unawaited(_drainPushActions());
+      if (enabled) unawaited(_register());
     }
     _notify();
   }
@@ -173,6 +179,7 @@ class NotificationsController extends ChangeNotifier {
   Future<void> onAppResumed() async {
     final uid = _uid;
     if (uid == null || !supported || _disposed) return;
+    await _drainPushActions();
     if (enabled) await _recheckPermission();
     if (_disposed || uid != _uid) return;
     if (_push.available && notificationsEnabledFor(uid) != null && _needsRegistration()) {
@@ -251,6 +258,7 @@ class NotificationsController extends ChangeNotifier {
         pushEnabled: choice,
         locale: I18n.instance.lang,
         appVersion: await _appVersion(),
+        actionsSupported: _push.handlesNotificationActions,
       );
       if (_disposed || uid != _uid) return;
       final serverPush = choice && registration != null && registration.pushConfigured && registration.synced;
@@ -352,6 +360,15 @@ class NotificationsController extends ChangeNotifier {
       unawaited(_applySchedule());
     }
     if (!_recorded.isClosed) _recorded.add(type);
+  }
+
+  /// iOS'ta sunucu bildiriminin düğmesine yapılan dokunuşları ([takePendingPushActions]) uygulama içi
+  /// dokunuşla aynı yoldan kaydeder. Oturum yokken okunmaz; dokunuşlar bir sonraki oturuma kadar bekler.
+  Future<void> _drainPushActions() async {
+    if (_uid == null || !_push.handlesNotificationActions || _disposed) return;
+    for (final tap in await takePendingPushActions()) {
+      await _onAction(tap);
+    }
   }
 
   Future<void> _openFromLaunch() async {

@@ -10,6 +10,7 @@ import 'i18n.dart';
 import 'local_store.dart';
 import 'notification_actions.dart';
 import 'notification_ports.dart';
+import 'push_reminder.dart';
 import 'reminder_schedule.dart';
 import 'silence_budget.dart';
 
@@ -63,6 +64,64 @@ Future<void> _cancelPending({required String userId, required String day, requir
     }
   } catch (e) {
     debugPrint('Kalan bildirimler susturulamadı: $e');
+  }
+}
+
+NotificationDetails _notificationDetails({
+  required String body,
+  required String reminderId,
+  required List<NotificationActionSpec> actions,
+}) {
+  final i18n = I18n.instance;
+  return NotificationDetails(
+    android: AndroidNotificationDetails(
+      _channelId,
+      i18n.t('mobileNotifications.channelName'),
+      channelDescription: i18n.t('mobileNotifications.channelDescription'),
+      importance: Importance.defaultImportance,
+      priority: Priority.defaultPriority,
+      styleInformation: BigTextStyleInformation(body),
+      actions: [
+        for (final a in actions)
+          AndroidNotificationAction(a.id, a.label, showsUserInterface: false, cancelNotification: true),
+      ],
+    ),
+    iOS: DarwinNotificationDetails(
+      presentAlert: true,
+      presentBanner: true,
+      presentSound: true,
+      categoryIdentifier: actions.isEmpty ? null : _iosCategory(reminderId),
+    ),
+  );
+}
+
+/// Sunucudan gelen yalnızca-veri hatırlatıcısını ([PushReminder]) yerel hatırlatıcılarla aynı kanal, düğme
+/// ve yükle hemen gösterir. FCM arka plan izolatından çağrılınca eklenti o izolatta henüz kurulmamıştır
+/// ([initialize]); ana izolatta [LocalNotificationsNotifier.create] kurduğu için yeniden kurulmaz
+/// (yoksa uygulama içi dokunuş dinleyicisi silinir). Kanal ilk açılışta oluşturulmuştur.
+Future<void> showPushReminder(PushReminder reminder, {bool initialize = false}) async {
+  if (kIsWeb || !Platform.isAndroid) return;
+  try {
+    final plugin = FlutterLocalNotificationsPlugin();
+    if (initialize) {
+      await plugin.initialize(
+        settings: const InitializationSettings(android: AndroidInitializationSettings('@drawable/ic_stat_rebi')),
+        onDidReceiveBackgroundNotificationResponse: rebiNotificationBackground,
+      );
+    }
+    await plugin.show(
+      id: reminder.id,
+      title: reminder.title,
+      body: reminder.body,
+      notificationDetails: _notificationDetails(
+        body: reminder.body,
+        reminderId: reminder.reminderId,
+        actions: reminder.actions,
+      ),
+      payload: reminder.payload.encode(),
+    );
+  } catch (e) {
+    debugPrint('Sunucu hatırlatıcısı gösterilemedi (${reminder.reminderId}): $e');
   }
 }
 
@@ -183,29 +242,8 @@ class LocalNotificationsNotifier implements ReminderNotifier {
     }
   }
 
-  NotificationDetails _details(PlannedNotification n) {
-    final i18n = I18n.instance;
-    return NotificationDetails(
-      android: AndroidNotificationDetails(
-        _channelId,
-        i18n.t('mobileNotifications.channelName'),
-        channelDescription: i18n.t('mobileNotifications.channelDescription'),
-        importance: Importance.defaultImportance,
-        priority: Priority.defaultPriority,
-        styleInformation: BigTextStyleInformation(n.body),
-        actions: [
-          for (final a in n.actions)
-            AndroidNotificationAction(a.id, a.label, showsUserInterface: false, cancelNotification: true),
-        ],
-      ),
-      iOS: DarwinNotificationDetails(
-        presentAlert: true,
-        presentBanner: true,
-        presentSound: true,
-        categoryIdentifier: n.actions.isEmpty ? null : _iosCategory(n.reminderId),
-      ),
-    );
-  }
+  NotificationDetails _details(PlannedNotification n) =>
+      _notificationDetails(body: n.body, reminderId: n.reminderId, actions: n.actions);
 
   @override
   Future<void> replaceAll(List<PlannedNotification> items) async {

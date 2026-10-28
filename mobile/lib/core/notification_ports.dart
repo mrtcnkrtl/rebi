@@ -51,6 +51,10 @@ class ScheduleIncomplete implements Exception {
 abstract class PushClient {
   bool get available;
 
+  /// Sunucu bildiriminin düğmelerini bu cihaz kendisi kurup işleyebilir mi; cihaz kaydında
+  /// `actions_supported` olarak gider (`docs/MOBIL-API.md` → "Cihaz kaydı").
+  bool get handlesNotificationActions;
+
   Future<bool> requestPermission();
 
   /// Bu cihazın bildirim anahtarı; alınamazsa null.
@@ -71,6 +75,9 @@ class NoPushClient implements PushClient {
 
   @override
   bool get available => false;
+
+  @override
+  bool get handlesNotificationActions => false;
 
   @override
   Future<bool> requestPermission() async => false;

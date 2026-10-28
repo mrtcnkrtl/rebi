@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/routine_logic.dart';
 import 'package:rebi/core/routine_tracking.dart';
+import 'package:rebi/screens/routine/routine_parts.dart' show RoutineBlockCard;
 
 import 'helpers/app_harness.dart';
 
@@ -35,7 +36,16 @@ void main() {
       expect(find.text(tr('dashboard.routineByDayTitle')), findsOneWidget);
       expect(find.text(tr('dashboard.morning')), findsOneWidget);
       expect(find.text(tr('dashboard.evening')), findsOneWidget);
-      expect(find.text(tr('mobileRoutine.stepCount', {'n': 3})), findsOneWidget, reason: 'sabah: temizleyici, nemlendirici, SPF');
+      // Akşamın adım sayısı haftanın gününe göre değişir (bazı günler o da 3); yalnızca sabah bloğuna bakılır.
+      final morningBlock = find.ancestor(
+        of: find.text(tr('dashboard.morning')),
+        matching: find.byType(RoutineBlockCard),
+      );
+      expect(
+        find.descendant(of: morningBlock, matching: find.text(tr('mobileRoutine.stepCount', {'n': 3}))),
+        findsOneWidget,
+        reason: 'sabah: temizleyici, nemlendirici, SPF',
+      );
       final days = I18n.instance.tList('dashboard.weekDays', const []);
       final today = days[getTurkeyWeekdayIndex()];
       expect(find.text('$today · ${tr('dashboard.todayTitle')}'), findsOneWidget, reason: 'bugünün planı açık');

@@ -232,6 +232,7 @@ def test_dispatch_sends_actions_and_data_only_for_capable_android(monkeypatch, c
     assert call["action_tokens"] == {"android-new", "ios"}
     assert call["data_only_tokens"] == {"android-new"}
     assert call["data"]["slot"] == "09:00"
+    assert call["data"]["user_id"] == USER_ID
     assert call["data"]["open_path"] == "/dashboard"
     assert json.loads(call["data"]["actions"]) == [
         {"id": "water250", "label": "+250 ml"},

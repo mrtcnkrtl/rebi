@@ -2344,6 +2344,8 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
                     "log_event": reminder.get("log_event") or "",
                     "log_date": log_date,
                     "slot": reminder["slot"],
+                    # Flutter arka plan izolatında oturum yok; düğme kaydı bu kullanıcıya kuyruklanır.
+                    "user_id": uid,
                     "open_path": reminder.get("open_path") or reminder_open_path(reminder["id"]),
                     "actions": json.dumps(
                         [
