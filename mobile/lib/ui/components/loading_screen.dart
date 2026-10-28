@@ -3,14 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../core/i18n.dart';
 import '../tw.dart';
 import '../brand/palette.dart';
 
 List<(IconData, String, Color)> get _steps => [
-  (LucideIcons.cloudSun, 'Hava durumu inceleniyor...', Tw.blue500),
-  (LucideIcons.bookOpen, 'Bilimsel literatür taranıyor...', Tw.purple500),
-  (LucideIcons.brain, 'Yapay zeka analiz ediyor...', Tw.teal500),
-  (LucideIcons.sparkles, 'Rutinin hazırlanıyor...', Tw.amber500),
+  (LucideIcons.cloudSun, I18n.instance.t('mobileMisc.loadingWeather'), Tw.blue500),
+  (LucideIcons.bookOpen, I18n.instance.t('mobileMisc.loadingLiterature'), Tw.purple500),
+  (LucideIcons.brain, I18n.instance.t('mobileMisc.loadingAi'), Tw.teal500),
+  (LucideIcons.sparkles, I18n.instance.t('mobileMisc.loadingRoutine'), Tw.amber500),
 ];
 
 /// Rutin üretilirken gösterilen adım adım bekleme ekranı (web: `LoadingScreen.jsx`).
@@ -72,9 +73,9 @@ class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateM
                   ),
                 ),
                 const SizedBox(height: 32),
-                Text('Rebi Analiz Ediyor', style: heading(26)),
+                Text(I18n.instance.t('mobileMisc.loadingTitle'), style: heading(26)),
                 const SizedBox(height: 8),
-                Text('Sana özel bütüncül rutin hazırlanıyor', textAlign: TextAlign.center, style: tx(16, c: Tw.gray500)),
+                Text(I18n.instance.t('mobileMisc.loadingSubtitle'), textAlign: TextAlign.center, style: tx(16, c: Tw.gray500)),
                 const SizedBox(height: 40),
                 for (var i = 0; i < _steps.length; i++) ...[
                   _StepRow(index: i, current: _current, bounce: _bounce),

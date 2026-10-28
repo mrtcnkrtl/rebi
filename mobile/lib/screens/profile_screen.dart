@@ -107,7 +107,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _photoPermission = data['photo_processing_allowed'] == true;
         });
       }).catchError((_) {
-        if (mounted) setState(() => _privacyMsg = 'Gizlilik tercihleri yüklenemedi.');
+        if (mounted) setState(() => _privacyMsg = I18n.instance.t('mobileAccount.privacyLoadFailed'));
       });
     }
     // Eski kayıtlarda acceptedAt yoktu; profil açılınca bir kez tamamlanır.
@@ -183,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _photosError = e is StorageException ? e.message : 'Fotoğraflar yüklenemedi.';
+          _photosError = e is StorageException ? e.message : I18n.instance.t('mobileAccount.photosLoadFailed');
           _photos = [];
         });
       }
@@ -213,11 +213,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           /* çevrimdışı: bir sonraki analizde sunucu adı yine yazar */
         }
       }
-      if (mounted) setState(() => _profileMsg = ('ok', 'Bilgilerin güncellendi.'));
+      if (mounted) setState(() => _profileMsg = ('ok', I18n.instance.t('mobileAccount.nameSaved')));
     } on AuthException catch (e) {
-      if (mounted) setState(() => _profileMsg = ('err', e.message.isEmpty ? 'Kaydedilemedi.' : e.message));
+      if (mounted) setState(() => _profileMsg = ('err', e.message.isEmpty ? I18n.instance.t('mobileAccount.saveFailed') : e.message));
     } catch (_) {
-      if (mounted) setState(() => _profileMsg = ('err', 'Kaydedilemedi.'));
+      if (mounted) setState(() => _profileMsg = ('err', I18n.instance.t('mobileAccount.saveFailed')));
     } finally {
       if (mounted) setState(() => _profileSaving = false);
     }
@@ -226,11 +226,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _changePassword() async {
     setState(() => _pwdMsg = ('', ''));
     if (_newPassword.text.length < 6) {
-      setState(() => _pwdMsg = ('err', 'Şifre en az 6 karakter olmalı.'));
+      setState(() => _pwdMsg = ('err', I18n.instance.t('mobileAccount.passwordTooShort')));
       return;
     }
     if (_newPassword.text != _confirmPassword.text) {
-      setState(() => _pwdMsg = ('err', 'Şifreler eşleşmiyor.'));
+      setState(() => _pwdMsg = ('err', I18n.instance.t('mobileAccount.passwordMismatch')));
       return;
     }
     final client = supabase;
@@ -240,11 +240,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await client.auth.updateUser(UserAttributes(password: _newPassword.text));
       _newPassword.clear();
       _confirmPassword.clear();
-      if (mounted) setState(() => _pwdMsg = ('ok', 'Şifren güncellendi.'));
+      if (mounted) setState(() => _pwdMsg = ('ok', I18n.instance.t('mobileAccount.passwordSaved')));
     } on AuthException catch (e) {
-      if (mounted) setState(() => _pwdMsg = ('err', e.message.isEmpty ? 'Şifre değiştirilemedi.' : e.message));
+      if (mounted) setState(() => _pwdMsg = ('err', e.message.isEmpty ? I18n.instance.t('mobileAccount.passwordFailed') : e.message));
     } catch (_) {
-      if (mounted) setState(() => _pwdMsg = ('err', 'Şifre değiştirilemedi.'));
+      if (mounted) setState(() => _pwdMsg = ('err', I18n.instance.t('mobileAccount.passwordFailed')));
     } finally {
       if (mounted) setState(() => _pwdSaving = false);
     }
@@ -257,20 +257,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _deleteMsg = ('', ''));
     if (uid == null) return;
     if (_deletePhrase.text.trim() != accountDeletePhrase) {
-      setState(() => _deleteMsg = ('err', 'Kalıcı silmek için kutuya tam olarak $accountDeletePhrase yazmalısın.'));
+      setState(() => _deleteMsg = ('err', I18n.instance.t('mobileAccount.deletePhraseWrong', {'phrase': accountDeletePhrase})));
       return;
     }
     setState(() => _deleteBusy = true);
     try {
       final res = await apiPost('/account/delete', {'user_id': uid, 'confirm_text': accountDeletePhrase}, timeout: apiLongTimeout);
-      if (!res.ok) throw Exception(detailOr(res.data, 'İstek başarısız'));
+      if (!res.ok) throw Exception(detailOr(res.data, I18n.instance.t('mobileAccount.requestFailed')));
       _deletePhrase.clear();
       await clearUserLocalData(uid);
       await auth.signOut();
       router.go('/');
     } catch (e) {
       final m = e.toString().replaceFirst('Exception: ', '');
-      if (mounted) setState(() => _deleteMsg = ('err', m.isEmpty ? 'Hesap silinemedi.' : m));
+      if (mounted) setState(() => _deleteMsg = ('err', m.isEmpty ? I18n.instance.t('mobileAccount.deleteFailed') : m));
     } finally {
       if (mounted) setState(() => _deleteBusy = false);
     }
@@ -285,10 +285,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
     try {
       await updatePrivacyPreferences(uid, location: _locationPermission, photo: _photoPermission);
-      if (mounted) setState(() => _privacyMsg = 'Gizlilik tercihlerin kaydedildi.');
+      if (mounted) setState(() => _privacyMsg = I18n.instance.t('mobileAccount.privacySaved'));
     } catch (e) {
       final m = e.toString().replaceFirst('Exception: ', '');
-      if (mounted) setState(() => _privacyMsg = m.isEmpty ? 'Gizlilik tercihleri kaydedilemedi.' : m);
+      if (mounted) setState(() => _privacyMsg = m.isEmpty ? I18n.instance.t('mobileAccount.privacySaveFailed') : m);
     } finally {
       if (mounted) setState(() => _privacySaving = false);
     }
@@ -344,7 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Supabase yapılandırılmamış; profil ve fotoğraflar kullanılamıyor.',
+            child: Text(i18n.t('mobileAccount.notConfigured'),
                 textAlign: TextAlign.center, style: tx(14, c: Tw.gray600)),
           ),
         ),
@@ -389,17 +389,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     Text.rich(
                       TextSpan(children: [
                         TextSpan(text: 'Rebi', style: tx(14, w: 7, c: Tw.sky950)),
-                        const TextSpan(text: ' verilerini güvenle saklar. Yeni cilt fotoğrafını '),
+                        TextSpan(text: i18n.t('mobileAccount.infoSafe')),
                         TextSpan(text: i18n.t('profile.quickUpload'), style: linkStyle, recognizer: _quickUploadTap),
-                        const TextSpan(text: ' ile ekleyebilir veya tam '),
+                        TextSpan(text: i18n.t('mobileAccount.infoOr')),
                         TextSpan(text: i18n.t('profile.fullAnalyze'), style: linkStyle, recognizer: _fullAnalyzeTap),
-                        const TextSpan(text: 'na gidebilirsin. Aşağıda yüklediğin görseller listelenir.'),
+                        TextSpan(text: i18n.t('mobileAccount.infoEnd')),
                       ]),
                       style: tx(14, c: Tw.sky950.withValues(alpha: .9), h: relaxed),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Şifre değişikliği e-posta ile giriş yaptığın hesaplar içindir. Sosyal giriş kullanıyorsan şifre bu ekrandan değişmez.',
+                      i18n.t('mobileAccount.passwordNote'),
                       style: tx(12, c: Tw.sky900.withValues(alpha: .8)),
                     ),
                   ],
@@ -460,13 +460,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _sectionTitle(LucideIcons.user, theme.primary, 'Görünen ad'),
+              _sectionTitle(LucideIcons.user, theme.primary, i18n.t('mobileAccount.displayName')),
               const SizedBox(height: 12),
               TextField(
                 controller: _displayName,
                 maxLength: 120,
                 textCapitalization: TextCapitalization.words,
-                decoration: inputDecoration(hint: 'Adın soyadın').copyWith(counterText: ''),
+                decoration: inputDecoration(hint: i18n.t('mobileAccount.displayNameHint')).copyWith(counterText: ''),
                 onSubmitted: (_) => _saveProfile(),
               ),
               if (_profileMsg.$2.isNotEmpty) ...[
@@ -480,7 +480,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: theme.primary,
                 fontSize: 14,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                label: 'Bilgileri kaydet',
+                label: i18n.t('mobileAccount.saveName'),
               ),
             ],
           ),
@@ -491,20 +491,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _sectionTitle(LucideIcons.lock, theme.primary, 'Şifre değiştir'),
+              _sectionTitle(LucideIcons.lock, theme.primary, i18n.t('mobileAccount.changePassword')),
               const SizedBox(height: 12),
               TextField(
                 controller: _newPassword,
                 obscureText: true,
                 autofillHints: const [AutofillHints.newPassword],
-                decoration: inputDecoration(hint: 'Yeni şifre (en az 6 karakter)'),
+                decoration: inputDecoration(hint: i18n.t('mobileAccount.newPassword')),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _confirmPassword,
                 obscureText: true,
                 autofillHints: const [AutofillHints.newPassword],
-                decoration: inputDecoration(hint: 'Yeni şifre tekrar'),
+                decoration: inputDecoration(hint: i18n.t('mobileAccount.newPasswordAgain')),
                 onSubmitted: (_) => _changePassword(),
               ),
               if (_pwdMsg.$2.isNotEmpty) ...[
@@ -519,7 +519,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 textColor: theme.primary,
                 fontSize: 14,
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                label: 'Şifreyi güncelle',
+                label: i18n.t('mobileAccount.updatePassword'),
               ),
             ],
           ),
@@ -564,21 +564,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _sectionTitle(LucideIcons.shield, theme.primary, 'Gizlilik izinleri'),
+                _sectionTitle(LucideIcons.shield, theme.primary, i18n.t('mobileAccount.privacyTitle')),
                 const SizedBox(height: 12),
                 Text(
-                  'Rutin ve sohbet için yapay zekâ işlemesi A3 Biyoteknoloji tarafından yapılır; ayrıntı KVKK ve açık rıza '
-                  'metinlerindedir. Konum ve fotoğraf izinlerini istediğin zaman değiştirebilirsin.',
+                  i18n.t('mobileAccount.privacyBody'),
                   style: tx(12, c: Tw.gray500),
                 ),
                 const SizedBox(height: 12),
                 const AiDisclaimer(),
                 const SizedBox(height: 12),
                 _checkboxRow(_locationPermission, (v) => setState(() => _locationPermission = v),
-                    'Hava/UV için kesin konum aktarımı'),
+                    i18n.t('mobileAccount.privacyLocation')),
                 const SizedBox(height: 12),
                 _checkboxRow(_photoPermission, (v) => setState(() => _photoPermission = v),
-                    'Private alanda cilt fotoğrafı saklama'),
+                    i18n.t('mobileAccount.privacyPhoto')),
                 if (_privacyMsg.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(_privacyMsg, style: tx(12, c: Tw.gray600)),
@@ -589,7 +588,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   loading: _privacySaving,
                   fontSize: 14,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                  label: 'İzinleri kaydet',
+                  label: i18n.t('mobileAccount.privacySave'),
                 ),
               ],
             ),
@@ -607,7 +606,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextLink('Rebi Plus', onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.primary)),
               Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('·', style: tx(12, c: Tw.gray300))),
             ],
-            TextLink('Temalar', onTap: () => context.go('/dashboard/themes'), style: tx(12, c: Tw.gray600)),
+            TextLink(i18n.t('mobileAccount.themes'), onTap: () => context.go('/dashboard/themes'), style: tx(12, c: Tw.gray600)),
           ],
         ),
       ],
@@ -655,7 +654,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _sectionTitle(LucideIcons.target, theme.primary, i18n.t('profile.routineSummaryTitle')),
           const SizedBox(height: 12),
           Text(
-            'Günlük check-in yaptıkça seri ve sadakat burada güncellenir. Hedef: üst üste $routineStreakGoalDays gün check-in alışkanlığı.',
+            i18n.t('mobileAccount.statsIntro', {'days': routineStreakGoalDays}),
             style: tx(11, c: Tw.gray500, h: relaxed),
           ),
           const SizedBox(height: 12),
@@ -686,7 +685,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         Text(i18n.t('profile.adherence'), style: tx(12, w: 6, c: Tw.gray800)),
                         Text.rich(
                           TextSpan(children: [
-                            const TextSpan(text: 'Check-in kayıtlarında rutini uyguladım dediğin günler: '),
+                            TextSpan(text: i18n.t('mobileAccount.adherenceDays')),
                             TextSpan(text: '${s.appliedRatePercent}%', style: tx(11, w: 7, c: Tw.gray800)),
                           ]),
                           style: tx(11, c: Tw.gray500),
@@ -702,7 +701,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Hedef seri ($routineStreakGoalDays gün)', style: tx(10, c: Tw.gray500)),
+              Text(i18n.t('mobileAccount.streakGoal', {'days': routineStreakGoalDays}), style: tx(10, c: Tw.gray500)),
               Text('${s.goalProgress}%', style: tx(10, c: Tw.gray500)),
             ],
           ),
@@ -723,15 +722,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (s.daysSinceAccept != null)
             Text.rich(
               TextSpan(children: [
-                const TextSpan(text: 'Rutin yolculuğun: '),
-                TextSpan(text: '${s.daysSinceAccept} gün', style: tx(11, w: 7, c: Tw.gray800)),
-                const TextSpan(text: ' (kabul tarihinden)'),
+                TextSpan(text: i18n.t('mobileAccount.journey')),
+                TextSpan(text: i18n.t('mobileAccount.journeyDays', {'days': s.daysSinceAccept}), style: tx(11, w: 7, c: Tw.gray800)),
+                TextSpan(text: i18n.t('mobileAccount.journeySince')),
               ]),
               textAlign: TextAlign.center,
               style: tx(11, c: Tw.gray500),
             )
           else
-            Text('Rutin kabul tarihi bir sonraki güncellemeden itibaren otomatik kaydedilir.',
+            Text(i18n.t('mobileAccount.journeyPending'),
                 textAlign: TextAlign.center, style: tx(11, c: Tw.gray400)),
           const SizedBox(height: 12),
           Wrap(
@@ -739,8 +738,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              smallLink('Check-in yap', () => context.go('/dashboard/checkin'), theme.primaryLight, theme.primary),
-              smallLink('Fotoğraf ekle', () => context.push('/dashboard/analyze?photo=1'), Tw.gray200, Tw.gray700),
+              smallLink(i18n.t('mobileAccount.doCheckin'), () => context.go('/dashboard/checkin'), theme.primaryLight, theme.primary),
+              smallLink(i18n.t('mobileAccount.addPhoto'), () => context.push('/dashboard/analyze?photo=1'), Tw.gray200, Tw.gray700),
             ],
           ),
         ],
@@ -757,18 +756,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _sectionTitle(LucideIcons.trash2, Tw.red900, 'Hesabı kalıcı olarak sil', textColor: Tw.red900),
+          _sectionTitle(LucideIcons.trash2, Tw.red900, context.i18n.t('mobileAccount.deleteTitle'), textColor: Tw.red900),
           const SizedBox(height: 12),
           Text(
-            'Profil, rutinler, günlük kayıtlar ve analiz verilerin veritabanından silinir. Cilt fotoğrafların depodan kaldırılır. '
-            'Bu işlem geri alınamaz; Rebi Plus veya başka üyelik bilgisi ayrıca faturalandırma sisteminde kalıyorsa oradan da '
-            'iptal etmen gerekebilir.',
+            context.i18n.t('mobileAccount.deleteBody'),
             style: tx(12, c: Tw.red900.withValues(alpha: .85), h: relaxed),
           ),
           const SizedBox(height: 12),
           Text.rich(
             TextSpan(children: [
-              const TextSpan(text: 'Onay için tam yaz: '),
+              TextSpan(text: context.i18n.t('mobileAccount.deleteTypeToConfirm')),
               WidgetSpan(
                 alignment: PlaceholderAlignment.middle,
                 child: Container(
@@ -811,7 +808,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: Center(
                     child: _deleteBusy
                         ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Tw.red700))
-                        : Text('Hesabımı kalıcı sil', style: tx(14, w: 6, c: Tw.red700)),
+                        : Text(context.i18n.t('mobileAccount.deleteButton'), style: tx(14, w: 6, c: Tw.red700)),
                   ),
                 ),
               ),
@@ -848,7 +845,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Icon(LucideIcons.image, size: 40, color: Tw.gray300),
             const SizedBox(height: 8),
-            Text('Henüz kayıtlı fotoğraf yok.', style: tx(14, c: Tw.gray600)),
+            Text(i18n.t('mobileAccount.noPhotos'), style: tx(14, c: Tw.gray600)),
             const SizedBox(height: 12),
             TextLink(i18n.t('analyze.quickPhotoUpload'),
                 onTap: () => context.push('/dashboard/analyze?photo=1'), style: tx(14, w: 6, c: theme.primary)),
@@ -881,7 +878,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   else
                     SizedBox(
                       height: 128,
-                      child: Center(child: Text('Önizleme yok', style: tx(14, c: Tw.gray400))),
+                      child: Center(child: Text(i18n.t('mobileAccount.noPreview'), style: tx(14, c: Tw.gray400))),
                     ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -925,7 +922,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          Text('Analizde yüklediğin görseller burada tarih sırasıyla listelenir (sunucudaki dosya tarihine göre).',
+          Text(i18n.t('mobileAccount.photosIntro'),
               style: tx(12, c: Tw.gray500)),
           const SizedBox(height: 12),
           body,

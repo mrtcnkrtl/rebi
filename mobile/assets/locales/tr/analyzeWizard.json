@@ -80,7 +80,12 @@
     "experienceLabel": "Deneyimin",
     "severityTitle": "Soruna özel şiddet",
     "severitySubtitle": "Her sorun için soruları cevapla.",
-    "durationLabel": "Ne kadar süredir?",
+    "durationLabel": "Bu sorun ne kadar süredir var?",
+    "timelineTitle": "Süre ve sıklık — her sorun ayrı",
+    "timelineSubtitle": "Şiddet ne kadar yoğun olduğunu söyler. Burada her sorun için ne kadar zamandır sürdüğünü ve ne sıklıkla çıktığını sen yaz. Motor gece sayısını buna göre ayarlar.",
+    "frequencyLabel": "Ne sıklıkla oluyor?",
+    "noteLabel": "Kendi cümlen (isteğe bağlı)",
+    "notePlaceholder": "Örn. Çene aknesi adetten 1 hafta önce çıkar, yazın artar…",
     "triggersTitle": "Tetikleyiciler",
     "triggersSubtitle": "Sorunların ne zaman artıyor? (çoklu seç)",
     "pastTitle": "Geçmiş tedaviler",
@@ -193,14 +198,24 @@
     "cheeks": "Yanaklar",
     "chin": "Çene",
     "undereye": "Göz altı",
+    "eye_corner": "Göz kenarı",
     "lips": "Dudak çevresi",
     "temples": "Şakak"
   },
   "duration": {
+    "lt1": "1 aydan kısa",
     "1-3": "1–3 ay",
     "3-6": "3–6 ay",
     "6-12": "6–12 ay",
     "1y+": "1 yıldan fazla"
+  },
+  "frequency": {
+    "daily": "Neredeyse her gün",
+    "several_week": "Haftada birkaç kez",
+    "weekly": "Haftada bir",
+    "monthly": "Ayda birkaç kez",
+    "flare": "Ataklar halinde",
+    "constant": "Sürekli / hiç geçmiyor"
   },
   "trigger": {
     "stress": "Stres",

@@ -79,24 +79,20 @@ class _AuthScreenState extends State<AuthScreen> {
 
   String _friendlyError(String raw, {required bool network}) {
     if (raw == supabaseNotConfiguredError) {
-      return 'Giriş şu an yapılamıyor: uygulama Supabase ayarları olmadan başlatılmış. '
-          'Geliştirme sırasında "main.dart (dev)" ayarıyla ya da '
-          '`flutter run --dart-define-from-file=env/dev.json` ile çalıştır.';
+      return I18n.instance.t('mobileMisc.authNotConfigured');
     }
     final lower = raw.toLowerCase();
     if (network) {
-      return 'Sunucuya bağlanılamadı. Kontrol et: internet / VPN bağlantın açık mı; '
-          'uygulama doğru Supabase projesine (SUPABASE_URL ve SUPABASE_ANON_KEY) bağlanacak şekilde mi derlendi?';
+      return I18n.instance.t('mobileMisc.authNetwork');
     }
     if (lower.contains('rate limit') ||
         lower.contains('too many') ||
         lower.contains('exceeded') ||
         lower.contains('quota') ||
         lower.contains('429')) {
-      return 'Kısa süre içinde çok fazla deneme yapıldığı için geçici olarak sınır aşıldı. '
-          '1-2 dakika bekleyip tekrar dener misin? Devam ederse VPN / kurumsal ağ kullanıyorsan kapatıp dene.';
+      return I18n.instance.t('mobileMisc.authRateLimit');
     }
-    return raw.isEmpty ? 'Bir hata oluştu' : raw;
+    return raw.isEmpty ? I18n.instance.t('mobileMisc.genericError') : raw;
   }
 
   Future<void> _submit() async {
@@ -139,8 +135,7 @@ class _AuthScreenState extends State<AuthScreen> {
             setState(() {
               _error = '';
               _mode = 'login';
-              _info = 'Kayıt alındı. E-postandaki onay linkine tıkladıktan sonra giriş yapabilirsin. '
-                  'Posta gelmediyse spam klasörüne bak.';
+              _info = I18n.instance.t('mobileMisc.signupConfirm');
             });
           }
           return;

@@ -81,8 +81,8 @@ paketlemesi doğrulanır).
    `aps-environment` yazmayın: imzalama profili uyuşmayıp derleme bozulur. Yerel bildirimler bunlar olmadan çalışır.
 5. `PrivacyInfo.xcprivacy` toplanan veri türlerini bildirir (bölüm 8); App Store Connect "Uygulama Gizliliği"
    anketiyle **aynı** olmalı. Uygulama izleme (tracking) yapmaz, reklam kimliği kullanmaz.
-6. Uygulama iPhone + iPad için işaretli (`TARGETED_DEVICE_FAMILY = 1,2`): iPad ekran görüntüleri de gerekir.
-   Yalnızca iPhone isterseniz `1` yapın.
+6. Uygulama yalnızca iPhone ve dikey ekran için (`TARGETED_DEVICE_FAMILY = 1`): iPad ekran görüntüsü gerekmez.
+   iPad düzeni ayrıca tasarlanıp test edilmeden `1,2` yapmayın.
 
 ## 5. Hata raporlama (Firebase Crashlytics)
 
