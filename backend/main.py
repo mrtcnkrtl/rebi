@@ -40,6 +40,7 @@ from today_plan import (
     normalize_reminder_settings,
     format_hhmm,
     parse_hhmm,
+    reminder_category,
     reminder_open_path,
     reminder_windows,
     resolve_reminder_action,
@@ -2283,12 +2284,19 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
         # İlk satır en son görülen cihaz olduğu için saat farkı ondan alınır.
         entry = by_user.setdefault(
             uid,
-            {"tokens": [], "data_only": set(), "offset": int(row.get("utc_offset_minutes") or 0)},
+            {
+                "tokens": [],
+                "actions": set(),
+                "data_only": set(),
+                "offset": int(row.get("utc_offset_minutes") or 0),
+            },
         )
         if len(entry["tokens"]) < _PUSH_MAX_TOKENS_PER_USER:
             entry["tokens"].append(token)
-            if row.get("platform") == "android" and row.get("actions_supported"):
-                entry["data_only"].add(token)
+            if row.get("actions_supported"):
+                entry["actions"].add(token)
+                if row.get("platform") == "android":
+                    entry["data_only"].add(token)
 
     reminders_sent = 0
     notifications_sent = 0
@@ -2345,7 +2353,8 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
                         ensure_ascii=False,
                     ),
                 },
-                category=reminder.get("category") or reminder["id"],
+                category=reminder.get("category"),
+                action_tokens=entry["actions"],
                 data_only_tokens=entry["data_only"],
             )
             sent = int(result.get("sent") or 0)
@@ -2390,6 +2399,7 @@ async def push_actions():
         "categories": [
             {
                 "id": reminder_id,
+                "category": reminder_category(reminder_id),
                 "actions": [{"id": a["id"], "label": a["label"]} for a in actions],
                 "open_path": reminder_open_path(reminder_id),
             }

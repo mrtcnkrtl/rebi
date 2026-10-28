@@ -108,11 +108,14 @@ async def send_push(
     body: str,
     data: dict | None = None,
     category: str | None = None,
+    action_tokens: set[str] | frozenset[str] = frozenset(),
     data_only_tokens: set[str] | frozenset[str] = frozenset(),
 ) -> dict:
     """
-    Verilen cihazlara tek bildirim gönderir. `data_only_tokens` içindeki
-    cihazlara yalnızca veri taşıyan mesaj gider.
+    Verilen cihazlara tek bildirim gönderir. iOS kategorisi yalnızca butonları
+    işleyebilen cihazlara (`action_tokens`) eklenir; yoksa basınca kayıt
+    yazmayan butonlar görünür. `data_only_tokens` içindeki cihazlara yalnızca
+    veri taşıyan mesaj gider.
 
     Döner: {"status": "sent" | "skipped" | "error", "sent": int,
             "invalid_tokens": [...]} — geçersiz token'ları çağıran siler.
@@ -140,7 +143,12 @@ async def send_push(
     async with httpx.AsyncClient(timeout=_FCM_TIMEOUT) as client:
         for token in tokens:
             message = build_message(
-                token, title, body, data, category, data_only=token in data_only_tokens
+                token,
+                title,
+                body,
+                data,
+                category if token in action_tokens else None,
+                data_only=token in data_only_tokens,
             )
             try:
                 response = await client.post(url, json=message, headers=headers)

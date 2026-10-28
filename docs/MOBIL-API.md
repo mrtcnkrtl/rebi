@@ -72,10 +72,10 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
       "end": "21:00",
       "every_minutes": 120,
       "log_event": "water_intake",
-      "category": "water_intake",
+      "category": "rebi_water_intake",
       "actions": [
-        { "id": "ml_250", "label": "1 bardak (250 ml)", "log_event": "water_intake", "payload": { "ml": 250 } },
-        { "id": "ml_500", "label": "2 bardak (500 ml)", "log_event": "water_intake", "payload": { "ml": 500 } }
+        { "id": "water250", "label": "+250 ml", "log_event": "water_intake", "payload": { "ml": 250 } },
+        { "id": "water500", "label": "+500 ml", "log_event": "water_intake", "payload": { "ml": 500 } }
       ],
       "open_path": "/dashboard"
     }
@@ -277,10 +277,11 @@ POST /devices/register
 }
 ```
 
-`actions_supported`: uygulama bildirim butonlarını (aşağıya bakın) işleyebiliyorsa
-`true` gönderin. Android'de bu durumda sunucu **yalnızca veri taşıyan** mesaj gönderir
-ve bildirimi butonlarıyla birlikte uygulama kendisi kurar. Varsayılan `false`'tur;
-eski sürümler sistemin gösterdiği düz bildirimi almaya devam eder.
+`actions_supported`: uygulama **sunucudan gelen** bildirimin butonlarını (aşağıya bakın)
+işleyebiliyorsa `true` gönderin. Bu durumda iOS mesajına `aps.category` eklenir; Android'e
+**yalnızca veri taşıyan** mesaj gider ve bildirimi butonlarıyla birlikte uygulama kendisi
+kurar. Varsayılan `false`'tur: kategori eklenmez (yoksa iOS, basınca kayıt yazmayan
+butonlar gösterir) ve sistem düz bildirimi gösterir.
 
 `utc_offset_minutes` zorunludur: hatırlatıcı saatleri yerel olduğu için sunucu cihazın
 saat dilimini bilmek zorundadır. Uygulama açılışta, **saat farkı değişince** (yolculuk, yaz saati), **12 saatten uzun
@@ -342,10 +343,11 @@ Bildirim verisi (`data`, tüm değerler metin):
 | `log_date` | `2026-10-28` | kullanıcının **yerel** günü |
 | `slot` | `13:00` | pencere içindeki gönderim saati |
 | `open_path` | `/dashboard` | dokununca açılacak ekran (web yolu) |
-| `actions` | `[{"id":"ml_250","label":"1 bardak (250 ml)"}]` | JSON metni; buton yoksa `[]` |
+| `actions` | `[{"id":"water250","label":"+250 ml"}]` | JSON metni; buton yoksa `[]` |
 | `title`, `body` | | yalnızca Android `actions_supported` cihazlarda |
 
-iOS mesajında `aps.category` = `reminder_id` olarak gelir.
+`actions_supported` iOS cihazlarda `aps.category` = `rebi_<reminder_id>` olarak gelir
+(uygulamanın yerel bildirimde kullandığı kategori adıyla aynı).
 
 ### Bildirimden günlük veri toplama
 
@@ -360,10 +362,10 @@ kategoriden çizer. Açılışta `GET /push/actions` çağırın ve her kategori
 ```json
 {
   "categories": [
-    { "id": "water_intake", "open_path": "/dashboard",
-      "actions": [ { "id": "ml_250", "label": "1 bardak (250 ml)" }, { "id": "ml_500", "label": "2 bardak (500 ml)" } ] },
-    { "id": "makeup_removal", "open_path": "/dashboard",
-      "actions": [ { "id": "double", "label": "Çift temizlik" }, { "id": "cleanser", "label": "Temizleyici" }, { "id": "wipe", "label": "Mendil" } ] }
+    { "id": "water_intake", "category": "rebi_water_intake", "open_path": "/dashboard",
+      "actions": [ { "id": "water250", "label": "+250 ml" }, { "id": "water500", "label": "+500 ml" } ] },
+    { "id": "nutrition_log", "category": "rebi_nutrition_log", "open_path": "/dashboard",
+      "actions": [ { "id": "junkNo", "label": "Hayır" } ] }
   ]
 }
 ```
@@ -379,7 +381,7 @@ Authorization: Bearer <supabase_access_token>
 {
   "user_id": "…",
   "reminder_id": "water_intake",
-  "action_id": "ml_250",
+  "action_id": "water250",
   "log_date": "2026-10-28",
   "slot": "13:00"
 }
@@ -410,11 +412,16 @@ Butonlar:
 | `routine_morning` | `done` → sabah rutini yapıldı |
 | `routine_evening` | `done` → akşam rutini yapıldı |
 | `makeup_log` | `yes` / `no` → makyaj yapıldı / yapılmadı |
-| `water_intake` | `ml_250` / `ml_500` → su eklendi |
+| `water_intake` | `water250` / `water500` → su eklendi |
 | `spf_refresh` | `done` → güneş kremi tazelendi |
-| `nutrition_log` | `junk` / `clean` → abur cubur yedi / yemedi |
-| `makeup_removal` | `double` / `cleanser` / `wipe` → temizleme yöntemi |
-| `lip_balm`, `daily_checkin` | buton yok; dokununca `open_path` açılır |
+| `nutrition_log` | `junkNo` → abur cubur yemedi |
+| `makeup_removal`, `lip_balm`, `daily_checkin`, `restock_check` | buton yok; dokununca `open_path` açılır |
+
+Liste uygulamanın `reminderActions` listesindeki **olay yazan** eylemlerle aynıdır
+(kimlikler `mobileToday.actions.*` çeviri anahtarlarıdır). Seçim ekranı açan eylemler
+("Evet, yedim", "Temizledim") buton değildir. Uygulamanın düğme kimliği biçimi
+(`water_intake:water250`) da `action_id` olarak kabul edilir. İki liste birbirinden
+saparsa `backend/tests/test_push_actions.py` kırılır.
 
 **Yerel bildirimler.** Sunucuda FCM kapalıysa (`push_configured: false`) uygulama
 `GET /today/plan` yanıtındaki `reminders` ile yerel bildirim kurar; her hatırlatıcıda
