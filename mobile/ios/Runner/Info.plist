@@ -72,7 +72,7 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
-	<!-- Yalnızca iPhone ve dikey: ekranlar yatay düzen için tasarlanmadı. -->
+	<!-- iPhone (ve iPhone Duo) dikey; iPad her yönde (içerik ortalanmış sütunlarda, yatayda da test edildi). -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

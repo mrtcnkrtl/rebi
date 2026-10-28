@@ -81,8 +81,10 @@ paketlemesi doğrulanır).
    `aps-environment` yazmayın: imzalama profili uyuşmayıp derleme bozulur. Yerel bildirimler bunlar olmadan çalışır.
 5. `PrivacyInfo.xcprivacy` toplanan veri türlerini bildirir (bölüm 8); App Store Connect "Uygulama Gizliliği"
    anketiyle **aynı** olmalı. Uygulama izleme (tracking) yapmaz, reklam kimliği kullanmaz.
-6. Uygulama yalnızca iPhone ve dikey ekran için (`TARGETED_DEVICE_FAMILY = 1`): iPad ekran görüntüsü gerekmez.
-   iPad düzeni ayrıca tasarlanıp test edilmeden `1,2` yapmayın.
+6. Uygulama iPhone + iPad (`TARGETED_DEVICE_FAMILY = 1,2`). iPhone'da dikey; iPad her yönde. iPhone Duo için ayrı
+   ayar yoktur: iOS 27.1 SDK ile derlendiğinde iç ekranda tam ekran çalışır, iç ekran dikey kilidine her zaman uymayabildiği
+   için düzenler yatayda da test edilir (iç ekran 951×669, dış ekran 466×678 mantıksal). Sohbetteki köşe sayacı ve rutin
+   kenar düğmesi yalnızca ≥920 genişlikte (yanlarda yer varken) görünür.
 
 ## 5. Hata raporlama (Firebase Crashlytics)
 

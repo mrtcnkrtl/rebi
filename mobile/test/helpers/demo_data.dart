@@ -140,5 +140,58 @@ FakeBackend demoBackend({String lang = 'tr', bool store = false}) {
   b.snapshot = {...b.snapshot, 'has_routine': true, 'routine': routine, 'profile': profile};
   b.profile = profile;
   b.history = {...b.history, ...contractJson('me_history'), 'user_id': testUserId};
+  if (store) b.history = {...b.history, 'days': _storeHistoryDays()};
   return b;
+}
+
+/// Mağaza görüntüsü için son 30 günün düzenli ama gerçekçi kayıtları (sözleşmedeki gün biçimiyle; değerler sabit
+/// bir desenden gelir, her çalıştırmada aynıdır).
+List<Map<String, dynamic>> _storeHistoryDays() {
+  final today = DateTime.now();
+  String d(DateTime t) => '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')}';
+  const water = [1750, 2250, 2500, 2000, 2750, 2250, 1500, 2500, 2250, 2750];
+  const sleep = [7.0, 7.5, 6.5, 8.0, 7.5, 7.0, 8.0, 6.5, 7.5, 7.0];
+  const stress = [2, 3, 2, 2, 4, 3, 2, 1, 2, 3];
+  return [
+    for (var i = 29; i >= 0; i--)
+      () {
+        final day = today.subtract(Duration(days: i));
+        final k = i % 10;
+        final morning = i % 7 != 3;
+        final evening = i % 5 != 2;
+        final checkin = i % 3 != 1;
+        return <String, dynamic>{
+          'log_date': d(day),
+          'tracking': {
+            'water_ml_total': water[k],
+            'nutrition': {},
+            'nutrition_logged': false,
+            'avg_stress': stress[k],
+            'sleep_hours': sleep[k],
+            'events_count': 6,
+            'routine_steps_done': (morning ? 3 : 1) + (evening ? 3 : 0),
+            'routine_morning_done': morning,
+            'routine_evening_done': evening,
+            'routine_steps': {
+              'morning': morning ? [10, 30, 40] : [10],
+              'evening': evening ? [10, 20, 30] : <int>[],
+            },
+            'spf_refreshes': k % 3,
+            'makeup': {'logged': false, 'used': false, 'removed': false, 'removal_method': null},
+            'products_finished': [],
+          },
+          'checkin': checkin
+              ? {
+                  'user_id': testUserId,
+                  'log_date': d(day),
+                  'applied_routine': morning,
+                  'skin_feeling': k % 4 == 0 ? 'kuru' : 'iyi',
+                  'sleep_hours': sleep[k],
+                  'stress_level': stress[k],
+                  'risk_score': stress[k],
+                }
+              : null,
+        };
+      }(),
+  ];
 }

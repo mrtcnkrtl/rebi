@@ -9,6 +9,12 @@ import 'interpolate.dart';
 
 typedef RoutineItem = Map<String, dynamic>;
 
+/// Seçili dildeki metin; çeviri yüklenmemişse (saf mantık testleri) Türkçe [fallback].
+String _text(String key, String fallback, [Map<String, Object?> vars = const {}]) {
+  final v = I18n.instance.t(key, vars);
+  return v == key ? interpolate(fallback, vars) : v;
+}
+
 /// JS truthiness: null, false, 0, "" → false.
 bool truthy(Object? v) {
   if (v == null) return false;
@@ -98,7 +104,7 @@ List<String> computeEveningActivesMorningHints(List<RoutineItem> routine) {
   for (final r in _hintRules) {
     if (!r.pattern.hasMatch(blob)) continue;
     if (!seen.add(r.id)) continue;
-    out.add(I18n.instance.t('mobileRoutineHints.morning.${r.id}', const {}, r.text));
+    out.add(_text('mobileRoutineHints.morning.${r.id}', r.text));
   }
   return out;
 }
@@ -280,14 +286,14 @@ List<String> structuredRoutineBadges(RoutineItem item) {
   if (!has) return const [];
 
   final chips = <String>[];
-  if (item['ramp_stage'] == 'starter') chips.add(I18n.instance.t('mobileRoutineHints.starter', const {}, 'Alıştırma'));
-  if (truthy(item['strength_pct'])) chips.add(interpolate(I18n.instance.t('mobileRoutineHints.percent', const {}, '%{{n}}'), {'n': jsString(item['strength_pct'])}));
+  if (item['ramp_stage'] == 'starter') chips.add(_text('mobileRoutineHints.starter', 'Alıştırma'));
+  if (truthy(item['strength_pct'])) chips.add(_text('mobileRoutineHints.percent', '%{{n}}', {'n': jsString(item['strength_pct'])}));
   if (freq is num && freq > 0) {
     chips.add(freq >= 7
-        ? I18n.instance.t('mobileRoutineHints.everyDay', const {}, 'Her gün')
-        : interpolate(I18n.instance.t('mobileRoutineHints.perWeek', const {}, '{{n}}×/hafta'), {'n': jsString(freq)}));
+        ? _text('mobileRoutineHints.everyDay', 'Her gün')
+        : _text('mobileRoutineHints.perWeek', '{{n}}×/hafta', {'n': jsString(freq)}));
   }
-  if (fam.isNotEmpty) chips.add(fam.take(4).map((f) => I18n.instance.t('mobileRoutineHints.families.$f', const {}, _familyLabels[f] ?? f)).join(' · '));
+  if (fam.isNotEmpty) chips.add(fam.take(4).map((f) => _text('mobileRoutineHints.families.$f', _familyLabels[f] ?? f)).join(' · '));
   return chips;
 }
 

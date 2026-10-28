@@ -96,7 +96,7 @@ python3 tool/store_frames.py                                       # çerçeveli
 
 Çerçeveli görseller (1320×2868, App Store iPhone 6,9") başlık + alt satır + telefon içinde ekran görüntüsüdür; başlıklar
 `tool/store_frames.py` içindeki `SHOTS` tablosundadır. Sıra: 01 Bugün · 02 Rutin · 03 Rebi sohbet · 04 Hatırlatıcılar ·
-05 Su · 06 Rafım · 07 Karanlık mod. Geçmiş ekranı örnek veride seyrek kaldığı için vitrine alınmadı. Mağaza görüntülerinde
+05 Su · 06 Geçmiş · 07 Rafım · 08 Karanlık mod. Mağaza verisinde son 30 günün düzenli kayıtları vardır. Mağaza görüntülerinde
 örnek gün "dengeli" risk düzeyindedir (vitrinde kırmızı kriz uyarısı görünmesin); İngilizce örnek kişi "Emma".
 Play telefon görüntüleri (`play-telefon/`, 1080×2160) çerçevesizdir.
 
@@ -107,7 +107,12 @@ Dikkat:
   (`MOBIL-MUSTERI-DEMOSU.md`'deki hazırlıkla).
 - Mağazalar ekran görüntüsünün uygulamayı **gerçekten gösterdiğini** ister: çerçeveye yazı eklemek serbesttir, olmayan
   bir özelliği göstermek değildir. Hepsi bu sürümde vardır.
-- Uygulama yalnızca iPhone'dur (`MOBIL-YAYIN.md` §4, madde 6); iPad görüntüsü gerekmez.
+- Biçimler: iPhone 6,9" (1320×2868), iPhone Duo dış (1398×2034) ve iç ekran (2007×2853), iPad 13" (2064×2752).
+  App Store Connect'te Duo için tek yuva (`APP_IPHONE_DUO`) var; iç ekran seti yüklendi. iPad setinde su kaydı yerine
+  yoktur (alttan açılan pencere çerçevede kesilir).
+- Ürün sayfası başlığı (3840×1646) ve arama sonucu görseli (3840×2560), iOS 27: `python3 tool/store_creatives.py` →
+  `build/store/creatives/<dil>/`. Önemli içerik Apple'ın güvenli alanındadır.
+- Apple Watch görüntüsü yoktur: Rebi'nin watchOS uygulaması yok; App Store yalnızca Watch uygulaması olanlara izin verir.
 - **Play öne çıkan görsel** (1024×500) zorunludur ve burada **üretilmedi**: marka tasarımı gerektirir (logo + slogan).
   **Uygulama ikonu** hazır: `mobile/assets/icon/icon.png` (512×512).
 
