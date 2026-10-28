@@ -70,15 +70,19 @@ class RoutineSectionTitle extends StatelessWidget {
       );
 }
 
-/// Rutin adımı: numara, ad, rozetler ve "Neden bu ürün?" açılır detayı. İstenirse "Rebi'ye sor" bağlantısı.
+/// Rutin adımı: zaman çizelgesi düğümü (numara + bir sonraki adıma inen ince çizgi), ad, rozetler ve "Neden bu ürün?" açılır
+/// detayı. İstenirse "Rebi'ye sor" bağlantısı. [step] null ise yaşam önerisidir: numarasız, simgeyle.
 class RoutineStepTile extends StatefulWidget {
-  const RoutineStepTile({super.key, required this.item, required this.ctx, this.step});
+  const RoutineStepTile({super.key, required this.item, required this.ctx, this.step, this.last = true});
 
   final RoutineItem item;
   final RoutineCtx ctx;
 
   /// Uygulama sırası; null ise adım numarasız (yaşam önerisi) ve simgeyle gösterilir.
   final int? step;
+
+  /// Bloğun son adımı: altına çizgi inmez.
+  final bool last;
 
   @override
   State<RoutineStepTile> createState() => _RoutineStepTileState();
@@ -107,98 +111,132 @@ class _RoutineStepTileState extends State<RoutineStepTile> {
             actionLower.contains('onarım') ||
             actionLower.contains('onarim') ||
             actionLower.contains('krem'));
+    final numbered = widget.step != null;
+    final disc = Container(
+      width: 30,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: numbered ? theme.primary : theme.primary.withValues(alpha: .12),
+        shape: BoxShape.circle,
+      ),
+      child: numbered
+          ? Text('${widget.step}', style: tx(13, w: 8, c: Colors.white))
+          : Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.leaf), size: 16, color: theme.fg),
+    );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
+    return IntrinsicHeight(
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
+          SizedBox(
             width: 30,
-            height: 30,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(color: theme.primary.withValues(alpha: .12), shape: BoxShape.circle),
-            child: widget.step != null
-                ? Text('${widget.step}', style: tx(13, w: 8, c: theme.fg))
-                : Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.leaf), size: 16, color: theme.fg),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Text(pickAction(item, localized: c.localized), style: tx(15, w: 6, c: Tw.gray900, h: snug)),
-                ),
-                StructuredBadges(item: item),
-                if (comboHint) ...[
-                  const SizedBox(height: 6),
-                  Text(i18n.t('mobileRoutine.comboHint'), style: tx(12, c: Tw.gray500, h: relaxed)),
-                ],
-                if (hasMore) ...[
-                  const SizedBox(height: 2),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () => setState(() => _open = !_open),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: Align(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: 1,
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Flexible(
-                          child: Text(
-                            _open
-                                ? i18n.t('common.hide')
-                                : skincare
-                                    ? i18n.t('dashboard.whySkincareButton')
-                                    : i18n.t('common.details'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: tx(12.5, w: 6, c: theme.fg),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(_open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 14, color: theme.fg),
-                      ]),
+                disc,
+                if (numbered && !widget.last)
+                  Expanded(
+                    child: Center(
+                      child: Container(
+                        width: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 5),
+                        decoration: BoxDecoration(color: theme.primary.withValues(alpha: .22), borderRadius: BorderRadius.circular(1)),
                       ),
                     ),
                   ),
-                ],
-                if (_open) ...[
-                  if (detail.isNotEmpty)
-                    Text.rich(
-                      TextSpan(children: [
-                        TextSpan(
-                          text: (skincare || usage.isNotEmpty) ? i18n.t('dashboard.shortWhy') : i18n.t('dashboard.summary'),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: widget.last || !numbered ? 4 : 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(pickAction(item, localized: c.localized), style: tx(16, w: 6, c: Tw.gray900, h: 1.3)),
+                  ),
+                  StructuredBadges(item: item),
+                  if (comboHint) ...[
+                    const SizedBox(height: 6),
+                    Text(i18n.t('mobileRoutine.comboHint'), style: tx(12.5, c: Tw.gray500, h: relaxed)),
+                  ],
+                  if (hasMore) ...[
+                    const SizedBox(height: 2),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () => setState(() => _open = !_open),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 48),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: 1,
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            Flexible(
+                              child: Text(
+                                _open
+                                    ? i18n.t('common.hide')
+                                    : skincare
+                                        ? i18n.t('dashboard.whySkincareButton')
+                                        : i18n.t('common.details'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: tx(13, w: 6, c: theme.fg),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(_open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 15, color: theme.fg),
+                          ]),
                         ),
-                        TextSpan(text: ' $detail'),
-                      ]),
-                      style: tx(12.5, c: Tw.gray600, h: relaxed),
-                    ),
-                  if (usage.isNotEmpty) ...[
-                    if (detail.isNotEmpty) const SizedBox(height: 6),
-                    Text.rich(
-                      TextSpan(children: [
-                        TextSpan(
-                          text: skincare ? i18n.t('dashboard.howToApply') : i18n.t('dashboard.howToDo'),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        TextSpan(text: ' $usage'),
-                      ]),
-                      style: tx(12.5, c: Tw.gray600, h: relaxed),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 4),
-                  TextLink(
-                    i18n.t('mobileRoutine.askRebi'),
-                    onTap: () => askRebiAboutStep(context, item, c),
-                    style: tx(12.5, w: 7, c: theme.fg),
-                  ),
+                  if (_open)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(color: theme.primary.withValues(alpha: .06), borderRadius: BorderRadius.circular(16)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (detail.isNotEmpty)
+                            Text.rich(
+                              TextSpan(children: [
+                                TextSpan(
+                                  text: (skincare || usage.isNotEmpty) ? i18n.t('dashboard.shortWhy') : i18n.t('dashboard.summary'),
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                TextSpan(text: ' $detail'),
+                              ]),
+                              style: tx(13, c: Tw.gray700, h: relaxed),
+                            ),
+                          if (usage.isNotEmpty) ...[
+                            if (detail.isNotEmpty) const SizedBox(height: 8),
+                            Text.rich(
+                              TextSpan(children: [
+                                TextSpan(
+                                  text: skincare ? i18n.t('dashboard.howToApply') : i18n.t('dashboard.howToDo'),
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                                TextSpan(text: ' $usage'),
+                              ]),
+                              style: tx(13, c: Tw.gray700, h: relaxed),
+                            ),
+                          ],
+                          const SizedBox(height: 6),
+                          TextLink(
+                            i18n.t('mobileRoutine.askRebi'),
+                            onTap: () => askRebiAboutStep(context, item, c),
+                            style: tx(13, w: 7, c: theme.fg),
+                          ),
+                        ],
+                      ),
+                    ),
                 ],
-              ],
+              ),
             ),
           ),
         ],
@@ -207,9 +245,21 @@ class _RoutineStepTileState extends State<RoutineStepTile> {
   }
 }
 
-/// Sabah ya da akşam: başlık satırı ve numaralı adımlar (aralarında ince çizgi).
+/// Günün bir bloğunun tonu: sabah bal, akşam lavanta (renk anlam taşır: gün ışığı / dinlenme).
+enum BlockTone { morning, evening, neutral }
+
+/// Sabah ya da akşam: tonlu başlık bandı (simge, başlık, adım sayısı) ve zaman çizelgesi gibi numaralı adımlar.
 class RoutineBlockCard extends StatelessWidget {
-  const RoutineBlockCard({super.key, required this.icon, required this.title, required this.ctx, required this.steps, this.notes = const []});
+  const RoutineBlockCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.ctx,
+    required this.steps,
+    this.notes = const [],
+    this.tone = BlockTone.neutral,
+    this.footer,
+  });
 
   final IconData icon;
   final String title;
@@ -218,36 +268,61 @@ class RoutineBlockCard extends StatelessWidget {
 
   /// Aynı bloğun yaşam önerileri (numarasız).
   final List<RoutineItem> notes;
+  final BlockTone tone;
+
+  /// Adımların altında bloğa ait not (ör. sabah kullanım uyarısı).
+  final Widget? footer;
 
   @override
   Widget build(BuildContext context) {
     final theme = ctx.theme;
     final i18n = ctx.i18n;
+    final (band, disc, glyph) = switch (tone) {
+      BlockTone.morning => (Tw.amber50, Tw.amber100, Tw.amber700),
+      BlockTone.evening => (Tw.indigo50, Tw.indigo100, Tw.indigo600),
+      BlockTone.neutral => (theme.primary.withValues(alpha: .07), theme.primary.withValues(alpha: .14), theme.fg),
+    };
     return RCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      radius: 22,
+      padding: EdgeInsets.zero,
+      radius: 24,
+      clip: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(children: [
-            Icon(icon, size: 18, color: theme.fg),
-            const SizedBox(width: 8),
-            Expanded(child: Text(title, style: heading(20, h: 1.2))),
-            if (steps.isNotEmpty)
-              Text(i18n.t('mobileRoutine.stepCount', {'n': steps.length}), style: tx(12, c: Tw.gray500)),
-          ]),
-          const SizedBox(height: 4),
-          for (var i = 0; i < steps.length; i++) ...[
-            if (i > 0) const Hairline(indent: 44),
-            RoutineStepTile(key: ValueKey('${title}_step_$i'), item: steps[i], ctx: ctx, step: i + 1),
-          ],
-          if (notes.isNotEmpty) ...[
-            const Hairline(),
-            for (var i = 0; i < notes.length; i++) ...[
-              if (i > 0) const Hairline(indent: 44),
-              RoutineStepTile(key: ValueKey('${title}_note_$i'), item: notes[i], ctx: ctx),
-            ],
-          ],
+          Container(
+            color: band,
+            padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+            child: Row(children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: disc, shape: BoxShape.circle),
+                child: Icon(icon, size: 20, color: Tw.readable(glyph, bg: disc)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(title, style: heading(23, h: 1.15))),
+              if (steps.isNotEmpty) Text(i18n.t('mobileRoutine.stepCount', {'n': steps.length}), style: tx(12.5, w: 5, c: Tw.gray600)),
+            ]),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 20, 18, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (var i = 0; i < steps.length; i++)
+                  RoutineStepTile(key: ValueKey('${title}_step_$i'), item: steps[i], ctx: ctx, step: i + 1, last: i == steps.length - 1),
+                if (notes.isNotEmpty) ...[
+                  if (steps.isNotEmpty) const Hairline(),
+                  for (var i = 0; i < notes.length; i++) ...[
+                    if (i > 0) const Hairline(indent: 44),
+                    Padding(padding: const EdgeInsets.only(top: 12), child: RoutineStepTile(key: ValueKey('${title}_note_$i'), item: notes[i], ctx: ctx)),
+                  ],
+                ],
+                if (footer != null) ...[const SizedBox(height: 6), footer!],
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -363,39 +438,52 @@ class _DailyBalanceCardState extends State<DailyBalanceCard> {
     final long = detail.length > 150;
 
     return RCard(
-      leftBorderColor: stripe,
-      padding: const EdgeInsets.all(16),
-      radius: 20,
+      padding: const EdgeInsets.all(18),
+      radius: 24,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            spacing: 8,
-            runSpacing: 4,
-            crossAxisAlignment: WrapCrossAlignment.center,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Icon(LucideIcons.activity, size: 17, color: ctx.theme.fg),
-              Text(ctx.i18n.t('dashboard.dailyBalanceTitle'), style: tx(14.5, w: 7, c: Tw.gray800)),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                decoration: BoxDecoration(color: pillBg, borderRadius: BorderRadius.circular(999)),
-                child: Text(pillText, style: tx(11, w: 6, c: pillFg)),
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: stripe.withValues(alpha: .16), shape: BoxShape.circle),
+                child: Icon(LucideIcons.activity, size: 19, color: Tw.readable(stripe, bg: Color.alphaBlend(stripe.withValues(alpha: .16), Tw.surface))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(ctx.i18n.t('dashboard.dailyBalanceTitle'), style: tx(15.5, w: 7, c: Tw.gray800)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                      decoration: BoxDecoration(color: pillBg, borderRadius: BorderRadius.circular(999)),
+                      child: Text(pillText, style: tx(11.5, w: 6, c: pillFg)),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
           if (detail.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Text(
               detail,
               maxLines: long && !_open ? 3 : null,
               overflow: long && !_open ? TextOverflow.ellipsis : null,
-              style: tx(13, c: Tw.gray700, h: relaxed),
+              style: tx(13.5, c: Tw.gray700, h: relaxed),
             ),
             if (long)
               TextLink(
                 ctx.i18n.t(_open ? 'common.hide' : 'common.details'),
                 onTap: () => setState(() => _open = !_open),
-                style: tx(12.5, w: 6, c: ctx.theme.fg),
+                style: tx(13, w: 6, c: ctx.theme.fg),
               ),
           ],
         ],
@@ -406,19 +494,17 @@ class _DailyBalanceCardState extends State<DailyBalanceCard> {
 
 /// Akşam etkenlerinin sabah kullanılmaması uyarısı.
 class MorningHintsCard extends StatelessWidget {
-  const MorningHintsCard({super.key, required this.hints, required this.ctx});
+  const MorningHintsCard({super.key, required this.hints, required this.ctx, this.inline = false});
 
   final List<String> hints;
   final RoutineCtx ctx;
 
+  /// true: sabah bloğunun içinde çerçevesiz, bal tonlu not; false: kendi kartı.
+  final bool inline;
+
   @override
   Widget build(BuildContext context) {
-    return RCard(
-      padding: const EdgeInsets.all(16),
-      radius: 20,
-      borderColor: Tw.amber200,
-      color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Tw.surface),
-      child: Row(
+    final note = Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(padding: const EdgeInsets.only(top: 1), child: Icon(LucideIcons.triangleAlert, size: 18, color: Tw.amber600)),
@@ -444,7 +530,20 @@ class MorningHintsCard extends StatelessWidget {
             ),
           ),
         ],
-      ),
+    );
+    if (inline) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(color: Tw.amber50, borderRadius: BorderRadius.circular(16)),
+        child: note,
+      );
+    }
+    return RCard(
+      padding: const EdgeInsets.all(16),
+      radius: 20,
+      borderColor: Tw.amber200,
+      color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Tw.surface),
+      child: note,
     );
   }
 }
@@ -657,11 +756,14 @@ class HowToChooseCard extends StatelessWidget {
 
 /// Haftanın yedi günü: bugün noktalı, seçili gün dolu. Erişilebilirlik için her gün bir düğmedir.
 class WeekDayStrip extends StatelessWidget {
-  const WeekDayStrip({super.key, required this.ctx, required this.selected, required this.onSelect});
+  const WeekDayStrip({super.key, required this.ctx, required this.selected, required this.onSelect, this.onStage = false});
 
   final RoutineCtx ctx;
   final int selected;
   final ValueChanged<int> onSelect;
+
+  /// true: koyu üst sahnenin üzerinde (krem dolgu / krem yazı); false: kâğıt zeminde.
+  final bool onStage;
 
   @override
   Widget build(BuildContext context) {
@@ -682,7 +784,9 @@ class WeekDayStrip extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
                   child: Material(
-                    color: d == selected ? ctx.theme.primary : ctx.theme.primary.withValues(alpha: .07),
+                    color: onStage
+                        ? (d == selected ? Brand.cream : Brand.cream.withValues(alpha: .10))
+                        : (d == selected ? ctx.theme.primary : ctx.theme.primary.withValues(alpha: .07)),
                     borderRadius: BorderRadius.circular(14),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -691,7 +795,11 @@ class WeekDayStrip extends StatelessWidget {
                           fit: BoxFit.scaleDown,
                           child: Text(
                             ctx.weekDays[d],
-                            style: tx(12.5, w: d == selected ? 7 : 5, c: d == selected ? Colors.white : Tw.gray700),
+                            style: tx(
+                              12.5,
+                              w: d == selected ? 7 : 5,
+                              c: onStage ? (d == selected ? ctx.theme.deep : Brand.cream.withValues(alpha: .9)) : (d == selected ? Colors.white : Tw.gray700),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 4),
@@ -700,7 +808,9 @@ class WeekDayStrip extends StatelessWidget {
                           height: 5,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: d == today ? (d == selected ? Colors.white : ctx.theme.primary) : Colors.transparent,
+                            color: d == today
+                                ? (onStage ? (d == selected ? ctx.theme.deep : Brand.cream) : (d == selected ? Colors.white : ctx.theme.primary))
+                                : Colors.transparent,
                           ),
                         ),
                       ]),

@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/routine_logic.dart';
 import 'package:rebi/core/routine_tracking.dart';
+import 'package:rebi/screens/routine/routine_parts.dart';
+import 'package:rebi/screens/routine/routine_stage.dart';
 
 import 'helpers/app_harness.dart';
 
@@ -46,6 +48,47 @@ void main() {
       final days = I18n.instance.tList('dashboard.weekDays', const []);
       final today = days[getTurkeyWeekdayIndex()];
       expect(find.text('$today · ${tr('dashboard.todayTitle')}'), findsOneWidget, reason: 'bugünün planı açık');
+    });
+
+    testWidgets('üst sahne: başlık, cilt profili etiketleri ve gün seçici sahnede; seçili günün başlığı sahnenin içinde', (tester) async {
+      await openRoutine(tester);
+      final fd = routineFixture['flow_debug'] as Map;
+      for (final chip in [fd['skin_type'], fd['severity'], fd['age_group']]) {
+        expect(find.text(chip.toString()), findsOneWidget, reason: 'profil etiketi: $chip');
+      }
+      expect(find.byType(RoutineStage), findsOneWidget);
+      final days = I18n.instance.tList('dashboard.weekDays', const []);
+      expect(
+        find.descendant(of: find.byType(RoutineStage), matching: find.text('${days[getTurkeyWeekdayIndex()]} · ${tr('dashboard.todayTitle')}')),
+        findsOneWidget,
+      );
+      expect(find.descendant(of: find.byType(RoutineStage), matching: find.byType(WeekDayStrip)), findsOneWidget);
+    });
+
+    testWidgets('sabah uyarısı sabah bloğunun içinde durur (ayrı kutu değil); günlük denge bloklardan sonra gelir', (tester) async {
+      await pumpApp(tester, location: '/dashboard', extra: {'routine': routine, 'userName': 'Ayşe'});
+      final morning = find.ancestor(of: find.text(tr('dashboard.morning')), matching: find.byType(RoutineBlockCard));
+      expect(find.descendant(of: morning, matching: find.text(tr('dashboard.morningUsageTitle'))), findsOneWidget);
+      expect(find.text(tr('dashboard.morningUsageTitle')), findsOneWidget, reason: 'tek yerde');
+
+      final eveningY = tester.getTopLeft(find.ancestor(of: find.text(tr('dashboard.evening')), matching: find.byType(RoutineBlockCard))).dy;
+      final balanceY = tester.getTopLeft(find.text(tr('dashboard.dailyBalanceTitle'))).dy;
+      expect(balanceY, greaterThan(eveningY), reason: 'rutin önce, denge notu sonra');
+    });
+
+    testWidgets('kabul edilmemiş plan: kabul kartı ilk karttır ve rutinden önce gelir', (tester) async {
+      await pumpApp(tester, location: '/dashboard', extra: {'routine': routine, 'userName': 'Ayşe'});
+      final acceptY = tester.getTopLeft(find.text(tr('dashboard.acceptBanner'))).dy;
+      final morningY = tester.getTopLeft(find.text(tr('dashboard.morning'))).dy;
+      expect(acceptY, lessThan(morningY));
+    });
+
+    testWidgets('adımlar zaman çizelgesi gibi numaralıdır; son adımdan sonra çizgi inmez', (tester) async {
+      await openRoutine(tester);
+      for (final n in [1, 2, 3]) {
+        expect(find.text('$n'), findsWidgets, reason: '$n. adım düğümü');
+      }
+      expect(find.byType(RoutineStepTile), findsWidgets);
     });
 
     testWidgets('eski stilden iz yok: mavi hava kartı yerine tek satır, sabit Türkçe bölüm adları yok', (tester) async {

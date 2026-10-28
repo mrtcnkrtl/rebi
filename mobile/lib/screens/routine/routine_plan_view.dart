@@ -8,7 +8,9 @@ import '../../ui/brand/palette.dart';
 import '../../ui/components/photo_picker.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
+import '../../ui/widgets/stage_overlap.dart';
 import 'routine_parts.dart';
+import 'routine_stage.dart';
 
 /// Rutin sekmesi (ve analiz sonrası rutini kabul etmeden önceki görünüm): tek sütun, sakin.
 ///
@@ -57,61 +59,44 @@ class _RoutinePlanViewState extends State<RoutinePlanView> {
 
   Widget _gap([double h = 16]) => SizedBox(height: h);
 
-  /// Risk düzeyi hapı (profil satırının yanında).
-  Widget _riskPill(String level, String text) {
-    final (bg, fg) = switch (level) {
-      'crisis' => (Tw.red100, Tw.red700),
-      'high' => (Tw.orange100, Tw.orange700),
-      'moderate' => (Tw.yellow100, Tw.yellow700),
-      _ => (Tw.green100, Tw.green700),
-    };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(999)),
-      child: Text(text, style: tx(11, w: 6, c: fg)),
-    );
-  }
-
-  Widget _profileLine(Object? flowDebug) {
-    if (flowDebug is! Map) return const SizedBox.shrink();
-    final i18n = c.i18n;
-    final parts = [str(flowDebug['skin_type']), str(flowDebug['severity']), str(flowDebug['age_group'])].where((s) => s.isNotEmpty).toList();
-    final risk = flowDebug['risk_info'];
-    Widget? riskPill;
-    if (risk is Map) {
-      final level = truthy(risk['level']) ? str(risk['level']) : 'normal';
-      final label = c.localized ? i18n.t('dashboard.riskLevels.$level') : (truthy(risk['label']) ? str(risk['label']) : str(risk['level']));
-      riskPill = _riskPill(str(risk['level']), '${i18n.t('dashboard.riskPrefix')}: $label');
-    }
-    if (parts.isEmpty && riskPill == null) return const SizedBox.shrink();
-    return Padding(
-      padding: const EdgeInsets.only(top: 10),
-      child: Wrap(
-        spacing: 10,
-        runSpacing: 6,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (parts.isNotEmpty) Text(parts.join(' · '), style: tx(13, w: 5, c: Tw.gray600)),
-          ?riskPill,
-        ],
-      ),
-    );
+  /// Sahnedeki profil etiketleri: cilt tipi · şiddet · yaş grubu (risk düzeyi günlük denge kartında gösterilir).
+  List<String> _profileChips(Object? flowDebug) {
+    if (flowDebug is! Map) return const [];
+    return [str(flowDebug['skin_type']), str(flowDebug['severity']), str(flowDebug['age_group'])].where((s) => s.isNotEmpty).toList();
   }
 
   Widget _acceptCard() {
     final i18n = c.i18n;
     return RCard(
-      padding: const EdgeInsets.all(16),
-      radius: 20,
+      padding: const EdgeInsets.all(18),
+      radius: 24,
       borderColor: c.theme.primaryLight,
       borderWidth: 1.5,
       color: Color.alphaBlend(c.theme.primary.withValues(alpha: .06), Tw.surface),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(i18n.t('dashboard.acceptBanner'), style: tx(14, w: 5, c: Tw.gray800, h: relaxed)),
-          const SizedBox(height: 14),
-          PrimaryButton(color: c.theme.primary, onPressed: widget.onAccept, label: i18n.t('dashboard.acceptCta'), fontSize: 15),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: c.theme.primary.withValues(alpha: .14), shape: BoxShape.circle),
+                child: Icon(LucideIcons.circleCheck, size: 20, color: c.theme.fg),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(i18n.t('dashboard.acceptBanner'), style: tx(14.5, w: 5, c: Tw.gray800, h: relaxed)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          PrimaryButton(color: c.theme.primary, onPressed: widget.onAccept, label: i18n.t('dashboard.acceptCta'), fontSize: 15.5, minHeight: 54),
         ],
       ),
     );
@@ -123,21 +108,35 @@ class _RoutinePlanViewState extends State<RoutinePlanView> {
     final plan = v.routineByDay[d] ?? const DayPlan([], []);
     final morningNotes = v.wellnessMorningItems;
     final eveningNotes = v.wellnessEveningItems;
-    final any = plan.morning.isNotEmpty || plan.evening.isNotEmpty || morningNotes.isNotEmpty || eveningNotes.isNotEmpty;
-    if (!any) {
+    final hints = v.eveningMorningHints;
+    final hasMorning = plan.morning.isNotEmpty || morningNotes.isNotEmpty;
+    final hasEvening = plan.evening.isNotEmpty || eveningNotes.isNotEmpty;
+    if (!hasMorning && !hasEvening) {
       return [
         RCard(
-          radius: 20,
+          radius: 22,
           child: Text(i18n.t('dashboard.noPlannedSteps'), style: tx(13.5, c: Tw.gray600, h: relaxed)),
         ),
+        if (hints.isNotEmpty) ...[_gap(14), MorningHintsCard(hints: hints, ctx: c)],
       ];
     }
     return [
-      if (plan.morning.isNotEmpty || morningNotes.isNotEmpty)
-        RoutineBlockCard(icon: LucideIcons.sun, title: i18n.t('dashboard.morning'), ctx: c, steps: plan.morning, notes: morningNotes),
-      if ((plan.morning.isNotEmpty || morningNotes.isNotEmpty) && (plan.evening.isNotEmpty || eveningNotes.isNotEmpty)) _gap(14),
-      if (plan.evening.isNotEmpty || eveningNotes.isNotEmpty)
-        RoutineBlockCard(icon: LucideIcons.moon, title: i18n.t('dashboard.evening'), ctx: c, steps: plan.evening, notes: eveningNotes),
+      if (hasMorning)
+        RoutineBlockCard(
+          icon: LucideIcons.sun,
+          title: i18n.t('dashboard.morning'),
+          ctx: c,
+          tone: BlockTone.morning,
+          steps: plan.morning,
+          notes: morningNotes,
+          // Akşam etkenlerinin sabah kullanılmaması uyarısı sabah bloğunun içindedir: ilgili yerde, ayrı bir kutu olarak değil.
+          footer: hints.isNotEmpty ? MorningHintsCard(hints: hints, ctx: c, inline: true) : null,
+        )
+      else if (hints.isNotEmpty)
+        MorningHintsCard(hints: hints, ctx: c),
+      if ((hasMorning || hints.isNotEmpty) && hasEvening) _gap(14),
+      if (hasEvening)
+        RoutineBlockCard(icon: LucideIcons.moon, title: i18n.t('dashboard.evening'), ctx: c, tone: BlockTone.evening, steps: plan.evening, notes: eveningNotes),
     ];
   }
 
@@ -154,53 +153,42 @@ class _RoutinePlanViewState extends State<RoutinePlanView> {
     final photoUrl = merged['photoUrl'];
     final day = _day ?? getTurkeyWeekdayIndex();
 
-    final children = <Widget>[
+    final todayIdx = getTurkeyWeekdayIndex();
+    final dayCaption = day == todayIdx ? '${c.weekDays[day]} · ${i18n.t('dashboard.todayTitle')}' : c.weekDays[day];
+
+    final stage = RoutineStage(
+      title: i18n.t('dashboard.myRoutineTitle', {'name': widget.userName}),
+      dateLine: widget.dateLine,
+      theme: theme,
+      chips: _profileChips(flowDebug),
+      dayLabel: i18n.t('dashboard.routineByDayTitle'),
+      strip: WeekDayStrip(ctx: c, selected: day, onSelect: (d) => setState(() => _day = d), onStage: true),
+      caption: dayCaption,
+      trailing: widget.onBackToTracking == null
+          ? null
+          : TextButton(
+              onPressed: widget.onBackToTracking,
+              style: TextButton.styleFrom(minimumSize: const Size(48, 48), foregroundColor: Brand.cream),
+              child: Text(i18n.t('dashboard.backToTracking'), style: tx(13.5, w: 6, c: Brand.cream)),
+            ),
+    );
+
+    final body = <Widget>[
       if (widget.flashNeedAccept)
         Padding(
-          padding: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.only(bottom: 14),
           child: RCard(
             padding: const EdgeInsets.all(14),
-            radius: 18,
+            radius: 20,
             borderColor: Tw.amber200,
             color: Color.alphaBlend(Tw.amber50.withValues(alpha: .8), Tw.surface),
             child: Text(i18n.t('dashboard.acceptHint'), style: tx(13.5, c: Tw.amber900, h: relaxed)),
           ),
         ),
-      Text(i18n.t('dashboard.myRoutineTitle', {'name': widget.userName}), style: heading(30, h: 1.15)),
-      const SizedBox(height: 4),
-      Text(widget.dateLine, style: tx(14, c: Tw.gray500)),
-      _profileLine(flowDebug),
-      const AiDisclaimer(padding: EdgeInsets.only(top: 10)),
-      if (widget.onBackToTracking != null)
-        Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: TextLink(i18n.t('dashboard.backToTracking'), onTap: widget.onBackToTracking!, style: tx(14, w: 6, c: theme.fg)),
-          ),
-        ),
-      if (!widget.accepted) ...[_gap(), _acceptCard()],
-      if (v.eveningMorningHints.isNotEmpty) ...[_gap(20), MorningHintsCard(hints: v.eveningMorningHints, ctx: c)],
-      if (v.dailyBalanceItem != null) ...[_gap(14), DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: flowDebug, ctx: c)],
-
-      // Seçilen günün planı.
-      RoutineSectionTitle(
-        icon: LucideIcons.listChecks,
-        title: i18n.t('dashboard.routineByDayTitle'),
-        subtitle: i18n.t('dashboard.routineByDaySubtitle'),
-        color: theme.fg,
-      ),
-      WeekDayStrip(ctx: c, selected: day, onSelect: (d) => setState(() => _day = d)),
-      _gap(16),
-      // Hangi günün planı açık: "Sal" ya da bugünse "Pzt · Bugün".
-      Padding(
-        padding: const EdgeInsets.only(left: 4, bottom: 10),
-        child: Text(
-          day == getTurkeyWeekdayIndex() ? '${c.weekDays[day]} · ${i18n.t('dashboard.todayTitle')}' : c.weekDays[day],
-          style: heading(18, h: 1.2),
-        ),
-      ),
+      if (!widget.accepted) ...[_acceptCard(), _gap(16)],
+      // Seçilen günün planı (hangi günün açık olduğu sahnedeki başlıkta yazar).
       ..._dayContent(day),
+      if (v.dailyBalanceItem != null) ...[_gap(14), DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: flowDebug, ctx: c)],
       if (v.dailyLifestyleItems.isNotEmpty) ...[
         _gap(14),
         CollapsibleCard(
@@ -336,9 +324,25 @@ class _RoutinePlanViewState extends State<RoutinePlanView> {
         icon: LucideIcons.circlePlus,
         label: i18n.t('dashboard.newAnalyzeCta'),
       ),
+      // Kalıcı beyan sayfanın başında değil sonunda durur: rutin ilk görülen şeydir.
+      const AiDisclaimer(padding: EdgeInsets.only(top: 18)),
     ];
 
-    return ThemedPage(theme: theme, maxWidth: 672, padding: const EdgeInsets.fromLTRB(16, 28, 16, 32), children: children);
+    return ThemedPage(
+      theme: theme,
+      maxWidth: 672,
+      padding: EdgeInsets.zero,
+      children: [
+        StageOverlap(
+          overlap: RoutineStage.overlap,
+          stage: stage,
+          body: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 36),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: body),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _tip(IconData icon, Color color, String title, String body) => RCard(

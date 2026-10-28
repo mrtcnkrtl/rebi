@@ -160,8 +160,20 @@ Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır. Karşılamadan açılan
 
 ## Rutin sekmesi
 
-Tek sütun, sakin: önce güvenlik bilgisi (sabah kullanım uyarısı, günlük denge), sonra **gün seçici ve seçilen günün sabah/akşam blokları**; ayrıntı
-("Neden bu ürün?") ve uzun rehberler katlanır. Hava tek satırdır; renkli gradyan kart yok. Aynı adım dili Bugün'deki kahraman kartla ortaktır.
+Rutin, ilk görülen şeydir: uyarılar ve notlar rutinin önüne değil içine/arkasına konur. Yukarıdan aşağı:
+
+- **Üst sahne (`RoutineStage`)** Bugün sahnesiyle aynı dildir (temanın derin tonu, krem Fraunces başlık, silik "R"): küçük harfli tarih,
+  "Senin Rutinin, {ad}", cilt profili çipleri (cilt tipi · şiddet · yaş grubu), **haftanın gün şeridi** (krem; seçili gün dolu, bugün noktalı)
+  ve seçili günün başlığı ("Çar · Bugün"). İlk kart sahneye 36 dp biner. Güvenli alanı sahne uygular (kabuk Rutin kökünde uygulamaz).
+- **Sabah ve akşam kartları (`RoutineBlockCard`)**: tonlu başlık bandı (sabah bal + güneş, akşam lavanta + ay; renk anlam taşır),
+  Fraunces başlık ve adım sayısı; altında **zaman çizelgesi gibi numaralı adımlar** (dolu numara düğümü, bir sonraki adıma inen ince çizgi,
+  son adımda çizgi yok). "Neden bu ürün?" ayrıntısı soluk bir kutuda açılır; "Rebi'ye sor" orada. Yaşam notları numarasız, simgeyle.
+- **Sabah kullanım uyarısı sabah kartının içinde** durur (ilgili yerde, ayrı sarı kutu olarak değil); sabah adımı olmayan günde kendi kartı olur.
+- **Günlük yaşam dengesi** (risk düzeyi pilli) rutinden **sonra** gelir; sert sol şerit yerine tonlu simge diski.
+- Kabul edilmemiş plan (analiz sonrası): **"rutini kabul et" kartı ilk karttır**, sahneye biner.
+- Sonrası eskisi gibi sakin: seyrek adımlar, check-in, hava tek satır, katlanır bölümler (etken listesi, nasıl seçersin, yaşam/beslenme),
+  su/uyku notları, ilerleme fotoğrafı, "Yeni analiz"; kalıcı yapay zekâ beyanı sayfanın **sonunda**.
+- Testler: `routine_screen_test` ("üst sahne", "sabah uyarısı sabah bloğunun içinde", kabul kartı sırası), `accessibility_test`, `text_scale_test`.
 
 ## Analiz sihirbazı ("Seni tanıyalım")
 

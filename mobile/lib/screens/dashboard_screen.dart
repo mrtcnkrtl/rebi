@@ -365,7 +365,8 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     final ctx = RoutineCtx(i18n: i18n, theme: theme, localized: localized, weekDays: weekDays);
 
     if (trackingMode) return _tracking(ctx, view, merged, dateLine, userName);
-    return safe(_fullPlan(ctx, view, merged, dateLine, userName, accepted));
+    // Tam plan da üst sahneyle başlar: durum çubuğunun altına uzanır, güvenli alanı sahne uygular.
+    return _fullPlan(ctx, view, merged, dateLine, userName, accepted);
   }
 
   Widget _flashNeedAccept(I18n i18n) => Padding(
@@ -457,11 +458,11 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       ] else ...[
         // Demo oturumunda gün içi kayıt yoktur: rutin yalnızca okunur gösterilir.
         if (today.morning.isNotEmpty) ...[
-          RoutineBlockCard(icon: LucideIcons.sun, title: i18n.t('dashboard.morning'), ctx: c, steps: today.morning),
+          RoutineBlockCard(icon: LucideIcons.sun, title: i18n.t('dashboard.morning'), ctx: c, tone: BlockTone.morning, steps: today.morning),
           const SizedBox(height: 14),
         ],
         if (today.evening.isNotEmpty) ...[
-          RoutineBlockCard(icon: LucideIcons.moon, title: i18n.t('dashboard.evening'), ctx: c, steps: today.evening),
+          RoutineBlockCard(icon: LucideIcons.moon, title: i18n.t('dashboard.evening'), ctx: c, tone: BlockTone.evening, steps: today.evening),
           const SizedBox(height: 14),
         ],
         if (weather is Map && truthy(weather['temperature'])) ...[WeatherLine(weather: weather, ctx: c), const SizedBox(height: 14)],
