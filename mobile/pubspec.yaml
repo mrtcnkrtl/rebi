@@ -133,7 +133,8 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-# Uygulama ikonu web ile aynı marka görselinden üretilir: `dart run flutter_launcher_icons`
+# Uygulama ikonu web ile aynı marka görselinden (frontend/public/favicon.svg, harf 1.3 kat büyük) üretilir:
+# `dart run flutter_launcher_icons`
 flutter_launcher_icons:
   image_path: "assets/icon/icon.png"
   android: true
