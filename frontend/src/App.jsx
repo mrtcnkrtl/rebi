@@ -8,6 +8,7 @@ import AiDisclaimerModal from "./components/AiDisclaimerModal";
 import ConsentRecoveryModal from "./components/ConsentRecoveryModal";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import ConfirmEmail from "./pages/ConfirmEmail";
 import Dashboard from "./pages/Dashboard";
 import Analyze from "./pages/Analyze";
 import Chat from "./pages/Chat";
@@ -48,6 +49,8 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={user ? <Navigate to={next} replace /> : <Auth />} />
+        {/* E-posta onay düğmesinin açtığı sayfa: giriş yapmış kullanıcıyı da yönlendirmez, token'ı düğmeyle doğrular. */}
+        <Route path="/auth/confirm" element={<ConfirmEmail />} />
         <Route path="/kvkk" element={<Legal />} />
         <Route path="/riza" element={<Legal />} />
         <Route path="/rebi" element={<Chat />} />

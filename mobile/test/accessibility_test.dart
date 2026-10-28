@@ -1,13 +1,14 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart' show Size, TextField, TextInputAction;
+import 'package:flutter/material.dart' show Checkbox, Key, Size, TextField, TextFormField, TextInputAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/device_location.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/today/today_clock.dart';
 import 'package:rebi/ui/tw.dart';
 
+import 'auth_flow_test.dart' show FakeAuth;
 import 'helpers/a11y.dart';
 import 'helpers/app_harness.dart';
 import 'helpers/notification_fakes.dart';
@@ -152,6 +153,16 @@ void main() {
     ('Analiz · hazır', (t) => pumpApp(t, location: '/dashboard/analyze', prefs: accepted(), backend: populated())),
     ('Analiz · adım 1', (t) => pumpApp(t, location: '/dashboard/analyze', backend: FakeBackend())),
     ('Giriş', (t) => pumpApp(t, location: '/auth', loggedIn: false)),
+    ('Giriş · e-posta kodu', (t) async {
+      await pumpApp(t, location: '/auth?mode=signup', loggedIn: false, authController: FakeAuth());
+      await t.enterText(find.byType(TextFormField).at(0), 'Ayşe Test');
+      await t.enterText(find.byType(TextFormField).at(1), 'ayse@ornek.com');
+      await t.enterText(find.byType(TextFormField).at(2), 'parola123');
+      await settle(t, 4);
+      await tapFinder(t, find.byType(Checkbox).at(0));
+      await tapFinder(t, find.byType(Checkbox).at(1));
+      await tapFinder(t, find.byKey(const Key('auth-submit')).first);
+    }),
     ('Açılış', (t) => pumpApp(t, location: '/', loggedIn: false)),
     ('KVKK metni', (t) => pumpApp(t, location: '/kvkk', loggedIn: false)),
   ];

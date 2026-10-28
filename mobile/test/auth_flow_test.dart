@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart' show Checkbox, Key, TextFormField;
+import 'package:flutter/material.dart' show AppLifecycleState, Checkbox, Key, TextFormField;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/auth_errors.dart';
 import 'package:rebi/core/legal_consent.dart';
@@ -14,6 +14,7 @@ class FakeAuth extends AuthController {
   SignInResult signInResult = const SignInResult(error: 'Invalid login credentials', kind: AuthErrorKind.invalidCredentials);
   SignUpResult signUpResult = const SignUpResult(needsEmailConfirmation: true);
   AuthActionResult resendResult = const AuthActionResult();
+  SignInResult verifyResult = const SignInResult(error: 'Token has expired or is invalid', kind: AuthErrorKind.linkInvalid);
   AuthActionResult resetResult = const AuthActionResult();
   AuthActionResult updateResult = const AuthActionResult();
   final calls = <String>[];
@@ -35,6 +36,15 @@ class FakeAuth extends AuthController {
     calls.add('signUp $email $fullName');
     lastConsent = consent;
     return signUpResult;
+  }
+
+  @override
+  Future<SignInResult> verifySignupCode(String email, String code) async {
+    calls.add('verify $email $code');
+    final u = verifyResult.user;
+    // Gerçek SDK gibi: kod doğruysa oturum açılır ve `signedIn` olayı yayılır.
+    if (u != null) debugEmitAuthState(AuthState(AuthChangeEvent.signedIn, Session(accessToken: 'tok', tokenType: 'bearer', user: u)));
+    return verifyResult;
   }
 
   @override
@@ -102,6 +112,20 @@ Future<void> _fillLogin(WidgetTester tester, {String email = 'ayse@ornek.com', S
   await tester.enterText(find.byType(TextFormField).at(0), email);
   await tester.enterText(find.byType(TextFormField).at(1), password);
   await settle(tester, 4);
+}
+
+/// Uygulamayı arka plana atıp geri getirir (geçerli yaşam döngüsü geçişleriyle: e-posta uygulamasına gidip dönmek).
+void _backgroundAndResume(WidgetTester tester) {
+  for (final s in const [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(s);
+  }
 }
 
 void main() {
@@ -201,6 +225,7 @@ void main() {
       await tapFinder(tester, find.byKey(const Key('auth-resend')));
       expect(fake.calls, contains('resend ayse@ornek.com'));
       expect(find.text(tr('mobileAuth.resendSent')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.verifyTitle')), findsOneWidget, reason: 'yeni e-postadaki kod yazılabilsin diye kod ekranına geçilir');
     });
 
     testWidgets('sunucuya ulaşılamazsa ağ mesajı gösterilir', (tester) async {
@@ -331,15 +356,19 @@ void main() {
       await _submit(tester);
     }
 
-    testWidgets('e-posta onayı gerekiyorsa girişe döner, bilgi verir ve tekrar gönderme sunar', (tester) async {
+    testWidgets('e-posta onayı gerekiyorsa kod ekranına geçer: kod alanı, bilgi ve (beklemeli) tekrar gönderme', (tester) async {
       final fake = FakeAuth()..signUpResult = const SignUpResult(needsEmailConfirmation: true);
       await openSignup(tester, fake);
       expect(fake.calls, contains('signUp ayse@ornek.com Ayşe Test'));
       expect(fake.lastConsent?.ai, isTrue, reason: 'kayıttaki rıza, oturum açılınca yazılmak üzere gönderilir');
       expect(fake.lastConsent?.location, isFalse);
+      expect(find.text(tr('mobileAuth.verifyTitle')), findsOneWidget, reason: 'kod ekranına geçmeli');
+      expect(find.text(tr('mobileAuth.verifySubtitle', {'email': 'ayse@ornek.com'})), findsOneWidget);
       expect(find.text(tr('mobileAuth.signupSent')), findsOneWidget);
-      expect(find.text(tr('auth.welcome')), findsOneWidget, reason: 'giriş kipine dönmeli');
+      expect(find.byType(TextFormField), findsOneWidget, reason: 'yalnız kod alanı; e-posta ve parola alanları gizli');
       expect(find.byKey(const Key('auth-resend')), findsOneWidget);
+      await tapFinder(tester, find.byKey(const Key('auth-resend')));
+      expect(fake.calls.where((c) => c.startsWith('resend')), isEmpty, reason: 'e-posta az önce gitti: bekleme süresinde tekrar gönderilmez');
     });
 
     testWidgets('kayıtlı adresle kayıt: "e-posta gönderdik" denmez, girişe ve sıfırlamaya yönlendirir', (tester) async {
@@ -356,6 +385,136 @@ void main() {
       final fake = FakeAuth()..signUpResult = const SignUpResult(error: 'Password should be at least 6 characters', kind: AuthErrorKind.weakPassword);
       await openSignup(tester, fake);
       expect(find.text(tr('mobileAuth.errWeakPassword')), findsOneWidget);
+    });
+  });
+
+  group('e-posta onay kodu', () {
+    /// Kayıt formunu doldurup gönderir; onay gerektiği için kod ekranında kalır.
+    Future<(Harness, FakeAuth)> openVerify(WidgetTester tester, {FakeAuth? auth}) async {
+      final fake = auth ?? FakeAuth();
+      final h = await pumpApp(tester, location: '/auth?mode=signup', loggedIn: false, authController: fake);
+      await tester.enterText(find.byType(TextFormField).at(0), 'Ayşe Test');
+      await tester.enterText(find.byType(TextFormField).at(1), 'ayse@ornek.com');
+      await tester.enterText(find.byType(TextFormField).at(2), 'parola123');
+      await settle(tester, 4);
+      await _acceptLegal(tester);
+      await _submit(tester);
+      expect(find.text(tr('mobileAuth.verifyTitle')), findsOneWidget);
+      return (h, fake);
+    }
+
+    Future<void> enterCode(WidgetTester tester, String code) async {
+      await tester.enterText(find.byType(TextFormField).first, code);
+      await settle(tester, 6);
+    }
+
+    testWidgets('altı hane tamamlanınca kendiliğinden gönderilir; oturum açılır, kayıttaki rıza yazılır, panele geçilir', (tester) async {
+      final user = User(
+        id: testUserId,
+        appMetadata: const {},
+        userMetadata: {'full_name': 'Ayşe Test', 'legal_consent': legalConsentMetadata(const ConsentPermissions(ai: true, location: true))},
+        aud: 'authenticated',
+        createdAt: '2026-10-20T10:00:00Z',
+        email: 'ayse@ornek.com',
+      );
+      final (h, fake) = await openVerify(tester, auth: FakeAuth()..verifyResult = SignInResult(user: user));
+      await enterCode(tester, '482913');
+      await settle(tester, 6);
+      expect(fake.calls, contains('verify ayse@ornek.com 482913'), reason: 'altıncı hane girilince gönder düğmesine basmadan gider');
+      expect(h.backend.bodyOf('/legal-consent/accept')['location_processing_accepted'], true, reason: 'kayıttaki seçim ilk oturumda yazılır');
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+
+    testWidgets('yanlış ya da süresi dolmuş kod: anlaşılır mesaj, ekranda kalır, yeniden denenebilir', (tester) async {
+      final (h, fake) = await openVerify(tester);
+      await enterCode(tester, '000000');
+      expect(find.text(tr('mobileAuth.errCodeInvalid')), findsOneWidget);
+      expect(find.text('Token has expired or is invalid'), findsNothing, reason: 'ham İngilizce mesaj gösterilmez');
+      expect(find.text(tr('mobileAuth.verifyTitle')), findsOneWidget);
+      expect(h.router.routeInformationProvider.value.uri.path, '/auth');
+
+      fake.verifyResult = SignInResult(user: fakeUser());
+      await enterCode(tester, '111111');
+      await settle(tester, 6);
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+
+    testWidgets('eksik kod gönderilmez', (tester) async {
+      final (_, fake) = await openVerify(tester);
+      await enterCode(tester, '123');
+      await _submit(tester);
+      expect(find.text(tr('mobileAuth.verifyCodeShort')), findsOneWidget);
+      expect(fake.calls.where((c) => c.startsWith('verify')), isEmpty);
+      await enterCode(tester, '12ab34');
+      expect((tester.widget(find.byType(TextFormField).first) as TextFormField).controller?.text, '1234', reason: 'yalnız rakam kabul edilir');
+    });
+
+    testWidgets('tekrar gönder bekleme süresi bitince açılır ve yeni kodu bildirir', (tester) async {
+      final (_, fake) = await openVerify(tester);
+      await tapFinder(tester, find.byKey(const Key('auth-resend')));
+      expect(fake.calls.where((c) => c.startsWith('resend')), isEmpty);
+
+      await tester.pump(const Duration(seconds: 61));
+      await tapFinder(tester, find.byKey(const Key('auth-resend')));
+      expect(fake.calls, contains('resend ayse@ornek.com'));
+      expect(find.text(tr('mobileAuth.resendSent')), findsOneWidget);
+
+      await tapFinder(tester, find.byKey(const Key('auth-resend')));
+      expect(fake.calls.where((c) => c.startsWith('resend')).length, 1, reason: 'yeni gönderimle bekleme süresi yeniden başlar');
+    });
+
+    testWidgets('"Onayladım, devam et": onaylandıysa içeri alır', (tester) async {
+      final (h, fake) = await openVerify(tester);
+      fake.signInResult = SignInResult(user: fakeUser());
+      await tapFinder(tester, find.byKey(const Key('auth-verify-continue')));
+      await settle(tester, 6);
+      expect(fake.calls, contains('signIn ayse@ornek.com'), reason: 'kayıtta yazılan e-posta + parola kullanılır');
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+
+    testWidgets('"Onayladım, devam et": henüz onaylanmadıysa nedenini söyler ve kod ekranında bırakır', (tester) async {
+      final (h, fake) = await openVerify(tester);
+      fake.signInResult = const SignInResult(error: 'Email not confirmed', kind: AuthErrorKind.emailNotConfirmed);
+      await tapFinder(tester, find.byKey(const Key('auth-verify-continue')));
+      expect(find.text(tr('mobileAuth.errEmailNotConfirmed')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.verifyTitle')), findsOneWidget);
+      expect(h.router.routeInformationProvider.value.uri.path, '/auth');
+    });
+
+    testWidgets('e-postadaki düğmeyle onaylayıp uygulamaya dönünce kendiliğinden giriş yapılır', (tester) async {
+      final (h, fake) = await openVerify(tester);
+      fake.signInResult = SignInResult(user: fakeUser());
+      _backgroundAndResume(tester);
+      await settle(tester, 8);
+      expect(fake.calls, contains('signIn ayse@ornek.com'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+
+    testWidgets('uygulamaya dönünce hesap henüz onaylı değilse sessiz kalır (hata göstermez)', (tester) async {
+      final (h, fake) = await openVerify(tester);
+      fake.signInResult = const SignInResult(error: 'Email not confirmed', kind: AuthErrorKind.emailNotConfirmed);
+      _backgroundAndResume(tester);
+      await settle(tester, 8);
+      expect(fake.calls, contains('signIn ayse@ornek.com'));
+      expect(find.text(tr('mobileAuth.errEmailNotConfirmed')), findsNothing);
+      expect(find.text(tr('mobileAuth.verifyTitle')), findsOneWidget);
+      expect(h.router.routeInformationProvider.value.uri.path, '/auth');
+    });
+
+    testWidgets('e-posta adresini değiştir: kayıt formuna döner, yazılanlar korunur', (tester) async {
+      await openVerify(tester);
+      await tapFinder(tester, find.byKey(const Key('auth-verify-change')));
+      expect(find.text(tr('auth.createAccount')), findsOneWidget);
+      expect(find.text('ayse@ornek.com'), findsOneWidget);
+      expect(find.text('Ayşe Test'), findsOneWidget);
+    });
+
+    test('Supabase ayarsızken kodla onay "ayarlanmamış" döner (çökmez)', () async {
+      final auth = AuthController();
+      addTearDown(auth.dispose);
+      final r = await auth.verifySignupCode('ayse@ornek.com', '123456');
+      expect(r.kind, AuthErrorKind.notConfigured);
+      expect(r.user, isNull);
     });
   });
 

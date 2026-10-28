@@ -7,9 +7,11 @@ import '../core/api.dart';
 import '../core/auth_errors.dart';
 import '../core/legal_consent.dart';
 
-/// E-posta onayı ve parola sıfırlama bağlantılarının uygulamayı açtığı adres (Android `intent-filter`,
+/// Parola sıfırlama (ve eski e-posta onayı) bağlantılarının uygulamayı açtığı adres (Android `intent-filter`,
 /// iOS `CFBundleURLTypes`). Supabase panelinde Authentication → URL Configuration → Redirect URLs listesinde
 /// de bulunmalıdır; yoksa Supabase bağlantıyı Site URL'ye (web) yönlendirir ve uygulama açılmaz.
+/// Yeni onay e-postası bu adresi kullanmaz: 6 haneli kod uygulamada yazılır, düğme web onay sayfasına gider
+/// (docs/MOBIL-GIRIS-SUPABASE.md §1.1).
 const authCallbackUrl = 'com.rebiovil.rebi://auth-callback';
 
 class SignUpResult {
@@ -202,6 +204,24 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  /// Onay e-postasındaki 6 haneli kodla hesabı onaylar ve oturumu açar. Kod, bağlantı tarayıcılarının (Gmail,
+  /// antivirüs) tüketebildiği tek kullanımlık bağlantının aksine kullanıcı yazana kadar kullanılmaz; başka
+  /// cihazdaki e-postadan da çalışır. Başarılıysa SDK `signedIn` olayını yayar (rıza eşitlemesi buradan başlar).
+  Future<SignInResult> verifySignupCode(String email, String code) async {
+    final client = supabase;
+    if (client == null) return const SignInResult(error: supabaseNotConfiguredError, kind: AuthErrorKind.notConfigured);
+    try {
+      final res = await client.auth.verifyOTP(type: OtpType.signup, email: email, token: code);
+      return SignInResult(user: res.user);
+    } on AuthException catch (e) {
+      final network = _isNetwork(e);
+      return SignInResult(error: e.message, networkError: network, kind: _kindOf(e, e.message, network));
+    } catch (e) {
+      final network = _isNetwork(e);
+      return SignInResult(error: e.toString(), networkError: network, kind: _kindOf(e, e.toString(), network));
+    }
+  }
+
   Future<AuthActionResult> _action(Future<void> Function(GoTrueClient auth) run) async {
     final client = supabase;
     if (client == null) return const AuthActionResult(error: supabaseNotConfiguredError, kind: AuthErrorKind.notConfigured);
@@ -217,7 +237,7 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  /// Onay e-postasını yeniden gönderir (posta gelmediyse ya da bağlantının süresi dolduysa).
+  /// Onay e-postasını (yeni kod + düğme) yeniden gönderir; önceki e-postadaki kod ve bağlantı geçersiz olur.
   Future<AuthActionResult> resendConfirmation(String email) =>
       _action((auth) => auth.resend(type: OtpType.signup, email: email, emailRedirectTo: authCallbackUrl));
 

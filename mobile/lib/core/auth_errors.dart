@@ -9,6 +9,10 @@ enum AuthErrorKind {
   rateLimited,
   emailSendFailed,
   linkInvalid,
+
+  /// E-postadaki 6 haneli kod yanlış ya da süresi dolmuş (Supabase bunu bağlantı hatasıyla aynı `otp_expired` koduyla
+  /// bildirir; ayrımı kod giriş ekranı yapar, [classifyAuthError] üretmez).
+  codeInvalid,
   network,
   notConfigured,
   other,

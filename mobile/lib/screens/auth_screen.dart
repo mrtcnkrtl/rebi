@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -19,8 +21,9 @@ import '../ui/widgets/common.dart';
 
 /// Giriş / kayıt / parola sıfırlama (web: `pages/Auth.jsx`; sıfırlama yalnızca mobilde).
 ///
-/// Kipler: `login`, `signup`, `forgot` (sıfırlama bağlantısı iste) ve `reset` (bağlantıyla gelince yeni parola;
-/// kip `AuthController.recoveryPending` ile belirlenir, kullanıcı seçemez).
+/// Kipler: `login`, `signup`, `verify` (kayıttan sonra e-postadaki 6 haneli kodu yaz), `forgot` (sıfırlama bağlantısı
+/// iste) ve `reset` (bağlantıyla gelince yeni parola; kip `AuthController.recoveryPending` ile belirlenir, kullanıcı
+/// seçemez).
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.next, this.startInSignup = false});
 
@@ -40,12 +43,22 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
   final _password = TextEditingController();
   final _password2 = TextEditingController();
   final _fullName = TextEditingController();
+  final _code = TextEditingController();
   late String _mode = widget.startInSignup ? 'signup' : 'login';
   bool _showPassword = false;
   bool _loading = false;
   bool _resending = false;
 
-  /// Onay e-postasını yeniden gönderme bağlantısı görünsün mü (onaysız giriş, kayıt sonrası, geçersiz bağlantı).
+  /// Supabase aynı kullanıcıya dakikada bir onay e-postası gönderir; yeniden gönder düğmesi o kadar bekletilir.
+  static const _resendCooldown = Duration(seconds: 60);
+  Timer? _cooldownTimer;
+  int _cooldownLeft = 0;
+
+  /// Kod ekranındayken uygulamaya dönülünce yapılan sessiz girişin çakışmaması ve sık denenmemesi için.
+  bool _autoSigningIn = false;
+  DateTime? _lastAutoSignIn;
+
+  /// Onay e-postasını yeniden gönderme bağlantısı görünsün mü (onaysız giriş, geçersiz bağlantı; kod ekranında her zaman var).
   bool _canResend = false;
   String _error = '';
   String _info = '';
@@ -72,14 +85,33 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     if (open != _keyboardOpen) setState(() => _keyboardOpen = open);
   }
 
+  /// Kod ekranındayken kullanıcı e-postadaki düğmeyle (tarayıcıda) onaylayıp uygulamaya dönmüş olabilir: elde
+  /// tutulan e-posta + parolayla girişi sessizce dener, onaylandıysa içeri alır.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _continueAfterConfirm(silent: true);
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _cooldownTimer?.cancel();
     _email.dispose();
     _password.dispose();
     _password2.dispose();
     _fullName.dispose();
+    _code.dispose();
     super.dispose();
+  }
+
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    setState(() => _cooldownLeft = _resendCooldown.inSeconds);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      setState(() => _cooldownLeft = _cooldownLeft > 0 ? _cooldownLeft - 1 : 0);
+      if (_cooldownLeft == 0) t.cancel();
+    });
   }
 
   bool get _en => I18n.instance.lang == 'en';
@@ -106,6 +138,8 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     }
     return null;
   }
+
+  String? _codeValidator(String? v) => RegExp(r'^\d{6}$').hasMatch((v ?? '').trim()) ? null : _t('mobileAuth.verifyCodeShort');
 
   String? _confirmValidator(String? v) {
     if ((v ?? '').isEmpty) return _required(v);
@@ -137,6 +171,8 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         return _t('mobileAuth.errEmailSend');
       case AuthErrorKind.linkInvalid:
         return _t('mobileAuth.errLinkInvalid');
+      case AuthErrorKind.codeInvalid:
+        return _t('mobileAuth.errCodeInvalid');
       case AuthErrorKind.other:
         return raw.isEmpty ? (_en ? 'Something went wrong.' : 'Bir hata oluştu') : raw;
     }
@@ -167,6 +203,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     final router = GoRouter.of(context);
     if (auth.recoveryPending) return _submitReset(auth, router);
     if (_mode == 'forgot') return _submitForgot(auth);
+    if (_mode == 'verify') return _submitVerify(auth, router);
     // KVKK ve açık rıza yalnızca kayıtta alınır; girişte kutu da, onay şartı da yoktur.
     if (_mode == 'signup' && (!_kvkk || !_riza)) {
       setState(() => _error = I18n.instance.t('auth.legalRequired'));
@@ -182,9 +219,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
           _showAuthError(r.error!, r.kind, offerResend: r.kind == AuthErrorKind.emailNotConfirmed);
           return;
         }
-        await _waitConsentSync(auth);
-        auth.setAuthFlowInProgress(false);
-        router.go(widget.next);
+        await _continueSignedIn(auth, router);
       } else {
         final r = await auth.signUp(_email.text.trim(), _password.text, _fullName.text, consent: consent);
         if (r.error != null) {
@@ -203,20 +238,21 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
           return;
         }
         if (r.needsEmailConfirmation) {
+          // Onay e-postası (6 haneli kod + düğme) yola çıktı: kullanıcı kodu bu ekranda yazar.
           if (mounted) {
             setState(() {
               _error = '';
-              _mode = 'login';
+              _mode = 'verify';
               _info = _t('mobileAuth.signupSent');
-              _canResend = true;
+              _canResend = false;
+              _code.clear();
             });
+            _startCooldown();
           }
           return;
         }
         // E-posta onayı kapalıysa oturum hemen açılır: kayıttaki rıza şimdi kayda geçer.
-        await _waitConsentSync(auth);
-        auth.setAuthFlowInProgress(false);
-        router.go(widget.next);
+        await _continueSignedIn(auth, router);
       }
     } finally {
       auth.setAuthFlowInProgress(false);
@@ -228,6 +264,66 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
   /// yazılamazsa panel açılır ve açılış paketi eksik rızayı görüp rıza kutusunu gösterir. Uzun beklemeyi keser.
   Future<void> _waitConsentSync(AuthController auth) =>
       auth.consentSync.timeout(const Duration(seconds: 15), onTimeout: () {});
+
+  /// Oturum açıldıktan sonra (şifreyle giriş, kodla onay, e-posta onaylıysa kayıt): rıza yazılır, panele geçilir.
+  Future<void> _continueSignedIn(AuthController auth, GoRouter router) async {
+    await _waitConsentSync(auth);
+    auth.setAuthFlowInProgress(false);
+    router.go(widget.next);
+  }
+
+  /// E-postadaki 6 haneli kodla hesabı onaylar; başarılıysa oturum açılır ve panele geçilir.
+  Future<void> _submitVerify(AuthController auth, GoRouter router) async {
+    setState(() => _loading = true);
+    auth.setAuthFlowInProgress(true);
+    try {
+      final r = await auth.verifySignupCode(_email.text.trim(), _code.text.trim());
+      if (r.error != null) {
+        // Supabase yanlış kodu da süresi dolmuş bağlantıyla aynı `otp_expired` koduyla bildirir.
+        _showAuthError(r.error!, r.kind == AuthErrorKind.linkInvalid ? AuthErrorKind.codeInvalid : r.kind);
+        return;
+      }
+      _code.clear();
+      await _continueSignedIn(auth, router);
+    } finally {
+      auth.setAuthFlowInProgress(false);
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Kullanıcı e-postadaki düğmeyle (tarayıcıda) ya da başka cihazdan onayladıysa, kod ekranında tutulan e-posta +
+  /// parolayla giriş yapar. [silent]: uygulamaya dönünce kendiliğinden dener, başarısızlıkta hiçbir şey göstermez;
+  /// değilse ("Onayladım, devam et") sonucu açıkça gösterir.
+  Future<void> _continueAfterConfirm({required bool silent}) async {
+    if (!mounted || _mode != 'verify' || _loading || _autoSigningIn) return;
+    final email = _email.text.trim();
+    if (_password.text.isEmpty || _emailValidator(email) != null) {
+      // Parola elde yok (onay e-postası girişten yeniden istendi): giriş formuna dön, e-posta dolu kalsın.
+      if (!silent) _switchMode('login');
+      return;
+    }
+    final now = DateTime.now();
+    if (silent && _lastAutoSignIn != null && now.difference(_lastAutoSignIn!) < const Duration(seconds: 5)) return;
+    _lastAutoSignIn = now;
+    final auth = context.read<AuthController>();
+    final router = GoRouter.of(context);
+    _autoSigningIn = true;
+    if (!silent) setState(() => _loading = true);
+    auth.setAuthFlowInProgress(true);
+    try {
+      final r = await auth.signIn(email, _password.text);
+      if (r.error == null) {
+        _code.clear();
+        await _continueSignedIn(auth, router);
+      } else if (!silent) {
+        _showAuthError(r.error!, r.kind);
+      }
+    } finally {
+      _autoSigningIn = false;
+      auth.setAuthFlowInProgress(false);
+      if (mounted && !silent) setState(() => _loading = false);
+    }
+  }
 
   Future<void> _submitForgot(AuthController auth) async {
     setState(() => _loading = true);
@@ -293,9 +389,19 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     if (!mounted) return;
     setState(() => _resending = false);
     if (r.ok) {
-      setState(() => _info = _t('mobileAuth.resendSent'));
+      // Yeni e-postada yeni kod var (eskisi geçersiz): kullanıcı kodu yazabilsin diye kod ekranına geçilir.
+      setState(() {
+        _info = _t('mobileAuth.resendSent');
+        _canResend = false;
+        if (_mode != 'verify') {
+          _mode = 'verify';
+          _code.clear();
+        }
+      });
+      _startCooldown();
     } else {
-      _showAuthError(r.error!, r.kind, offerResend: true);
+      _showAuthError(r.error!, r.kind, offerResend: _mode != 'verify');
+      if (r.kind == AuthErrorKind.rateLimited) _startCooldown();
     }
   }
 
@@ -334,6 +440,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     final mode = auth.recoveryPending ? 'reset' : _mode;
     final login = mode == 'login';
     final signup = mode == 'signup';
+    final verify = mode == 'verify';
     final forgot = mode == 'forgot';
     final reset = mode == 'reset';
     // Yasal metinler ve onay kutuları yalnızca kayıt ekranında; giriş ve diğer kiplerde yoktur.
@@ -348,18 +455,21 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     );
     final title = switch (mode) {
       'signup' => i18n.t('auth.createAccount'),
+      'verify' => i18n.t('mobileAuth.verifyTitle'),
       'forgot' => i18n.t('mobileAuth.forgotTitle'),
       'reset' => i18n.t('mobileAuth.resetTitle'),
       _ => i18n.t('auth.welcome'),
     };
     final subtitle = switch (mode) {
       'signup' => i18n.t('auth.createFreeAccount'),
+      'verify' => i18n.t('mobileAuth.verifySubtitle', {'email': _email.text.trim()}),
       'forgot' => i18n.t('mobileAuth.forgotSubtitle'),
       'reset' => i18n.t('mobileAuth.resetSubtitle'),
       _ => i18n.t('auth.loginToAccount'),
     };
     final submitLabel = switch (mode) {
       'signup' => i18n.t('auth.signup'),
+      'verify' => i18n.t('mobileAuth.verifySubmit'),
       'forgot' => i18n.t('mobileAuth.forgotSend'),
       'reset' => i18n.t('mobileAuth.resetSave'),
       _ => i18n.t('auth.login'),
@@ -420,7 +530,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                 physics: const ClampingScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(
-                    child: _AuthStage(modeKey: mode, compact: signup, title: title, subtitle: subtitle, onBack: () => context.go('/')),
+                    child: _AuthStage(modeKey: mode, compact: signup || verify, title: title, subtitle: subtitle, onBack: () => context.go('/')),
                   ),
                   SliverToBoxAdapter(
                     child: Reveal(
@@ -493,7 +603,39 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                             ],
                                           ),
                                         ),
-                                        if (!reset) ...[
+                                        if (verify) ...[
+                                          Reveal(
+                                            delay: const Duration(milliseconds: 200),
+                                            duration: const Duration(milliseconds: 600),
+                                            offset: const Offset(0, 16),
+                                            child: _AuthField(
+                                              label: i18n.t('mobileAuth.verifyCodeLabel'),
+                                              controller: _code,
+                                              keyboardType: TextInputType.number,
+                                              textInputAction: TextInputAction.done,
+                                              autocorrect: false,
+                                              enableSuggestions: false,
+                                              autofillHints: const [AutofillHints.oneTimeCode],
+                                              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+                                              textAlign: TextAlign.center,
+                                              textStyle: tx(28, w: 7, c: Brand.ink, ls: 9),
+                                              validator: _codeValidator,
+                                              onChanged: (v) {
+                                                // Altı hane tamamlanınca (elle ya da yapıştırarak) kendiliğinden gönderilir.
+                                                if (v.length == 6 && canSubmit) _submit();
+                                              },
+                                              onSubmitted: (_) {
+                                                if (canSubmit) _submit();
+                                              },
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                                            child: Text(i18n.t('mobileAuth.verifyHint'), style: tx(12.5, c: Brand.inkSoft, h: snug)),
+                                          ),
+                                        ],
+                                        if (!reset && !verify) ...[
                                           Reveal(
                                             delay: const Duration(milliseconds: 260),
                                             duration: const Duration(milliseconds: 600),
@@ -516,7 +658,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                           ),
                                           const SizedBox(height: 14),
                                         ],
-                                        if (!forgot) ...[
+                                        if (!forgot && !verify) ...[
                                           Reveal(
                                             delay: const Duration(milliseconds: 340),
                                             duration: const Duration(milliseconds: 600),
@@ -609,6 +751,35 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                             trailingIcon: LucideIcons.arrowRight,
                                           ),
                                         ),
+                                        if (verify) ...[
+                                          const SizedBox(height: 6),
+                                          _TextAction(
+                                            key: const Key('auth-verify-continue'),
+                                            label: i18n.t('mobileAuth.verifyContinue'),
+                                            onTap: _loading ? null : () => _continueAfterConfirm(silent: false),
+                                          ),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _TextAction(
+                                                  key: const Key('auth-resend'),
+                                                  label: _cooldownLeft > 0
+                                                      ? i18n.t('mobileAuth.resendWait', {'s': _cooldownLeft})
+                                                      : i18n.t('mobileAuth.verifyResend'),
+                                                  busy: _resending,
+                                                  onTap: (_resending || _cooldownLeft > 0) ? null : _resend,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: _TextAction(
+                                                  key: const Key('auth-verify-change'),
+                                                  label: i18n.t('mobileAuth.verifyChangeEmail'),
+                                                  onTap: () => _switchMode('signup'),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                         AnimatedSize(
                                           duration: const Duration(milliseconds: 220),
                                           alignment: Alignment.topCenter,
@@ -799,8 +970,11 @@ class _TextAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Kapalı (ör. yeniden gönderme bekleme süresinde) eylem soluk görünür; yükleniyorsa normal kalır.
+    final dim = onTap == null && !busy;
     return Semantics(
       button: true,
+      enabled: !dim,
       label: label,
       excludeSemantics: true,
       child: InkWell(
@@ -810,16 +984,19 @@ class _TextAction extends StatelessWidget {
           constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (busy) ...[
-                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Brand.ink)),
-                  const SizedBox(width: 8),
+            child: Opacity(
+              opacity: dim ? .5 : 1,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (busy) ...[
+                    SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Brand.ink)),
+                    const SizedBox(width: 8),
+                  ],
+                  Flexible(child: BrandLinkText(label, size: 14)),
                 ],
-                Flexible(child: BrandLinkText(label, size: 14)),
-              ],
+              ),
             ),
           ),
         ),
@@ -832,7 +1009,7 @@ class _TextAction extends StatelessWidget {
 class _AuthField extends StatelessWidget {
   const _AuthField({
     required this.label,
-    required this.icon,
+    this.icon,
     required this.controller,
     this.keyboardType,
     this.textInputAction,
@@ -844,10 +1021,16 @@ class _AuthField extends StatelessWidget {
     this.enableSuggestions = true,
     this.suffix,
     this.onSubmitted,
+    this.onChanged,
+    this.inputFormatters,
+    this.textAlign = TextAlign.start,
+    this.textStyle,
   });
 
   final String label;
-  final IconData icon;
+
+  /// Yoksa alanın başında simge bulunmaz (ortalanmış kod alanı).
+  final IconData? icon;
   final TextEditingController controller;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
@@ -859,6 +1042,10 @@ class _AuthField extends StatelessWidget {
   final bool enableSuggestions;
   final Widget? suffix;
   final ValueChanged<String>? onSubmitted;
+  final ValueChanged<String>? onChanged;
+  final List<TextInputFormatter>? inputFormatters;
+  final TextAlign textAlign;
+  final TextStyle? textStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -877,16 +1064,22 @@ class _AuthField extends StatelessWidget {
       autocorrect: autocorrect,
       enableSuggestions: enableSuggestions,
       onFieldSubmitted: onSubmitted,
+      onChanged: onChanged,
+      inputFormatters: inputFormatters,
+      textAlign: textAlign,
       cursorColor: Brand.teal,
-      style: tx(16.5, w: 5, c: Brand.ink),
+      style: textStyle ?? tx(16.5, w: 5, c: Brand.ink),
       decoration: InputDecoration(
         labelText: label,
         labelStyle: tx(15.5, c: Brand.inkSoft),
         floatingLabelStyle: tx(14, w: 6, c: Brand.ink),
+        floatingLabelAlignment: icon == null ? FloatingLabelAlignment.center : null,
         filled: true,
         fillColor: Brand.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 19),
-        prefixIcon: Padding(padding: const EdgeInsetsDirectional.only(start: 16, end: 10), child: Icon(icon, size: 19, color: Brand.inkSoft)),
+        contentPadding: EdgeInsets.symmetric(horizontal: icon == null ? 16 : 4, vertical: icon == null ? 17 : 19),
+        prefixIcon: icon == null
+            ? null
+            : Padding(padding: const EdgeInsetsDirectional.only(start: 16, end: 10), child: Icon(icon, size: 19, color: Brand.inkSoft)),
         prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         suffixIcon: suffix,
         errorStyle: tx(12, w: 5, c: Tw.red600),

@@ -47,7 +47,7 @@ Her satırı **GEÇTİ / KALDI / —** ile işaretle. KALDI olanlar için: adım
 | 1.3 | Çıkış yap, tekrar giriş yap; uygulamayı tamamen kapatıp aç | Oturum açık kalır, doğrudan Bugün açılır (açılış animasyonu yok) |
 | 1.4 | Yeni hesap kaydı (isteğe bağlı, ayrı bir e-postayla) | Kayıt, e-posta onayı, KVKK + açık rıza + yapay zekâ onayı adımları sorunsuz |
 | 1.5 | Ben → Hesap ve gizlilik → "Hesabı kalıcı olarak sil" (**yalnızca 1.4'te açtığın deneme hesabında**) | Onay istenir; silinince girişe döner |
-| 1.6 | E-posta onayı, onay e-postasını tekrar gönder, Parolamı unuttum, sıfırlama bağlantısı | [`MOBIL-GIRIS-SUPABASE.md`](MOBIL-GIRIS-SUPABASE.md) §3 (önce §2.1'deki Supabase Redirect URL ayarı gerekir) |
+| 1.6 | E-posta onayı, onay e-postasını tekrar gönder, Parolamı unuttum, sıfırlama bağlantısı | [`MOBIL-GIRIS-SUPABASE.md`](MOBIL-GIRIS-SUPABASE.md) §3 (önce §2.1'deki Supabase Redirect URL ayarı ve §2.3'teki **"Confirm signup" e-posta şablonu** gerekir; e-postada 6 haneli kod + onay düğmesi olmalı) |
 
 ## 2. Bugün (müşteri maddeleri 1–5)
 

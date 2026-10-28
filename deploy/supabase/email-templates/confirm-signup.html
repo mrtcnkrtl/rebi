@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Rebi hesabını onayla</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F7F3EC;-webkit-text-size-adjust:100%;">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#F7F3EC;font-size:1px;line-height:1px;">6 haneli onay kodun içeride. Düğmeye dokunarak da hesabını onaylayabilirsin.&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F7F3EC" style="background-color:#F7F3EC;">
+<tr>
+<td align="center" style="padding:28px 14px 36px;">
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+<tr>
+<td style="background-color:#0B3D38;border-radius:24px 24px 0 0;padding:30px 36px 28px;">
+<div style="font-family:Georgia,'Times New Roman',serif;font-size:30px;line-height:1;color:#F7F3EC;letter-spacing:-0.5px;">Rebi</div>
+<div style="font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;line-height:18px;color:#9FC4BB;padding-top:8px;">Cildin için sakin bir rehber</div>
+</td>
+</tr>
+<tr>
+<td bgcolor="#FFFFFF" style="background-color:#FFFFFF;border-radius:0 0 24px 24px;padding:36px 36px 32px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#0B3D38;">
+
+<h1 style="margin:0 0 14px;font-family:Georgia,'Times New Roman',serif;font-weight:normal;font-size:28px;line-height:34px;color:#0B3D38;letter-spacing:-0.4px;">E-postanı onayla</h1>
+<p style="margin:0 0 26px;font-size:16px;line-height:25px;color:#35574F;">Rebi'ye hoş geldin. Hesabını açmak için e-posta adresini onaylaman yeterli. Aşağıdaki kodu uygulamaya yazabilir ya da düğmeye dokunabilirsin.</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center" bgcolor="#F7F3EC" style="background-color:#F7F3EC;border:1px solid #E3DCCD;border-radius:18px;padding:22px 12px 20px;">
+<div style="font-size:12px;line-height:16px;letter-spacing:1.6px;text-transform:uppercase;color:#6B857E;padding-bottom:10px;">Onay kodun</div>
+<div style="font-family:'SF Mono',Menlo,Consolas,'Courier New',monospace;font-size:38px;line-height:44px;font-weight:bold;letter-spacing:10px;color:#0B3D38;padding-left:10px;">{{ .Token }}</div>
+<div style="font-size:13px;line-height:19px;color:#6B857E;padding-top:10px;">Rebi uygulamasında kod alanına yaz</div>
+</td>
+</tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center" style="padding:22px 0 20px;font-size:13px;line-height:18px;color:#8AA19B;">ya da</td>
+</tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td align="center">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+<tr>
+<td align="center" bgcolor="#0B3D38" style="background-color:#0B3D38;border-radius:16px;">
+<a href="https://rebiovil.com/auth/confirm?token_hash={{ .TokenHash }}&amp;type=signup" target="_blank" style="display:block;padding:17px 24px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:16px;line-height:22px;font-weight:bold;color:#F7F3EC;text-decoration:none;border-radius:16px;">E-postamı onayla</a>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+
+<p style="margin:26px 0 0;font-size:13px;line-height:20px;color:#6B857E;">Düğme çalışmazsa bu adresi tarayıcına yapıştır:<br><a href="https://rebiovil.com/auth/confirm?token_hash={{ .TokenHash }}&amp;type=signup" target="_blank" style="color:#0D7F72;word-break:break-all;">https://rebiovil.com/auth/confirm?token_hash={{ .TokenHash }}&amp;type=signup</a></p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+<tr>
+<td style="padding:28px 0 0;">
+<div style="border-top:1px solid #E9E3D6;font-size:1px;line-height:1px;height:1px;">&nbsp;</div>
+</td>
+</tr>
+</table>
+
+<p style="margin:20px 0 10px;font-size:14px;line-height:22px;color:#35574F;"><strong style="color:#0B3D38;">Kod ve bağlantı 1 saat geçerlidir</strong> ve yalnızca bir kez kullanılabilir. Birden fazla e-posta aldıysan yalnızca en yenisini kullan; eskileri geçersiz olur.</p>
+<p style="margin:0;font-size:14px;line-height:22px;color:#35574F;">Bu hesabı sen açmadıysan bu e-postayı yok sayabilirsin; hiçbir şey olmaz.</p>
+
+</td>
+</tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+<tr>
+<td align="center" style="padding:22px 24px 0;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:19px;color:#8AA19B;">
+Bu e-posta {{ .Email }} adresine gönderildi.<br>
+Rebi · <a href="https://rebiovil.com" target="_blank" style="color:#8AA19B;text-decoration:underline;">rebiovil.com</a>
+</td>
+</tr>
+</table>
+
+</td>
+</tr>
+</table>
+</body>
+</html>
