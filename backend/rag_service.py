@@ -3052,6 +3052,14 @@ async def _chat_general_compose_with_evidence(
     if ph.get("routine_summary"):
         routine_line = "Aktif rutin özeti (ürün adı yok, adım/etken):\n" + str(ph.get("routine_summary") or "") + "\n"
 
+    today_line = ""
+    if ph.get("today_summary"):
+        today_line = (
+            "Kullanıcının bugünkü durumu (yalnızca soruyla ilgiliyse kullan, listeleme): "
+            + str(ph.get("today_summary") or "")
+            + "\n"
+        )
+
     ev_label = "REFERANS (indekslenmiş kanıt parçaları)" if evidence_kind != "pubmed" else "DIŞ KANIT (PubMed özetleri)"
     caution = ""
     if evidence_kind in ("pubmed", "weak_internal_kb"):
@@ -3083,6 +3091,7 @@ async def _chat_general_compose_with_evidence(
         + (f"Risk/bağlam ipuçları: {', '.join(tags)}.\n" if tags else "")
         + profile_line
         + routine_line
+        + today_line
     )
     from knowledge.evidence_fallback import is_gemini_non_retryable_error, is_gemini_retryable_error
 

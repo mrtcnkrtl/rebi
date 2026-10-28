@@ -1,0 +1,30 @@
+{
+  "user_id": "99999999-9999-4999-8999-999999999999",
+  "settings": {
+    "wake_time": "07:00",
+    "sleep_time": "23:00",
+    "water_every_minutes": 90,
+    "water_target_ml": 2500,
+    "windows": {
+      "routine_evening": {
+        "start": "21:30",
+        "end": "22:30"
+      }
+    },
+    "quiet": {
+      "start": "13:00",
+      "end": "14:00"
+    },
+    "enabled": {
+      "routine": true,
+      "water": true,
+      "makeup": true,
+      "nutrition": false,
+      "spf": true,
+      "lip_balm": true,
+      "checkin": true,
+      "restock": true
+    }
+  },
+  "synced": true
+}

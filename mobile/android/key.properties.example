@@ -1,0 +1,8 @@
+# android/key.properties olarak kopyalayın (dosya repoya girmez). Anahtarı oluşturmak için:
+#   keytool -genkey -v -keystore upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+# Anahtar dosyasını ve parolaları güvenli bir yerde YEDEKLEYİN; kaybolursa Play Console'dan sıfırlama gerekir.
+storePassword=<anahtar deposu parolası>
+keyPassword=<anahtar parolası>
+keyAlias=upload
+# android/app klasörüne göre yol ya da mutlak yol
+storeFile=upload-keystore.jks

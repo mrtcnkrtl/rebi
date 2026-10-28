@@ -1,0 +1,777 @@
+{
+  "mobileToday": {
+    "title": "Bugün",
+    "now": "Şimdi",
+    "later": "Sıradaki hatırlatmalar",
+    "nothingNow": "Şu an bekleyen bir hatırlatma yok.",
+    "loadFailed": "Günün planı yüklenemedi. Bağlantını kontrol et.",
+    "queuedHint": "Kaydedildi. Bağlantı gelince gönderilecek.",
+    "pending": "{{count}} kayıt gönderilmeyi bekliyor",
+    "pendingRetry": "Şimdi dene",
+    "retry": "Tekrar dene",
+    "waterTitle": "Su",
+    "waterProgress": "{{ml}} / {{target}} ml",
+    "waterGoalReached": "Günlük su hedefine ulaştın",
+    "morningDone": "Sabah rutini tamam",
+    "eveningDone": "Akşam rutini tamam",
+    "makeupUsed": "Makyaj yapıldı",
+    "makeupRemoved": "Makyaj temizlendi",
+    "spfRefreshed": "SPF {{n}} kez yenilendi",
+    "checkinDoneToday": "Bugün tamamlandı",
+    "actions": {
+      "done": "Yaptım",
+      "yes": "Evet, yaptım",
+      "no": "Hayır",
+      "removed": "Temizledim",
+      "water250": "+250 ml",
+      "water500": "+500 ml",
+      "junkYes": "Evet, yedim",
+      "junkNo": "Hayır",
+      "open": "Check-in'e git",
+      "waterMore": "Diğer…",
+      "change": "Değiştir",
+      "edit": "Düzenle",
+      "openShelf": "Rafım'a git"
+    },
+    "advice": {
+      "title": "Bugünün havasına göre",
+      "weatherLine": "{{temp}}°C · UV {{uv}} · nem %{{humidity}}",
+      "locationHint": "Tahmini hava değerleri kullanılıyor. Konum izni verirsen canlı hava durumuna göre öneri alırsın.",
+      "source": {
+        "live": "Canlı hava (konumun)",
+        "tracking": "Bugün kaydedilen hava",
+        "profile": "Son bilinen konumun",
+        "default": "Tahmini değerler"
+      }
+    },
+    "quick": {
+      "makeup": "Makyaj yaptım",
+      "makeupRemoved": "Makyajı temizledim",
+      "junk": "Abur cubur yedim"
+    },
+    "productFinished": "Ürün bitti",
+    "productFinishedLogged": "Bitti olarak kaydedildi",
+    "reminders": {
+      "routine_morning": {
+        "title": "Sabah rutini",
+        "body": "Bugünün sabah adımlarını uygula ve bitince işaretle."
+      },
+      "makeup_log": {
+        "title": "Bugün makyaj yaptın mı?",
+        "body": "Makyaj yaptıysan akşam temizliği planına eklenir."
+      },
+      "water_intake": {
+        "title": "Su içme zamanı",
+        "body": "Günlük hedef {{target}} ml. İçtikçe kaydet."
+      },
+      "spf_refresh": {
+        "title": "Güneş kremini yenile",
+        "body": "UV {{uv}}. Dışarıdaysan 2 saatte bir tazele."
+      },
+      "lip_balm": {
+        "title": "Dudak balsamı",
+        "body": "Soğuk / kuru hava dudak derisini hızlı kurutur."
+      },
+      "nutrition_log": {
+        "title": "Beslenme kaydı",
+        "body": "Bugün abur cubur veya şekerli bir şey yedin mi?"
+      },
+      "makeup_removal": {
+        "title": "Makyaj temizliği",
+        "body": "Makyajlı gün: yağ bazlı temizleyici + ardından jel ile çift temizlik yap."
+      },
+      "routine_evening": {
+        "title": "Akşam rutini",
+        "body": "Akşam adımlarını uygula ve bitince işaretle."
+      },
+      "daily_checkin": {
+        "title": "Günlük check-in",
+        "body": "Cildin bugün nasıldı? Rutin buna göre uyarlanır."
+      },
+      "restock_check": {
+        "title": "Yenisini aldın mı?",
+        "body": "Birkaç gün önce biten bir ürünün var. Aldıysan Rafım'dan işaretle."
+      }
+    },
+    "greet": {
+      "morning": "Günaydın, {{name}}",
+      "afternoon": "İyi günler, {{name}}",
+      "evening": "İyi akşamlar, {{name}}",
+      "night": "İyi geceler, {{name}}"
+    },
+    "checklist": {
+      "title": "Günün rutini",
+      "morning": "Sabah",
+      "evening": "Akşam",
+      "notes": "Bugünün notları"
+    },
+    "water": {
+      "next": "Sonraki hatırlatma {{time}}"
+    },
+    "makeup": {
+      "title": "Makyaj",
+      "ask": "Bugün makyaj yaptın mı?",
+      "usedPending": "Makyajlı gün. Akşam temizlemeyi unutma.",
+      "notCleaned": "Bu akşam temizlenmedi olarak işaretli.",
+      "cleaned": "Makyaj temizlendi",
+      "cleanedWith": "Temizlendi · {{method}}",
+      "none": "Bugün makyaj yok",
+      "changeToUsed": "Makyaj yaptım"
+    },
+    "cleansing": {
+      "double": {
+        "title": "Çift temizlik",
+        "desc": "Yağ bazlı temizleyici, ardından jel"
+      },
+      "cleanser": {
+        "title": "Temizleyici",
+        "desc": "Jel ya da köpükle tek adım"
+      },
+      "water": {
+        "title": "Sadece su",
+        "desc": "Suyla durulama"
+      },
+      "wipe": {
+        "title": "Misel su / mendil",
+        "desc": "Pamuk ya da temizleme mendili"
+      },
+      "none": {
+        "title": "Temizlemedim",
+        "desc": "Bu akşam temizleyemedim"
+      }
+    },
+    "nutrition": {
+      "title": "Beslenme",
+      "ask": "Bugün abur cubur yedin mi?",
+      "clean": "Abur cubur yok",
+      "balanced": "Dengeli beslendin",
+      "choices": {
+        "snacks": {
+          "title": "Abur cubur",
+          "desc": "Cips, bisküvi, paketli atıştırmalık"
+        },
+        "sweets": {
+          "title": "Şekerli / tatlı",
+          "desc": "Tatlı, çikolata, şekerli içecek"
+        },
+        "fried_food": {
+          "title": "Kızartma / fast food",
+          "desc": "Yağlı ve kızartılmış yiyecekler"
+        },
+        "dairy": {
+          "title": "Süt ürünleri",
+          "desc": "Süt, yoğurt, peynir, dondurma"
+        },
+        "balanced": {
+          "title": "Dengeli beslendim",
+          "desc": "Sebze, protein, az işlenmiş gıda"
+        }
+      }
+    },
+    "spf": {
+      "title": "Güneş kremi",
+      "hint": "Dışarıdaysan 2 saatte bir yenile.",
+      "hintHigh": "UV yüksek. Dışarıdaysan 2 saatte bir yenile.",
+      "done": "Yeniledim"
+    },
+    "bar": {
+      "mark": {
+        "morning": "Sabah rutinini yaptım",
+        "evening": "Akşam rutinini yaptım"
+      },
+      "done": {
+        "morning": "Sabah rutini tamam",
+        "evening": "Akşam rutini tamam"
+      }
+    },
+    "toast": {
+      "water": "+{{ml}} ml su eklendi",
+      "waterFixed": "−{{ml}} ml düzeltildi",
+      "undo": "Geri al",
+      "undone": "Geri alındı",
+      "failed": "Kaydedilemedi. Tekrar dene.",
+      "blockDone": {
+        "morning": "Sabah rutini tamamlandı",
+        "evening": "Akşam rutini tamamlandı"
+      },
+      "blockAlreadyDone": "Bu rutin zaten tamamlandı.",
+      "reopen": "Yeniden aç",
+      "makeupUsed": "Makyaj yapıldı olarak kaydedildi",
+      "makeupNone": "Bugün makyaj yok olarak kaydedildi",
+      "cleaned": "Makyaj temizliği kaydedildi",
+      "notCleaned": "Temizlenmedi olarak kaydedildi",
+      "nutrition": "Beslenme kaydedildi",
+      "nutritionClean": "Abur cubur yok olarak kaydedildi",
+      "spf": "Güneş kremi yenilendi",
+      "productsFinished": "{{n}} ürün bitti olarak kaydedildi",
+      "restocked": "Yenisini aldın: {{product}}"
+    },
+    "sheets": {
+      "cleansing": {
+        "title": "Makyajı nasıl temizledin?",
+        "subtitle": "Cildinin bu geceki ihtiyacına göre rutinini uyarlarız."
+      },
+      "nutrition": {
+        "title": "Neler yedin?",
+        "subtitle": "Bugün yediklerini seç, birden fazla işaretleyebilirsin."
+      },
+      "water": {
+        "title": "Su kaydı",
+        "add": "Hızlı ekle",
+        "fix": "Yanlış girdiysen düzelt",
+        "customHint": "Başka miktar",
+        "addButton": "Ekle",
+        "invalid": "1 ile {{max}} ml arasında bir miktar yaz."
+      },
+      "products": {
+        "title": "Hangi ürün bitti?",
+        "subtitle": "Bitirdiğin ürünleri işaretle; yenisini alana kadar Rafım'da bekler.",
+        "empty": "Rutininde işaretlenecek bir bakım ürünü yok.",
+        "already": "Bitti olarak işaretli",
+        "save": "Bitti olarak kaydet",
+        "saveCount": "Bitti olarak kaydet ({{n}})",
+        "restock": "Aldım",
+        "shelfLink": "Rafım'a git"
+      },
+      "save": "Kaydet",
+      "done": "Tamam"
+    },
+    "showFullPlan": "Tüm haftayı, detayları ve yaşam önerilerini göster",
+    "quickPhoto": "Fotoğraf yükle (hızlı)",
+    "newAnalysis": "Yeni analiz",
+    "settings": "Hatırlatıcı ayarları",
+    "weatherPill": "{{temp}}° · UV {{uv}} · nem %{{humidity}}",
+    "weatherPillEstimated": "tahmini",
+    "decisions": {
+      "spf": {
+        "headline": "SPF {{spf}}",
+        "reason": {
+          "extreme": "UV çok yüksek ({{uv}}). Nemlendiriciden sonra bol miktarda sür.",
+          "high": "UV yüksek ({{uv}}). Sabah rutininin son adımı olarak sür.",
+          "moderate": "UV orta ({{uv}}). Her gün son adım olarak sür.",
+          "low": "UV düşük; bulutlu havada bile ışınların çoğu geçer. Her gün kullan."
+        },
+        "refreshWindow": "UV {{start}}–{{end}} arası en yüksek; dışarıdaysan 2 saatte bir yenile.",
+        "refreshAny": "Dışarıdaysan 2 saatte bir yenile."
+      },
+      "moisture": {
+        "headline": {
+          "intense": "Yoğun nemlendirme",
+          "barrier": "Bariyer onarım kremi",
+          "boost": "Ekstra nem katmanı",
+          "light": "Hafif jel nemlendirici",
+          "light_hot": "Hafif formül",
+          "standard": "Her zamanki nemlendiricin"
+        },
+        "reason": {
+          "intense": "Hava çok kuru (nem %{{humidity}}). Serum ve seramid kremini birlikte kullan.",
+          "barrier": "Hava çok soğuk ({{temperature}}°C). Seramid ve kolesterollü bir krem bariyeri korur.",
+          "boost": "Nem düşük (%{{humidity}}). Serum ve nemlendiriciyi üst üste kullan.",
+          "light": "Nem yüksek (%{{humidity}}). Ağır krem yerine su bazlı bir jel seç.",
+          "light_hot": "Hava çok sıcak ({{temperature}}°C). Yoğun ürünlerden kaçın, yanında termal su taşı.",
+          "standard": "Nem dengeli (%{{humidity}}); rutinindeki nemlendirici yeterli."
+        },
+        "nightMask": "Geceye oklüzif bir nem maskesi ekle."
+      },
+      "lip": {
+        "headline": {
+          "needed": "Dudak balsamı",
+          "notNeeded": "Dudak balsamı gerekmiyor"
+        },
+        "reason": {
+          "cold": "Hava {{temperature}}°C; soğuk, dudak derisini çabuk kurutur. Gün içinde tekrar sür.",
+          "dry": "Nem %{{humidity}}. Kuru havada dudaklar çabuk çatlar; gün içinde tekrar sür.",
+          "both": "Soğuk ve kuru hava ({{temperature}}°C, nem %{{humidity}}). Dudaklarını sık sık balsamla koru.",
+          "none": "Bugünkü hava dudaklar için rahat."
+        }
+      }
+    },
+    "hero": {
+      "title": {
+        "morning": "Sabah rutini",
+        "evening": "Akşam rutini"
+      },
+      "progress": "{{done}} / {{total}} adım",
+      "doneTitle": {
+        "morning": "Sabah rutinin tamam",
+        "evening": "Akşam rutinin tamam"
+      },
+      "doneBody": "Güzel iş. İstersen adımlara yeniden bakabilirsin.",
+      "showSteps": "Adımları göster",
+      "hideSteps": "Adımları gizle",
+      "reopen": "Yeniden aç",
+      "outBadge": "Bitti",
+      "restock": "Aldım",
+      "outHint": "Rutinine sayılmaz"
+    },
+    "flow": {
+      "title": "Gün akışı",
+      "semantics": "Gün akışı, uyanma {{wake}}, uyku {{sleep}}, şu an {{now}}",
+      "next": "Sıradaki: {{time}} · {{title}}",
+      "nowMarker": "şimdi",
+      "allDone": "Bugünlük hatırlatma kalmadı.",
+      "legend": {
+        "routine": "Rutin",
+        "water": "Su",
+        "spf": "Güneş kremi",
+        "makeup": "Makyaj",
+        "nutrition": "Beslenme",
+        "lip": "Dudak",
+        "checkin": "Check-in"
+      }
+    },
+    "more": {
+      "title": "Daha fazlası"
+    },
+    "dayLog": {
+      "title": "Gün içi"
+    }
+  },
+  "mobileNotifications": {
+    "promptTitle": "Hatırlatıcıları bildirim olarak al",
+    "promptBody": "Rutin, su, güneş kremi ve check-in hatırlatmalarını telefonuna gönderelim. İstediğin zaman kapatabilirsin.",
+    "promptEnable": "Bildirimleri aç",
+    "promptLater": "Şimdi değil",
+    "title": "Hatırlatma bildirimleri",
+    "description": "Sabah / akşam rutini, su, güneş kremi ve check-in hatırlatmaları.",
+    "blocked": "Bildirim izni kapalı. Telefon ayarlarından Rebi için bildirimlere izin ver.",
+    "modeLocal": "Hatırlatmalar bu telefonda planlanır.",
+    "modePush": "Hatırlatmalar sunucudan gönderilir.",
+    "channelName": "Hatırlatıcılar",
+    "channelDescription": "Rutin, su, güneş kremi ve check-in hatırlatmaları",
+    "test": {
+      "notificationTitle": "Test bildirimi",
+      "notificationBody": "Bildirimler bu telefonda çalışıyor. Hatırlatmalarını böyle alacaksın."
+    },
+    "delivery": {
+      "title": "Bildirimler gelmiyor mu?",
+      "body": "Hatırlatmaların bu telefonda gerçekten gelip gelmediğini deneyebilirsin.",
+      "test": "Test bildirimi gönder",
+      "testScheduled": "Bir dakika içinde bir bildirim gelecek. Uygulamayı kapatıp bekle; gelmezse aşağıdaki pil ayarını kontrol et.",
+      "testBlocked": "Bildirim izni kapalı. Önce telefon ayarlarından Rebi için bildirimlere izin ver.",
+      "testFailed": "Test bildirimi kurulamadı. Biraz sonra tekrar dene.",
+      "batteryTitle": "Pil tasarrufu bildirimleri engelleyebilir",
+      "batteryBody": "Bazı telefonlar (Xiaomi, Huawei, Oppo, Vivo, Samsung) kapalı uygulamaları durdurur. Telefon Ayarları → Uygulamalar → Rebi → Pil bölümünde \"Kısıtlama yok\" ya da \"Optimize etme\" seçeneğini seç."
+    }
+  },
+  "mobileProfile": {
+    "title": "Cilt profilim",
+    "intro": "Havaya göre öneriler ve sohbet bu bilgilere göre kişiselleşir. Boş bıraktığın alan değişmez.",
+    "skinType": "Cilt tipi",
+    "age": "Yaş",
+    "agePlaceholder": "13–100",
+    "gender": "Cinsiyet",
+    "city": "Şehir",
+    "cityPlaceholder": "Örn. İstanbul",
+    "save": "Profili kaydet",
+    "saved": "Profilin güncellendi.",
+    "nothingChanged": "Değişiklik yok.",
+    "saveFailed": "Profil kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
+    "loadFailed": "Profil bilgilerin yüklenemedi.",
+    "retry": "Tekrar dene",
+    "ageInvalid": "Yaş 13 ile 100 arasında olmalı.",
+    "notSynced": "Bu hesapta profil sunucuda saklanmıyor; değişiklikler kaydedilmez.",
+    "historyLink": "Geçmişimi gör"
+  },
+  "mobileHistory": {
+    "open": "Geçmişim",
+    "title": "Geçmişim",
+    "subtitle": "Gün içi kayıtların ve check-in'lerin",
+    "range7": "7 gün",
+    "range30": "30 gün",
+    "range90": "90 gün",
+    "empty": "Bu aralıkta kayıt yok. Su, makyaj veya check-in kaydettikçe burada görünür.",
+    "loadFailed": "Geçmiş yüklenemedi. Bağlantını kontrol et.",
+    "retry": "Tekrar dene",
+    "notSynced": "Bu hesapta kayıtlar sunucuda tutulmuyor; geçmiş boş görünebilir.",
+    "summaryTitle": "Özet",
+    "summary": {
+      "recordedDays": "{{n}} kayıtlı gün",
+      "checkins": "{{n}} check-in",
+      "fullRoutine": "{{n}} gün sabah + akşam rutini",
+      "avgWater": "Ort. su {{ml}} ml",
+      "avgSleep": "Ort. uyku {{h}} sa",
+      "avgRisk": "Ort. risk {{n}}"
+    },
+    "chips": {
+      "water": "{{ml}} ml su",
+      "spf": "SPF ×{{n}}",
+      "morning": "Sabah rutini",
+      "evening": "Akşam rutini",
+      "makeupUsed": "Makyaj",
+      "makeupRemoved": "Makyaj temizlendi",
+      "junk": "Abur cubur",
+      "products": "{{n}} ürün bitti"
+    },
+    "checkin": {
+      "title": "Check-in",
+      "sleep": "Uyku {{h}} sa",
+      "stress": "Stres {{n}}/5",
+      "risk": "Risk {{n}}"
+    },
+    "feelings": {
+      "iyi": "İyi",
+      "kuru": "Kuru",
+      "yagli": "Yağlı",
+      "kirik": "Hassas",
+      "irritasyon": "İrritasyon"
+    },
+    "assessmentsTitle": "Son analizler",
+    "severity": "Şiddet {{n}}",
+    "trends": {
+      "title": "Eğilimler",
+      "avg": "Ort. {{v}}",
+      "water": "Su",
+      "sleep": "Uyku",
+      "stress": "Stres",
+      "routine": "Rutin",
+      "weeklyNote": "Her sütun bir haftanın ortalaması.",
+      "waterTarget": "Kesikli çizgi: günlük hedef ({{ml}} ml)",
+      "sleepBand": "Yeşil bant: önerilen 7–9 saat",
+      "stressHint": "1 düşük, 5 yüksek stres",
+      "routineHint": "Koyu: sabah + akşam · orta: biri · gri: yapılmadı · soluk: kayıt yok",
+      "routineRate": "%{{n}} tamamlandı",
+      "noData": "Bu aralıkta kayıt yok.",
+      "chartLabel": "{{name}} grafiği, {{n}} kayıtlı nokta, ortalama {{avg}}.",
+      "routineLabel": "Rutin grafiği, {{n}} kayıtlı nokta, ortalama %{{avg}} tamamlandı.",
+      "hoursUnit": "sa"
+    },
+    "week": {
+      "title": "Bu hafta",
+      "subtitle": "Son 7 gün; oklar önceki 7 güne göre değişimi gösterir.",
+      "subtitleNoPrev": "Son 7 gün. Önceki hafta için kayıt yok.",
+      "routine": "Rutin",
+      "routineValue": "{{n}}/7 gün",
+      "water": "Su",
+      "waterValue": "{{ml}} ml / gün",
+      "sleep": "Uyku",
+      "sleepValue": "{{h}} sa / gün",
+      "stress": "Stres",
+      "stressValue": "{{n}}/5",
+      "spf": "Güneş kremi",
+      "spfValue": "{{n}} kez",
+      "checkins": "Check-in",
+      "checkinsValue": "{{n}} gün",
+      "junk": "Abur cubur yenen",
+      "junkValue": "{{n}} gün",
+      "up": "arttı",
+      "down": "azaldı",
+      "waterGoal": "Su hedefi",
+      "waterGoalValue": "{{n}}/7 gün ({{ml}} ml)",
+      "makeup": "Makyaj",
+      "makeupValue": "{{n}} gün · {{removed}} gün temizlendi",
+      "makeupValueAllRemoved": "{{n}} gün · hepsi temizlendi"
+    }
+  },
+  "mobileReminders": {
+    "title": "Hatırlatıcılar",
+    "subtitle": "Gün düzenine göre saatleri ayarla, istemediklerini kapat.",
+    "open": "Hatırlatıcı saatlerini ayarla",
+    "openHint": "Uyanma ve uyku saatine göre hatırlatma pencereleri",
+    "openFromToday": "Hatırlatıcı ayarları",
+    "loadFailed": "Ayarlar yüklenemedi. Bağlantını kontrol et.",
+    "retry": "Tekrar dene",
+    "notSynced": "Bu hesapta ayarlar sunucuya kaydedilmez; uygulama kapanınca sıfırlanır.",
+    "day": {
+      "title": "Günün düzeni",
+      "hint": "Hatırlatıcılar uyanma ve uyku saatine göre kurulur.",
+      "wake": "Uyanma",
+      "sleep": "Uyku"
+    },
+    "water": {
+      "title": "Su hatırlatması",
+      "hint": "Hedefe ulaşınca hatırlatma durur.",
+      "every": {
+        "60": "Her saat",
+        "90": "1,5 saatte bir",
+        "120": "2 saatte bir",
+        "180": "3 saatte bir"
+      }
+    },
+    "categories": {
+      "title": "Hangi hatırlatıcılar gelsin?",
+      "routine": {
+        "title": "Sabah ve akşam rutini",
+        "desc": "Rutinini yapman için hatırlatır."
+      },
+      "water": {
+        "title": "Su içme",
+        "desc": "Gün içinde aralıklı hatırlatır."
+      },
+      "makeup": {
+        "title": "Makyaj",
+        "desc": "Makyaj sorusu ve akşam temizleme hatırlatması."
+      },
+      "nutrition": {
+        "title": "Beslenme kaydı",
+        "desc": "Akşam yediklerini kaydetmeni ister."
+      },
+      "spf": {
+        "title": "Güneş kremi",
+        "desc": "UV yüksek olduğunda yenilemeni hatırlatır."
+      },
+      "lip_balm": {
+        "title": "Dudak balsamı",
+        "desc": "Hava soğuk ya da kuruysa hatırlatır."
+      },
+      "checkin": {
+        "title": "Günlük check-in",
+        "desc": "Akşam cildinin nasıl olduğunu sorar."
+      },
+      "restock": {
+        "title": "Ürün yenileme",
+        "desc": "Ürün bittikten 3 gün sonra yenisini alıp almadığını sorar."
+      }
+    },
+    "window": "{{start}} – {{end}}",
+    "windowEvery": "{{start}} – {{end}}, {{every}}",
+    "save": "Kaydet",
+    "saved": "Kaydedildi",
+    "saveFailed": "Kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
+    "errors": {
+      "span": "Uyanma ile uyku saati arası en az 9 saat olmalı. Uyanma en erken 04:00, uyku en geç 23:59 olabilir."
+    },
+    "waterTarget": {
+      "title": "Günlük su hedefi",
+      "hint": "Halkan ve hatırlatmalar bu hedefe göre çalışır.",
+      "choice": "{{liters}} L"
+    },
+    "windowSheet": {
+      "title": "Saatleri ayarla",
+      "hint": "Hatırlatmanın geleceği saat aralığını seç. Aralık, uyanma ve uyku saatinin içinde olmalı.",
+      "start": "Başlangıç",
+      "end": "Bitiş",
+      "reset": "Varsayılana dön",
+      "done": "Tamam",
+      "custom": "Senin ayarın",
+      "spfNote": "Kendi saatini seçmezsen güneş kremi hatırlatması o günkü UV saatlerine göre gelir.",
+      "errors": {
+        "short": "Bitiş, başlangıçtan en az {{minutes}} dakika sonra olmalı.",
+        "outsideDay": "Aralık uyanma ({{wake}}) ile uyku ({{sleep}}) saatin arasında olmalı."
+      },
+      "ids": {
+        "routine_morning": "Sabah rutini",
+        "routine_evening": "Akşam rutini",
+        "water_intake": "Su içme",
+        "makeup_log": "Makyaj sorusu",
+        "makeup_removal": "Makyaj temizliği",
+        "nutrition_log": "Beslenme kaydı",
+        "spf_refresh": "Güneş kremi",
+        "lip_balm": "Dudak balsamı",
+        "daily_checkin": "Günlük check-in",
+        "restock_check": "Ürün yenileme"
+      }
+    },
+    "quiet": {
+      "title": "Sessiz saatler",
+      "hint": "Bu aralıkta bildirim gelmez. Aralık gece yarısını da geçebilir (ör. 22:00 – 07:00).",
+      "from": "Başlangıç",
+      "to": "Bitiş",
+      "errors": {
+        "same": "Başlangıç ile bitiş aynı olamaz."
+      }
+    }
+  },
+  "mobileAppearance": {
+    "title": "Görünüm",
+    "hint": "Karanlık mod gözünü yormaz, pil de tasarruf eder.",
+    "system": "Sistem",
+    "light": "Açık",
+    "dark": "Koyu"
+  },
+  "mobileNav": {
+    "today": "Bugün",
+    "routine": "Rutin",
+    "chat": "Rebi",
+    "history": "Geçmiş",
+    "me": "Ben",
+    "back": "Geri"
+  },
+  "mobileMe": {
+    "title": "Ben",
+    "groups": {
+      "account": "Hesabım",
+      "look": "Görünüm",
+      "more": "Daha fazla"
+    },
+    "account": {
+      "title": "Hesap ve gizlilik",
+      "hint": "Cilt profili, fotoğraflar, şifre, izinler"
+    },
+    "reanalyze": {
+      "title": "Yeniden analiz",
+      "hint": "Cildini yeniden değerlendir, rutinini güncelle"
+    },
+    "themes": {
+      "title": "Renk teması",
+      "hint": "Orman, Adaçayı, Pudra ve diğerleri"
+    },
+    "plus": {
+      "title": "Rebi Plus",
+      "hint": "Sınırsız sohbet ve premium temalar",
+      "active": "Rebi Plus aktif"
+    },
+    "plusBadge": "Plus",
+    "logout": "Çıkış yap",
+    "noName": "Rebi kullanıcısı",
+    "shelf": {
+      "hint": "Biten ürünlerini ve yenilerini takip et"
+    }
+  },
+  "mobileCommon": {
+    "loading": "Yükleniyor"
+  },
+  "mobileChat": {
+    "suggestionsTitle": "Bugün için önerilen sorular",
+    "suggestions": {
+      "uvHigh": "Bugün UV {{uv}}. Güneş kremimi ne sıklıkla yenilemeliyim?",
+      "uvMid": "Bugün UV {{uv}}. SPF'im yeterli mi?",
+      "cold": "Hava {{temp}}°C. Cildimi ve dudaklarımı soğuktan nasıl korurum?",
+      "hot": "Hava {{temp}}°C. Sıcakta rutinimi hafifletmeli miyim?",
+      "dry": "Hava çok kuru (nem %{{humidity}}). Nemlendirmeyi nasıl artırmalıyım?",
+      "makeupPending": "Bugün makyaj yaptım. Akşam nasıl temizlemeliyim?",
+      "makeupLight": "Makyajımı sadece mendil ya da suyla temizledim. Yeterli mi?",
+      "sweets": "Bugün şekerli şeyler yedim. Cildime etkisi olur mu?",
+      "dairy": "Bugün süt ürünleri tükettim. Cildime etkisi olur mu?",
+      "snacks": "Bugün abur cubur yedim. Cildim için ne yapmalıyım?",
+      "lowWater": "Bugün az su içtim. Cildime etkisi ne olur?",
+      "generic1": "Rutinimi nasıl daha iyi uygulayabilirim?",
+      "generic2": "Nem bariyeri nedir, nasıl güçlendirilir?",
+      "generic3": "Retinole nasıl başlamalıyım?"
+    },
+    "limit": {
+      "label": "Sohbet limiti",
+      "titleDay": "Günlük ücretsiz sohbet hakkın doldu",
+      "titleMonth": "Bu ayki sohbet hakkın doldu",
+      "bodyDay": "Hakkın yarın yenilenir. Bugün rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
+      "bodyMonth": "Hakkın ay başında yenilenir. O zamana kadar rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
+      "close": "Tamam",
+      "signIn": "Giriş yap",
+      "plusOpen": "Rebi Plus’ı aç",
+      "plusSwitch": "Plus’a geç",
+      "notNow": "Şimdilik kapat",
+      "bulletData": "Takip + check-in verisiyle daha tutarlı öneriler",
+      "bulletThemes": "Premium temalar ve yeni özellikler",
+      "signInNote": "Rutin tarafına geçmek istersen zaten kayıt/giriş gerekiyor."
+    },
+    "contextLabel": "Rebi bugünü biliyor",
+    "context": {
+      "weather": "UV {{uv}} · {{temp}}°C",
+      "routine": "Rutin {{done}}/{{total}}",
+      "routineDone": "Rutin tamam",
+      "water": "Su {{ml}}/{{target}} ml",
+      "makeupPending": "Makyaj temizlenmedi",
+      "makeupDone": "Makyaj temizlendi",
+      "shelf": "{{n}} ürün bitti"
+    },
+    "retry": "Tekrar dene",
+    "error": {
+      "offline": "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.",
+      "server": "Sunucu şu an yanıt vermiyor. Biraz sonra tekrar dene.",
+      "auth": "Oturum süren dolmuş olabilir. Çıkış yapıp tekrar giriş yapmayı dene.",
+      "generic": "Yanıt alınamadı. Tekrar dener misin?"
+    }
+  },
+  "mobileCheckin": {
+    "prefilled": "Bugünkü takip kayıtlarından {{n}} cevap dolduruldu. İstersen değiştir."
+  },
+  "mobileSubscribe": {
+    "unavailable": "Rebi Plus şu an uygulama içinden satın alınamıyor. Hesabında etkinleştirildiğinde burada görünür.",
+    "active": "Plus aktif",
+    "activeBody": "Hesabında Rebi Plus görünüyor. Teşekkürler.",
+    "included": "Neler dahil?",
+    "open": "Plus’ı aç",
+    "backToChat": "Sohbete dön",
+    "benefits": {
+      "chat": {
+        "title": "Sınırsız Rebi AI",
+        "body": "Günlük ücretsiz mesaj limiti kalkar; sohbet kesilmez."
+      },
+      "themes": {
+        "title": "Premium temalar",
+        "body": "Ayırt edici vurgu renkleri: Gün Batımı, Derin Su, Gece."
+      },
+      "early": {
+        "title": "Öncelikli yenilikler",
+        "body": "Yeni özellikler önce Plus’a gelir; ilk sen denersin."
+      },
+      "tracking": {
+        "title": "Daha derin takip",
+        "body": "Check-in akışı daha güçlü çalışır; rutinin daha iyi uyarlanır."
+      }
+    }
+  },
+  "mobileLanding": {
+    "chipUv": "UV 6",
+    "chipHumidity": "Nem %48",
+    "chipSpf": "SPF 50",
+    "chipActive": "Niasinamid",
+    "tagMorning": "Sabah rutini",
+    "tagMorningSub": "Tamamlandı",
+    "tagSpf": "SPF'ni yenile",
+    "tagSpfSub": "UV 6 · Nem %48",
+    "openApp": "Panele git",
+    "s1Title": "Cildini gerçekten tanı",
+    "s1Sub": "Fotoğraf, yaşam tarzın ve hava durumu tek bir analizde buluşur.",
+    "s2Title": "Bilimle kurulan rutin",
+    "s2Sub": "Marka değil, etken madde odaklı sabah ve akşam adımları.",
+    "s3Title": "Sana göre şekillenir",
+    "s3Sub": "Günlük check-in ve hava durumuna göre rutinin cildine uyum sağlar."
+  },
+  "mobileAuth": {
+    "strengthWeak": "Zayıf",
+    "strengthFair": "Orta",
+    "strengthStrong": "Güçlü",
+    "strengthHint": "En az 6 karakter. Harf, rakam ve sembol karıştır.",
+    "trust": "Verilerin KVKK kapsamında korunur.",
+    "showPassword": "Parolayı göster",
+    "hidePassword": "Parolayı gizle"
+  },
+  "mobileShelf": {
+    "title": "Rafım",
+    "subtitle": "Bitirdiğin ürünler, yenisini alana kadar burada bekler.",
+    "emptyTitle": "Rafında biten ürün yok",
+    "emptyBody": "Bir ürün bittiğinde Bugün ekranındaki \"Ürün bitti\" ile işaretle. Yenisini alana kadar rutininde soluk görünür ve ilerlemene sayılmaz.",
+    "age": {
+      "today": "Bugün bitti",
+      "yesterday": "Dün bitti",
+      "days": "{{n}} gün önce bitti"
+    },
+    "restocked": "Aldım",
+    "alternative": "Yerine ne kullanabilirim?",
+    "alternativePrompt": "\"{{product}}\" ürünüm bitti. Yerine ne kullanabilirim? Cildime ve rutinime uygun alternatifleri söyler misin?",
+    "hint": "Bitti işaretli ürünler rutininde soluk görünür ve adım sayına dahil edilmez. Yenisini aldığında \"Aldım\" de.",
+    "countHint": "{{n}} ürün bitti",
+    "emptyHint": "Biten ürünlerini takip et",
+    "loadFailed": "Rafın yüklenemedi. Bağlantını kontrol et.",
+    "retry": "Tekrar dene",
+    "pending": "{{count}} kayıt gönderilmeyi bekliyor"
+  },
+  "mobileRoutine": {
+    "askRebi": "Rebi'ye sor",
+    "askPrompt": "Rutinimdeki \"{{item}}\" adımını neden kullanıyorum ve nasıl uygulamalıyım? Cildime uygun alternatifleri de söyler misin?",
+    "comboHint": "Tek üründe hepsi şart değil: bu satırı hedef içerik örneği gibi düşün; hepsini tek üründe bulamazsan benzerlerinden birini seçebilirsin.",
+    "stepCount": "{{n}} adım",
+    "humidity": "nem %{{value}}",
+    "weeklyDays": "Bu maddeyi şu günlerde uygula: {{days}}",
+    "everyDayCount": "{{n}} öneri",
+    "ingredientCount": "{{n}} madde",
+    "progressPhoto": "İlerleme takibi",
+    "tips": {
+      "water": {
+        "title": "Su",
+        "body": "Günde en az 2 L su iç. Cildin nemine doğrudan etki eder."
+      },
+      "sleep": {
+        "title": "Uyku",
+        "body": "7–8 saat uyku hedefle. Cilt gece kendini onarır."
+      }
+    }
+  },
+  "mobileLocation": {
+    "promptTitle": "Hava durumunu bulunduğun yere göre göster",
+    "promptBody": "Güneş kremi, nemlendirici ve dudak balsamı kararları bulunduğun yerin gerçek havasına göre verilir. Konumun yalnızca yaklaşık (~1 km) olarak kullanılır.",
+    "promptEnable": "Konumu aç",
+    "promptLater": "Şimdi değil"
+  }
+}

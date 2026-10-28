@@ -1,0 +1,777 @@
+{
+  "mobileToday": {
+    "title": "Today",
+    "now": "Right now",
+    "later": "Coming up",
+    "nothingNow": "Nothing needs your attention right now.",
+    "loadFailed": "Couldn't load today's plan. Check your connection.",
+    "queuedHint": "Saved. It will be sent when you're back online.",
+    "pending": "{{count}} entries waiting to be sent",
+    "pendingRetry": "Try now",
+    "retry": "Try again",
+    "waterTitle": "Water",
+    "waterProgress": "{{ml}} / {{target}} ml",
+    "waterGoalReached": "Daily water goal reached",
+    "morningDone": "Morning routine done",
+    "eveningDone": "Evening routine done",
+    "makeupUsed": "Makeup worn",
+    "makeupRemoved": "Makeup removed",
+    "spfRefreshed": "SPF reapplied {{n}}×",
+    "checkinDoneToday": "Done for today",
+    "actions": {
+      "done": "Done",
+      "yes": "Yes, I did",
+      "no": "No",
+      "removed": "Removed it",
+      "water250": "+250 ml",
+      "water500": "+500 ml",
+      "junkYes": "Yes, I ate some",
+      "junkNo": "No",
+      "open": "Go to check-in",
+      "waterMore": "More…",
+      "change": "Change",
+      "edit": "Edit",
+      "openShelf": "Open my shelf"
+    },
+    "advice": {
+      "title": "For today's weather",
+      "weatherLine": "{{temp}}°C · UV {{uv}} · humidity {{humidity}}%",
+      "locationHint": "Estimated weather values are in use. Allow location access to get advice based on live weather.",
+      "source": {
+        "live": "Live weather (your location)",
+        "tracking": "Weather logged today",
+        "profile": "Your last known location",
+        "default": "Estimated values"
+      }
+    },
+    "quick": {
+      "makeup": "I wore makeup",
+      "makeupRemoved": "I removed my makeup",
+      "junk": "I had junk food"
+    },
+    "productFinished": "Product finished",
+    "productFinishedLogged": "Marked as finished",
+    "reminders": {
+      "routine_morning": {
+        "title": "Morning routine",
+        "body": "Do today's morning steps and tick them off when you're done."
+      },
+      "makeup_log": {
+        "title": "Did you wear makeup today?",
+        "body": "If you did, evening cleansing is added to your plan."
+      },
+      "water_intake": {
+        "title": "Time to drink water",
+        "body": "Daily goal {{target}} ml. Log as you drink."
+      },
+      "spf_refresh": {
+        "title": "Reapply sunscreen",
+        "body": "UV {{uv}}. If you're outside, reapply every 2 hours."
+      },
+      "lip_balm": {
+        "title": "Lip balm",
+        "body": "Cold or dry air dries out lips quickly."
+      },
+      "nutrition_log": {
+        "title": "Food log",
+        "body": "Did you have junk food or something sugary today?"
+      },
+      "makeup_removal": {
+        "title": "Remove makeup",
+        "body": "Makeup day: oil-based cleanser first, then a gel cleanser (double cleanse)."
+      },
+      "routine_evening": {
+        "title": "Evening routine",
+        "body": "Do your evening steps and tick them off when you're done."
+      },
+      "daily_checkin": {
+        "title": "Daily check-in",
+        "body": "How was your skin today? Your routine adapts to it."
+      },
+      "restock_check": {
+        "title": "Did you restock?",
+        "body": "A product ran out a few days ago. If you got a new one, mark it on your shelf."
+      }
+    },
+    "greet": {
+      "morning": "Good morning, {{name}}",
+      "afternoon": "Good afternoon, {{name}}",
+      "evening": "Good evening, {{name}}",
+      "night": "Good night, {{name}}"
+    },
+    "checklist": {
+      "title": "Today's routine",
+      "morning": "Morning",
+      "evening": "Evening",
+      "notes": "Notes for today"
+    },
+    "water": {
+      "next": "Next reminder {{time}}"
+    },
+    "makeup": {
+      "title": "Makeup",
+      "ask": "Did you wear makeup today?",
+      "usedPending": "Makeup day. Don't forget to remove it tonight.",
+      "notCleaned": "Marked as not removed tonight.",
+      "cleaned": "Makeup removed",
+      "cleanedWith": "Removed · {{method}}",
+      "none": "No makeup today",
+      "changeToUsed": "I wore makeup"
+    },
+    "cleansing": {
+      "double": {
+        "title": "Double cleanse",
+        "desc": "Oil-based cleanser, then a gel"
+      },
+      "cleanser": {
+        "title": "Cleanser",
+        "desc": "One step with a gel or foam"
+      },
+      "water": {
+        "title": "Water only",
+        "desc": "Rinsed with water"
+      },
+      "wipe": {
+        "title": "Micellar water / wipes",
+        "desc": "Cotton pad or cleansing wipe"
+      },
+      "none": {
+        "title": "Didn't remove it",
+        "desc": "I couldn't remove it tonight"
+      }
+    },
+    "nutrition": {
+      "title": "Nutrition",
+      "ask": "Did you eat junk food today?",
+      "clean": "No junk food",
+      "balanced": "You ate a balanced diet",
+      "choices": {
+        "snacks": {
+          "title": "Junk food",
+          "desc": "Chips, biscuits, packaged snacks"
+        },
+        "sweets": {
+          "title": "Sugary / sweets",
+          "desc": "Dessert, chocolate, sugary drinks"
+        },
+        "fried_food": {
+          "title": "Fried / fast food",
+          "desc": "Oily and deep-fried food"
+        },
+        "dairy": {
+          "title": "Dairy",
+          "desc": "Milk, yogurt, cheese, ice cream"
+        },
+        "balanced": {
+          "title": "I ate balanced",
+          "desc": "Vegetables, protein, minimally processed food"
+        }
+      }
+    },
+    "spf": {
+      "title": "Sunscreen",
+      "hint": "Reapply every 2 hours if you're outside.",
+      "hintHigh": "UV is high. Reapply every 2 hours if you're outside.",
+      "done": "Reapplied"
+    },
+    "bar": {
+      "mark": {
+        "morning": "Morning routine done",
+        "evening": "Evening routine done"
+      },
+      "done": {
+        "morning": "Morning routine complete",
+        "evening": "Evening routine complete"
+      }
+    },
+    "toast": {
+      "water": "+{{ml}} ml water added",
+      "waterFixed": "−{{ml}} ml corrected",
+      "undo": "Undo",
+      "undone": "Undone",
+      "failed": "Couldn't save. Try again.",
+      "blockDone": {
+        "morning": "Morning routine complete",
+        "evening": "Evening routine complete"
+      },
+      "blockAlreadyDone": "This routine is already complete.",
+      "reopen": "Reopen",
+      "makeupUsed": "Saved: makeup worn",
+      "makeupNone": "Saved: no makeup today",
+      "cleaned": "Makeup removal saved",
+      "notCleaned": "Saved as not removed",
+      "nutrition": "Nutrition saved",
+      "nutritionClean": "Saved: no junk food",
+      "spf": "Sunscreen reapplied",
+      "productsFinished": "{{n}} product(s) marked as finished",
+      "restocked": "Restocked: {{product}}"
+    },
+    "sheets": {
+      "cleansing": {
+        "title": "How did you remove your makeup?",
+        "subtitle": "We adapt your routine to what your skin needs tonight."
+      },
+      "nutrition": {
+        "title": "What did you eat?",
+        "subtitle": "Pick what you had today. You can choose more than one."
+      },
+      "water": {
+        "title": "Water log",
+        "add": "Quick add",
+        "fix": "Correct a wrong entry",
+        "customHint": "Other amount",
+        "addButton": "Add",
+        "invalid": "Enter an amount between 1 and {{max}} ml."
+      },
+      "products": {
+        "title": "Which product ran out?",
+        "subtitle": "Mark what you've finished; it waits on your shelf until you restock.",
+        "empty": "There are no skincare products in your routine to mark.",
+        "already": "Marked as finished",
+        "save": "Save as finished",
+        "saveCount": "Save as finished ({{n}})",
+        "restock": "Restocked",
+        "shelfLink": "Open my shelf"
+      },
+      "save": "Save",
+      "done": "Done"
+    },
+    "showFullPlan": "Show the whole week, details and lifestyle tips",
+    "quickPhoto": "Upload a photo (quick)",
+    "newAnalysis": "New analysis",
+    "settings": "Reminder settings",
+    "weatherPill": "{{temp}}° · UV {{uv}} · humidity {{humidity}}%",
+    "weatherPillEstimated": "estimated",
+    "decisions": {
+      "spf": {
+        "headline": "SPF {{spf}}",
+        "reason": {
+          "extreme": "UV is very high ({{uv}}). Apply generously after your moisturizer.",
+          "high": "UV is high ({{uv}}). Apply it as the last step of your morning routine.",
+          "moderate": "UV is moderate ({{uv}}). Apply it as the last step every day.",
+          "low": "UV is low, but most rays pass through clouds. Use it every day."
+        },
+        "refreshWindow": "UV peaks {{start}}–{{end}}; reapply every 2 hours if you're outside.",
+        "refreshAny": "Reapply every 2 hours if you're outside."
+      },
+      "moisture": {
+        "headline": {
+          "intense": "Rich moisturizing",
+          "barrier": "Barrier-repair cream",
+          "boost": "Extra hydration layer",
+          "light": "Light gel moisturizer",
+          "light_hot": "Light formula",
+          "standard": "Your usual moisturizer"
+        },
+        "reason": {
+          "intense": "The air is very dry (humidity {{humidity}}%). Use a serum and a ceramide cream together.",
+          "barrier": "It's very cold ({{temperature}}°C). A cream with ceramides and cholesterol protects your barrier.",
+          "boost": "Humidity is low ({{humidity}}%). Layer a serum under your moisturizer.",
+          "light": "Humidity is high ({{humidity}}%). Choose a water-based gel over a heavy cream.",
+          "light_hot": "It's very hot ({{temperature}}°C). Skip heavy products and carry thermal water.",
+          "standard": "Humidity is balanced ({{humidity}}%); your usual moisturizer is enough."
+        },
+        "nightMask": "Add an occlusive hydrating mask tonight."
+      },
+      "lip": {
+        "headline": {
+          "needed": "Lip balm",
+          "notNeeded": "No lip balm needed"
+        },
+        "reason": {
+          "cold": "It's {{temperature}}°C; cold dries lips quickly. Reapply during the day.",
+          "dry": "Humidity is {{humidity}}%. Dry air cracks lips quickly; reapply during the day.",
+          "both": "Cold and dry air ({{temperature}}°C, humidity {{humidity}}%). Protect your lips often.",
+          "none": "Today's weather is easy on your lips."
+        }
+      }
+    },
+    "hero": {
+      "title": {
+        "morning": "Morning routine",
+        "evening": "Evening routine"
+      },
+      "progress": "{{done}} / {{total}} steps",
+      "doneTitle": {
+        "morning": "Morning routine done",
+        "evening": "Evening routine done"
+      },
+      "doneBody": "Nicely done. You can look back at the steps if you like.",
+      "showSteps": "Show steps",
+      "hideSteps": "Hide steps",
+      "reopen": "Reopen",
+      "outBadge": "Finished",
+      "restock": "Restocked",
+      "outHint": "Doesn't count toward your routine"
+    },
+    "flow": {
+      "title": "Your day",
+      "semantics": "Your day, wake {{wake}}, sleep {{sleep}}, now {{now}}",
+      "next": "Next: {{time}} · {{title}}",
+      "nowMarker": "now",
+      "allDone": "No more reminders for today.",
+      "legend": {
+        "routine": "Routine",
+        "water": "Water",
+        "spf": "Sunscreen",
+        "makeup": "Makeup",
+        "nutrition": "Nutrition",
+        "lip": "Lips",
+        "checkin": "Check-in"
+      }
+    },
+    "more": {
+      "title": "More"
+    },
+    "dayLog": {
+      "title": "Through the day"
+    }
+  },
+  "mobileNotifications": {
+    "promptTitle": "Get reminders as notifications",
+    "promptBody": "We can send routine, water, sunscreen and check-in reminders to your phone. You can turn them off any time.",
+    "promptEnable": "Turn on notifications",
+    "promptLater": "Not now",
+    "title": "Reminder notifications",
+    "description": "Morning / evening routine, water, sunscreen and check-in reminders.",
+    "blocked": "Notification permission is off. Allow notifications for Rebi in your phone settings.",
+    "modeLocal": "Reminders are scheduled on this phone.",
+    "modePush": "Reminders are sent from the server.",
+    "channelName": "Reminders",
+    "channelDescription": "Routine, water, sunscreen and check-in reminders",
+    "test": {
+      "notificationTitle": "Test notification",
+      "notificationBody": "Notifications work on this phone. This is how your reminders will arrive."
+    },
+    "delivery": {
+      "title": "Notifications not showing up?",
+      "body": "You can check that your reminders really arrive on this phone.",
+      "test": "Send a test notification",
+      "testScheduled": "A notification will arrive within a minute. Close the app and wait; if it doesn't show, check the battery setting below.",
+      "testBlocked": "Notification permission is off. First allow notifications for Rebi in your phone settings.",
+      "testFailed": "Couldn't schedule the test notification. Try again in a moment.",
+      "batteryTitle": "Battery saving can block notifications",
+      "batteryBody": "Some phones (Xiaomi, Huawei, Oppo, Vivo, Samsung) stop closed apps. In Phone Settings → Apps → Rebi → Battery, choose \"Unrestricted\" or \"Don't optimize\"."
+    }
+  },
+  "mobileProfile": {
+    "title": "My skin profile",
+    "intro": "Weather-based advice and chat are personalised with this. Fields you leave empty stay unchanged.",
+    "skinType": "Skin type",
+    "age": "Age",
+    "agePlaceholder": "13–100",
+    "gender": "Gender",
+    "city": "City",
+    "cityPlaceholder": "e.g. Istanbul",
+    "save": "Save profile",
+    "saved": "Your profile is updated.",
+    "nothingChanged": "Nothing changed.",
+    "saveFailed": "Couldn't save your profile. Check your connection and try again.",
+    "loadFailed": "Couldn't load your profile.",
+    "retry": "Try again",
+    "ageInvalid": "Age must be between 13 and 100.",
+    "notSynced": "Profiles aren't stored on the server for this account; changes won't be saved.",
+    "historyLink": "View my history"
+  },
+  "mobileHistory": {
+    "open": "My history",
+    "title": "My history",
+    "subtitle": "Your daily logs and check-ins",
+    "range7": "7 days",
+    "range30": "30 days",
+    "range90": "90 days",
+    "empty": "Nothing logged in this range. Water, makeup and check-ins show up here as you log them.",
+    "loadFailed": "Couldn't load your history. Check your connection.",
+    "retry": "Try again",
+    "notSynced": "Logs aren't stored on the server for this account; history may look empty.",
+    "summaryTitle": "Summary",
+    "summary": {
+      "recordedDays": "{{n}} days logged",
+      "checkins": "{{n}} check-ins",
+      "fullRoutine": "{{n}} days with morning + evening routine",
+      "avgWater": "Avg. water {{ml}} ml",
+      "avgSleep": "Avg. sleep {{h}} h",
+      "avgRisk": "Avg. risk {{n}}"
+    },
+    "chips": {
+      "water": "{{ml}} ml water",
+      "spf": "SPF ×{{n}}",
+      "morning": "Morning routine",
+      "evening": "Evening routine",
+      "makeupUsed": "Makeup",
+      "makeupRemoved": "Makeup removed",
+      "junk": "Junk food",
+      "products": "{{n}} products finished"
+    },
+    "checkin": {
+      "title": "Check-in",
+      "sleep": "Sleep {{h}} h",
+      "stress": "Stress {{n}}/5",
+      "risk": "Risk {{n}}"
+    },
+    "feelings": {
+      "iyi": "Good",
+      "kuru": "Dry",
+      "yagli": "Oily",
+      "kirik": "Sensitive",
+      "irritasyon": "Irritated"
+    },
+    "assessmentsTitle": "Recent analyses",
+    "severity": "Severity {{n}}",
+    "trends": {
+      "title": "Trends",
+      "avg": "Avg. {{v}}",
+      "water": "Water",
+      "sleep": "Sleep",
+      "stress": "Stress",
+      "routine": "Routine",
+      "weeklyNote": "Each bar is a weekly average.",
+      "waterTarget": "Dashed line: daily goal ({{ml}} ml)",
+      "sleepBand": "Green band: recommended 7–9 hours",
+      "stressHint": "1 is low, 5 is high stress",
+      "routineHint": "Dark: morning + evening · medium: one · grey: skipped · faint: no record",
+      "routineRate": "{{n}}% done",
+      "noData": "No records in this range.",
+      "chartLabel": "{{name}} chart, {{n}} recorded points, average {{avg}}.",
+      "routineLabel": "Routine chart, {{n}} recorded points, average {{avg}}% done.",
+      "hoursUnit": "h"
+    },
+    "week": {
+      "title": "This week",
+      "subtitle": "Last 7 days; arrows show the change from the previous 7 days.",
+      "subtitleNoPrev": "Last 7 days. No records for the week before.",
+      "routine": "Routine",
+      "routineValue": "{{n}}/7 days",
+      "water": "Water",
+      "waterValue": "{{ml}} ml / day",
+      "sleep": "Sleep",
+      "sleepValue": "{{h}} h / day",
+      "stress": "Stress",
+      "stressValue": "{{n}}/5",
+      "spf": "Sunscreen",
+      "spfValue": "{{n}} times",
+      "checkins": "Check-ins",
+      "checkinsValue": "{{n}} days",
+      "junk": "Junk food eaten",
+      "junkValue": "{{n}} days",
+      "up": "increased",
+      "down": "decreased",
+      "waterGoal": "Water goal",
+      "waterGoalValue": "{{n}}/7 days ({{ml}} ml)",
+      "makeup": "Makeup",
+      "makeupValue": "{{n}} days · removed on {{removed}}",
+      "makeupValueAllRemoved": "{{n}} days · always removed"
+    }
+  },
+  "mobileReminders": {
+    "title": "Reminders",
+    "subtitle": "Set the times around your day and turn off the ones you don't want.",
+    "open": "Set reminder times",
+    "openHint": "Reminder windows based on when you wake up and go to sleep",
+    "openFromToday": "Reminder settings",
+    "loadFailed": "Couldn't load settings. Check your connection.",
+    "retry": "Try again",
+    "notSynced": "Settings aren't saved to the server for this account; they reset when the app closes.",
+    "day": {
+      "title": "Your day",
+      "hint": "Reminders are set around when you wake up and go to sleep.",
+      "wake": "Wake up",
+      "sleep": "Sleep"
+    },
+    "water": {
+      "title": "Water reminder",
+      "hint": "Reminders stop once you reach your goal.",
+      "every": {
+        "60": "Every hour",
+        "90": "Every 1.5 hours",
+        "120": "Every 2 hours",
+        "180": "Every 3 hours"
+      }
+    },
+    "categories": {
+      "title": "Which reminders do you want?",
+      "routine": {
+        "title": "Morning and evening routine",
+        "desc": "Reminds you to do your routine."
+      },
+      "water": {
+        "title": "Drinking water",
+        "desc": "Reminds you at intervals through the day."
+      },
+      "makeup": {
+        "title": "Makeup",
+        "desc": "The makeup question and the evening removal reminder."
+      },
+      "nutrition": {
+        "title": "Nutrition log",
+        "desc": "Asks you to log what you ate in the evening."
+      },
+      "spf": {
+        "title": "Sunscreen",
+        "desc": "Reminds you to reapply when UV is high."
+      },
+      "lip_balm": {
+        "title": "Lip balm",
+        "desc": "Reminds you when it's cold or dry out."
+      },
+      "checkin": {
+        "title": "Daily check-in",
+        "desc": "Asks how your skin was in the evening."
+      },
+      "restock": {
+        "title": "Restock check",
+        "desc": "Asks 3 days after a product runs out whether you've restocked."
+      }
+    },
+    "window": "{{start}} – {{end}}",
+    "windowEvery": "{{start}} – {{end}}, {{every}}",
+    "save": "Save",
+    "saved": "Saved",
+    "saveFailed": "Couldn't save. Check your connection and try again.",
+    "errors": {
+      "span": "There must be at least 9 hours between waking up and going to sleep. Wake-up can be 04:00 at the earliest and sleep 23:59 at the latest."
+    },
+    "waterTarget": {
+      "title": "Daily water goal",
+      "hint": "Your ring and reminders follow this goal.",
+      "choice": "{{liters}} L"
+    },
+    "windowSheet": {
+      "title": "Set the times",
+      "hint": "Choose the time range this reminder can arrive in. It has to fall between your wake and sleep times.",
+      "start": "From",
+      "end": "To",
+      "reset": "Back to default",
+      "done": "Done",
+      "custom": "Your setting",
+      "spfNote": "If you don't pick your own times, the sunscreen reminder follows the day's UV hours.",
+      "errors": {
+        "short": "The end must be at least {{minutes}} minutes after the start.",
+        "outsideDay": "The range must fall between your wake ({{wake}}) and sleep ({{sleep}}) times."
+      },
+      "ids": {
+        "routine_morning": "Morning routine",
+        "routine_evening": "Evening routine",
+        "water_intake": "Drinking water",
+        "makeup_log": "Makeup question",
+        "makeup_removal": "Makeup removal",
+        "nutrition_log": "Nutrition log",
+        "spf_refresh": "Sunscreen",
+        "lip_balm": "Lip balm",
+        "daily_checkin": "Daily check-in",
+        "restock_check": "Restock check"
+      }
+    },
+    "quiet": {
+      "title": "Quiet hours",
+      "hint": "No notifications arrive in this range. It can cross midnight too (e.g. 22:00 – 07:00).",
+      "from": "From",
+      "to": "To",
+      "errors": {
+        "same": "The start and end can't be the same."
+      }
+    }
+  },
+  "mobileAppearance": {
+    "title": "Appearance",
+    "hint": "Dark mode is easier on the eyes and saves battery.",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "mobileNav": {
+    "today": "Today",
+    "routine": "Routine",
+    "chat": "Rebi",
+    "history": "History",
+    "me": "Me",
+    "back": "Back"
+  },
+  "mobileMe": {
+    "title": "Me",
+    "groups": {
+      "account": "My account",
+      "look": "Appearance",
+      "more": "More"
+    },
+    "account": {
+      "title": "Account and privacy",
+      "hint": "Skin profile, photos, password, permissions"
+    },
+    "reanalyze": {
+      "title": "Re-analyze",
+      "hint": "Reassess your skin and update your routine"
+    },
+    "themes": {
+      "title": "Color theme",
+      "hint": "Forest, Sage, Blush and more"
+    },
+    "plus": {
+      "title": "Rebi Plus",
+      "hint": "Unlimited chat and premium themes",
+      "active": "Rebi Plus is active"
+    },
+    "plusBadge": "Plus",
+    "logout": "Sign out",
+    "noName": "Rebi user",
+    "shelf": {
+      "hint": "Keep track of finished products and restocks"
+    }
+  },
+  "mobileCommon": {
+    "loading": "Loading"
+  },
+  "mobileChat": {
+    "suggestionsTitle": "Suggested questions for today",
+    "suggestions": {
+      "uvHigh": "UV is {{uv}} today. How often should I reapply sunscreen?",
+      "uvMid": "UV is {{uv}} today. Is my SPF enough?",
+      "cold": "It's {{temp}}°C. How do I protect my skin and lips from the cold?",
+      "hot": "It's {{temp}}°C. Should I lighten my routine in the heat?",
+      "dry": "The air is very dry ({{humidity}}% humidity). How do I boost hydration?",
+      "makeupPending": "I wore makeup today. How should I remove it tonight?",
+      "makeupLight": "I only removed my makeup with a wipe or water. Is that enough?",
+      "sweets": "I had sweets today. Will it affect my skin?",
+      "dairy": "I had dairy today. Will it affect my skin?",
+      "snacks": "I ate junk food today. What should I do for my skin?",
+      "lowWater": "I drank little water today. How does it affect my skin?",
+      "generic1": "How can I follow my routine better?",
+      "generic2": "What is the skin barrier and how do I strengthen it?",
+      "generic3": "How should I start using retinol?"
+    },
+    "limit": {
+      "label": "Chat limit",
+      "titleDay": "You've used today's free chats",
+      "titleMonth": "You've used this month's chats",
+      "bodyDay": "Your allowance renews tomorrow. You can keep using your routine, tracking and check-in today.",
+      "bodyMonth": "Your allowance renews at the start of the month. Until then you can keep using your routine, tracking and check-in.",
+      "close": "OK",
+      "signIn": "Sign in",
+      "plusOpen": "Open Rebi Plus",
+      "plusSwitch": "Go Plus",
+      "notNow": "Close for now",
+      "bulletData": "More consistent advice from your tracking and check-ins",
+      "bulletThemes": "Premium themes and new features",
+      "signInNote": "You'll need an account to use the routine side anyway."
+    },
+    "contextLabel": "Rebi knows your day",
+    "context": {
+      "weather": "UV {{uv}} · {{temp}}°C",
+      "routine": "Routine {{done}}/{{total}}",
+      "routineDone": "Routine done",
+      "water": "Water {{ml}}/{{target}} ml",
+      "makeupPending": "Makeup not removed",
+      "makeupDone": "Makeup removed",
+      "shelf": "{{n}} finished"
+    },
+    "retry": "Try again",
+    "error": {
+      "offline": "Couldn't connect. Check your internet and try again.",
+      "server": "The server isn't responding right now. Try again in a moment.",
+      "auth": "Your session may have expired. Try signing out and back in.",
+      "generic": "Couldn't get a reply. Want to try again?"
+    }
+  },
+  "mobileCheckin": {
+    "prefilled": "{{n}} answers were filled in from today's tracking. Change them if you like."
+  },
+  "mobileSubscribe": {
+    "unavailable": "Rebi Plus can't be purchased in the app right now. It will show up here once it's active on your account.",
+    "active": "Plus is active",
+    "activeBody": "Rebi Plus shows on your account. Thank you.",
+    "included": "What's included?",
+    "open": "Open Plus",
+    "backToChat": "Back to chat",
+    "benefits": {
+      "chat": {
+        "title": "Unlimited Rebi AI",
+        "body": "The daily free message limit goes away; the conversation never stops."
+      },
+      "themes": {
+        "title": "Premium themes",
+        "body": "Distinctive accent colors: Sunset, Deep Water, Night."
+      },
+      "early": {
+        "title": "Early access",
+        "body": "New features reach Plus first; you try them before anyone."
+      },
+      "tracking": {
+        "title": "Deeper tracking",
+        "body": "The check-in flow works harder and adapts your routine better."
+      }
+    }
+  },
+  "mobileLanding": {
+    "chipUv": "UV 6",
+    "chipHumidity": "Humidity 48%",
+    "chipSpf": "SPF 50",
+    "chipActive": "Niacinamide",
+    "tagMorning": "Morning routine",
+    "tagMorningSub": "Completed",
+    "tagSpf": "Reapply SPF",
+    "tagSpfSub": "UV 6 · Humidity 48%",
+    "openApp": "Open dashboard",
+    "s1Title": "Truly know your skin",
+    "s1Sub": "Your photo, lifestyle and local weather in a single analysis.",
+    "s2Title": "Science-backed routine",
+    "s2Sub": "Morning and evening steps built on active ingredients, not brands.",
+    "s3Title": "Adapts to you daily",
+    "s3Sub": "Daily check-ins and weather shape your routine around your skin."
+  },
+  "mobileAuth": {
+    "strengthWeak": "Weak",
+    "strengthFair": "Fair",
+    "strengthStrong": "Strong",
+    "strengthHint": "At least 6 characters. Mix letters, numbers and symbols.",
+    "trust": "Your data is protected under KVKK.",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password"
+  },
+  "mobileShelf": {
+    "title": "My shelf",
+    "subtitle": "Products you've finished wait here until you restock.",
+    "emptyTitle": "Nothing has run out",
+    "emptyBody": "When a product runs out, mark it with \"Product finished\" on Today. It shows faded in your routine and doesn't count toward your progress until you restock.",
+    "age": {
+      "today": "Finished today",
+      "yesterday": "Finished yesterday",
+      "days": "Finished {{n}} days ago"
+    },
+    "restocked": "Restocked",
+    "alternative": "What can I use instead?",
+    "alternativePrompt": "I've run out of \"{{product}}\". What can I use instead? Can you suggest alternatives that suit my skin and routine?",
+    "hint": "Products marked finished show faded in your routine and don't count toward your steps. Tap \"Restocked\" once you have a new one.",
+    "countHint": "{{n}} finished",
+    "emptyHint": "Keep track of finished products",
+    "loadFailed": "Couldn't load your shelf. Check your connection.",
+    "retry": "Try again",
+    "pending": "{{count}} entries waiting to be sent"
+  },
+  "mobileRoutine": {
+    "askRebi": "Ask Rebi",
+    "askPrompt": "Why am I using \"{{item}}\" in my routine and how should I apply it? Can you also suggest alternatives that suit my skin?",
+    "comboHint": "You don't need everything in one product: treat this line as example target ingredients; if you can't find them all together, pick one of the similar ones.",
+    "stepCount": "{{n}} steps",
+    "humidity": "humidity {{value}}%",
+    "weeklyDays": "Use this on: {{days}}",
+    "everyDayCount": "{{n}} tips",
+    "ingredientCount": "{{n}} ingredients",
+    "progressPhoto": "Progress tracking",
+    "tips": {
+      "water": {
+        "title": "Water",
+        "body": "Drink at least 2 L a day. It directly affects your skin's hydration."
+      },
+      "sleep": {
+        "title": "Sleep",
+        "body": "Aim for 7–8 hours. Your skin repairs itself at night."
+      }
+    }
+  },
+  "mobileLocation": {
+    "promptTitle": "Show the weather for where you are",
+    "promptBody": "Sunscreen, moisturizer and lip balm advice follows the real weather at your location. Your location is only used approximately (~1 km).",
+    "promptEnable": "Turn on location",
+    "promptLater": "Not now"
+  }
+}

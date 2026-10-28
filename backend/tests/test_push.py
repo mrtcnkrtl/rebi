@@ -113,7 +113,7 @@ def test_device_registration_upserts_on_token(monkeypatch, client, headers):
     )
 
     assert r.status_code == 200, r.text
-    assert r.json() == {"ok": True, "push_configured": True, "synced": True}
+    assert r.json() == {"ok": True, "push_configured": True, "synced": True, "dispatch_alive": False}
     devices = db.tables["device_tokens"]
     assert devices.last_conflict == "token"
     written = devices.upserted[-1]
@@ -224,7 +224,7 @@ def test_dispatch_sends_due_reminder_once_per_day(monkeypatch, client):
     # Tekrar göndermeyi engelleyen şey veritabanındaki unique kısıttır.
     db.tables["push_sends"].unique_on = ("user_id", "reminder_id", "log_date", "slot")
     # Yerel saat 09:05 → su hatırlatıcısının 09:00 penceresi.
-    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol: [
+    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol, **_: [
         {
             "id": "water_intake",
             "title": "Su içme zamanı",
@@ -248,6 +248,113 @@ def test_dispatch_sends_due_reminder_once_per_day(monkeypatch, client):
     assert second.json()["notifications_sent"] == 0
     assert len(sender.calls) == 1
     assert len(db.tables["push_sends"].rows) == 1
+
+
+_WATER_DUE = {
+    "id": "water_intake",
+    "title": "Su içme zamanı",
+    "body": "İçtikçe kaydet.",
+    "log_event": "water_intake",
+    "slot": "09:00",
+}
+
+
+def _one_device(monkeypatch, sender, **extra_tables):
+    _enable_push(monkeypatch, sender)
+    db = _db(
+        monkeypatch,
+        device_tokens=[{
+            "user_id": USER_ID,
+            "token": "fcm-1",
+            "platform": "android",
+            "utc_offset_minutes": 0,
+            "push_enabled": True,
+            "last_seen_at": "2026-10-04T10:00:00+00:00",
+        }],
+        push_sends=[],
+        **extra_tables,
+    )
+    db.tables["push_sends"].unique_on = ("user_id", "reminder_id", "log_date", "slot")
+    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol, **_: [dict(_WATER_DUE)])
+    return db
+
+
+def test_failed_delivery_releases_the_slot_so_the_next_run_retries(monkeypatch, client):
+    # FCM'e ulaşılamadı: sent=0, geçersiz token da yok.
+    sender = _Sender(sent=0)
+    db = _one_device(monkeypatch, sender)
+
+    first = _dispatch(client).json()
+
+    assert first["reminders_sent"] == 0
+    assert first["deliveries_failed"] == 1
+    assert db.tables["push_sends"].rows == []  # rezerv geri alındı
+
+    # FCM düzeldi: aynı hatırlatıcı bir sonraki turda gider ve bir daha gitmez.
+    sender._sent = 1
+    second = _dispatch(client).json()
+    third = _dispatch(client).json()
+
+    assert second["reminders_sent"] == 1 and second["deliveries_failed"] == 0
+    assert third["notifications_sent"] == 0
+    assert len(sender.calls) == 2
+    assert len(db.tables["push_sends"].rows) == 1
+
+
+def test_ledger_write_error_is_not_mistaken_for_an_already_sent_reminder(monkeypatch, client, caplog):
+    sender = _Sender()
+    db = _one_device(monkeypatch, sender)
+
+    def broken_insert(_payload):
+        raise RuntimeError("connection reset")
+
+    original_table = db.table
+
+    def table(name):
+        t = original_table(name)
+        if name == "push_sends":
+            t.insert = broken_insert
+        return t
+
+    db.table = table
+
+    with caplog.at_level("ERROR"):
+        body = _dispatch(client).json()
+
+    assert sender.calls == []  # tekrarı önleyemediğimiz için gönderilmez
+    assert body["reminders_sent"] == 0
+    assert any("Gönderim defterine yazılamadı" in r.message for r in caplog.records)
+
+
+def test_a_duplicate_slot_is_still_skipped_quietly(monkeypatch, client, caplog):
+    sender = _Sender()
+    db = _one_device(monkeypatch, sender)
+    today = datetime.now(timezone.utc).date().isoformat()
+    db.tables["push_sends"].rows.append(
+        {"user_id": USER_ID, "reminder_id": "water_intake", "log_date": today, "slot": "09:00"}
+    )
+
+    with caplog.at_level("ERROR"):
+        body = _dispatch(client).json()
+
+    assert sender.calls == []
+    assert body["deliveries_failed"] == 0
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+def test_health_reports_the_last_dispatch_run(monkeypatch, client):
+    main._PUSH_LAST_RUN.clear()
+    assert client.get("/health").json()["push_dispatch"] is None
+
+    sender = _Sender()
+    _one_device(monkeypatch, sender)
+    _dispatch(client)
+
+    last = client.get("/health").json()["push_dispatch"]
+    assert last["reminders_sent"] == 1
+    assert last["users_considered"] == 1
+    assert last["at"]
+    main._PUSH_LAST_RUN.clear()
 
 
 def _offset_for_local_time(hhmm: str) -> int:
@@ -296,7 +403,7 @@ def test_dispatch_removes_invalid_device_tokens(monkeypatch, client):
             "last_seen_at": "2026-10-04T10:00:00+00:00",
         },
     ])
-    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol: [
+    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol, **_: [
         {"id": "daily_checkin", "title": "Check-in", "body": "Cildin nasıldı?", "slot": "21:00"}
     ])
 

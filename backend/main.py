@@ -15,20 +15,38 @@ from typing import Optional, Literal
 import os
 import re
 import secrets
+import time
 import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
-from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather
+from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather, fetch_weather_live
 from today_plan import (
+    CATEGORY_NAMES,
+    DEFAULT_REMINDER_SETTINGS,
+    EARLIEST_WAKE_MINUTES,
+    LATEST_SLEEP_MINUTES,
+    MIN_AWAKE_MINUTES,
+    MIN_WINDOW_MINUTES,
     REMINDER_ACTIONS,
+    WATER_INTERVAL_CHOICES,
+    WATER_TARGET_CHOICES,
+    WINDOW_IDS,
     build_environment_advice,
     build_reminders,
+    build_weather_decisions,
+    day_span_is_valid,
     due_reminders,
+    normalize_reminder_settings,
+    format_hhmm,
+    parse_hhmm,
     reminder_open_path,
+    reminder_windows,
     resolve_reminder_action,
 )
 from push_service import push_configured, send_push
+from chat_context import build_today_summary
+from shelf import SHELF_EVENT_TYPES, SHELF_LOOKBACK_DAYS, derive_products_out
 from flow_engine import (
     run_flow,
     adapt_existing_routine,
@@ -214,17 +232,27 @@ def _utc_now_iso() -> str:
 def _safe_date_from_timestamp(ts: Optional[str]) -> str:
     """
     Basit ve sorunsuz: timestamp parse edilemezse bugüne düş.
-    Date key: YYYY-MM-DD (UTC).
+    Date key: YYYY-MM-DD. Zaman damgası saat farkı taşıyorsa (mobil: `+03:00`) olayın
+    kendi yerel günü kullanılır; böylece 00:00–03:00 arası kayıtlar önceki güne düşmez.
+    `Z` ya da farksız damga UTC günüdür.
     """
     if not ts:
         return str(date.today())
     try:
-        dt = datetime.fromisoformat(str(ts).replace("Z", "+00:00"))
-        if not dt.tzinfo:
-            dt = dt.replace(tzinfo=timezone.utc)
-        return dt.astimezone(timezone.utc).date().isoformat()
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).date().isoformat()
     except Exception:
         return str(date.today())
+
+
+def _local_today(utc_offset_minutes: Optional[int] = None) -> date:
+    """
+    Kullanıcının bugünü. İstemci `utc_offset_minutes` gönderirse onun yerel günü,
+    göndermezse sunucu günü (web davranışı).
+    """
+    if utc_offset_minutes is None:
+        return date.today()
+    offset = max(-840, min(840, int(utc_offset_minutes)))
+    return (datetime.now(timezone.utc) + timedelta(minutes=offset)).date()
 
 
 # Supabase yokken (veya tablo yoksa) geliştirme için bellek içi depolama
@@ -241,6 +269,50 @@ def _mem_append_event(user_id: str, log_date: str, event: dict) -> None:
 
 _MAX_PRODUCTS_FINISHED = 20
 
+# Supabase yokken (ya da demo kullanıcıda) hatırlatıcı ayarları bellekte tutulur.
+_MEM_REMINDER_SETTINGS: dict[str, dict] = {}
+
+
+def _load_reminder_settings(supabase, user_id: str) -> dict:
+    """Kullanıcının hatırlatıcı ayarları; kayıt yoksa ya da okunamazsa varsayılan."""
+    if should_use_supabase_db(supabase, user_id):
+        try:
+            rows = (
+                supabase.table("reminder_settings")
+                .select("settings")
+                .eq("user_id", user_id)
+                .limit(1)
+                .execute()
+            ).data or []
+            return normalize_reminder_settings(rows[0].get("settings") if rows else None)
+        except Exception as e:
+            log.error("reminder_settings okunamadı (varsayılan kullanılır): %s", type(e).__name__)
+            return normalize_reminder_settings(None)
+    return normalize_reminder_settings(_MEM_REMINDER_SETTINGS.get(user_id))
+
+
+def _load_reminder_settings_bulk(supabase, user_ids: list[str]) -> dict[str, dict]:
+    """Push dağıtımı için birden çok kullanıcının ayarı tek sorguda; kayıtsızlar varsayılan alır."""
+    stored: dict[str, dict] = {}
+    if supabase and user_ids:
+        try:
+            rows = (
+                supabase.table("reminder_settings")
+                .select("user_id,settings")
+                .in_("user_id", user_ids)
+                .execute()
+            ).data or []
+            stored = {str(r.get("user_id")): r.get("settings") for r in rows}
+        except Exception as e:
+            log.error("reminder_settings toplu okunamadı (varsayılan kullanılır): %s", type(e).__name__)
+    return {uid: normalize_reminder_settings(stored.get(uid)) for uid in user_ids}
+
+# Tek bir su kaydının sınırı; negatif değer yanlış girişi düzeltir (ör. -250).
+_MAX_WATER_EVENT_ML = 5000
+
+# Rutin blokları: adım işaretleri bu iki gruba ayrı yazılır.
+_ROUTINE_BLOCKS = ("morning", "evening")
+
 # Kabul edilen makyaj temizleme yöntemleri; bilinmeyen değer None olur.
 _MAKEUP_REMOVAL_METHODS = frozenset({"double", "cleanser", "water", "wipe", "none"})
 
@@ -256,6 +328,7 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
     routine_steps_done = 0
     routine_morning_done = False
     routine_evening_done = False
+    routine_steps: dict[str, set[int]] = {block: set() for block in _ROUTINE_BLOCKS}
     spf_refreshes = 0
     last_photo_meta = None
     checkin_feedback_events = 0
@@ -270,9 +343,11 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         payload = ev.get("payload") or {}
         if t == "water_intake":
             try:
-                water_ml_total += int(payload.get("ml", 0) or 0)
+                ml = int(payload.get("ml", 0) or 0)
             except Exception:
-                pass
+                ml = 0
+            ml = max(-_MAX_WATER_EVENT_ML, min(_MAX_WATER_EVENT_ML, ml))
+            water_ml_total = max(0, water_ml_total + ml)
         elif t == "nutrition":
             if isinstance(payload, dict):
                 nutrition = {**nutrition, **payload}
@@ -294,15 +369,27 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
             if isinstance(payload, dict):
                 last_weather = payload
         elif t == "routine_step":
-            if bool(payload.get("done")):
+            done = bool(payload.get("done"))
+            if done:
                 routine_steps_done += 1
+            # Hangi adım: `block` + `step_order`. Aynı adım için son olay geçerlidir (işaret kaldırılabilir).
+            block = str(payload.get("block") or "").strip().lower()
+            step = payload.get("step_order")
+            if block in routine_steps and isinstance(step, (int, float)) and not isinstance(step, bool):
+                if done:
+                    routine_steps[block].add(int(step))
+                else:
+                    routine_steps[block].discard(int(step))
         elif t == "routine_completed_block":
-            if bool(payload.get("morning")):
-                routine_steps_done += 1
-                routine_morning_done = True
-            if bool(payload.get("evening")):
-                routine_steps_done += 1
-                routine_evening_done = True
+            # Son olay geçerlidir: `{"morning": false}` bloğu yeniden açar (yanlış dokunuşu geri alma).
+            if "morning" in payload:
+                routine_morning_done = bool(payload.get("morning"))
+                if routine_morning_done:
+                    routine_steps_done += 1
+            if "evening" in payload:
+                routine_evening_done = bool(payload.get("evening"))
+                if routine_evening_done:
+                    routine_steps_done += 1
         elif t == "spf_refresh":
             spf_refreshes += 1
         elif t == "photo_meta":
@@ -347,6 +434,7 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         "routine_steps_done": routine_steps_done,
         "routine_morning_done": routine_morning_done,
         "routine_evening_done": routine_evening_done,
+        "routine_steps": {block: sorted(steps) for block, steps in routine_steps.items()},
         "spf_refreshes": spf_refreshes,
         "last_photo_meta": last_photo_meta,
         "checkin_feedback_events": checkin_feedback_events,
@@ -376,6 +464,46 @@ def _load_daily_events(supabase, user_id: str, log_date: str) -> list[dict]:
         except Exception as e:
             log.error("daily_events okuma hatası (fallback memory): %s", e)
     return _MEM_DAILY_EVENTS.get((user_id, log_date), [])
+
+
+def _load_shelf_events(supabase, user_id: str, today: date) -> list[dict]:
+    """Rafım için kullanıcının son bir yıllık ürün olayları (eskiden yeniye)."""
+    since = str(today - timedelta(days=SHELF_LOOKBACK_DAYS))
+    if should_use_supabase_db(supabase, user_id):
+        try:
+            r = (
+                supabase.table("daily_events")
+                .select("event_time,log_date,type,payload")
+                .eq("user_id", user_id)
+                .in_("type", list(SHELF_EVENT_TYPES))
+                .gte("log_date", since)
+                .order("event_time", desc=False)
+                .execute()
+            )
+            return r.data or []
+        except Exception as e:
+            log.error("Rafım olayları okunamadı (bellek yedeği): %s", type(e).__name__)
+    rows = [
+        {**event, "log_date": day}
+        for (uid, day), events in _MEM_DAILY_EVENTS.items()
+        if uid == user_id and day >= since
+        for event in events
+        if event.get("type") in SHELF_EVENT_TYPES
+    ]
+    return sorted(rows, key=lambda e: str(e.get("event_time") or ""))
+
+
+def _products_out(supabase, user_id: str, today: date) -> list[dict]:
+    """Bitti işaretlenip henüz yenisi alınmamış ürünler (en son biten üstte)."""
+    return derive_products_out(_load_shelf_events(supabase, user_id, today), today)
+
+
+def _restock_window_open(settings: dict, local_now: datetime) -> bool:
+    """Push dağıtımında Rafım sorgusu yalnızca "yenisini aldın mı" penceresi açıkken yapılır."""
+    start, end = reminder_windows(settings).get("restock_check", ("", ""))
+    now = local_now.hour * 60 + local_now.minute
+    a, b = parse_hhmm(start), parse_hhmm(end)
+    return a is not None and b is not None and a <= now <= b + _PUSH_DISPATCH_TOLERANCE_MINUTES
 
 
 def _load_active_routine(supabase, user_id: str) -> dict:
@@ -519,23 +647,28 @@ def _privacy_permission_granted(supabase, user_id: str, permission: str) -> bool
         return False
 
 
-# Aynı bölge ve 3 saatlik dilim için hava durumu bir kez çekilir; dağıtıcı
-# yüzlerce kullanıcı için sağlayıcıyı tekrar tekrar çağırmaz.
-_WEATHER_CACHE: dict[tuple, dict] = {}
+# Aynı bölge için hava durumu kısa süre saklanır; dağıtıcı ve ana ekran yüzlerce kullanıcı için
+# sağlayıcıyı tekrar tekrar çağırmaz. Başarısız çekim çok kısa saklanır ve ASLA varsayılan
+# değerle doldurulmaz: kullanıcı sahte değeri "canlı hava" diye görmesin.
+_WEATHER_CACHE: dict[tuple, tuple[float, Optional[dict]]] = {}
 _WEATHER_CACHE_MAX = 500
+_WEATHER_TTL_SECONDS = 30 * 60
+_WEATHER_FAILURE_TTL_SECONDS = 2 * 60
 
 
-async def _weather_for_coords(lat: float, lon: float) -> dict:
-    now = datetime.now(timezone.utc)
-    key = (round(float(lat), 1), round(float(lon), 1), now.strftime("%Y-%m-%d"), now.hour // 3)
+async def _weather_for_coords(lat: float, lon: float) -> Optional[dict]:
+    """Önbellekli canlı hava; hiçbir kaynak yanıt vermiyorsa None."""
+    key = (round(float(lat), 1), round(float(lon), 1))
+    now = time.monotonic()
     cached = _WEATHER_CACHE.get(key)
-    if cached is not None:
-        return dict(cached)
-    data = await fetch_weather(lat, lon)
+    if cached is not None and cached[0] > now:
+        return dict(cached[1]) if cached[1] else None
+    data = await fetch_weather_live(lat, lon)
     if len(_WEATHER_CACHE) >= _WEATHER_CACHE_MAX:
         _WEATHER_CACHE.clear()
-    _WEATHER_CACHE[key] = data
-    return dict(data)
+    ttl = _WEATHER_TTL_SECONDS if data else _WEATHER_FAILURE_TTL_SECONDS
+    _WEATHER_CACHE[key] = (now + ttl, data)
+    return dict(data) if data else None
 
 
 async def _weather_from_profile(supabase, user_id: str) -> Optional[dict]:
@@ -561,6 +694,30 @@ async def _weather_from_profile(supabase, user_id: str) -> Optional[dict]:
     if lat is None or lon is None:
         return None
     return await _weather_for_coords(lat, lon)
+
+
+async def _chat_today_summary(supabase, user_id: str, utc_offset_minutes: Optional[int]) -> str:
+    """
+    Sohbet için bugünün kısa özeti (hava, su, makyaj, beslenme, rutin). Veri ya da veritabanı
+    yoksa, ya da herhangi bir hata olursa boş döner; sohbet bunsuz da çalışır.
+    """
+    if not should_use_supabase_db(supabase, user_id):
+        return ""
+    try:
+        today = str(_local_today(utc_offset_minutes))
+        aggregated = _aggregate_daily_events(_load_daily_events(supabase, user_id, today))
+        weather = aggregated.get("weather") or await _weather_from_profile(supabase, user_id)
+        settings = _load_reminder_settings(supabase, user_id)
+        return build_today_summary(
+            aggregated,
+            weather,
+            _checkin_done_today(supabase, user_id, today),
+            settings["water_target_ml"],
+            _products_out(supabase, user_id, date.fromisoformat(today)),
+        )
+    except Exception as e:
+        log.error("Sohbet günlük özeti hazırlanamadı: %s", type(e).__name__)
+        return ""
 
 
 def _profile_skin_type(supabase, user_id: str) -> str:
@@ -819,6 +976,8 @@ class ChatGeneralRequest(BaseModel):
     user_id: str
     message: str
     history: Optional[list] = None
+    # İstemcinin UTC farkı (dakika): sohbetin bildiği "bugün" kullanıcının yerel günüdür.
+    utc_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
 
 
 class ChatGeneralResponse(BaseModel):
@@ -902,6 +1061,8 @@ class TranslateRoutineItemsRequest(BaseModel):
 
 class DailyCheckinRequest(BaseModel):
     user_id: str
+    # İstemcinin UTC farkı (dakika); verilirse "bugün" kullanıcının yerel günüdür.
+    utc_offset_minutes: Optional[int] = None
     sleep_hours: float
     stress_today: int          # 1-5
     skin_feeling: str          # "iyi" / "kuru" / "yagli" / "kirik" / "irritasyon"
@@ -977,6 +1138,7 @@ DailyTrackingClientEventType = Literal[
     "checkin_feedback",
     "makeup",
     "product_finished",
+    "product_restocked",
 ]
 
 
@@ -1057,6 +1219,28 @@ class UserProfileUpdateRequest(BaseModel):
         return self
 
 
+class ReminderSettingsUpdateRequest(BaseModel):
+    """Yalnızca gönderilen alanlar değişir."""
+
+    user_id: str
+    wake_time: Optional[str] = None
+    sleep_time: Optional[str] = None
+    water_every_minutes: Optional[int] = None
+    water_target_ml: Optional[int] = None
+    enabled: Optional[dict[str, bool]] = None
+    # Pencere düzenlemeleri: kimlik -> {start, end}; kimlik için null o hatırlatıcıyı varsayılana döndürür.
+    # `windows: null` hepsini sıfırlar. Alan hiç gönderilmezse dokunulmaz.
+    windows: Optional[dict[str, Optional[dict]]] = None
+    # Sessiz saatler {start, end}; `quiet: null` kapatır. Alan hiç gönderilmezse dokunulmaz.
+    quiet: Optional[dict] = None
+
+
+class ReminderSettingsResponse(BaseModel):
+    user_id: str
+    settings: dict
+    synced: bool = True
+
+
 class UserHistoryDay(BaseModel):
     log_date: str
     tracking: dict
@@ -1070,6 +1254,8 @@ class UserHistoryResponse(BaseModel):
     days: list[UserHistoryDay] = []
     assessments: list[dict] = []
     synced: bool
+    # Kullanıcının günlük su hedefi (ml): grafik referansı ve "hedefi tutturulan gün" sayısı bununla hesaplanır.
+    water_target_ml: int = 2000
 
 
 class DeviceRegisterRequest(BaseModel):
@@ -1102,6 +1288,9 @@ class DeviceRegisterResponse(BaseModel):
     ok: bool = True
     push_configured: bool
     synced: bool
+    # Sunucu push dağıtıcısı yakın zamanda çalıştı mı (son tur ≤ 20 dk). Mobil, push'a yalnızca dağıtıcı canlıysa güvenir;
+    # aksi hâlde hatırlatmalar yerel bildirimle kurulur (FCM açık ama push-cron çalışmıyorsa hiç hatırlatma gelmemesin).
+    dispatch_alive: bool = False
 
 
 class PushRespondRequest(BaseModel):
@@ -1128,6 +1317,27 @@ class PushDispatchResponse(BaseModel):
     notifications_sent: int
     invalid_tokens_removed: int
     push_configured: bool
+    # Hiçbir cihaza ulaşmayan ve sonraki turda yeniden denenecek hatırlatıcılar.
+    deliveries_failed: int = 0
+
+
+# Son dağıtım turunun özeti (bellekte): /health izleyicisi dağıtımın çalışıp çalışmadığını görsün.
+_PUSH_LAST_RUN: dict = {}
+
+# Dağıtıcı 5 dakikada bir çalışır; bu süreden eski son tur "çalışmıyor" sayılır. Özet bellekte tutulur
+# (API tek süreç: uvicorn varsayılanı); çok işçili çalıştırılırsa Redis'e taşınmalı.
+_PUSH_DISPATCH_ALIVE_MINUTES = 20
+
+
+def _dispatch_alive() -> bool:
+    """Push dağıtıcısı yakın zamanda tur attı mı? (Süreç yeniden başlayınca ilk turdan sonra yeniden doğru olur.)"""
+    try:
+        at = datetime.fromisoformat(str(_PUSH_LAST_RUN.get("at")))
+    except (TypeError, ValueError):
+        return False
+    if at.tzinfo is None:
+        at = at.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - at <= timedelta(minutes=_PUSH_DISPATCH_ALIVE_MINUTES)
 
 
 class UserSnapshotResponse(BaseModel):
@@ -1156,7 +1366,12 @@ class TodayPlanResponse(BaseModel):
     weather: dict
     weather_source: Literal["live", "tracking", "profile", "default"]
     environment_advice: list[dict] = []
+    # Güneş kremi, nemlendirici ve dudak balsamı kararları (yapılandırılmış, istemci kendi dilinde yazar).
+    weather_decisions: dict = {}
+    # Rafım: bitti işaretlenip yenisi alınmamış ürünler (gün sınırı yok).
+    products_out: list[dict] = []
     reminders: list[dict] = []
+    reminder_settings: dict = {}
     progress: dict
     checkin_done: bool
 
@@ -1286,6 +1501,7 @@ async def health():
         ),
         "rate_limit_backend": rate_limit_backend_label(),
         "push": "configured" if push_configured() else "off",
+        "push_dispatch": _PUSH_LAST_RUN or None,
         "db_schema": _DB_SCHEMA_STATUS,
     }
     if not auth_valid:
@@ -1369,8 +1585,11 @@ async def _store_daily_event(
         try:
             lat = payload.get("lat")
             lon = payload.get("lon")
-            if lat is not None and lon is not None:
-                weather_data = await fetch_weather(lat, lon)
+            # Hava servisi yanıt vermezse olay yazılmaz: varsayılan değer gerçek hava gibi saklanmasın.
+            weather_data = (
+                await _weather_for_coords(lat, lon) if lat is not None and lon is not None else None
+            )
+            if weather_data:
                 w_event = {
                     "user_id": user_id,
                     "event_time": _utc_now_iso(),
@@ -1423,12 +1642,13 @@ async def daily_tracking_today(
     user_id: str,
     log_date: Optional[str] = None,
     include_events: bool = False,
+    utc_offset_minutes: Optional[int] = Query(None, ge=-840, le=840),
 ):
     """
     Mobil: bugün ne toplandı? Basit günlük özet.
     """
     enforce_supabase_user(request, user_id)
-    d = log_date or str(date.today())
+    d = log_date or str(_local_today(utc_offset_minutes))
     events = _load_daily_events(get_supabase(), user_id, d)
 
     return DailyTrackingTodayResponse(
@@ -1470,37 +1690,45 @@ async def today_plan_endpoint(
     user_id: str = Query(..., min_length=1),
     lat: Optional[float] = None,
     lon: Optional[float] = None,
+    utc_offset_minutes: Optional[int] = Query(None, ge=-840, le=840),
 ):
     """
     Mobil ana ekran paketi: günün rutini, havaya göre ürün önerileri
     (SPF / nemlendirici / balsam), saat aralıklı hatırlatıcılar ve bugün
     ne yapıldığı. Yapay zekâ çağrısı yoktur; hava için konum izni gerekir.
+    Hatırlatıcı pencereleri kullanıcının gün düzenine (`reminder_settings`) göre kurulur.
     """
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
-    today = str(date.today())
+    today = str(_local_today(utc_offset_minutes))
+    settings = _load_reminder_settings(supabase, user_id)
 
     events = _load_daily_events(supabase, user_id, today)
     aggregated = _aggregate_daily_events(events)
 
-    weather = dict(WEATHER_FALLBACK)
+    # Sıra: istemcinin konumu (canlı) → bugün kaydedilen hava → profildeki konum → varsayılan.
+    # Canlı çekim başarısızsa bir sonraki kaynağa düşülür; varsayılan değer "canlı" diye sunulmaz.
+    weather: Optional[dict] = None
     weather_source = "default"
     if lat is not None and lon is not None:
         _require_privacy_permission(user_id, "location")
         weather = await _weather_for_coords(lat, lon)
-        weather_source = "live"
-    elif aggregated.get("weather"):
+        if weather:
+            weather_source = "live"
+    if weather is None and aggregated.get("weather"):
         weather = dict(aggregated["weather"])
         weather_source = "tracking"
-    else:
-        from_profile = await _weather_from_profile(supabase, user_id)
-        if from_profile:
-            weather = from_profile
+    if weather is None:
+        weather = await _weather_from_profile(supabase, user_id)
+        if weather:
             weather_source = "profile"
+    if weather is None:
+        weather = dict(WEATHER_FALLBACK)
 
     row = _load_active_routine(supabase, user_id)
     routine = row.get("active_routine") or []
     checkin_done = _checkin_done_today(supabase, user_id, today)
+    products_out = _products_out(supabase, user_id, date.fromisoformat(today))
 
     return TodayPlanResponse(
         user_id=user_id,
@@ -1510,7 +1738,10 @@ async def today_plan_endpoint(
         weather=weather,
         weather_source=weather_source,
         environment_advice=build_environment_advice(weather, _profile_skin_type(supabase, user_id)),
-        reminders=build_reminders(weather, aggregated, checkin_done),
+        weather_decisions=build_weather_decisions(weather, settings),
+        products_out=products_out,
+        reminders=build_reminders(weather, aggregated, checkin_done, settings, products_out),
+        reminder_settings=settings,
         progress=aggregated,
         checkin_done=checkin_done,
     )
@@ -1586,6 +1817,14 @@ async def me_profile_update(request: Request, req: UserProfileUpdateRequest):
     )
 
 
+def _water_target_for(supabase, user_id: str) -> int:
+    """Kullanıcının günlük su hedefi; ayar okunamazsa varsayılan (geçmiş ekranı yine açılsın)."""
+    try:
+        return int(_load_reminder_settings(supabase, user_id)["water_target_ml"])
+    except Exception:
+        return int(DEFAULT_REMINDER_SETTINGS["water_target_ml"])
+
+
 @app.get(
     "/me/history",
     response_model=UserHistoryResponse,
@@ -1596,11 +1835,12 @@ async def me_history(
     request: Request,
     user_id: str = Query(..., min_length=1),
     days: int = Query(30, ge=1, le=_MAX_HISTORY_DAYS),
+    utc_offset_minutes: Optional[int] = Query(None, ge=-840, le=840),
 ):
     """Geçmiş günler: her gün için takip özeti ve o günün check-in'i."""
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
-    to_date = date.today()
+    to_date = _local_today(utc_offset_minutes)
     from_date = to_date - timedelta(days=days - 1)
     date_keys = [str(from_date + timedelta(days=i)) for i in range(days)]
 
@@ -1619,6 +1859,7 @@ async def me_history(
             to_date=str(to_date),
             days=days_out,
             synced=False,
+            water_target_ml=_water_target_for(supabase, user_id),
         )
 
     try:
@@ -1671,6 +1912,7 @@ async def me_history(
         from_date=str(from_date),
         to_date=str(to_date),
         days=days_out,
+        water_target_ml=_water_target_for(supabase, user_id),
         assessments=assessments,
         synced=True,
     )
@@ -1682,14 +1924,18 @@ async def me_history(
     tags=["account"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
 )
-async def me_snapshot(request: Request, user_id: str = Query(..., min_length=1)):
+async def me_snapshot(
+    request: Request,
+    user_id: str = Query(..., min_length=1),
+    utc_offset_minutes: Optional[int] = Query(None, ge=-840, le=840),
+):
     """
     Mobil açılış paketi: profil, yürürlükteki rutin, bugünün ilerlemesi,
     rıza durumu ve sohbet imleci tek çağrıda döner.
     """
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
-    today = str(date.today())
+    today = str(_local_today(utc_offset_minutes))
     row = _load_active_routine(supabase, user_id)
     routine = row.get("active_routine") or []
     synced = should_use_supabase_db(supabase, user_id)
@@ -1709,6 +1955,154 @@ async def me_snapshot(request: Request, user_id: str = Query(..., min_length=1))
         plus=user_is_rebi_plus(request, user_id),
         synced=synced,
     )
+
+
+@app.get(
+    "/me/reminder-settings",
+    response_model=ReminderSettingsResponse,
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
+)
+async def me_reminder_settings_get(request: Request, user_id: str = Query(..., min_length=1)):
+    """Hatırlatıcı ayarları: gün düzeni, su aralığı ve kapatılan kategoriler."""
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    return ReminderSettingsResponse(
+        user_id=user_id,
+        settings=_load_reminder_settings(supabase, user_id),
+        synced=should_use_supabase_db(supabase, user_id),
+    )
+
+
+def _parse_range_or_422(raw, label: str) -> tuple[int, int]:
+    parsed = None
+    if isinstance(raw, dict):
+        start, end = parse_hhmm(raw.get("start")), parse_hhmm(raw.get("end"))
+        parsed = (start, end) if start is not None and end is not None else None
+    if parsed is None:
+        raise HTTPException(status_code=422, detail=f"{label}: başlangıç ve bitiş SS:DD biçiminde olmalı.")
+    return parsed
+
+
+def _merge_windows(current: dict, incoming: Optional[dict], merged: dict) -> dict:
+    """Pencere düzenlemelerini birleştirir; geçersiz kimlik/saat/çok kısa ya da gün dışı pencere 422 verir."""
+    if incoming is None:  # açıkça null: hepsini varsayılana döndür
+        return {}
+    wake, sleep = parse_hhmm(merged["wake_time"]), parse_hhmm(merged["sleep_time"])
+    result = {k: dict(v) for k, v in current.items()}
+    for reminder_id, custom in incoming.items():
+        if reminder_id not in WINDOW_IDS:
+            raise HTTPException(status_code=422, detail=f"Bilinmeyen hatırlatıcı: {reminder_id}")
+        if custom is None:
+            result.pop(reminder_id, None)
+            continue
+        start, end = _parse_range_or_422(custom, reminder_id)
+        if end - start < MIN_WINDOW_MINUTES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{reminder_id}: pencere en az {MIN_WINDOW_MINUTES} dakika olmalı ve bitiş başlangıçtan sonra gelmeli.",
+            )
+        if start < wake or end > sleep:
+            raise HTTPException(
+                status_code=422,
+                detail=f"{reminder_id}: pencere uyanma ({merged['wake_time']}) ile uyku ({merged['sleep_time']}) saati arasında olmalı.",
+            )
+        result[reminder_id] = {"start": format_hhmm(start), "end": format_hhmm(end)}
+    return result
+
+
+def _validated_quiet(raw: Optional[dict]) -> Optional[dict]:
+    if raw is None:
+        return None
+    start, end = _parse_range_or_422(raw, "Sessiz saatler")
+    if start == end:
+        raise HTTPException(status_code=422, detail="Sessiz saatlerin başlangıcı ile bitişi aynı olamaz.")
+    return {"start": format_hhmm(start), "end": format_hhmm(end)}
+
+
+def _merge_reminder_settings(current: dict, req: ReminderSettingsUpdateRequest) -> dict:
+    """Gönderilen alanları mevcut ayara işler; geçersiz değerde 422 verir."""
+    merged = {**current, "enabled": {**current["enabled"]}}
+
+    if req.wake_time is not None:
+        if parse_hhmm(req.wake_time) is None:
+            raise HTTPException(status_code=422, detail="Uyanma saati SS:DD biçiminde olmalı.")
+        merged["wake_time"] = req.wake_time
+    if req.sleep_time is not None:
+        if parse_hhmm(req.sleep_time) is None:
+            raise HTTPException(status_code=422, detail="Uyku saati SS:DD biçiminde olmalı.")
+        merged["sleep_time"] = req.sleep_time
+    wake = parse_hhmm(merged["wake_time"])
+    sleep = parse_hhmm(merged["sleep_time"])
+    if wake is None or sleep is None or not day_span_is_valid(wake, sleep):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Uyanma saati en erken {EARLIEST_WAKE_MINUTES // 60:02d}:00, uyku saati en geç "
+                f"{LATEST_SLEEP_MINUTES // 60:02d}:{LATEST_SLEEP_MINUTES % 60:02d} olabilir; "
+                f"ikisi arasında en az {MIN_AWAKE_MINUTES // 60} saat bulunmalı."
+            ),
+        )
+
+    if req.water_every_minutes is not None:
+        if req.water_every_minutes not in WATER_INTERVAL_CHOICES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Su aralığı şunlardan biri olmalı: {', '.join(str(v) for v in WATER_INTERVAL_CHOICES)} dakika.",
+            )
+        merged["water_every_minutes"] = req.water_every_minutes
+
+    if req.water_target_ml is not None:
+        if req.water_target_ml not in WATER_TARGET_CHOICES:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Su hedefi şunlardan biri olmalı: {', '.join(str(v) for v in WATER_TARGET_CHOICES)} ml.",
+            )
+        merged["water_target_ml"] = req.water_target_ml
+
+    if "windows" in req.model_fields_set:
+        merged["windows"] = _merge_windows(current.get("windows") or {}, req.windows, merged)
+    if "quiet" in req.model_fields_set:
+        merged["quiet"] = _validated_quiet(req.quiet)
+
+    if req.enabled is not None:
+        unknown = sorted(set(req.enabled) - set(CATEGORY_NAMES))
+        if unknown:
+            raise HTTPException(status_code=422, detail=f"Bilinmeyen hatırlatıcı kategorisi: {', '.join(unknown)}")
+        merged["enabled"].update(req.enabled)
+
+    return normalize_reminder_settings(merged)
+
+
+@app.put(
+    "/me/reminder-settings",
+    response_model=ReminderSettingsResponse,
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_USER_PROFILE_WRITE))],
+)
+async def me_reminder_settings_update(request: Request, req: ReminderSettingsUpdateRequest):
+    """Hatırlatıcı ayarlarını güncelle; yalnızca gönderilen alanlar değişir."""
+    enforce_supabase_user(request, req.user_id)
+    supabase = get_supabase()
+    settings = _merge_reminder_settings(_load_reminder_settings(supabase, req.user_id), req)
+
+    if not should_use_supabase_db(supabase, req.user_id):
+        _MEM_REMINDER_SETTINGS[req.user_id] = settings
+        return ReminderSettingsResponse(user_id=req.user_id, settings=settings, synced=False)
+
+    try:
+        supabase.table("reminder_settings").upsert(
+            {
+                "user_id": req.user_id,
+                "settings": settings,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            on_conflict="user_id",
+        ).execute()
+    except Exception as e:
+        log.error("Hatırlatıcı ayarları kaydedilemedi: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Hatırlatıcı ayarları şu an kaydedilemedi.")
+    return ReminderSettingsResponse(user_id=req.user_id, settings=settings, synced=True)
 
 
 _PUSH_DISPATCH_TOLERANCE_MINUTES = 10
@@ -1739,9 +2133,37 @@ def _claim_push_slot(supabase, user_id: str, reminder_id: str, log_date: str, sl
             "slot": slot,
         }).execute()
         return True
-    except Exception:
-        log.info("Hatırlatıcı atlandı (zaten gönderilmiş): %s %s", reminder_id, slot)
+    except Exception as e:
+        if _is_duplicate_error(e):
+            log.info("Hatırlatıcı atlandı (zaten gönderilmiş): %s %s", reminder_id, slot)
+        else:
+            # Defter yazılamıyorsa tekrarı önleyemeyiz; göndermeyiz ama sessiz kalmayız.
+            log.error("Gönderim defterine yazılamadı (hatırlatıcı atlandı): %s %s %s", reminder_id, slot, type(e).__name__)
         return False
+
+
+def _is_duplicate_error(exc: Exception) -> bool:
+    """Benzersiz kısıt ihlali mi (Postgres 23505)?"""
+    if str(getattr(exc, "code", "") or "") == "23505":
+        return True
+    text = str(exc).lower()
+    return "duplicate key" in text or "unique constraint" in text
+
+
+def _release_push_slot(supabase, user_id: str, reminder_id: str, log_date: str, slot: str) -> None:
+    """Gönderim hiçbir cihaza ulaşmadıysa rezervi geri al; sonraki turda yeniden denenir."""
+    try:
+        (
+            supabase.table("push_sends")
+            .delete()
+            .eq("user_id", user_id)
+            .eq("reminder_id", reminder_id)
+            .eq("log_date", log_date)
+            .eq("slot", slot)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Gönderim rezervi geri alınamadı: %s", type(e).__name__)
 
 
 def _remove_invalid_device_tokens(supabase, tokens: list[str]) -> int:
@@ -1766,7 +2188,7 @@ async def device_register(request: Request, req: DeviceRegisterRequest):
     enforce_supabase_user(request, req.user_id)
     supabase = get_supabase()
     if not should_use_supabase_db(supabase, req.user_id):
-        return DeviceRegisterResponse(push_configured=push_configured(), synced=False)
+        return DeviceRegisterResponse(push_configured=push_configured(), synced=False, dispatch_alive=_dispatch_alive())
     try:
         supabase.table("device_tokens").upsert({
             "user_id": req.user_id,
@@ -1782,7 +2204,7 @@ async def device_register(request: Request, req: DeviceRegisterRequest):
     except Exception as e:
         log.error("Cihaz kaydı yazılamadı: %s", type(e).__name__)
         raise HTTPException(status_code=502, detail="Cihaz kaydı şu an yapılamadı.")
-    return DeviceRegisterResponse(push_configured=push_configured(), synced=True)
+    return DeviceRegisterResponse(push_configured=push_configured(), synced=True, dispatch_alive=_dispatch_alive())
 
 
 @app.delete(
@@ -1871,7 +2293,9 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
     reminders_sent = 0
     notifications_sent = 0
     invalid_removed = 0
+    deliveries_failed = 0
     users = list(by_user.items())[:max_users]
+    settings_by_user = _load_reminder_settings_bulk(supabase, [uid for uid, _ in users])
 
     for uid, entry in users:
         local_now = datetime.now(timezone.utc) + timedelta(minutes=entry["offset"])
@@ -1882,13 +2306,24 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
         # için sağlayıcıya yalnızca gün ortası penceresinde başvurulur.
         if not weather and _PUSH_WEATHER_HOURS[0] <= local_now.hour <= _PUSH_WEATHER_HOURS[1]:
             weather = await _weather_from_profile(supabase, uid)
+        user_settings = settings_by_user.get(uid)
+        products_out = (
+            _products_out(supabase, uid, local_now.date())
+            if user_settings and _restock_window_open(user_settings, local_now)
+            else None
+        )
         plan = build_reminders(
             weather or dict(WEATHER_FALLBACK),
             aggregated,
             _checkin_done_today(supabase, uid, log_date),
+            user_settings,
+            products_out,
         )
         for reminder in due_reminders(
-            plan, local_now.strftime("%H:%M"), _PUSH_DISPATCH_TOLERANCE_MINUTES
+            plan,
+            local_now.strftime("%H:%M"),
+            _PUSH_DISPATCH_TOLERANCE_MINUTES,
+            quiet=(user_settings or {}).get("quiet"),
         ):
             if not _claim_push_slot(supabase, uid, reminder["id"], log_date, reminder["slot"]):
                 continue
@@ -1917,17 +2352,32 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
             notifications_sent += sent
             if sent:
                 reminders_sent += 1
+            elif not result.get("invalid_tokens"):
+                # FCM'e ulaşılamadı / istek reddedildi: rezervi bırak, pencere bitmeden yeniden denensin.
+                _release_push_slot(supabase, uid, reminder["id"], log_date, reminder["slot"])
+                deliveries_failed += 1
             invalid_removed += _remove_invalid_device_tokens(
                 supabase, result.get("invalid_tokens") or []
             )
 
-    return PushDispatchResponse(
+    summary = PushDispatchResponse(
         users_considered=len(users),
         reminders_sent=reminders_sent,
         notifications_sent=notifications_sent,
         invalid_tokens_removed=invalid_removed,
         push_configured=True,
+        deliveries_failed=deliveries_failed,
     )
+    _PUSH_LAST_RUN.clear()
+    _PUSH_LAST_RUN.update(summary.model_dump(), at=_utc_now_iso())
+    log.info(
+        "Push dağıtımı: kullanıcı=%d hatırlatıcı=%d bildirim=%d geçersiz_token=%d başarısız=%d",
+        summary.users_considered, summary.reminders_sent, summary.notifications_sent,
+        summary.invalid_tokens_removed, summary.deliveries_failed,
+    )
+    if len(by_user) > max_users:
+        log.warning("Push dağıtımı: %d kullanıcıdan yalnız %d işlendi (max_users)", len(by_user), max_users)
+    return summary
 
 
 @app.get("/push/actions", tags=["push"])
@@ -2744,6 +3194,10 @@ async def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
     except Exception:
         profile_hint = {}
 
+    today_summary = await _chat_today_summary(get_supabase(), req.user_id, req.utc_offset_minutes)
+    if today_summary:
+        profile_hint["today_summary"] = today_summary
+
     reply = await rebi_chat_general(
         user_message=req.message,
         history=req.history,
@@ -2837,11 +3291,15 @@ async def translate_routine_items_endpoint(request: Request, req: TranslateRouti
     tags=["checkin"],
     dependencies=[Depends(rate_limit_dependency(LIMIT_DAILY_CHECKIN_STATUS))],
 )
-async def daily_checkin_status(request: Request, user_id: str):
+async def daily_checkin_status(
+    request: Request,
+    user_id: str,
+    utc_offset_minutes: Optional[int] = Query(None, ge=-840, le=840),
+):
     """Bugün için check-in yapılmış mı (aynı gün tekrarını önlemek için)."""
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
-    today = str(date.today())
+    today = str(_local_today(utc_offset_minutes))
     if is_demo_user_id(user_id):
         return {
             "already_checked_in": demo_checkin_already_today(user_id, today),
@@ -2882,7 +3340,7 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
     log.info("Daily checkin isteği alındı")
 
     supabase = get_supabase()
-    today_str = str(date.today())
+    today_str = str(_local_today(req.utc_offset_minutes))
 
     if is_demo_user_id(req.user_id):
         if demo_checkin_already_today(req.user_id, today_str):
@@ -3373,13 +3831,30 @@ def _delete_skin_photos_for_user(supabase, user_id: str) -> None:
         )
 
 
+# PostgREST "tablo yok" (şema önbelleğinde bulunamadı) ve Postgres "undefined_table" kodları.
+_MISSING_TABLE_CODES = frozenset({"PGRST205", "42P01"})
+
+
+def _is_missing_table_error(exc: Exception) -> bool:
+    """Tablo henüz oluşturulmamış mı (migration uygulanmadan yayına çıkıldı)?"""
+    if str(getattr(exc, "code", "") or "") in _MISSING_TABLE_CODES:
+        return True
+    text = str(exc).lower()
+    return "could not find the table" in text or ("relation" in text and "does not exist" in text)
+
+
 def _delete_user_application_data(supabase, user_id: str) -> None:
-    """Cascade yapılandırmasından bağımsız olarak kişisel veri satırlarını sil."""
+    """
+    Cascade yapılandırmasından bağımsız olarak kişisel veri satırlarını sil.
+    Tablo hiç yoksa silinecek veri de yoktur: bu hesap silmeyi durdurmaz (yeni bir tablo
+    migration'ından önce yayına çıkan sürüm hesap silmeyi bozmasın). Diğer her hata durdurur.
+    """
     targets = (
         ("privacy_preferences", "user_id"),
         ("legal_consents", "user_id"),
         ("device_tokens", "user_id"),
         ("push_sends", "user_id"),
+        ("reminder_settings", "user_id"),
         ("chat_history", "user_id"),
         ("daily_events", "user_id"),
         ("daily_logs", "user_id"),
@@ -3391,6 +3866,9 @@ def _delete_user_application_data(supabase, user_id: str) -> None:
         try:
             supabase.table(table).delete().eq(column, user_id).execute()
         except Exception as e:
+            if _is_missing_table_error(e):
+                log.warning("Hesap veri silme: tablo yok, atlandı: table=%s", table)
+                continue
             log.error("Hesap veri silme başarısız: table=%s error=%s", table, type(e).__name__)
             raise HTTPException(
                 status_code=502,

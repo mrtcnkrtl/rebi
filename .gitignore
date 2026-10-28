@@ -20,3 +20,6 @@ backups/
 
 # Supabase CLI çalışma dosyaları (her komutta değişir)
 supabase/.temp/
+
+# Düzenleyici (JetBrains / Android Studio) ayarları
+.idea/

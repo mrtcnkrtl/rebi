@@ -103,6 +103,10 @@ def blend_stress_mapped(
     return eff_i, f"stres efektif {eff_i}/10 (bugün×2={today_m}, dün×2={y})"
 
 
+# Takip ekranındaki "misel su / mendil" yöntemi motorda zayıf temizlik (su) sayılır.
+REMOVAL_ALIASES = {"wipe": "water"}
+
+
 def effective_makeup_with_history(
     concern: str,
     profile_mf: int,
@@ -117,6 +121,7 @@ def effective_makeup_with_history(
     """
     mf = int(profile_mf or 0)
     mr = str(profile_mr or "cleanser").lower().strip()
+    mr = REMOVAL_ALIASES.get(mr, mr)
     if mr not in ("none", "water", "cleanser", "double"):
         mr = "cleanser"
 
@@ -125,6 +130,7 @@ def effective_makeup_with_history(
             return 0, "cleanser", None
         if makeup_removal_today:
             m = (makeup_removal_today or "").lower().strip()
+            m = REMOVAL_ALIASES.get(m, m)
             if m in ("none", "water", "cleanser", "double"):
                 mr = m
         return mf, mr, None
@@ -136,6 +142,7 @@ def effective_makeup_with_history(
         if ex.get("makeup_used_today") is True:
             any_recent_makeup = True
             rmr = (ex.get("makeup_removal_today") or "").lower()
+            rmr = REMOVAL_ALIASES.get(rmr, rmr)
             if rmr in ("none", "water"):
                 recent_bad = True
 

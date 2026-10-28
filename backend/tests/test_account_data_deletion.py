@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi import HTTPException
+from postgrest.exceptions import APIError
 
 from main import (
     _delete_skin_photos_for_user,
@@ -76,6 +77,7 @@ def test_account_deletion_explicitly_covers_personal_data_tables():
         ("legal_consents", "user_id", USER_ID),
         ("device_tokens", "user_id", USER_ID),
         ("push_sends", "user_id", USER_ID),
+        ("reminder_settings", "user_id", USER_ID),
         ("chat_history", "user_id", USER_ID),
         ("daily_events", "user_id", USER_ID),
         ("daily_logs", "user_id", USER_ID),
@@ -83,6 +85,61 @@ def test_account_deletion_explicitly_covers_personal_data_tables():
         ("assessments", "user_id", USER_ID),
         ("profiles", "id", USER_ID),
     ]
+
+
+class _CodedError(Exception):
+    """postgrest.APIError taklidi: `code` özelliği taşır."""
+
+    def __init__(self, message: str, code: str):
+        super().__init__(message)
+        self.code = code
+
+
+def _db_where(table: str, error: Exception):
+    db = _Supabase()
+    original = db.table
+
+    def table_with_error(name):
+        query = original(name)
+        if name == table:
+            def boom():
+                raise error
+            query.execute = boom
+        return query
+
+    db.table = table_with_error
+    return db
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        _CodedError("Could not find the table 'public.reminder_settings' in the schema cache", "PGRST205"),
+        _CodedError("relation \"reminder_settings\" does not exist", "42P01"),
+        APIError({"message": "Could not find the table 'public.reminder_settings' in the schema cache", "code": "PGRST205"}),
+        RuntimeError("{'message': \"Could not find the table 'public.reminder_settings' in the schema cache\"}"),
+    ],
+)
+def test_account_deletion_skips_a_table_that_was_never_created(error):
+    # Migration uygulanmadan yayına çıkan sürümde hesap silme bozulmamalı.
+    db = _db_where("reminder_settings", error)
+
+    _delete_user_application_data(db, USER_ID)
+
+    deleted = [call[0] for call in db.calls]
+    assert "reminder_settings" not in deleted
+    assert deleted[-1] == "profiles"
+    assert "daily_events" in deleted and "chat_history" in deleted
+
+
+def test_account_deletion_still_stops_on_any_other_database_error():
+    db = _db_where("daily_events", _CodedError("permission denied", "42501"))
+
+    with pytest.raises(HTTPException) as exc:
+        _delete_user_application_data(db, USER_ID)
+
+    assert exc.value.status_code == 502
+    assert "profiles" not in [call[0] for call in db.calls]
 
 
 def test_account_deletion_removes_all_user_photo_paths():

@@ -184,7 +184,7 @@ def test_dispatch_sends_actions_and_data_only_for_capable_android(monkeypatch, c
     )
     db.tables["push_sends"].unique_on = ("user_id", "reminder_id", "log_date", "slot")
     water = next(r for r in build_reminders({}, {}) if r["id"] == "water_intake")
-    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol: [{**water, "slot": "09:00"}])
+    monkeypatch.setattr(main, "due_reminders", lambda plan, now, tol, **_: [{**water, "slot": "09:00"}])
 
     assert _dispatch(client).status_code == 200
 
