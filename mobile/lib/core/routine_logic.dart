@@ -1,7 +1,11 @@
 /// Dashboard / Check-in ekranlarındaki saf rutin mantığı (web: `pages/Dashboard.jsx`,
 /// `lib/structuredRoutineBadges.jsx`). Rutin satırları backend'den geldiği gibi
 /// `Map` olarak tutulur; bilinmeyen alanlar kaybolmaz, snapshot'a aynen yazılır.
+/// Kullanıcıya giden sabit metinler seçili dilde (`mobileRoutineHints`); çeviri yüklenmemişse Türkçe.
 library;
+
+import 'i18n.dart';
+import 'interpolate.dart';
 
 typedef RoutineItem = Map<String, dynamic>;
 
@@ -94,7 +98,7 @@ List<String> computeEveningActivesMorningHints(List<RoutineItem> routine) {
   for (final r in _hintRules) {
     if (!r.pattern.hasMatch(blob)) continue;
     if (!seen.add(r.id)) continue;
-    out.add(r.text);
+    out.add(I18n.instance.t('mobileRoutineHints.morning.${r.id}', const {}, r.text));
   }
   return out;
 }
@@ -276,10 +280,14 @@ List<String> structuredRoutineBadges(RoutineItem item) {
   if (!has) return const [];
 
   final chips = <String>[];
-  if (item['ramp_stage'] == 'starter') chips.add('Alıştırma');
-  if (truthy(item['strength_pct'])) chips.add('%${jsString(item['strength_pct'])}');
-  if (freq is num && freq > 0) chips.add(freq >= 7 ? 'Her gün' : '${jsString(freq)}×/hafta');
-  if (fam.isNotEmpty) chips.add(fam.take(4).map((f) => _familyLabels[f] ?? f).join(' · '));
+  if (item['ramp_stage'] == 'starter') chips.add(I18n.instance.t('mobileRoutineHints.starter', const {}, 'Alıştırma'));
+  if (truthy(item['strength_pct'])) chips.add(interpolate(I18n.instance.t('mobileRoutineHints.percent', const {}, '%{{n}}'), {'n': jsString(item['strength_pct'])}));
+  if (freq is num && freq > 0) {
+    chips.add(freq >= 7
+        ? I18n.instance.t('mobileRoutineHints.everyDay', const {}, 'Her gün')
+        : interpolate(I18n.instance.t('mobileRoutineHints.perWeek', const {}, '{{n}}×/hafta'), {'n': jsString(freq)}));
+  }
+  if (fam.isNotEmpty) chips.add(fam.take(4).map((f) => I18n.instance.t('mobileRoutineHints.families.$f', const {}, _familyLabels[f] ?? f)).join(' · '));
   return chips;
 }
 

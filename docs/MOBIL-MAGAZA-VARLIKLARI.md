@@ -86,32 +86,19 @@ First release. Personal routine, today screen, weather-based sunscreen decisions
 
 ## 4. Ekran görüntüleri
 
-Üretim (gerçek yazı tipleri ve gerçek ekran koduyla; durum çubuğu ve cihaz çerçevesi yoktur):
+Üretim (gerçek yazı tipleri ve gerçek ekran koduyla), her arayüz dili (TR, EN) için ayrı:
 
 ```bash
 cd mobile
-REBI_STORE_SHOTS=1 flutter test test/store_screenshots_test.dart
+REBI_STORE_SHOTS=1 flutter test test/store_screenshots_test.dart   # ham: build/store/<dil>/{apple-6.9,play-telefon}
+python3 tool/store_frames.py                                       # çerçeveli: build/store/framed/<dil>/ (Pillow gerekir)
 ```
 
-Çıktı `mobile/build/store/` altındadır (git'e girmez):
-
-| Klasör | Boyut | Nerede kullanılır |
-| --- | --- | --- |
-| `apple-6.9/` | 1320×2868 | App Store iPhone 6,9" (en az 3, en fazla 10) |
-| `play-telefon/` | 1080×2160 (2:1) | Google Play telefon (en az 2, en fazla 8) |
-
-Sırayla (ilk 3'ü mağaza listesinde ilk görünenlerdir):
-
-| Dosya | Ekran | Önerilen başlık (görsele sen yazarsan) |
-| --- | --- | --- |
-| `01-bugun.png` | Bugün: kahraman rutin kartı | Bugünkü rutinin hazır |
-| `02-rutin.png` | Rutin | Her ürünün nedenini gör |
-| `03-sohbet.png` | Rebi sohbet, bugünün çipleriyle | Bugününü bilen cilt asistanı |
-| `04-gecmis.png` | Geçmiş grafikleri | Su, uyku ve rutinini takip et |
-| `05-hatirlaticilar.png` | Hatırlatıcılar, kendi saat aralığı | Hatırlatıcılar senin saatlerinde |
-| `06-rafim.png` | Rafım | Biten ürünü unutma |
-| `07-su.png` | Su sayfası | Tek dokunuşla kaydet |
-| `08-bugun-koyu.png` | Karanlık mod | Karanlık modda da rahat |
+Çerçeveli görseller (1320×2868, App Store iPhone 6,9") başlık + alt satır + telefon içinde ekran görüntüsüdür; başlıklar
+`tool/store_frames.py` içindeki `SHOTS` tablosundadır. Sıra: 01 Bugün · 02 Rutin · 03 Rebi sohbet · 04 Hatırlatıcılar ·
+05 Su · 06 Rafım · 07 Karanlık mod. Geçmiş ekranı örnek veride seyrek kaldığı için vitrine alınmadı. Mağaza görüntülerinde
+örnek gün "dengeli" risk düzeyindedir (vitrinde kırmızı kriz uyarısı görünmesin); İngilizce örnek kişi "Emma".
+Play telefon görüntüleri (`play-telefon/`, 1080×2160) çerçevesizdir.
 
 Dikkat:
 
@@ -120,8 +107,7 @@ Dikkat:
   (`MOBIL-MUSTERI-DEMOSU.md`'deki hazırlıkla).
 - Mağazalar ekran görüntüsünün uygulamayı **gerçekten gösterdiğini** ister: çerçeveye yazı eklemek serbesttir, olmayan
   bir özelliği göstermek değildir. Hepsi bu sürümde vardır.
-- App Store iPad destekleniyorsa (`TARGETED_DEVICE_FAMILY = 1,2`) iPad 13" (2064×2752) görüntüleri de gerekir
-  (`MOBIL-YAYIN.md` §4, madde 6); yalnızca iPhone isterseniz bu atlanır. Bu araç iPad boyutu üretmez.
+- Uygulama yalnızca iPhone'dur (`MOBIL-YAYIN.md` §4, madde 6); iPad görüntüsü gerekmez.
 - **Play öne çıkan görsel** (1024×500) zorunludur ve burada **üretilmedi**: marka tasarımı gerektirir (logo + slogan).
   **Uygulama ikonu** hazır: `mobile/assets/icon/icon.png` (512×512).
 

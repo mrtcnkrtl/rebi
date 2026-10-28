@@ -957,5 +957,25 @@
     "errorTitle": "Something went wrong",
     "errorBody": "An error occurred while loading the page.",
     "errorHome": "Back to home"
+  },
+  "mobileRoutineHints": {
+    "morning": {
+      "retinoid": "Retinoids (retinol, retinal, adapalene etc.) in your routine: do not use in the morning.",
+      "bakuchiol": "Bakuchiol in your routine: do not use in the morning.",
+      "arbutin_leke": "Spot-targeting actives (arbutin, tranexamic acid etc.) in your routine: do not use in the morning.",
+      "aha": "AHA (glycolic, lactic etc.) in your routine: do not use in the morning.",
+      "bha": "BHA (salicylic acid) in your routine: do not use in the morning.",
+      "benzoil": "Benzoyl peroxide in your routine: do not use in the morning.",
+      "azelaik": "Azelaic acid (treatment strength) in your routine: do not use in the morning."
+    },
+    "starter": "Ramp-up",
+    "everyDay": "Daily",
+    "perWeek": "{{n}}×/week",
+    "families": {
+      "azelaic": "Azelaic",
+      "vitamin_c": "Vit. C",
+      "pigment": "Spots"
+    },
+    "percent": "{{n}}%"
   }
 }

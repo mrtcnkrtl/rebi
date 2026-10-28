@@ -957,5 +957,25 @@
     "errorTitle": "Bir Sorun Oluştu",
     "errorBody": "Sayfa yüklenirken bir hata meydana geldi.",
     "errorHome": "Ana Sayfaya Dön"
+  },
+  "mobileRoutineHints": {
+    "morning": {
+      "retinoid": "Retinoid (retinol, retinal, adapalen vb.) rutininde: sabah kullanmayın.",
+      "bakuchiol": "Bakuchiol rutininde: sabah kullanmayın.",
+      "arbutin_leke": "Leke odaklı aktif (arbutin, traneksamik vb.) rutininde: sabah kullanmayın.",
+      "aha": "AHA (glikolik, laktik vb.) rutininde: sabah kullanmayın.",
+      "bha": "BHA (salisilik asit) rutininde: sabah kullanmayın.",
+      "benzoil": "Benzoil peroksit rutininde: sabah kullanmayın.",
+      "azelaik": "Azelaik asit (tedavi konsantrasyonu) rutininde: sabah kullanmayın."
+    },
+    "starter": "Alıştırma",
+    "everyDay": "Her gün",
+    "perWeek": "{{n}}×/hafta",
+    "families": {
+      "azelaic": "Azelaik",
+      "vitamin_c": "C vit.",
+      "pigment": "Leke"
+    },
+    "percent": "%{{n}}"
   }
 }
