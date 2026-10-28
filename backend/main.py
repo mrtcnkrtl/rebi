@@ -2850,6 +2850,8 @@ def generate_routine(request: Request, req: AssessmentRequest):
         makeup_frequency=req.makeup_frequency,
         makeup_removal=req.makeup_removal or "cleanser",
         special_flags=req.special_flags,
+        shaving_frequency=req.shaving_frequency,
+        shaving_after=req.shaving_after,
     )
 
     routine_items = flow_result["routine_items"]

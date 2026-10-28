@@ -193,8 +193,10 @@ Eski sihirbaz dört uzun sayfaydı (60'a yakın soru, renkli kartlar, 10–11 pu
   (gövdede sıfır gider, sonradan düzeltilen yaşta eski cevap gitmez); hormonal durumda **hamilelik 55 yaşına kadar, menopoz 40'tan
   sonra** sunulur; **erkeğe makyaj sorulmaz** (gövdede 0), yerine **tıraş** sorusu gelir (sıklık + tıraştan sonra cildin durumu).
   Kadın ve "diğer" için makyaj sorusu aynen sürer. Tıraş cevabı yalnız erkek gövdesinde `shaving_frequency` / `shaving_after`
-  olarak gider (web gövdesinde yok; kadın/diğer gövdesi web ile aynı kalır). **Sunucu bunları şimdilik yalnızca kaydeder
-  (`lifestyle_data`) ve sohbet bağlamına verir; rutin kurallarını henüz değiştirmez** (tıraş tahrişine göre adım önerisi ayrı iş).
+  olarak gider (web gövdesinde yok; kadın/diğer gövdesi web ile aynı kalır). Sunucu bunları kaydeder (`lifestyle_data`), sohbet bağlamına verir ve
+  **tıraş sonrası tahriş / batık tüy** bildiren erkeğe rutinde tek bir *Yaşam* notu ekler (`flow_engine.build_shaving_routine_items`:
+  tıraş tekniği, tıraş sonrası bariyer bakımı, o gece o bölgeye güçlü aktif sürmeme, geçmezse dermatolog). Bakım satırı eklemez ve
+  etken-madde kurallarına dokunmaz; "rahat" diyen ya da tıraş olmayan için not yoktur (`backend/tests/test_shaving_rule.py`).
 - **Kaldırılan sorular**: beslenme (4), ne kadar süredir, tetikleyiciler, geçmiş tedaviler ve beklentiler. Bunlar web'de de
   toplanıyor ama **backend'e hiç gönderilmiyordu** (gövdede alanı yok); cevabı hiçbir yere gitmeyen soru sormak hem dürüst değil hem
   yorucuydu. Metinleri `analyzeWizard.json`'da duruyor; backend bu alanları kabul ettiğinde geri eklemek bir sayfa ekleyip
