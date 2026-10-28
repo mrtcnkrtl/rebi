@@ -253,6 +253,21 @@
     "newAnalysis": "New analysis",
     "settings": "Reminder settings",
     "weatherPill": "{{temp}}° · UV {{uv}} · humidity {{humidity}}%",
+    "weatherPanel": {
+      "title": "Today's weather",
+      "humidity": "HUMIDITY",
+      "uv": {
+        "low": "Low",
+        "moderate": "Moderate",
+        "high": "High",
+        "veryHigh": "Very high"
+      },
+      "hum": {
+        "dry": "Dry",
+        "comfortable": "Balanced",
+        "humid": "Humid"
+      }
+    },
     "weatherPillEstimated": "estimated",
     "decisions": {
       "spf": {

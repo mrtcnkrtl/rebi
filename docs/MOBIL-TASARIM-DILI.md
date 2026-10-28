@@ -136,6 +136,19 @@ göre üç karar → gün içi kayıtlar → "Daha fazlası"**; altta yüzen "Ya
 - Aynı iş iki yerde tekrar etmez (rutin hatırlatıcısı "şimdi" listesinde yok; güneş kremi kaydı yalnız "havaya göre" kartında).
 - Yeni durumlar galeriye eklenir: `bugun-tamam`, `bugun-hata`, `bugun-yukleniyor`, `bugun-bos`.
 
+- **Hava paneli (sahnenin kahramanı).** "Hava durumuna göre" uygulamanın vaadidir; bu yüzden sahnede selamlamanın altında büyük bir
+  panel durur (krem çerçeveli, `_WeatherPanel`): sol blokta büyük Fraunces derece ve simge, sağda **UV** ve **nem** değerleri, sözlü
+  seviyeleri (UV: düşük / orta / yüksek / çok yüksek; nem: kuru / dengeli / nemli) ve beş parçalı küçük gösterge (UV ≥ 6'da bal tonu).
+  Hava gerçek bir kaynaktan değilse köşede "tahmini" yazar. 330 dp panel genişliğinin altında ya da %125 üstü yazıda alt alta dizilir;
+  satırlar sığmazsa küçülür (taşma yok). Ekran okuyucu için tek cümlelik özet (`weatherPill`) etikettir.
+- **Rutin adımları zaman çizelgesidir** (Rutin sekmesiyle aynı dil): işaret dairesi + bir sonraki adıma inen ince çizgi; yapılan adım
+  **soluklaşır, üstü çizilmez**. Biten ürünün adımı da aynı çizgide, bal tonlu.
+- **Hava kararları tonlu panellerdir**: güneş kremi bal, nem su, dudak balsamı pudra (gerekmeyen karar nötr), her biri simge diskli;
+  gerekçe ve "yeniledim" düğmesi panelin içinde.
+- **Gün akışı**: "Şimdi" bölümü bekleyen yoksa sakin bir onay satırıdır, sıradaki hatırlatmalar simge diskli satırlardır.
+- **"Daha fazlası" iki sütunlu karolardır** (check-in, rafım, hızlı fotoğraf, yeni analiz, haftanın tamamı, geçmiş): tonlu yüzey,
+  simge diski, başlık ve alt metin; altı satırlık uzun liste kalktı.
+
 ## Sohbet ("Rebi ile konuş")
 
 Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır. Karşılamadan açılan oturumsuz sayfa (`/rebi`) ve oturumlu sekme

@@ -149,28 +149,53 @@ class _NowCardState extends State<NowCard> {
           ),
           const SizedBox(height: 10),
           Padding(padding: const EdgeInsets.only(right: 6), child: FlowLegend(plan: plan, theme: theme)),
-          const SizedBox(height: 14),
-          const Hairline(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Padding(
             padding: const EdgeInsets.only(right: 6),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(i18n.t('mobileToday.now'), style: tx(11.5, w: 7, c: Tw.gray500, ls: 1.1)),
-                const SizedBox(height: 8),
+                // "Şimdi": bekleyen hatırlatma yoksa sakin bir onay, varsa eylem düğmeli kartlar.
+                Row(children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: current.isEmpty ? Tw.gray300 : theme.primary),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(i18n.t('mobileToday.now'), style: tx(11.5, w: 7, c: Tw.gray500, ls: 1.1)),
+                ]),
+                const SizedBox(height: 10),
                 if (current.isEmpty)
-                  Text(i18n.t('mobileToday.nothingNow'), style: tx(13, c: Tw.gray600, h: relaxed))
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(color: Tw.gray50, borderRadius: BorderRadius.circular(16)),
+                    child: Row(children: [
+                      Icon(LucideIcons.circleCheck, size: 18, color: Tw.gray500),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(i18n.t('mobileToday.nothingNow'), style: tx(13.5, c: Tw.gray600, h: relaxed))),
+                    ]),
+                  )
                 else
                   for (final r in current) ...[_reminderTile(i18n, plan, r), const SizedBox(height: 8)],
                 if (upcoming.isNotEmpty) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 18),
                   Text(i18n.t('mobileToday.later'), style: tx(11.5, w: 7, c: Tw.gray500, ls: 1.1)),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 8),
                   for (final r in upcoming.take(3))
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Text('${r.start} · ${reminderTitle(i18n, r)}', style: tx(13, c: Tw.gray600)),
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(color: theme.primary.withValues(alpha: .1), shape: BoxShape.circle),
+                          child: Icon(_reminderIcon(r.id), size: 16, color: theme.fg),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text('${r.start} · ${reminderTitle(i18n, r)}', style: tx(14, w: 5, c: Tw.gray700, h: snug))),
+                      ]),
                     ),
                 ],
               ],

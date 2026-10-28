@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/i18n.dart';
-import '../../core/routine_logic.dart';
 import '../../core/today_plan.dart';
 import '../../state/theme_controller.dart';
 import '../../ui/brand/brand_caps.dart';
@@ -96,11 +95,11 @@ class TodayHeader extends StatelessWidget {
                       ),
                     ),
                     if (plan != null && plan!.weather['temperature'] != null) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 20),
                       Reveal(
                         delay: const Duration(milliseconds: 160),
                         offset: const Offset(0, 8),
-                        child: _WeatherPill(plan: plan!),
+                        child: _WeatherPanel(plan: plan!),
                       ),
                     ],
                   ],
@@ -114,40 +113,173 @@ class TodayHeader extends StatelessWidget {
   }
 }
 
-/// Tek satırlık hava özeti (krem çerçeveli, koyu zeminde); hava gerçek bir kaynaktan değilse "tahmini" etiketi taşır.
-class _WeatherPill extends StatelessWidget {
-  const _WeatherPill({required this.plan});
+/// Sahnedeki hava paneli: büyük derece + UV ve nem göstergeleri (uygulamanın "hava durumuna göre" vaadinin ilk yüzü).
+/// Hava gerçek bir kaynaktan değilse "tahmini" etiketi taşır. Büyük yazıda ya da dar ekranda alt alta dizilir.
+class _WeatherPanel extends StatelessWidget {
+  const _WeatherPanel({required this.plan});
 
   final TodayPlan plan;
+
+  static num? _n(Object? v) => v is num ? v : num.tryParse('${v ?? ''}');
 
   @override
   Widget build(BuildContext context) {
     final i18n = I18n.instance;
     final w = plan.weather;
-    final base = i18n.t('mobileToday.weatherPill', {
-      'temp': str(w['temperature']),
-      'uv': str(w['uv_index']),
-      'humidity': str(w['humidity']),
-    });
-    // Tahmini etiket aynı metinde durur: büyük yazıda hap taşmasın, sığmayan kısım "…" olsun.
-    final text = plan.hasRealWeather ? base : '$base · ${i18n.t('mobileToday.weatherPillEstimated')}';
-    return Align(
+    final temp = _n(w['temperature']);
+    if (temp == null) return const SizedBox.shrink();
+    final uv = _n(w['uv_index']);
+    final humidity = _n(w['humidity']);
+
+    final uvKey = uv == null ? null : (uv < 3 ? 'low' : (uv < 6 ? 'moderate' : (uv < 8 ? 'high' : 'veryHigh')));
+    final humKey = humidity == null ? null : (humidity < 40 ? 'dry' : (humidity > 65 ? 'humid' : 'comfortable'));
+
+    final degree = FittedBox(
+      fit: BoxFit.scaleDown,
       alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(11, 7, 15, 7),
-        decoration: BoxDecoration(
-          color: Brand.cream.withValues(alpha: .09),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: Brand.cream.withValues(alpha: .24)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('${temp.round()}°', style: Brand.serif(54, color: Brand.cream, h: 1, ls: -1.6)),
+          const SizedBox(width: 10),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Icon(LucideIcons.cloudSun, size: 26, color: Brand.cream.withValues(alpha: .9)),
+          ),
+        ],
+      ),
+    );
+
+    // Satır sığmazsa (büyük yazı, dar panel) küçülür; taşma ve kesilme olmaz.
+    Widget stat(String label, String value, String? word, {Widget? meter}) => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Text(label, style: tx(11.5, w: 7, c: Brand.cream.withValues(alpha: .7), ls: .8)),
+              const SizedBox(width: 8),
+              Text(value, style: tx(20, w: 7, c: Brand.cream)),
+              if (word != null) ...[const SizedBox(width: 8), Text(word, style: tx(12.5, w: 6, c: Brand.cream.withValues(alpha: .86)))],
+            ],
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(LucideIcons.cloudSun, size: 16, color: Brand.cream.withValues(alpha: .92)),
-            const SizedBox(width: 8),
-            Flexible(child: Text(text, style: tx(12.5, w: 6, c: Brand.cream.withValues(alpha: .92)), maxLines: 1, overflow: TextOverflow.ellipsis)),
+        if (meter != null) ...[const SizedBox(height: 7), meter],
+      ],
+    );
+
+    final stats = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (uv != null)
+          stat(
+            'UV',
+            '${uv.round()}',
+            uvKey == null ? null : i18n.t('mobileToday.weatherPanel.uv.$uvKey'),
+            meter: _Meter(fraction: (uv / 11).clamp(0, 1).toDouble(), warm: uv >= 6),
+          ),
+        if (uv != null && humidity != null) const SizedBox(height: 12),
+        if (humidity != null)
+          stat(
+            i18n.t('mobileToday.weatherPanel.humidity'),
+            '%${humidity.round()}',
+            humKey == null ? null : i18n.t('mobileToday.weatherPanel.hum.$humKey'),
+            meter: _Meter(fraction: (humidity / 100).clamp(0, 1).toDouble(), warm: false),
+          ),
+      ],
+    );
+
+    final estimated = !plan.hasRealWeather;
+    return LayoutBuilder(
+      builder: (context, box) {
+        // Yan yana dizilim ~330 dp panel genişliği ister; dar ekranda ya da büyük yazıda alt alta.
+        final stacked = MediaQuery.textScalerOf(context).scale(1) > 1.25 || box.maxWidth < 330;
+        return Semantics(
+          container: true,
+          label: i18n.t('mobileToday.weatherPill', {
+            'temp': '${temp.round()}',
+            'uv': uv == null ? '–' : '${uv.round()}',
+            'humidity': humidity == null ? '–' : '${humidity.round()}',
+          }),
+          child: ExcludeSemantics(
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+              decoration: BoxDecoration(
+                color: Brand.cream.withValues(alpha: .08),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: Brand.cream.withValues(alpha: .2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(i18n.t('mobileToday.weatherPanel.title'), style: tx(12.5, w: 6, c: Brand.cream.withValues(alpha: .78))),
+                      ),
+                      if (estimated) Text(i18n.t('mobileToday.weatherPillEstimated'), style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .66))),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  if (stacked) ...[
+                    degree,
+                    const SizedBox(height: 14),
+                    stats,
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        degree,
+                        Container(width: 1, height: 70, margin: const EdgeInsets.symmetric(horizontal: 18), color: Brand.cream.withValues(alpha: .2)),
+                        Expanded(child: stats),
+                      ],
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Beş parçalı küçük gösterge (UV ve nem): dolu parçalar krem, sıcak uyarıda bal tonu.
+class _Meter extends StatelessWidget {
+  const _Meter({required this.fraction, required this.warm});
+
+  final double fraction;
+  final bool warm;
+
+  @override
+  Widget build(BuildContext context) {
+    final filled = (fraction * 5).ceil().clamp(0, 5);
+    return SizedBox(
+      width: 110,
+      child: Row(
+        children: [
+          for (var i = 0; i < 5; i++) ...[
+            if (i > 0) const SizedBox(width: 4),
+            Expanded(
+              child: Container(
+                height: 5,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(3),
+                  color: i < filled ? (warm ? Tw.amber300 : Brand.cream.withValues(alpha: .92)) : Brand.cream.withValues(alpha: .2),
+                ),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }

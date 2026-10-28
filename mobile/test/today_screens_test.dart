@@ -9,6 +9,7 @@ import 'package:rebi/core/day_log.dart';
 import 'package:rebi/core/routine_logic.dart';
 import 'package:rebi/core/routine_usage.dart';
 import 'package:rebi/screens/today/today_clock.dart';
+import 'package:rebi/screens/today/today_header.dart';
 import 'package:rebi/screens/today/today_widgets.dart';
 import 'package:rebi/ui/widgets/common.dart';
 
@@ -358,7 +359,7 @@ void main() {
       });
     });
 
-    testWidgets('başlıkta tek satırlık hava özeti görünür', (tester) async {
+    testWidgets('başlıkta hava paneli: büyük derece, UV ve nem değeri ile sözlü seviye görünür', (tester) async {
       final b = FakeBackend();
       b.todayPlan = {
         ...b.todayPlan,
@@ -366,7 +367,38 @@ void main() {
         'weather_source': 'live',
       };
       await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: b);
-      expect(find.text(tr('mobileToday.weatherPill', {'temp': '18', 'uv': '6', 'humidity': '38'})), findsOneWidget);
+      Finder inHeader(String text) => find.descendant(of: find.byType(TodayHeader), matching: find.text(text));
+      expect(inHeader(tr('mobileToday.weatherPanel.title')), findsOneWidget);
+      expect(inHeader('18°'), findsOneWidget);
+      expect(inHeader('6'), findsOneWidget);
+      expect(inHeader(tr('mobileToday.weatherPanel.uv.high')), findsOneWidget, reason: 'UV 6 = yüksek');
+      expect(inHeader('%38'), findsOneWidget);
+      expect(inHeader(tr('mobileToday.weatherPanel.hum.dry')), findsOneWidget, reason: 'nem %38 = kuru');
+      expect(find.textContaining(tr('mobileToday.weatherPillEstimated')), findsNothing, reason: 'gerçek hava: "tahmini" etiketi yok');
+    });
+
+    testWidgets('hava paneli seviyeleri: UV 9 çok yüksek, nem %80 nemli; tahmini hava "tahmini" der', (tester) async {
+      final b = FakeBackend();
+      b.todayPlan = {
+        ...b.todayPlan,
+        'weather': {'uv_index': 9, 'humidity': 80, 'temperature': 31},
+        'weather_source': 'default',
+      };
+      await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: b);
+      Finder inHeader(String text) => find.descendant(of: find.byType(TodayHeader), matching: find.text(text));
+      expect(inHeader('31°'), findsOneWidget);
+      expect(inHeader(tr('mobileToday.weatherPanel.uv.veryHigh')), findsOneWidget);
+      expect(inHeader(tr('mobileToday.weatherPanel.hum.humid')), findsOneWidget);
+      expect(find.descendant(of: find.byType(TodayHeader), matching: find.textContaining(tr('mobileToday.weatherPillEstimated'))), findsOneWidget);
+    });
+
+    testWidgets('"Daha fazlası" iki sütunlu karolardır: altı karo, her biri tek dokunuşla ilgili ekranı açar', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
+      for (final key in ['dashboard.dailyCheckinTitle', 'mobileShelf.title', 'mobileToday.quickPhoto', 'mobileToday.newAnalysis', 'mobileToday.showFullPlan', 'mobileHistory.open']) {
+        expect(find.text(tr(key)), findsOneWidget, reason: key);
+      }
+      await tapText(tester, tr('mobileHistory.open'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/history');
     });
 
     testWidgets('varsayılan hava kullanılıyorsa konum ipucu görünür', (tester) async {

@@ -253,6 +253,21 @@
     "newAnalysis": "Yeni analiz",
     "settings": "Hatırlatıcı ayarları",
     "weatherPill": "{{temp}}° · UV {{uv}} · nem %{{humidity}}",
+    "weatherPanel": {
+      "title": "Bugünün havası",
+      "humidity": "NEM",
+      "uv": {
+        "low": "Düşük",
+        "moderate": "Orta",
+        "high": "Yüksek",
+        "veryHigh": "Çok yüksek"
+      },
+      "hum": {
+        "dry": "Kuru",
+        "comfortable": "Dengeli",
+        "humid": "Nemli"
+      }
+    },
     "weatherPillEstimated": "tahmini",
     "decisions": {
       "spf": {

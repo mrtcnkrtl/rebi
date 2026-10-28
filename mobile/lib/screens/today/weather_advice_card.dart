@@ -32,32 +32,29 @@ class WeatherDecisionsCard extends StatelessWidget {
     final d = plan.decisions;
 
     return RCard(
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 14),
       radius: 24,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(i18n.t('mobileToday.advice.title'), style: heading(22)),
-          const SizedBox(height: 2),
+          Padding(padding: const EdgeInsets.only(left: 4, bottom: 12), child: Text(i18n.t('mobileToday.advice.title'), style: heading(22))),
           if (d != null) ...[
             _spf(i18n, d.spf),
-            const Hairline(indent: 54),
             _moisture(i18n, d.moisture),
-            const Hairline(indent: 54),
             _lip(i18n, d.lipBalm, plan.weather),
           ] else ...[
             _fallback(i18n),
           ],
-          const SizedBox(height: 8),
-          Text(i18n.t('mobileToday.advice.source.$sourceKey'), style: tx(10.5, c: Tw.gray500)),
+          const SizedBox(height: 6),
+          Padding(padding: const EdgeInsets.only(left: 4), child: Text(i18n.t('mobileToday.advice.source.$sourceKey'), style: tx(11, c: Tw.gray500))),
           // Open-Meteo verisi CC BY 4.0 lisanslıdır: gerçek hava gösterilirken kaynak belirtilir (varsayılan değerlerde veri yok).
           if (plan.hasRealWeather) ...[
             const SizedBox(height: 2),
-            Text(i18n.t('mobileToday.advice.attribution'), style: tx(10.5, c: Tw.gray500)),
+            Padding(padding: const EdgeInsets.only(left: 4), child: Text(i18n.t('mobileToday.advice.attribution'), style: tx(11, c: Tw.gray500))),
           ],
           if (!plan.hasRealWeather) ...[
             const SizedBox(height: 4),
-            Text(i18n.t('mobileToday.advice.locationHint'), style: tx(10.5, c: Tw.gray500, h: relaxed)),
+            Padding(padding: const EdgeInsets.only(left: 4), child: Text(i18n.t('mobileToday.advice.locationHint'), style: tx(11, c: Tw.gray500, h: relaxed))),
           ],
         ],
       ),
@@ -71,30 +68,44 @@ class WeatherDecisionsCard extends StatelessWidget {
     required String reason,
     List<Widget> extra = const [],
     bool muted = false,
-  }) =>
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TodayIconBadge(icon: icon, color: color, size: 40),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(headline, style: tx(15, w: 7, c: muted ? Tw.gray500 : Tw.gray900, h: snug)),
-                  if (reason.isNotEmpty) ...[
-                    const SizedBox(height: 3),
-                    Text(reason, style: tx(12.5, c: Tw.gray600, h: relaxed)),
-                  ],
-                  ...extra,
+  }) {
+    // Her karar kendi renginde sakin bir panel: güneş bal, nem su, dudak pudra (renk anlam taşır); gerekmeyen karar nötr.
+    final tint = muted ? Tw.gray50 : Color.alphaBlend(color.withValues(alpha: .09), Tw.surface);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(20)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: color.withValues(alpha: .16), shape: BoxShape.circle),
+            child: Icon(icon, size: 21, color: Tw.readable(color, bg: Color.alphaBlend(color.withValues(alpha: .16), tint))),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(headline, style: tx(16, w: 7, c: muted ? Tw.gray600 : Tw.gray900, h: 1.25)),
+                ),
+                if (reason.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(reason, style: tx(13, c: Tw.gray600, h: relaxed)),
                 ],
-              ),
+                ...extra,
+              ],
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _spfAction(I18n i18n, {required bool emphasize}) {
     final a = actions;
