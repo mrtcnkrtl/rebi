@@ -26,6 +26,7 @@ void main() {
   // (klasör, mantıksal boyut, çıktı ölçeği): çıktı piksel boyutu = mantıksal × ölçek.
   const formats = <(String, Size, double)>[
     ('apple-6.9', Size(440, 956), 3), // 1320×2868
+    ('apple-6.3', Size(402, 874), 3), // 1206×2622 (Apple'ın zorunlu iPhone boyutu)
     ('apple-duo-dis', Size(466, 678), 3), // iPhone Duo dış ekran 1398×2034
     ('apple-duo-ic', Size(669, 951), 3), // iPhone Duo iç ekran 2007×2853
     ('apple-ipad-13', Size(1032, 1376), 2), // iPad 13" 2064×2752

@@ -6,11 +6,12 @@
     python3 tool/store_frames.py                                       # çıktı: build/store/framed/<dil>/<biçim>/*.png
 
 Gereken: Pillow (`pip install pillow`). Yazı tipleri uygulamanınkiyle aynı (assets/fonts: Fraunces + Inter).
-Boyutlar: iPhone 6,9", iPhone Duo dış/iç ekran ve iPad 13" (FORMATS). Başlıklar aşağıdaki SHOTS tablosundadır; görsel yalnızca uygulamada gerçekten
+Boyutlar: iPhone 6,9" ve 6,3", iPhone Duo dış/iç ekran ve iPad 13" (FORMATS). Başlıklar aşağıdaki SHOTS tablosundadır; görsel yalnızca uygulamada gerçekten
 olan ekranı gösterir, başlık o ekranı anlatır.
 """
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -51,7 +52,7 @@ SHOTS = [
     ("07-su", False, {
         "tr": ("Suyunu tek\ndokunuşla kaydet", "Günlük hedefini takip et, yanlış girişi kolayca düzelt."),
         "en": ("Log water\nin one tap", "Track your daily goal and fix a wrong entry easily."),
-    }, {"apple-6.9", "apple-duo-dis", "apple-duo-ic"}),
+    }, {"apple-6.9", "apple-6.3", "apple-duo-dis", "apple-duo-ic"}),
     ("04-gecmis", False, {
         "tr": ("İlerlemeni\ntakip et", "Su, uyku, stres ve rutin grafikleri tek bakışta."),
         "en": ("Track your\nprogress", "Water, sleep, stress and routine charts at a glance."),
@@ -173,6 +174,7 @@ def frame(raw: Path, dark: bool, title: str, subtitle: str, size: tuple[int, int
 # Ham görüntü klasörü → (çıktı boyutu, tablet çerçevesi mi, cihaz alttan taşsın mı). Ham boyutlar test/store_screenshots_test.dart'taki gibi.
 FORMATS = {
     "apple-6.9": ((1320, 2868), False, False),  # iPhone 6,9"
+    "apple-6.3": ((1206, 2622), False, False),  # iPhone 6,3" (zorunlu boyut)
     "apple-duo-dis": ((1398, 2034), False, False),  # iPhone Duo dış ekran
     "apple-duo-ic": ((2007, 2853), False, True),  # iPhone Duo iç ekran
     "apple-ipad-13": ((2064, 2752), True, True),  # iPad 13"
@@ -187,7 +189,8 @@ def main() -> int:
     for lang in sorted(langs):
         for fmt, (size, tablet, bleed) in FORMATS.items():
             out = OUT / lang / fmt
-            out.mkdir(parents=True, exist_ok=True)
+            shutil.rmtree(out, ignore_errors=True)  # eski adlarla kalan görseller mağazaya karışmasın
+            out.mkdir(parents=True)
             shots = [s for s in SHOTS if len(s) < 4 or fmt in s[3]]
             for i, (name, dark, texts, *_) in enumerate(shots, start=1):
                 raw = SRC / lang / fmt / f"{name}.png"
