@@ -74,6 +74,7 @@ Widget flowPageBody(String id, FlowHost h) {
     'smoking' => _smoking(h),
     'alcohol' => _alcohol(h),
     'makeup' => _makeup(h),
+    'shaving' => _shaving(h),
     'actives' => _actives(h),
     'tolerance' => _tolerance(h),
     'photo' => _photo(h),
@@ -106,6 +107,7 @@ Widget _basics(FlowHost h) {
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(3)],
         textInputAction: TextInputAction.done,
+        errorText: f.age.text.trim().isNotEmpty && !f.ageOk ? _t(h, 'basics.ageRange', {'min': minAge, 'max': maxAge}) : null,
       ),
     ],
   );
@@ -147,7 +149,13 @@ Widget _hormonal(FlowHost h) {
       const SizedBox(height: 24),
       ChoiceList(
         children: [
-          for (final id in const ['regular', 'irregular', 'pregnant', 'menopause'])
+          // Yaşa uygun seçenekler: hamilelik 55'e kadar, menopoz 40'tan sonra.
+          for (final id in [
+            'regular',
+            'irregular',
+            if (f.offersPregnancy) 'pregnant',
+            if (f.offersMenopause) 'menopause',
+          ])
             ChoiceTile(title: h.pack.s('step1.hormonal_$id'), selected: f.hormonalStatus == id, onTap: () => h.answer(() => f.hormonalStatus = id)),
         ],
       ),
@@ -624,6 +632,33 @@ Widget _makeup(FlowHost h) {
           items: [for (final id in _makeupRemovals) (id, h.pack.or('makeup.removal.$id', id))],
           isSelected: (id) => f.makeupRemoval == id,
           onTap: (id) => h.refresh(() => f.makeupRemoval = id),
+        ),
+      ],
+    ],
+  );
+}
+
+Widget _shaving(FlowHost h) {
+  final f = h.form;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      FlowTitle(title: _t(h, 'shaving.title'), subtitle: _t(h, 'shaving.subtitle')),
+      const SizedBox(height: 24),
+      ChoiceList(children: [
+        for (final v in shavingFrequencies)
+          ChoiceTile(
+            title: _t(h, 'shaving.freq.$v'),
+            selected: f.shavingFreq == v,
+            onTap: () => h.answer(() => f.shavingFreq = v, advance: v == 0),
+          ),
+      ]),
+      if (f.shavingFreq > 0) ...[
+        SubQuestion(_t(h, 'shaving.afterQuestion')),
+        ChipCloud(
+          items: [for (final id in shavingAfterIds) (id, _t(h, 'shaving.after.$id'))],
+          isSelected: (id) => f.shavingAfter == id,
+          onTap: (id) => h.refresh(() => f.shavingAfter = id),
         ),
       ],
     ],

@@ -181,6 +181,10 @@ void main() {
       await pumpApp(t, location: '/dashboard/analyze');
       await analyzeWalkTo(t, 'smoking');
     }),
+    ('Analiz · tıraş (erkek)', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'shaving');
+    }),
     ('Analiz · ürün tepkileri', (t) async {
       await pumpApp(t, location: '/dashboard/analyze');
       await analyzeWalkTo(t, 'tolerance');

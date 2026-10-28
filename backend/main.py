@@ -942,6 +942,9 @@ class AssessmentRequest(BaseModel):
     makeup_removal: str = "cleanser"  # none | water | cleanser | double
     # UI: karışıklığı azaltan netleştirici işaretler (şimdilik opsiyonel)
     special_flags: Optional[dict] = None
+    # Yalnızca erkeğe sorulan tıraş cevabı (mobil). Rutini şimdilik değiştirmez; kaydedilir ve sohbet bağlamına verilir.
+    shaving_frequency: int = 0  # 0 hayır, 1 ara sıra, 3 haftada birkaç, 7 her gün
+    shaving_after: str = ""  # ok | irritated | ingrown ("" = tıraş olmuyor / sorulmadı)
 
     @model_validator(mode="after")
     def _normalize_assessment(self):
@@ -955,6 +958,9 @@ class AssessmentRequest(BaseModel):
         self.alcohol_frequency = max(0, min(7, int(self.alcohol_frequency)))
         self.alcohol_amount = max(0, min(30, int(self.alcohol_amount)))
         self.makeup_frequency = max(0, min(7, int(self.makeup_frequency)))
+        self.shaving_frequency = max(0, min(7, int(self.shaving_frequency)))
+        if self.shaving_after not in ("ok", "irritated", "ingrown"):
+            self.shaving_after = ""
         if self.location_lat is not None and self.location_lon is not None:
             try:
                 la, lo = float(self.location_lat), float(self.location_lon)
@@ -2987,6 +2993,8 @@ def generate_routine(request: Request, req: AssessmentRequest):
                     "makeup_frequency": req.makeup_frequency,
                     "makeup_removal": req.makeup_removal or "cleanser",
                     "special_flags": req.special_flags or {},
+                    "shaving_frequency": req.shaving_frequency,
+                    "shaving_after": req.shaving_after,
                 },
                 "photo_url": req.photo_url,
                 "weather_data": weather_data,
@@ -3414,6 +3422,8 @@ def _generate_chat_general_reply(request: Request, req: ChatGeneralRequest) -> t
                         profile_hint["actives_tolerance"] = ld.get("actives_tolerance")
                     if ld.get("special_flags") is not None:
                         profile_hint["special_flags"] = ld.get("special_flags")
+                    if ld.get("shaving_after"):
+                        profile_hint["shaving_after"] = ld.get("shaving_after")
 
             # Aktif rutin: kullanıcı sorularını "mevcut plana göre" yanıtlamak için kısa özet
             try:

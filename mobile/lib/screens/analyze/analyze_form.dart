@@ -26,6 +26,23 @@ const zoneIds = ['forehead', 'nose', 'cheeks', 'chin', 'undereye', 'lips', 'temp
 
 const toleranceLevels = ['never', 'good', 'mild', 'bad'];
 
+/// Rebi 13 yaş ve üzeri içindir (sunucu da yaşı 13–100'e kırpar).
+const minAge = 13;
+const maxAge = 100;
+
+/// Sigara ve alkol soruları yalnızca yetişkine sorulur.
+const adultAge = 18;
+
+/// Menopoz seçeneği bu yaştan sonra gösterilir; hamilelik seçeneği [maxPregnancyAge]'e kadar.
+const menopauseFromAge = 40;
+const maxPregnancyAge = 55;
+
+/// Tıraş sıklığı değerleri (sunucu `shaving_frequency`): 0 hayır, 1 ara sıra, 3 haftada birkaç, 7 her gün.
+const shavingFrequencies = [0, 1, 3, 7];
+
+/// Tıraştan sonra cildin durumu (sunucu `shaving_after`).
+const shavingAfterIds = ['ok', 'irritated', 'ingrown'];
+
 /// Son adet tarihinden döngü evresi. Web `new Date("YYYY-MM-DD")` UTC gece yarısı sayar.
 String calcCyclePhase(String lastPeriodDate, int cycleLength, {DateTime? now}) {
   if (lastPeriodDate.isEmpty) return 'unknown';
@@ -103,6 +120,8 @@ class AnalyzeForm {
   int alcoholAmt = 1;
   int makeupFreq = 0;
   String makeupRemoval = 'cleanser';
+  int shavingFreq = 0;
+  String shavingAfter = 'ok';
 
   // Ürünler
   String activesExperience = 'occasional';
@@ -142,8 +161,29 @@ class AnalyzeForm {
 
   int? get ageValue => int.tryParse(age.text.trim());
 
-  /// Zorunlu alanlar tamam mı (ad, yaş).
-  bool get basicsDone => name.text.trim().isNotEmpty && (ageValue ?? 0) > 0;
+  /// Yaş girilmiş ve Rebi'nin kapsadığı aralıkta mı.
+  bool get ageOk {
+    final a = ageValue;
+    return a != null && a >= minAge && a <= maxAge;
+  }
+
+  /// Zorunlu alanlar tamam mı (ad, uygun yaş).
+  bool get basicsDone => name.text.trim().isNotEmpty && ageOk;
+
+  // Yaş ve cinsiyete göre sorulacaklar -------------------------------------------------
+
+  /// Sigara ve alkol yalnızca yetişkine sorulur (cevapsız kalırsa sıfır gider).
+  bool get asksHabits => (ageValue ?? adultAge) >= adultAge;
+
+  /// Hamilelik seçeneği makul yaş aralığında gösterilir.
+  bool get offersPregnancy => (ageValue ?? 30) <= maxPregnancyAge;
+
+  /// Menopoz seçeneği 40 yaşından sonra gösterilir.
+  bool get offersMenopause => (ageValue ?? 30) >= menopauseFromAge;
+
+  /// Makyaj sorusu erkeğe sorulmaz; onun yerine tıraş sorulur.
+  bool get asksMakeup => gender != 'male';
+  bool get asksShaving => gender == 'male';
 
   /// Sorun seçimi değişince alakasız kalan cevapları temizler: genel bakım diğerleriyle birlikte seçilmez,
   /// seçimi kalkan sorunun işaretleri ve anket cevapları gitmez ama gönderilmez.
@@ -209,23 +249,29 @@ class AnalyzeForm {
       'water_intake': waterIntake,
       'sleep_hours': sleepHours,
       'stress_score': (pssScore(pssAnswers) * 16 / 40).round(),
-      'smoking': smokingPerDay > 0,
-      'smoking_per_day': smokingPerDay,
-      'smoking_years': smokingYears,
-      'alcohol': alcoholFreq > 0,
-      'alcohol_frequency': alcoholFreq,
-      'alcohol_amount': alcoholAmt,
+      // Sorulmayan (yaş) ya da sonradan geçersiz kalan cevaplar gönderilmez.
+      'smoking': asksHabits && smokingPerDay > 0,
+      'smoking_per_day': asksHabits ? smokingPerDay : 0,
+      'smoking_years': asksHabits ? smokingYears : 0,
+      'alcohol': asksHabits && alcoholFreq > 0,
+      'alcohol_frequency': asksHabits ? alcoholFreq : 0,
+      'alcohol_amount': asksHabits ? alcoholAmt : 1,
       'location_lat': lat,
       'location_lon': lon,
       'photo_url': photoPath,
-      'is_pregnant': hormonalStatus == 'pregnant',
+      'is_pregnant': isFemale && hormonalStatus == 'pregnant' && offersPregnancy,
       'cycle_phase': cyclePhase,
       'acne_zones': primaryConcern == 'general' ? <String>[] : List<String>.of(zones),
       'actives_experience': activesExperience,
       'actives_tolerance': Map<String, String>.of(activesTolerance),
-      'makeup_frequency': makeupFreq,
-      'makeup_removal': makeupFreq > 0 ? makeupRemoval : 'cleanser',
+      'makeup_frequency': asksMakeup ? makeupFreq : 0,
+      'makeup_removal': asksMakeup && makeupFreq > 0 ? makeupRemoval : 'cleanser',
       'special_flags': anyFlag ? Map<String, bool>.of(specialFlags) : null,
+      // Yalnızca erkeğe sorulan tıraş cevabı (web gövdesinde yok; sunucu kaydeder ve sohbet bağlamına verir).
+      if (asksShaving) ...{
+        'shaving_frequency': shavingFreq,
+        'shaving_after': shavingFreq > 0 ? shavingAfter : '',
+      },
     };
   }
 }

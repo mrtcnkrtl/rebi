@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'app_harness.dart';
 
 /// Analiz sihirbazında (erkek, normal cilt) en kısa yoldan istenen sayfaya gider; erişilebilirlik ve görsel testlerde
-/// kullanılır. Sayfalar: basics, skinType, concerns, severity, waterSleep, stressIntro, smoking, tolerance, photo, summary.
+/// kullanılır. Sayfalar: basics, skinType, concerns, severity, waterSleep, stressIntro, smoking, shaving, tolerance, photo, summary.
 /// "severity" yolu sivilceyi seçer (anket + bölge sorusu gelir); diğerleri genel bakım seçer.
 Future<void> analyzeWalkTo(WidgetTester t, String page) async {
   Future<void> next() => tapFinder(t, find.byKey(const Key('flow-next')));
@@ -31,7 +31,8 @@ Future<void> analyzeWalkTo(WidgetTester t, String page) async {
   if (page == 'smoking') return;
   await tapText(t, packS('smokingAmount.0'));
   await tapText(t, packS('alcoholFreq.0'));
-  await tapText(t, packS('makeup.frequency.0'));
+  if (page == 'shaving') return;
+  await tapText(t, tr('mobileAnalyze.shaving.freq.0'));
   await tapText(t, packS('activesExperience.none'));
   if (page == 'tolerance') return;
   await next();

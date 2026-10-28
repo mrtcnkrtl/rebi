@@ -41,7 +41,7 @@ const _chapters = ['about', 'skin', 'life', 'products', 'finish'];
 
 String _chapterOf(String id) {
   if (id.startsWith('sev') || const ['skinType', 'concerns', 'primary', 'zones', 'flags'].contains(id)) return 'skin';
-  if (id.startsWith('pss') || const ['waterSleep', 'stressIntro', 'smoking', 'alcohol', 'makeup'].contains(id)) return 'life';
+  if (id.startsWith('pss') || const ['waterSleep', 'stressIntro', 'smoking', 'alcohol', 'makeup', 'shaving'].contains(id)) return 'life';
   if (const ['actives', 'tolerance'].contains(id)) return 'products';
   if (const ['photo', 'summary'].contains(id)) return 'finish';
   return 'about';
@@ -170,9 +170,9 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
       'stressIntro',
       if (_stressTest)
         for (var i = 0; i < 10; i++) 'pss$i',
-      'smoking',
-      'alcohol',
-      'makeup',
+      if (f.asksHabits) ...['smoking', 'alcohol'],
+      if (f.asksMakeup) 'makeup',
+      if (f.asksShaving) 'shaving',
       'actives',
       'tolerance',
       'photo',

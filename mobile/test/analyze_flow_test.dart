@@ -16,9 +16,9 @@ Future<void> _next(WidgetTester t) => _key(t, 'flow-next');
 Future<void> _back(WidgetTester t) => tapFinder(t, find.byTooltip(tr('common.back')));
 
 /// Karşılamadan geçip ad (oturumdan gelir) + yaş sorusunu doldurur ve cinsiyet sorusuna gelir.
-Future<void> _toGender(WidgetTester t) async {
+Future<void> _toGender(WidgetTester t, {String age = '28'}) async {
   await _key(t, 'flow-start');
-  await t.enterText(find.widgetWithText(TextField, '25'), '28');
+  await t.enterText(find.widgetWithText(TextField, '25'), age);
   await settle(t, 3);
   await _next(t);
 }
@@ -26,7 +26,7 @@ Future<void> _toGender(WidgetTester t) async {
 /// En uzun yol: kadın + düzenli döngü (adet tarihi sorusu) kontrolünden sonra menopoza dönüp tüm koşullu sorulardan geçer.
 /// [check] her sayfada çağrılır (taşma denetimi için).
 Future<void> _walkEverything(WidgetTester t, {required void Function() check}) async {
-  await _toGender(t);
+  await _toGender(t, age: '45');
   check();
   await tapText(t, packS('gender.female'));
   check();
@@ -157,6 +157,75 @@ void main() {
     });
   });
 
+  group('yaş ve cinsiyete göre sorular (AnalyzeForm)', () {
+    test('yaş aralığı: 13–100 dışı kabul edilmez', () {
+      final f = AnalyzeForm(name: 'Ayşe');
+      addTearDown(f.dispose);
+      for (final (v, ok) in [('', false), ('9', false), ('12', false), ('13', true), ('45', true), ('100', true), ('101', false)]) {
+        f.age.text = v;
+        expect(f.basicsDone, ok, reason: 'yaş "$v"');
+      }
+    });
+
+    test('reşit olmayana sigara ve alkol sorulmaz; eski cevaplar gönderilmez', () {
+      final f = AnalyzeForm(name: 'Ali');
+      addTearDown(f.dispose);
+      f
+        ..age.text = '28'
+        ..smokingPerDay = 15
+        ..smokingYears = 5
+        ..alcoholFreq = 3
+        ..alcoholAmt = 2;
+      var body = f.toBody(userId: 'u', photoPath: null, severity: null);
+      expect(body['smoking'], isTrue);
+      expect(body['alcohol_frequency'], 3);
+      f.age.text = '16'; // yaş sonradan düzeltildi
+      expect(f.asksHabits, isFalse);
+      body = f.toBody(userId: 'u', photoPath: null, severity: null);
+      expect(body['smoking'], isFalse);
+      expect(body['smoking_per_day'], 0);
+      expect(body['alcohol'], isFalse);
+      expect(body['alcohol_frequency'], 0);
+    });
+
+    test('hamilelik ve menopoz seçenekleri yaşa göre sunulur', () {
+      final f = AnalyzeForm();
+      addTearDown(f.dispose);
+      for (final (age, preg, meno) in [(16, true, false), (28, true, false), (45, true, true), (60, false, true)]) {
+        f.age.text = '$age';
+        expect(f.offersPregnancy, preg, reason: '$age yaş hamilelik');
+        expect(f.offersMenopause, meno, reason: '$age yaş menopoz');
+      }
+      f
+        ..age.text = '60'
+        ..gender = 'female'
+        ..hormonalStatus = 'pregnant';
+      expect(f.toBody(userId: 'u', photoPath: null, severity: null)['is_pregnant'], isFalse, reason: 'makul yaş dışında hamilelik gönderilmez');
+    });
+
+    test('erkeğe makyaj yerine tıraş: makyaj sıfır gider, tıraş alanları yalnız erkekte vardır', () {
+      final f = AnalyzeForm();
+      addTearDown(f.dispose);
+      f
+        ..age.text = '30'
+        ..makeupFreq = 5
+        ..shavingFreq = 3
+        ..shavingAfter = 'irritated'
+        ..gender = 'male';
+      var body = f.toBody(userId: 'u', photoPath: null, severity: null);
+      expect(f.asksMakeup, isFalse);
+      expect(body['makeup_frequency'], 0);
+      expect(body['shaving_frequency'], 3);
+      expect(body['shaving_after'], 'irritated');
+      f.shavingFreq = 0;
+      expect(f.toBody(userId: 'u', photoPath: null, severity: null)['shaving_after'], '', reason: 'tıraş olmayana sonrası sorulmaz');
+      f.gender = 'female';
+      body = f.toBody(userId: 'u', photoPath: null, severity: null);
+      expect(body['makeup_frequency'], 5);
+      expect(body.containsKey('shaving_frequency'), isFalse, reason: 'kadın/diğer gövdesi web ile aynı kalır');
+    });
+  });
+
   group('akış', () {
     testWidgets('erkek: hormonal durum sorulmaz; sorunsuz ciltte bölge, işaret ve anket yoktur', (tester) async {
       final h = await pumpApp(tester, location: '/dashboard/analyze');
@@ -182,6 +251,86 @@ void main() {
     testWidgets('hızlı fotoğraf yükleme kabuklu kalır (alt sekme çubuğu var)', (tester) async {
       await pumpApp(tester, location: '/dashboard/analyze?photo=1');
       expect(find.text(tr('mobileNav.chat')), findsOneWidget);
+    });
+
+    testWidgets('yaş: 13 altı ve 100 üstü kabul edilmez; nedeni alanın altında yazar', (tester) async {
+      await pumpApp(tester, location: '/dashboard/analyze');
+      await _key(tester, 'flow-start');
+      await tester.enterText(find.widgetWithText(TextField, '25'), '9');
+      await settle(tester, 3);
+      expect(find.text(tr('mobileAnalyze.basics.ageRange', {'min': 13, 'max': 100})), findsOneWidget);
+      await _next(tester);
+      expect(find.text(tr('mobileAnalyze.basics.title')), findsOneWidget, reason: 'geçersiz yaşla ilerlenmez');
+      await tester.enterText(find.byType(TextField).at(1), '13');
+      await settle(tester, 3);
+      expect(find.text(tr('mobileAnalyze.basics.ageRange', {'min': 13, 'max': 100})), findsNothing);
+      await _next(tester);
+      expect(find.text(tr('mobileAnalyze.gender.title')), findsOneWidget);
+    });
+
+    for (final (age, pregnant, menopause) in [('16', true, false), ('45', true, true), ('60', false, true)]) {
+      testWidgets('kadın $age yaş: hamilelik ${pregnant ? 'sunulur' : 'sunulmaz'}, menopoz ${menopause ? 'sunulur' : 'sunulmaz'}', (tester) async {
+        await pumpApp(tester, location: '/dashboard/analyze');
+        await _toGender(tester, age: age);
+        await tapText(tester, packS('gender.female'));
+        expect(find.text(packS('step1.hormonal_pregnant')), pregnant ? findsOneWidget : findsNothing);
+        expect(find.text(packS('step1.hormonal_menopause')), menopause ? findsOneWidget : findsNothing);
+        expect(find.text(packS('step1.hormonal_regular')), findsOneWidget);
+      });
+    }
+
+    testWidgets('reşit olmayana sigara ve alkol sorulmaz; makyaj (kadın/diğer) sorulur', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard/analyze');
+      await _toGender(tester, age: '16');
+      await tapText(tester, packS('gender.other'));
+      await tapText(tester, packS('skinPicker.normal.label'));
+      await tapText(tester, packS('concern.general'));
+      await _next(tester);
+      await _next(tester);
+      await _key(tester, 'flow-skip');
+      expect(find.text(tr('mobileAnalyze.smoking.title')), findsNothing);
+      expect(find.text(tr('mobileAnalyze.alcohol.title')), findsNothing);
+      expect(find.text(tr('mobileAnalyze.makeup.title')), findsOneWidget);
+      await tapText(tester, packS('makeup.frequency.0'));
+      await tapText(tester, packS('activesExperience.none'));
+      await _next(tester);
+      await _next(tester);
+      await _next(tester);
+      await settle(tester, 20);
+      final body = h.backend.bodyOf('/generate_routine');
+      expect(body['age'], 16);
+      expect(body['smoking'], isFalse);
+      expect(body['alcohol_frequency'], 0);
+      expect(body.containsKey('shaving_frequency'), isFalse);
+    });
+
+    testWidgets('erkeğe makyaj sorulmaz, tıraş sorulur; cevap gövdeye gider', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard/analyze');
+      await _toGender(tester);
+      await tapText(tester, packS('gender.male'));
+      await tapText(tester, packS('skinPicker.normal.label'));
+      await tapText(tester, packS('concern.general'));
+      await _next(tester);
+      await _next(tester);
+      await _key(tester, 'flow-skip');
+      await tapText(tester, packS('smokingAmount.0'));
+      await tapText(tester, packS('alcoholFreq.0'));
+      expect(find.text(tr('mobileAnalyze.makeup.title')), findsNothing);
+      expect(find.text(tr('mobileAnalyze.shaving.title')), findsOneWidget);
+      await tapText(tester, tr('mobileAnalyze.shaving.freq.3'));
+      expect(find.text(tr('mobileAnalyze.shaving.title')), findsOneWidget, reason: 'tıraş olana alt soru gelir, kendiliğinden ilerlemez');
+      await tapText(tester, tr('mobileAnalyze.shaving.after.irritated'));
+      await _next(tester);
+      await tapText(tester, packS('activesExperience.none'));
+      await _next(tester);
+      await _next(tester);
+      await _next(tester);
+      await settle(tester, 20);
+      final body = h.backend.bodyOf('/generate_routine');
+      expect(body['gender'], 'male');
+      expect(body['makeup_frequency'], 0);
+      expect(body['shaving_frequency'], 3);
+      expect(body['shaving_after'], 'irritated');
     });
 
     testWidgets('düzenli döngü: adet tarihi seçilmeden devam edilemez; tarih seçilince ilerler ve evre hesaplanır', (tester) async {
@@ -221,7 +370,7 @@ void main() {
       await _key(tester, 'flow-skip');
       await tapText(tester, packS('smokingAmount.0'));
       await tapText(tester, packS('alcoholFreq.0'));
-      await tapText(tester, packS('makeup.frequency.0'));
+      await tapText(tester, tr('mobileAnalyze.shaving.freq.0'));
       await tapText(tester, packS('activesExperience.none'));
       await _next(tester); // ürün tepkileri
       await _next(tester); // fotoğraf
@@ -253,7 +402,7 @@ void main() {
       expect(find.text(tr('mobileAnalyze.smoking.title')), findsOneWidget);
       await tapText(tester, packS('smokingAmount.0'));
       await tapText(tester, packS('alcoholFreq.0'));
-      await tapText(tester, packS('makeup.frequency.0'));
+      await tapText(tester, tr('mobileAnalyze.shaving.freq.0'));
       await tapText(tester, packS('activesExperience.none'));
       for (var i = 0; i < 3; i++) {
         await _next(tester); // ürün tepkileri, fotoğraf, özet → oluştur
@@ -335,7 +484,7 @@ void main() {
       await _key(tester, 'flow-skip');
       await tapText(tester, packS('smokingAmount.0'));
       await tapText(tester, packS('alcoholFreq.0'));
-      await tapText(tester, packS('makeup.frequency.0'));
+      await tapText(tester, tr('mobileAnalyze.shaving.freq.0'));
       await tapText(tester, packS('activesExperience.none'));
       await _next(tester); // ürün tepkileri
       await _next(tester); // fotoğraf
@@ -460,7 +609,7 @@ void main() {
       await _key(tester, 'flow-skip');
       await tapText(tester, packS('smokingAmount.0'));
       await tapText(tester, packS('alcoholFreq.0'));
-      await tapText(tester, packS('makeup.frequency.0'));
+      await tapText(tester, tr('mobileAnalyze.shaving.freq.0'));
       await tapText(tester, packS('activesExperience.none'));
       await _next(tester); // ürün tepkileri
       await _next(tester); // fotoğraf

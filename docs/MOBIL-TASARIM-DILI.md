@@ -188,6 +188,13 @@ Eski sihirbaz dört uzun sayfaydı (60'a yakın soru, renkli kartlar, 10–11 pu
   tek ana düğme "Rutinimi oluştur". Hata özette kalır ve tekrar denenir.
 - **Backend gövdesi değişmedi** (web `Analyze.jsx` ile aynı alan kümesi; `AnalyzeForm.toBody`). Sihirbaz görünümünden bağımsız
   cevap modeli `analyze_form.dart`, yapı taşları `analyze_flow.dart`, sayfalar `analyze_pages.dart`, yönlendirme `analyze_screen.dart`.
+- **Yaşa ve cinsiyete göre sorular** (kurallar `AnalyzeForm`'da, test: `analyze_flow_test` "yaş ve cinsiyete göre sorular"):
+  yaş 13–100 dışı kabul edilmez (sunucu da bu aralığa kırpar; nedeni alanın altında yazar); **18 yaş altına sigara ve alkol sorulmaz**
+  (gövdede sıfır gider, sonradan düzeltilen yaşta eski cevap gitmez); hormonal durumda **hamilelik 55 yaşına kadar, menopoz 40'tan
+  sonra** sunulur; **erkeğe makyaj sorulmaz** (gövdede 0), yerine **tıraş** sorusu gelir (sıklık + tıraştan sonra cildin durumu).
+  Kadın ve "diğer" için makyaj sorusu aynen sürer. Tıraş cevabı yalnız erkek gövdesinde `shaving_frequency` / `shaving_after`
+  olarak gider (web gövdesinde yok; kadın/diğer gövdesi web ile aynı kalır). **Sunucu bunları şimdilik yalnızca kaydeder
+  (`lifestyle_data`) ve sohbet bağlamına verir; rutin kurallarını henüz değiştirmez** (tıraş tahrişine göre adım önerisi ayrı iş).
 - **Kaldırılan sorular**: beslenme (4), ne kadar süredir, tetikleyiciler, geçmiş tedaviler ve beklentiler. Bunlar web'de de
   toplanıyor ama **backend'e hiç gönderilmiyordu** (gövdede alanı yok); cevabı hiçbir yere gitmeyen soru sormak hem dürüst değil hem
   yorucuydu. Metinleri `analyzeWizard.json`'da duruyor; backend bu alanları kabul ettiğinde geri eklemek bir sayfa ekleyip

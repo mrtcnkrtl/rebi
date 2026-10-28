@@ -789,7 +789,8 @@
     },
     "basics": {
       "title": "Önce seni tanıyalım",
-      "subtitle": "Rebi sana adınla seslenir."
+      "subtitle": "Rebi sana adınla seslenir.",
+      "ageRange": "Rebi {{min}}–{{max}} yaş arası için hazırlandı. Yaşını kontrol eder misin?"
     },
     "gender": {
       "title": "Cinsiyetin?",
@@ -866,6 +867,22 @@
     "makeup": {
       "title": "Makyaj yapıyor musun?",
       "subtitle": "Temizleme alışkanlığın rutinini şekillendirir."
+    },
+    "shaving": {
+      "title": "Tıraş oluyor musun?",
+      "subtitle": "Tıraş cildi tahriş edebilir; bakımı buna göre kurarız.",
+      "freq": {
+        "0": "Hayır",
+        "1": "Ara sıra",
+        "3": "Haftada birkaç kez",
+        "7": "Her gün"
+      },
+      "afterQuestion": "Tıraştan sonra cildin nasıl?",
+      "after": {
+        "ok": "Rahat",
+        "irritated": "Kızarıyor ya da yanıyor",
+        "ingrown": "Batık tüy, sivilcecikler çıkıyor"
+      }
     },
     "actives": {
       "title": "Güçlü içerikli ürün kullandın mı?",

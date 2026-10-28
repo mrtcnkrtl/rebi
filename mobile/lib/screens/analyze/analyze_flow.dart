@@ -502,6 +502,7 @@ class FlowField extends StatelessWidget {
     this.textInputAction,
     this.onSubmitted,
     this.suffixText,
+    this.errorText,
   });
 
   final String label;
@@ -513,6 +514,9 @@ class FlowField extends StatelessWidget {
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
   final String? suffixText;
+
+  /// Doluysa alanın altında kırmızı yazılır (geçersiz değer).
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -538,6 +542,7 @@ class FlowField extends StatelessWidget {
             radius: 18,
             focusColor: theme.primary,
             suffixText: suffixText,
+            errorText: errorText,
             contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 17),
           ),
         ),

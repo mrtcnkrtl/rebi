@@ -789,7 +789,8 @@
     },
     "basics": {
       "title": "First, about you",
-      "subtitle": "Rebi will call you by your name."
+      "subtitle": "Rebi will call you by your name.",
+      "ageRange": "Rebi is made for ages {{min}}–{{max}}. Could you check your age?"
     },
     "gender": {
       "title": "Your gender?",
@@ -866,6 +867,22 @@
     "makeup": {
       "title": "Do you wear makeup?",
       "subtitle": "How you cleanse shapes your routine."
+    },
+    "shaving": {
+      "title": "Do you shave?",
+      "subtitle": "Shaving can irritate skin; we shape your care around it.",
+      "freq": {
+        "0": "No",
+        "1": "Occasionally",
+        "3": "A few times a week",
+        "7": "Every day"
+      },
+      "afterQuestion": "How does your skin feel after shaving?",
+      "after": {
+        "ok": "Comfortable",
+        "irritated": "Red or stinging",
+        "ingrown": "Ingrown hairs or small bumps"
+      }
     },
     "actives": {
       "title": "Have you used strong actives?",
