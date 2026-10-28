@@ -106,6 +106,8 @@ class _AppShellState extends State<AppShell> {
     final isDashboard = path.startsWith('/dashboard');
     final isAiSurface = isDashboard || path.startsWith('/rebi');
     final inApp = user != null && isDashboard;
+    // Analiz sihirbazı (tam form) tam ekran bir akıştır: alt çubuk ve geri çubuğu yoktur, üst güvenli alanı kendisi uygular.
+    final focusFlow = inApp && path == '/dashboard/analyze' && widget.location.queryParameters['photo'] != '1';
     // Açılış ve giriş ekranları kendi üst çubuğunu çizer (hero zeminin üstünde).
     final immersive = path == '/' || path == '/auth' || path == '/rebi';
 
@@ -132,11 +134,11 @@ class _AppShellState extends State<AppShell> {
                     decoration: BoxDecoration(gradient: theme.bg),
                     // Bugün, Rutin (boş durumda) ve Rebi sohbet kökünde üst sahne durum çubuğunun altına uzanır: güvenli alanı sayfa uygular.
                     child: SafeArea(
-                      top: path != AppTab.today.path && path != AppTab.routine.path && path != AppTab.chat.path,
+                      top: !focusFlow && path != AppTab.today.path && path != AppTab.routine.path && path != AppTab.chat.path,
                       bottom: false,
                       child: Column(
                         children: [
-                          if (isSubPage(path)) _SubBar(path: path),
+                          if (isSubPage(path) && !focusFlow) _SubBar(path: path),
                           Expanded(child: widget.child),
                         ],
                       ),
@@ -154,7 +156,7 @@ class _AppShellState extends State<AppShell> {
                         ),
                     ],
                   ),
-            bottomNavigationBar: inApp ? _BottomNav(path: path) : null,
+            bottomNavigationBar: inApp && !focusFlow ? _BottomNav(path: path) : null,
           ),
           if (isAiSurface) const Positioned.fill(child: AiDisclaimerModal()),
           if (user != null) const Positioned.fill(child: ConsentRecoveryModal()),

@@ -159,6 +159,24 @@ class _SkinTypeVisualState extends State<SkinTypeVisual> {
   }
 }
 
+/// Cilt tipinin doku küçük resmi (çizim): seçim satırlarında soldaki görsel.
+class SkinTexture extends StatelessWidget {
+  const SkinTexture({super.key, required this.id, this.size = 56});
+
+  final String id;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(size * .24),
+        child: SizedBox(width: size, height: size, child: CustomPaint(painter: _SkinTexturePainter(id))),
+      ),
+    );
+  }
+}
+
 class _SkinCard extends StatelessWidget {
   const _SkinCard({required this.id, required this.label, required this.desc, required this.active, required this.onTap});
 

@@ -163,6 +163,38 @@ Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır. Karşılamadan açılan
 Tek sütun, sakin: önce güvenlik bilgisi (sabah kullanım uyarısı, günlük denge), sonra **gün seçici ve seçilen günün sabah/akşam blokları**; ayrıntı
 ("Neden bu ürün?") ve uzun rehberler katlanır. Hava tek satırdır; renkli gradyan kart yok. Aynı adım dili Bugün'deki kahraman kartla ortaktır.
 
+## Analiz sihirbazı ("Seni tanıyalım")
+
+Eski sihirbaz dört uzun sayfaydı (60'a yakın soru, renkli kartlar, 10–11 punto metin, 10 kaydırıcılı stres testi, 14 kartlı
+ürün listesi). Yenisi **tek soru tek ekran**dır: yorulmayan, ne sorulduğu ve neden sorulduğu belli, her adımda tek karar.
+
+- **Karşılama** (`AnalyzeScreen` ilk sayfa) girişle aynı sahnedir: derin orman yeşili üst sahne, Fraunces "Seni tanıyalım.",
+  altında krem panelde üç sakin cümle (≈3 dk, her soru tek ekran, cevaplar yalnız rutin için) ve "Başlayalım".
+- **Akış tam ekrandır**: alt sekme çubuğu ve geri çubuğu yoktur (kabuk `focusFlow`; `/dashboard/analyze?photo=1` hızlı yükleme eskisi gibi
+  kabuklu kalır). Üstte geri, bölüm adı, kapat; altında **beş bölüm çizgisi** (Sen · Cildin · Günlük hayatın · Ürünlerin · Son adım).
+  Android geri tuşu soru soru geri gider; karşılamada çıkış. Kapat, ilk sorudan sonra "cevapların kaydedilmez" diye sorar.
+- **Soru ekranı**: küçük bölüm etiketi (gerekirse), Fraunces 30 soru, tek cümle açıklama, altında büyük seçenekler (≥64 dp satır,
+  yuvarlak seçim işareti; çoklu seçimde kare onay). Tek seçimli sorular dokununca **0,28 sn sonra** ilerler; çoklu/bileşik
+  sorular ve alt sorusu olanlar (sigara, alkol, makyaj) "Devam et" bekler. **Ekran okuyucu açıkken kendiliğinden ilerleme kapalıdır.**
+  Alt çubukta tek ana düğme; gerektiğinde sessiz ikinci eylem (stres testini geç).
+- **Sorular koşulludur**: cinsiyet kadın değilse hormonal durum yok; düzenli/düzensiz döngüde adet tarihi; birden çok sorun
+  seçildiyse "Hangisinden başlayalım?" (öncelikli sorun = backend `concern`); genel bakımda bölge, işaret ve şiddet anketi yok;
+  şiddet anketi **yalnız öncelikli sorun için** (backend yalnız onun skorunu kullanıyordu); stres testi isteğe bağlıdır (10 soru
+  ayrı ekranlar; atlanırsa varsayılan cevaplar, eski sihirbazla aynı `stress_score`).
+- **Seçenek dili**: cilt tipinde doku küçük resmi, sorunlarda çizgi ikon diski; su/uyku büyük Fraunces sayı + kaydırıcı + eksi/artı;
+  ürün tepkileri tek yüzeyli liste (satırda durum hapı, dokununca alt sayfada 4 seçenek; dokunulmayan "Sorunsuz" kalır, **ciddi tepki
+  rutine hiç yazılmaz**). Renk yalnız kategori/durum anlamı taşır (su mavisi, uyku lavantası, tepki sarı/tuğla).
+- **Özet** ("Hazırız, {ad}."): yaş, cilt tipi, odak, şiddet, fotoğraf satırları ve isteğe bağlı **konum** satırı (hava/UV için);
+  tek ana düğme "Rutinimi oluştur". Hata özette kalır ve tekrar denenir.
+- **Backend gövdesi değişmedi** (web `Analyze.jsx` ile aynı alan kümesi; `AnalyzeForm.toBody`). Sihirbaz görünümünden bağımsız
+  cevap modeli `analyze_form.dart`, yapı taşları `analyze_flow.dart`, sayfalar `analyze_pages.dart`, yönlendirme `analyze_screen.dart`.
+- **Kaldırılan sorular**: beslenme (4), ne kadar süredir, tetikleyiciler, geçmiş tedaviler ve beklentiler. Bunlar web'de de
+  toplanıyor ama **backend'e hiç gönderilmiyordu** (gövdede alanı yok); cevabı hiçbir yere gitmeyen soru sormak hem dürüst değil hem
+  yorucuydu. Metinleri `analyzeWizard.json`'da duruyor; backend bu alanları kabul ettiğinde geri eklemek bir sayfa ekleyip
+  `AnalyzeForm`'a alan koymaktan ibarettir.
+- Testler: `test/analyze_flow_test.dart` (cevap modeli, dallar, geri/kapat, ekran okuyucu, konum/hata, **en uzun yolun** 4 boyut ×
+  açık/koyu taşma denetimi), `screens_test` (uçtan uca gövde), `accessibility_test` ("Analiz · …" 12 senaryo, açık + koyu).
+
 ## İlk açılış izinleri
 
 Tek seferde tek öneri, değerini gösterdiği sırayla: **konum** (ekrandaki hava ve havaya göre kararlar gerçek olur) → **bildirim** (hatırlatmalar). İzin

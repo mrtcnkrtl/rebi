@@ -764,6 +764,147 @@
     "errLinkInvalid": "Bağlantı geçersiz ya da süresi dolmuş. E-posta uygulamaları bağlantıyı önceden açabildiği için hesabın onaylanmış olabilir: önce giriş yapmayı dene. Değilse onay e-postasını tekrar gönder. Parolayı sıfırlıyorsan yeni bir bağlantı iste.",
     "errNetwork": "Sunucuya bağlanılamadı. İnternet / VPN bağlantının açık olduğundan emin ol, sonra tekrar dene."
   },
+  "mobileAnalyze": {
+    "chapters": {
+      "about": "Sen",
+      "skin": "Cildin",
+      "life": "Günlük hayatın",
+      "products": "Ürünlerin",
+      "finish": "Son adım"
+    },
+    "next": "Devam et",
+    "decrease": "Azalt",
+    "increase": "Artır",
+    "leaveTitle": "Analizden çıkılsın mı?",
+    "leaveBody": "Şimdiye kadarki cevapların kaydedilmez.",
+    "leaveStay": "Devam et",
+    "leaveExit": "Çık",
+    "intro": {
+      "title": "Seni tanıyalım.",
+      "lead": "Rutinini sana göre kurabilmem için birkaç şeyi bilmem gerek.",
+      "time": "Yaklaşık 3 dakika sürer.",
+      "easy": "Her soru tek ekranda. Bilmediğini geçebilir, sonra değiştirebilirsin.",
+      "private": "Cevapların yalnızca rutinini kişiselleştirmek için kullanılır.",
+      "start": "Başlayalım"
+    },
+    "basics": {
+      "title": "Önce seni tanıyalım",
+      "subtitle": "Rebi sana adınla seslenir."
+    },
+    "gender": {
+      "title": "Cinsiyetin?",
+      "subtitle": "Hormonlar cildi etkiler; rutini buna göre kurarız."
+    },
+    "hormonal": {
+      "title": "Hormonal durumun nasıl?",
+      "subtitle": "Döngün, cildinin haftadan haftaya nasıl davrandığını değiştirir."
+    },
+    "period": {
+      "title": "Son adetin ne zaman başladı?",
+      "subtitle": "Döngünün neresinde olduğunu bilirsek rutini ona göre ayarlarız.",
+      "pick": "Tarih seç",
+      "cycle": "Döngü uzunluğun",
+      "days": "{{n}} gün"
+    },
+    "skinType": {
+      "title": "Cilt tipin hangisi?",
+      "subtitle": "Emin değilsen \"Normal\"i seç; Rebi diğer cevaplarından anlar.",
+      "guide": "Cilt tipimi nasıl anlarım?"
+    },
+    "concerns": {
+      "title": "Seni en çok ne rahatsız ediyor?",
+      "subtitle": "Birden fazla seçebilirsin."
+    },
+    "primary": {
+      "title": "Hangisinden başlayalım?",
+      "subtitle": "Rutini en çok buna göre kuracağım."
+    },
+    "zones": {
+      "title": "Nerelerde fark ediyorsun?",
+      "subtitle": "{{concern}} için etkilenen bölgeleri seç. Emin değilsen devam et."
+    },
+    "flags": {
+      "title": "Biraz netleştirelim",
+      "subtitle": "Sana uyanları seç; hiçbiri yoksa devam et.",
+      "aging": "Hangi çizgiler belirgin?",
+      "sensitivity": "Cildin nasıl tepki veriyor?"
+    },
+    "severity": {
+      "caption": "{{name}} · {{n}}/{{total}}"
+    },
+    "life": {
+      "title": "Su ve uyku",
+      "subtitle": "Günlük ortalamana yakın bir değer seç.",
+      "water": "Günde içtiğin su",
+      "sleep": "Gecede uyku",
+      "liters": "{{n}} L",
+      "hours": "{{n}} saat"
+    },
+    "stress": {
+      "title": "Stres cildini de etkiler.",
+      "lead": "Son bir ayını 10 kısa soruyla değerlendirelim; yaklaşık 1 dakika sürer.",
+      "note": "İstersen şimdi geçebilirsin; rutin yine oluşturulur.",
+      "start": "Testi çöz",
+      "skip": "Şimdi geç",
+      "caption": "Stres testi · {{n}}/{{total}}",
+      "scale": {
+        "0": "Hiçbir zaman",
+        "1": "Neredeyse hiç",
+        "2": "Bazen",
+        "3": "Oldukça sık",
+        "4": "Çok sık"
+      }
+    },
+    "smoking": {
+      "title": "Sigara kullanıyor musun?",
+      "subtitle": "Cildin onarımını etkilediği için soruyoruz."
+    },
+    "alcohol": {
+      "title": "Alkol alıyor musun?",
+      "subtitle": "Cildin nem dengesini etkilediği için soruyoruz."
+    },
+    "makeup": {
+      "title": "Makyaj yapıyor musun?",
+      "subtitle": "Temizleme alışkanlığın rutinini şekillendirir."
+    },
+    "actives": {
+      "title": "Güçlü içerikli ürün kullandın mı?",
+      "subtitle": "Retinol, AHA/BHA, yüksek oranlı C vitamini gibi."
+    },
+    "tolerance": {
+      "title": "Cildin hangisine nasıl tepki verdi?",
+      "subtitle": "Dokunmadıkların \"Sorunsuz\" sayılır. Ciddi tepki verdiklerini rutine yazmayız.",
+      "sheet": "Bu içerikle ilgili durumunu seç.",
+      "short": {
+        "never": "Denemedim",
+        "good": "Sorunsuz",
+        "mild": "Hafif tepki",
+        "bad": "Ciddi tepki"
+      }
+    },
+    "photo": {
+      "title": "Fotoğraf eklemek ister misin?",
+      "subtitle": "İlerlemeni zamanla kıyaslamak için çok işe yarar. İstersen sonra da ekleyebilirsin.",
+      "tip": "Doğal ışıkta, yüzünü düz tutarak çek. Fotoğraf eklemeden de devam edebilirsin.",
+      "stored": "Fotoğrafın yalnızca sana özel, güvenli alanda saklanır."
+    },
+    "summary": {
+      "title": "Hazırız, {{name}}.",
+      "titleNoName": "Hazırız.",
+      "lead": "Rutinini şu bilgilerle kuracağım.",
+      "age": "Yaş",
+      "skin": "Cilt tipin",
+      "focus": "Odağın",
+      "severity": "Şiddet",
+      "photo": "Fotoğraf",
+      "photoAdded": "Eklendi",
+      "photoNone": "Eklenmedi",
+      "location": "Konumumu paylaş",
+      "locationHint": "Rutini bulunduğun yerin hava ve UV bilgisine göre ayarlarım. İsteğe bağlı.",
+      "locationSet": "Konum alındı",
+      "create": "Rutinimi oluştur"
+    }
+  },
   "mobileShelf": {
     "title": "Rafım",
     "subtitle": "Bitirdiğin ürünler, yenisini alana kadar burada bekler.",

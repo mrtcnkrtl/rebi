@@ -764,6 +764,147 @@
     "errLinkInvalid": "The link is invalid or has expired. Email apps can open links in advance, so your account may already be confirmed: try signing in first. If not, resend the confirmation email. If you are resetting your password, request a new link.",
     "errNetwork": "Could not reach the server. Make sure your internet / VPN connection is on, then try again."
   },
+  "mobileAnalyze": {
+    "chapters": {
+      "about": "You",
+      "skin": "Your skin",
+      "life": "Daily life",
+      "products": "Your products",
+      "finish": "Last step"
+    },
+    "next": "Continue",
+    "decrease": "Decrease",
+    "increase": "Increase",
+    "leaveTitle": "Leave the analysis?",
+    "leaveBody": "Your answers so far will not be saved.",
+    "leaveStay": "Keep going",
+    "leaveExit": "Leave",
+    "intro": {
+      "title": "Let’s get to know you.",
+      "lead": "I need to know a few things so I can build your routine around you.",
+      "time": "Takes about 3 minutes.",
+      "easy": "One question per screen. Skip what you don’t know and change it later.",
+      "private": "Your answers are only used to personalize your routine.",
+      "start": "Let’s begin"
+    },
+    "basics": {
+      "title": "First, about you",
+      "subtitle": "Rebi will call you by your name."
+    },
+    "gender": {
+      "title": "Your gender?",
+      "subtitle": "Hormones affect skin; we shape the routine around that."
+    },
+    "hormonal": {
+      "title": "How are your hormones?",
+      "subtitle": "Your cycle changes how your skin behaves from week to week."
+    },
+    "period": {
+      "title": "When did your last period start?",
+      "subtitle": "Knowing where you are in your cycle lets us adjust the routine.",
+      "pick": "Pick a date",
+      "cycle": "Your cycle length",
+      "days": "{{n}} days"
+    },
+    "skinType": {
+      "title": "What is your skin type?",
+      "subtitle": "If you are not sure, pick \"Normal\"; Rebi works it out from your other answers.",
+      "guide": "How do I tell my skin type?"
+    },
+    "concerns": {
+      "title": "What bothers you most?",
+      "subtitle": "You can pick more than one."
+    },
+    "primary": {
+      "title": "Where should we start?",
+      "subtitle": "I will build the routine around this first."
+    },
+    "zones": {
+      "title": "Where do you notice it?",
+      "subtitle": "Pick the areas affected by {{concern}}. Continue if you are not sure."
+    },
+    "flags": {
+      "title": "A little more detail",
+      "subtitle": "Pick what fits you; continue if none do.",
+      "aging": "Which lines stand out?",
+      "sensitivity": "How does your skin react?"
+    },
+    "severity": {
+      "caption": "{{name}} · {{n}}/{{total}}"
+    },
+    "life": {
+      "title": "Water and sleep",
+      "subtitle": "Pick a value close to your daily average.",
+      "water": "Water per day",
+      "sleep": "Sleep per night",
+      "liters": "{{n}} L",
+      "hours": "{{n}} hours"
+    },
+    "stress": {
+      "title": "Stress affects skin too.",
+      "lead": "Let’s look at your last month with 10 short questions; it takes about a minute.",
+      "note": "You can skip it for now; your routine is still created.",
+      "start": "Take the test",
+      "skip": "Skip for now",
+      "caption": "Stress test · {{n}}/{{total}}",
+      "scale": {
+        "0": "Never",
+        "1": "Almost never",
+        "2": "Sometimes",
+        "3": "Fairly often",
+        "4": "Very often"
+      }
+    },
+    "smoking": {
+      "title": "Do you smoke?",
+      "subtitle": "We ask because it affects skin repair."
+    },
+    "alcohol": {
+      "title": "Do you drink alcohol?",
+      "subtitle": "We ask because it affects skin hydration."
+    },
+    "makeup": {
+      "title": "Do you wear makeup?",
+      "subtitle": "How you cleanse shapes your routine."
+    },
+    "actives": {
+      "title": "Have you used strong actives?",
+      "subtitle": "Like retinol, AHA/BHA or high-strength vitamin C."
+    },
+    "tolerance": {
+      "title": "How did your skin react to each?",
+      "subtitle": "Anything you leave alone counts as \"No issues\". We never put ingredients you reacted badly to in your routine.",
+      "sheet": "Pick how it went with this ingredient.",
+      "short": {
+        "never": "Not tried",
+        "good": "No issues",
+        "mild": "Mild reaction",
+        "bad": "Bad reaction"
+      }
+    },
+    "photo": {
+      "title": "Would you like to add a photo?",
+      "subtitle": "It helps a lot to compare your progress over time. You can add one later too.",
+      "tip": "Take it in natural light with your face straight on. You can also continue without a photo.",
+      "stored": "Your photo is kept private, in a secure area only you can access."
+    },
+    "summary": {
+      "title": "We’re ready, {{name}}.",
+      "titleNoName": "We’re ready.",
+      "lead": "I will build your routine from this.",
+      "age": "Age",
+      "skin": "Skin type",
+      "focus": "Focus",
+      "severity": "Severity",
+      "photo": "Photo",
+      "photoAdded": "Added",
+      "photoNone": "Not added",
+      "location": "Share my location",
+      "locationHint": "I adjust the routine to your local weather and UV. Optional.",
+      "locationSet": "Location received",
+      "create": "Create my routine"
+    }
+  },
   "mobileShelf": {
     "title": "My shelf",
     "subtitle": "Products you've finished wait here until you restock.",

@@ -117,6 +117,9 @@ class FakeBackend {
   /// Açılış paketi isteği hata (ör. çevrimdışı sunucu) döndürsün.
   bool snapshotFails = false;
 
+  /// `POST /generate_routine` (analiz sihirbazı) hata döndürsün.
+  bool generateFails = false;
+
   /// Günün planı isteği hata döndürsün.
   bool planFails = false;
 
@@ -365,6 +368,7 @@ class FakeBackend {
               'usage_limit': 5,
             });
           case 'POST /generate_routine':
+            if (generateFails) return http.Response('{"detail":"hata"}', 502);
             return ok(routineFixture);
           case 'GET /daily_checkin/status':
             return ok(checkinStatus);

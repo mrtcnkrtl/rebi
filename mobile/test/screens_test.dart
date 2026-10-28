@@ -9,7 +9,6 @@ import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/analyze/analyze_screen.dart';
 import 'package:rebi/screens/today/today_header.dart';
 import 'package:rebi/ui/shell/app_shell.dart';
-import 'package:rebi/ui/components/severity_test.dart';
 
 import 'helpers/app_harness.dart';
 
@@ -197,48 +196,51 @@ void main() {
 
   testWidgets('analiz sihirbazı uçtan uca: backend gövdesi web ile aynı, rutin kabul edilir', (tester) async {
     final h = await pumpApp(tester, location: '/dashboard/analyze');
+    Future<void> next() => tapFinder(tester, find.byKey(const Key('flow-next')));
 
-    // Adım 1
-    expect(find.text(packS('step1.title')), findsOneWidget);
+    // Karşılama
+    expect(find.text(tr('mobileAnalyze.intro.title')), findsOneWidget);
+    await tapFinder(tester, find.byKey(const Key('flow-start')));
+
+    // Sen — tek soru tek ekran; tek seçimli sorular dokununca ilerler
+    expect(find.text(tr('mobileAnalyze.basics.title')), findsOneWidget);
     expect(find.text('Ayşe Test'), findsOneWidget, reason: 'ad oturumdan gelir');
     await tester.enterText(find.widgetWithText(TextField, '25'), '28');
+    await settle(tester, 3);
+    await next();
     await tapText(tester, packS('gender.female'));
     await tapText(tester, packS('step1.hormonal_pregnant'));
-    await tapText(tester, tr('analyze.continue'));
 
-    // Adım 2
-    expect(find.text(packS('step2.title')), findsOneWidget);
+    // Cildin
     await tapText(tester, packS('skinPicker.oily.label'));
     await tapText(tester, packS('concern.acne'));
+    await next();
     await tapText(tester, packS('zone.forehead'));
-    await tapText(tester, packS('makeup.frequency.3'));
-    await tapText(tester, tr('common.continue'));
-
-    // Adım 3 — aktif deneyim → şiddet → tetikleyici → tedavi → beklenti
-    expect(find.text(packS('step3.activesTitle')), findsOneWidget);
-    await tapText(tester, packS('activesExperience.regular'));
-    await tapText(tester, tr('common.continue'));
-    expect(find.byType(SeverityTest), findsOneWidget);
-    final questions = severityQuestions('acne');
-    var index = 0;
-    for (final q in questions) {
-      final count = (q['options'] as List).length;
-      final options = find.descendant(of: find.byType(SeverityTest), matching: find.byType(InkWell));
-      await tapFinder(tester, options.at(index + count - 1)); // her sorunun en şiddetli seçeneği
-      index += count;
+    await next();
+    for (final q in severityQuestions('acne')) {
+      await tapText(tester, ((q['options'] as List).last as Map)['label'].toString()); // her sorunun en şiddetli seçeneği
     }
-    expect(find.text('10/10'), findsOneWidget);
-    await tapText(tester, packS('duration.3-6'));
-    await tapText(tester, tr('common.continue'));
-    await tapText(tester, packS('trigger.stress'));
-    await tapText(tester, tr('common.continue'));
-    await tapText(tester, tr('common.continue'));
-    await tapText(tester, tr('analyze.continue'));
 
-    // Adım 4
-    expect(find.text(tr('analyze.finalStep')), findsOneWidget);
-    await tapText(tester, packS('tolerance.bad'));
-    await tapText(tester, packS('step4.createRoutineCta'));
+    // Günlük hayat — stres testi atlanır
+    expect(find.text(tr('mobileAnalyze.life.title')), findsOneWidget);
+    await next();
+    await tapFinder(tester, find.byKey(const Key('flow-skip')));
+    await tapText(tester, packS('smokingAmount.0'));
+    await tapText(tester, packS('alcoholFreq.0'));
+    await tapText(tester, packS('makeup.frequency.3'));
+    await next();
+
+    // Ürünlerin
+    await tapText(tester, packS('activesExperience.regular'));
+    await tapFinder(tester, find.byKey(const Key('tol-retinol')));
+    await tapFinder(tester, find.byKey(const Key('tol-retinol-bad')));
+    await next();
+
+    // Son adım: fotoğraf (atlanır) → özet → oluştur
+    expect(find.text(tr('mobileAnalyze.photo.title')), findsOneWidget);
+    await next();
+    expect(find.text(tr('mobileAnalyze.summary.title', {'name': 'Ayşe Test'})), findsOneWidget);
+    await next();
     await settle(tester, 20);
 
     final body = h.backend.bodyOf('/generate_routine');
@@ -252,7 +254,7 @@ void main() {
     expect(body['cycle_phase'], '');
     expect(body['acne_zones'], ['forehead']);
     expect(body['severity_score'], 10, reason: 'anket tamamlanınca hesaplanan skor gider');
-    expect(body['stress_score'], 6, reason: 'PSS varsayılan 0 → (16*16/40) yuvarlanır');
+    expect(body['stress_score'], 6, reason: 'PSS atlandı → varsayılan cevaplar (16*16/40) yuvarlanır');
     expect(body['water_intake'], 2);
     expect(body['sleep_hours'], 7);
     expect(body['smoking'], false);
@@ -287,7 +289,7 @@ void main() {
     await pumpApp(tester, location: '/dashboard/analyze', prefs: acceptedPrefs());
     expect(find.text(tr('analyze.routineReadyTitle')), findsOneWidget);
     await tapText(tester, tr('analyze.newAnalyzeFull'));
-    expect(find.text(packS('step1.title')), findsOneWidget);
+    expect(find.text(tr('mobileAnalyze.intro.title')), findsOneWidget);
   });
 
   testWidgets('check-in: rutin kabul edilmeden açılmaz', (tester) async {
@@ -610,23 +612,27 @@ void main() {
     }
   });
 
-  testWidgets('küçük telefon: kadın + düzenli döngü alanları taşmaz', (tester) async {
+  testWidgets('küçük telefon: kadın + düzenli döngü soruları taşmaz', (tester) async {
     await pumpApp(tester, location: '/dashboard/analyze', size: const Size(320, 568));
+    await tapFinder(tester, find.byKey(const Key('flow-start')));
+    await tester.enterText(find.widgetWithText(TextField, '25'), '28');
+    await settle(tester, 3);
+    await tapFinder(tester, find.byKey(const Key('flow-next')));
     await tapText(tester, packS('gender.female'));
     await tapText(tester, packS('step1.hormonal_regular'));
-    expect(find.text(packS('step1.periodHint')), findsOneWidget);
+    expect(find.text(tr('mobileAnalyze.period.title')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   group('küçük telefon (320×568) taşma kontrolü', () {
-    for (final loc in ['/', '/auth', '/dashboard', '/dashboard/analyze', '/dashboard/checkin', '/dashboard/chat', '/dashboard/themes', '/dashboard/subscribe']) {
+    for (final loc in ['/', '/auth', '/rebi', '/dashboard', '/dashboard/analyze', '/dashboard/checkin', '/dashboard/chat', '/dashboard/themes', '/dashboard/subscribe']) {
       testWidgets(loc, (tester) async {
         await pumpApp(
           tester,
           location: loc,
           prefs: loc == '/dashboard/analyze' ? const {} : acceptedPrefs(),
           size: const Size(320, 568),
-          loggedIn: loc != '/' && loc != '/auth',
+          loggedIn: loc != '/' && loc != '/auth' && loc != '/rebi',
         );
         expect(tester.takeException(), isNull);
       });

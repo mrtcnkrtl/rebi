@@ -10,6 +10,7 @@ import 'package:rebi/ui/tw.dart';
 
 import 'auth_flow_test.dart' show FakeAuth;
 import 'helpers/a11y.dart';
+import 'helpers/analyze_walk.dart';
 import 'helpers/app_harness.dart';
 import 'helpers/notification_fakes.dart';
 
@@ -151,7 +152,47 @@ void main() {
     ('Check-in', (t) => pumpApp(t, location: '/dashboard/checkin', prefs: accepted(), backend: populated())),
     ('Abonelik', (t) => pumpApp(t, location: '/dashboard/subscribe', prefs: accepted(), backend: populated())),
     ('Analiz · hazır', (t) => pumpApp(t, location: '/dashboard/analyze', prefs: accepted(), backend: populated())),
-    ('Analiz · adım 1', (t) => pumpApp(t, location: '/dashboard/analyze', backend: FakeBackend())),
+    ('Analiz · karşılama', (t) => pumpApp(t, location: '/dashboard/analyze', backend: FakeBackend())),
+    ('Analiz · ad ve yaş', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'basics');
+    }),
+    ('Analiz · cilt tipi (tek seçim)', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'skinType');
+    }),
+    ('Analiz · sorunlar (çoklu seçim)', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'concerns');
+    }),
+    ('Analiz · şiddet sorusu', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'severity');
+    }),
+    ('Analiz · su ve uyku', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'waterSleep');
+    }),
+    ('Analiz · stres testi daveti', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'stressIntro');
+    }),
+    ('Analiz · sigara', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'smoking');
+    }),
+    ('Analiz · ürün tepkileri', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'tolerance');
+    }),
+    ('Analiz · fotoğraf', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'photo');
+    }),
+    ('Analiz · özet', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'summary');
+    }),
     ('Giriş', (t) => pumpApp(t, location: '/auth', loggedIn: false)),
     ('Giriş · e-posta kodu', (t) async {
       await pumpApp(t, location: '/auth?mode=signup', loggedIn: false, authController: FakeAuth());
