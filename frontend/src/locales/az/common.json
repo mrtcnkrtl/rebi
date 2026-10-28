@@ -174,7 +174,24 @@
     "clear": "Təmizlə",
     "thinking": "Rebi düşünür...",
     "welcome": "Salam {{name}}! Mən Rebi, dəri baxımı köməkçinəm. Dəri, üz və əl baxımı ilə bağlı hər şeyi soruşa bilərsən: məhsullar, maddələr, rutinlər, problemlər... Necə kömək edim?",
-    "placeholder": "Məhsullar, maddələr, problemlər barədə soruş..."
+    "placeholder": "Məhsullar, maddələr, problemlər barədə soruş...",
+    "routineChip": "Rutinim",
+    "analyzeChip": "Analiz",
+    "retry": "Yenidən cəhd et",
+    "send": "Göndər",
+    "errorNoReply": "Hazırda cavab alınmadı.",
+    "errorNetwork": "Bağlantı qurulmadı. İnterneti yoxlayıb yenidən cəhd et.",
+    "errorGeneric": "Nəsə səhv getdi. Yenidən cəhd edərsən?",
+    "suggestRoutine": [
+      "Bugünkü rutinimdə nəyə diqqət etməliyəm?",
+      "Rutinimdəki aktivləri birlikdə istifadə edə bilərəmmi?"
+    ],
+    "suggestGeneral": [
+      "Retinola necə başlamaq olar?",
+      "Niasinamid və C vitamini birlikdə olarmı?",
+      "Nəm baryerim pozulub, nə etməliyəm?",
+      "Mənə hansı SPF uyğundur?"
+    ]
   },
   "dashboard": {
     "noAnalyzeTitle": "Salam, {{name}}!",
@@ -201,6 +218,10 @@
     "acceptCta": "Rutini qəbul edirəm, izləməni başlat",
     "feelsTodayHint": "Bu gün özünü necə hiss edirsən? Rutin buna görə uyğunlaşacaq.",
     "whySkincareButton": "Niyə bu məhsul / maddə?",
+    "stepChoicesTitle": "Hansını istifadə edəcəksən?",
+    "stepChoicesHint": "İstədiyini seçə bilərsən; seçməsən birləşmiş tövsiyə qalır.",
+    "stepChoiceSelected": "Seçildi",
+    "stepHow": "Necə?",
     "shortWhy": "Qısa niyə:",
     "summary": "Xülasə:",
     "howToApply": "Necə tətbiq edirsən:",
@@ -245,7 +266,9 @@
     "lifestyleSupportsSubtitle": "Nutrition, water, sleep, and lifestyle guidance",
     "nutritionTitle": "Nutrition",
     "mindMovementTitle": "Mind & movement",
-    "morningLifestyleLabel": "{{time}} — lifestyle"
+    "morningLifestyleLabel": "{{time}} — lifestyle",
+    "askRebi": "Rebi-dən soruş",
+    "askRebiQuestion": "Rutinimdəki bu addımı izah edərsən: {{step}}"
   },
   "profile": {
     "title": "Profil",

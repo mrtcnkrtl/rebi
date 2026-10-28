@@ -41,8 +41,14 @@ class _Sender:
         self._sent = sent
         self._invalid = invalid or []
 
-    async def __call__(self, tokens, title, body, data=None):
-        self.calls.append({"tokens": list(tokens), "title": title, "data": data or {}})
+    async def __call__(self, tokens, title, body, data=None, category=None, data_only_tokens=frozenset()):
+        self.calls.append({
+            "tokens": list(tokens),
+            "title": title,
+            "data": data or {},
+            "category": category,
+            "data_only_tokens": set(data_only_tokens),
+        })
         return {"status": "sent", "sent": self._sent, "invalid_tokens": list(self._invalid)}
 
 

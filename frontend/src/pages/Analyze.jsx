@@ -43,6 +43,37 @@ const STRONG_ACTIVE_FAMILY_IDS = [
   "urea",
 ];
 
+const CONCERN_RANK_TIE = [
+  "acne",
+  "pigmentation",
+  "dryness",
+  "aging",
+  "pores",
+  "oiliness",
+  "sensitivity",
+  "general",
+];
+
+function mapEngineZones(zones) {
+  const out = [];
+  for (const z of zones || []) {
+    if (z === "cheeks") {
+      out.push("left_cheek", "right_cheek");
+    } else {
+      out.push(z);
+    }
+  }
+  return [...new Set(out)];
+}
+
+function rankConcernIds(ids, scores) {
+  return [...ids].sort((a, b) => {
+    const ds = Number(scores[b] ?? 5) - Number(scores[a] ?? 5);
+    if (ds !== 0) return ds;
+    return CONCERN_RANK_TIE.indexOf(a) - CONCERN_RANK_TIE.indexOf(b);
+  });
+}
+
 const CONCERN_DEFS = [
   { id: "general", icon: "🧼" },
   { id: "oiliness", icon: "💧" },
@@ -406,7 +437,8 @@ export default function Analyze() {
   // Step 3 - Kullanım soruları (tek tek: şiddet → tetikleyici → tedavi → beklenti)
   const [step3Section, setStep3Section] = useState(0);
   const [severityScoresByConcern, setSeverityScoresByConcern] = useState({});
-  const [duration, setDuration] = useState("");
+  /** Sorun başı: { [id]: { duration, frequency, note } } */
+  const [concernTimeline, setConcernTimeline] = useState({});
   const [triggers, setTriggers] = useState([]);
   const [pastTreatments, setPastTreatments] = useState([]);
   const [expectations, setExpectations] = useState([]);
@@ -433,14 +465,21 @@ export default function Analyze() {
   );
   const zoneOptions = useMemo(
     () =>
-      ["forehead", "nose", "cheeks", "chin", "undereye", "lips", "temples"].map((id) => ({
+      ["forehead", "nose", "cheeks", "chin", "undereye", "eye_corner", "lips", "temples"].map((id) => ({
         id,
         label: pack.zone[id] || id,
       })),
     [pack]
   );
   const durationOpts = useMemo(
-    () => ["1-3", "3-6", "6-12", "1y+"].map((id) => ({ id, label: pack.duration[id] || id })),
+    () => ["lt1", "1-3", "3-6", "6-12", "1y+"].map((id) => ({ id, label: pack.duration[id] || id })),
+    [pack]
+  );
+  const frequencyOpts = useMemo(
+    () => ["daily", "several_week", "weekly", "monthly", "flare", "constant"].map((id) => ({
+      id,
+      label: pack.frequency?.[id] || id,
+    })),
     [pack]
   );
   const triggerOpts = useMemo(
@@ -559,13 +598,23 @@ export default function Analyze() {
     return "";
   }, [isFemale, hormonalStatus, lastPeriodDate, cycleLength]);
 
-  const zones = [...new Set(Object.values(concernZones).flat())];
-  const primaryConcern = concerns[0] || "general";
+  const rankedIds = rankConcernIds(concerns, severityScoresByConcern);
+  const primaryConcern = rankedIds[0] || "general";
   const toggleArr = (a, s, v) => s(a.includes(v) ? a.filter((x) => x !== v) : [...a, v]);
   const toggleFlag = (k) => setSpecialFlags((p) => ({ ...p, [k]: !p[k] }));
   const setFamilyTolerance = (familyId, level) => {
     setActivesTolerance((prev) => ({ ...prev, [familyId]: level }));
   };
+  const setConcernTimelineField = (concernId, field, value) => {
+    setConcernTimeline((prev) => ({
+      ...prev,
+      [concernId]: { ...(prev[concernId] || {}), [field]: value },
+    }));
+  };
+  const timelineReady = concerns.every((id) => {
+    const t = concernTimeline[id] || {};
+    return Boolean(t.duration && t.frequency);
+  });
   const toggleConcernZone = (concernId, zoneId) => {
     setConcernZones((prev) => {
       const list = prev[concernId] || [];
@@ -661,7 +710,23 @@ export default function Analyze() {
         smoking: smokingPerDay > 0, smoking_per_day: smokingPerDay, smoking_years: smokingYears,
         alcohol: alcoholFreq > 0, alcohol_frequency: alcoholFreq, alcohol_amount: alcoholAmt,
         location_lat: lat, location_lon: lon, photo_url: photoPath,
-        is_pregnant: hormonalStatus === "pregnant", cycle_phase: cyclePhase, acne_zones: zones,
+        is_pregnant: hormonalStatus === "pregnant", cycle_phase: cyclePhase,
+        acne_zones: mapEngineZones(concernZones.acne || concernZones.pores || []),
+        concerns: rankedIds.map((id) => {
+          const tl = concernTimeline[id] || {};
+          return {
+            id,
+            severity_score: severityScoresByConcern[id] != null ? Math.round(severityScoresByConcern[id]) : 5,
+            zones: mapEngineZones(concernZones[id] || []),
+            duration: tl.duration || "",
+            frequency: tl.frequency || "",
+            note: (tl.note || "").trim().slice(0, 240),
+          };
+        }),
+        triggers,
+        past_treatments: pastTreatments,
+        expectations,
+        nutrition,
         actives_experience: activesExperience,
         actives_tolerance: activesTolerance,
         makeup_frequency: makeupFreq,
@@ -1126,15 +1191,6 @@ export default function Analyze() {
                 onScoreChange={(score) => setSeverityScoresByConcern((prev) => ({ ...prev, [concernId]: score }))}
               />
             ))}
-
-            <div className="card space-y-2">
-              <label className="block text-sm font-medium text-gray-700">{pack.step3.durationLabel}</label>
-              <div className="flex flex-wrap gap-1.5">
-                {durationOpts.map((o) => (
-                  <button key={o.id} onClick={() => setDuration(o.id)} className={`px-3 py-2 rounded-xl text-xs font-medium border-2 transition-all ${duration === o.id ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-500"}`}>{o.label}</button>
-                ))}
-              </div>
-            </div>
             <div className="flex gap-3">
               <button type="button" onClick={() => setStep3Section(0)} className="btn-secondary flex-1"><ArrowLeft className="w-5 h-5" />{t("common.back")}</button>
               <button type="button" onClick={() => setStep3Section(2)} className="btn-primary flex-1">{t("common.continue")} <ArrowRight className="w-5 h-5" /></button>
@@ -1143,27 +1199,74 @@ export default function Analyze() {
             )}
             {step3Section === 2 && (
               <>
-                <div><h2 className="text-2xl font-bold text-gray-900 mb-1">{pack.step3.triggersTitle}</h2><p className="text-gray-500 text-sm">{pack.step3.triggersSubtitle}</p></div>
-                <div className="card space-y-2">
-                  <div className="flex flex-wrap gap-1.5">
-                    {triggerOpts.map((o) => (
-                      <button key={o.id} onClick={() => toggleArr(triggers, setTriggers, o.id)} className={`px-3 py-2 rounded-xl text-xs font-medium border-2 transition-all ${triggers.includes(o.id) ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-500"}`}>{o.label}</button>
-                    ))}
-                  </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-1">{pack.step3.timelineTitle}</h2>
+                  <p className="text-gray-500 text-sm">{pack.step3.timelineSubtitle}</p>
                 </div>
+                {concerns.map((concernId) => {
+                  const lab = concernOptions.find((o) => o.id === concernId)?.label || concernId;
+                  const tl = concernTimeline[concernId] || {};
+                  return (
+                    <div key={concernId} className="card space-y-3">
+                      <p className="text-sm font-semibold text-gray-900">{lab}</p>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-gray-700">{pack.step3.durationLabel}</label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {durationOpts.map((o) => (
+                            <button
+                              key={o.id}
+                              type="button"
+                              onClick={() => setConcernTimelineField(concernId, "duration", o.id)}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium border-2 transition-all ${tl.duration === o.id ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-500"}`}
+                            >{o.label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-medium text-gray-700">{pack.step3.frequencyLabel}</label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {frequencyOpts.map((o) => (
+                            <button
+                              key={o.id}
+                              type="button"
+                              onClick={() => setConcernTimelineField(concernId, "frequency", o.id)}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium border-2 transition-all ${tl.frequency === o.id ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-500"}`}
+                            >{o.label}</button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-gray-700">{pack.step3.noteLabel}</label>
+                        <textarea
+                          rows={2}
+                          maxLength={240}
+                          value={tl.note || ""}
+                          onChange={(e) => setConcernTimelineField(concernId, "note", e.target.value)}
+                          placeholder={pack.step3.notePlaceholder}
+                          className="w-full rounded-xl border-2 border-gray-200 px-3 py-2 text-xs text-gray-800 placeholder:text-gray-400 focus:border-teal-400 outline-none"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
                 <div className="flex gap-3">
                   <button type="button" onClick={() => setStep3Section(1)} className="btn-secondary flex-1"><ArrowLeft className="w-5 h-5" />{t("common.back")}</button>
-                  <button type="button" onClick={() => setStep3Section(3)} className="btn-primary flex-1">{t("common.continue")} <ArrowRight className="w-5 h-5" /></button>
+                  <button
+                    type="button"
+                    onClick={() => setStep3Section(3)}
+                    disabled={!timelineReady}
+                    className="btn-primary flex-1"
+                  >{t("common.continue")} <ArrowRight className="w-5 h-5" /></button>
                 </div>
               </>
             )}
             {step3Section === 3 && (
               <>
-                <div><h2 className="text-2xl font-bold text-gray-900 mb-1">{pack.step3.pastTitle}</h2><p className="text-gray-500 text-sm">{pack.step3.pastSubtitle}</p></div>
+                <div><h2 className="text-2xl font-bold text-gray-900 mb-1">{pack.step3.triggersTitle}</h2><p className="text-gray-500 text-sm">{pack.step3.triggersSubtitle}</p></div>
                 <div className="card space-y-2">
                   <div className="flex flex-wrap gap-1.5">
-                    {pastTreatmentOpts.map((o) => (
-                      <button key={o.id} onClick={() => toggleArr(pastTreatments, setPastTreatments, o.id)} className={`px-3 py-2 rounded-xl text-xs font-medium border-2 transition-all ${pastTreatments.includes(o.id) ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-500"}`}>{o.label}</button>
+                    {triggerOpts.map((o) => (
+                      <button key={o.id} onClick={() => toggleArr(triggers, setTriggers, o.id)} className={`px-3 py-2 rounded-xl text-xs font-medium border-2 transition-all ${triggers.includes(o.id) ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-500"}`}>{o.label}</button>
                     ))}
                   </div>
                 </div>
@@ -1175,6 +1278,22 @@ export default function Analyze() {
             )}
             {step3Section === 4 && (
               <>
+                <div><h2 className="text-2xl font-bold text-gray-900 mb-1">{pack.step3.pastTitle}</h2><p className="text-gray-500 text-sm">{pack.step3.pastSubtitle}</p></div>
+                <div className="card space-y-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {pastTreatmentOpts.map((o) => (
+                      <button key={o.id} onClick={() => toggleArr(pastTreatments, setPastTreatments, o.id)} className={`px-3 py-2 rounded-xl text-xs font-medium border-2 transition-all ${pastTreatments.includes(o.id) ? "border-teal-500 bg-teal-50 text-teal-700" : "border-gray-200 text-gray-500"}`}>{o.label}</button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => setStep3Section(3)} className="btn-secondary flex-1"><ArrowLeft className="w-5 h-5" />{t("common.back")}</button>
+                  <button type="button" onClick={() => setStep3Section(5)} className="btn-primary flex-1">{t("common.continue")} <ArrowRight className="w-5 h-5" /></button>
+                </div>
+              </>
+            )}
+            {step3Section === 5 && (
+              <>
                 <div><h2 className="text-2xl font-bold text-gray-900 mb-1">{pack.step3.expectationsTitle}</h2><p className="text-gray-500 text-sm">{pack.step3.expectationsSubtitle}</p></div>
                 <div className="card space-y-2">
                   <div className="flex flex-wrap gap-1.5">
@@ -1184,7 +1303,7 @@ export default function Analyze() {
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button type="button" onClick={() => setStep3Section(3)} className="btn-secondary flex-1"><ArrowLeft className="w-5 h-5" />{t("common.back")}</button>
+                  <button type="button" onClick={() => setStep3Section(4)} className="btn-secondary flex-1"><ArrowLeft className="w-5 h-5" />{t("common.back")}</button>
                   <button type="button" onClick={() => setStep(4)} className="btn-primary flex-1">{t("analyze.continue")} <ArrowRight className="w-5 h-5" /></button>
                 </div>
               </>
@@ -1306,7 +1425,15 @@ export default function Analyze() {
                 <div className="bg-white rounded-lg p-2"><span className="text-gray-400 block">{pack.step4.age}</span><span className="font-medium">{age}</span></div>
                 <div className="bg-white rounded-lg p-2"><span className="text-gray-400 block">{pack.step4.skin}</span><span className="font-medium">{skinType}</span></div>
                 <div className="bg-white rounded-lg p-2"><span className="text-gray-400 block">{pack.step4.severity}</span><span className="font-medium">{severityScoresByConcern[primaryConcern] != null ? Math.round(severityScoresByConcern[primaryConcern]) : "?"}/10</span></div>
-                <div className="bg-white rounded-lg p-2 col-span-3"><span className="text-gray-400 block">{pack.step4.concerns}</span><span className="font-medium">{concerns.map((c) => concernOptions.find((o) => o.id === c)?.label).join(", ")}</span></div>
+                <div className="bg-white rounded-lg p-2 col-span-3"><span className="text-gray-400 block">{pack.step4.concerns}</span><span className="font-medium">{rankedIds.map((c) => {
+                  const lab = concernOptions.find((o) => o.id === c)?.label || c;
+                  const sc = severityScoresByConcern[c] != null ? Math.round(severityScoresByConcern[c]) : "?";
+                  const tl = concernTimeline[c] || {};
+                  const dur = pack.duration[tl.duration] || "";
+                  const fr = pack.frequency?.[tl.frequency] || "";
+                  const extra = [dur, fr].filter(Boolean).join(", ");
+                  return extra ? `${lab} ${sc}/10 (${extra})` : `${lab} ${sc}/10`;
+                }).join(" · ")}</span></div>
               </div>
             </div>
             <div className="card space-y-3">

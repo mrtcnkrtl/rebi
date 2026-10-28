@@ -6,6 +6,7 @@ Yeni: /daily_checkin endpoint, adaptif rutin sistemi, risk skoru
 """
 
 import httpx
+import json
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -19,7 +20,14 @@ from datetime import date, datetime, timedelta, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
 from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather
-from today_plan import build_environment_advice, build_reminders, due_reminders
+from today_plan import (
+    REMINDER_ACTIONS,
+    build_environment_advice,
+    build_reminders,
+    due_reminders,
+    reminder_open_path,
+    resolve_reminder_action,
+)
 from push_service import push_configured, send_push
 from flow_engine import (
     run_flow,
@@ -91,6 +99,7 @@ from rate_limit import (
     LIMIT_USER_PROFILE_WRITE,
     LIMIT_DEVICE_REGISTER,
     LIMIT_PUSH_DISPATCH,
+    LIMIT_PUSH_RESPOND,
     LIMIT_UPLOAD_PHOTO,
     LIMIT_ACCOUNT_DELETE,
     LIMIT_INTRO_SEEN,
@@ -701,6 +710,7 @@ class AssessmentRequest(BaseModel):
     is_pregnant: bool = False
     cycle_phase: str = ""
     acne_zones: Optional[list] = None
+    concerns: Optional[list] = None  # [{id, severity_score, zones}] — yoksa concern + severity_score
     actives_experience: str = "occasional"  # none | occasional | regular (retinol/asit vb. geçmiş kullanım)
     actives_unused: Optional[list] = None  # eski istemciler: her id -> never
     actives_tolerance: Optional[dict] = None  # { "bha": "never"|"good"|"mild"|"bad", ... }
@@ -708,6 +718,10 @@ class AssessmentRequest(BaseModel):
     makeup_removal: str = "cleanser"  # none | water | cleanser | double
     # UI: karışıklığı azaltan netleştirici işaretler (şimdilik opsiyonel)
     special_flags: Optional[dict] = None
+    triggers: Optional[list] = None
+    past_treatments: Optional[list] = None
+    expectations: Optional[list] = None
+    nutrition: Optional[dict] = None
 
     @model_validator(mode="after")
     def _normalize_assessment(self):
@@ -733,6 +747,26 @@ class AssessmentRequest(BaseModel):
             except Exception:
                 self.location_lat = None
                 self.location_lon = None
+        from multi_concern import normalize_concern_entries, rank_concerns
+
+        ranked = rank_concerns(
+            normalize_concern_entries(
+                concern=self.concern,
+                severity_score=self.severity_score,
+                acne_zones=self.acne_zones,
+                concerns=self.concerns,
+            )
+        )
+        self.concerns = ranked
+        if ranked:
+            self.concern = ranked[0]["id"]
+            self.severity_score = int(ranked[0]["score"])
+            acne = next((x for x in ranked if x["id"] == "acne" and x.get("zones")), None)
+            pores = next((x for x in ranked if x["id"] == "pores" and x.get("zones")), None)
+            if acne:
+                self.acne_zones = acne["zones"]
+            elif pores and not self.acne_zones:
+                self.acne_zones = pores["zones"]
         return self
 
 
@@ -1047,6 +1081,9 @@ class DeviceRegisterRequest(BaseModel):
     locale: Optional[str] = None
     app_version: Optional[str] = None
     push_enabled: bool = True
+    # Bildirim butonlarını kendisi çizebilen sürümler true gönderir; Android'e
+    # bu durumda yalnızca veri taşıyan mesaj gider.
+    actions_supported: bool = False
 
     @model_validator(mode="after")
     def _normalize_device(self):
@@ -1065,6 +1102,24 @@ class DeviceRegisterResponse(BaseModel):
     ok: bool = True
     push_configured: bool
     synced: bool
+
+
+class PushRespondRequest(BaseModel):
+    user_id: str
+    reminder_id: str = Field(..., min_length=1, max_length=40)
+    action_id: str = Field(..., min_length=1, max_length=40)
+    # Bildirim verisindeki yerel gün ve pencere; kayıt bu güne yazılır.
+    log_date: Optional[str] = None
+    slot: Optional[str] = Field(None, pattern=r"^\d{2}:\d{2}$")
+    timestamp: Optional[str] = None
+    client_event_id: Optional[str] = None
+
+
+class PushRespondResponse(BaseModel):
+    ok: bool = True
+    log_date: str
+    log_event: str
+    aggregated: dict
 
 
 class PushDispatchResponse(BaseModel):
@@ -1254,25 +1309,47 @@ async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestReques
     if req.type == "location" or payload_has_coords:
         # Koordinat hem saklanıyor hem hava durumu sağlayıcısına gidiyor.
         _require_privacy_permission(req.user_id, "location")
-    ts = req.timestamp or _utc_now_iso()
-    log_date = _safe_date_from_timestamp(ts)
+    log_date, aggregated = await _store_daily_event(
+        req.user_id,
+        req.type,
+        req.payload or {},
+        timestamp=req.timestamp,
+        source=req.source or "mobile",
+        client_event_id=req.client_event_id,
+    )
+    return DailyTrackingIngestResponse(ok=True, log_date=log_date, aggregated=aggregated)
+
+
+async def _store_daily_event(
+    user_id: str,
+    event_type: str,
+    payload: dict,
+    *,
+    timestamp: Optional[str] = None,
+    source: str = "mobile",
+    client_event_id: Optional[str] = None,
+    log_date: Optional[str] = None,
+) -> tuple[str, dict]:
+    """Olayı yazar ve o günün güncel toplamını döner (Supabase yoksa bellek)."""
+    ts = timestamp or _utc_now_iso()
+    log_date = log_date or _safe_date_from_timestamp(ts)
     event = {
-        "user_id": req.user_id,
+        "user_id": user_id,
         "event_time": ts,
         "log_date": log_date,
-        "type": req.type,
-        "payload": req.payload or {},
-        "source": req.source or "mobile",
+        "type": event_type,
+        "payload": payload,
+        "source": source,
     }
-    if req.client_event_id:
-        event["client_event_id"] = req.client_event_id
+    if client_event_id:
+        event["client_event_id"] = client_event_id
 
     supabase = get_supabase()
     wrote_remote = False
-    if should_use_supabase_db(supabase, req.user_id):
+    if should_use_supabase_db(supabase, user_id):
         try:
             table = supabase.table("daily_events")
-            if req.client_event_id:
+            if client_event_id:
                 table.upsert(
                     event,
                     on_conflict="user_id,client_event_id",
@@ -1285,42 +1362,42 @@ async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestReques
             log.error("daily_events insert hatası (fallback to memory): %s", e)
 
     if not wrote_remote:
-        _mem_append_event(req.user_id, log_date, event)
+        _mem_append_event(user_id, log_date, event)
 
     # Location gelirse anlık weather snapshot ekle (opsiyonel ama değerli)
-    if req.type == "location":
+    if event_type == "location":
         try:
-            lat = (req.payload or {}).get("lat")
-            lon = (req.payload or {}).get("lon")
+            lat = payload.get("lat")
+            lon = payload.get("lon")
             if lat is not None and lon is not None:
                 weather_data = await fetch_weather(lat, lon)
                 w_event = {
-                    "user_id": req.user_id,
+                    "user_id": user_id,
                     "event_time": _utc_now_iso(),
                     "log_date": log_date,
                     "type": "weather",
                     "payload": weather_data,
                     "source": "server",
                 }
-                if should_use_supabase_db(supabase, req.user_id):
+                if should_use_supabase_db(supabase, user_id):
                     try:
                         supabase.table("daily_events").insert(w_event).execute()
                     except Exception as e:
                         log.error("weather event insert hatası (ignored): %s", e)
-                        _mem_append_event(req.user_id, log_date, w_event)
+                        _mem_append_event(user_id, log_date, w_event)
                 else:
-                    _mem_append_event(req.user_id, log_date, w_event)
+                    _mem_append_event(user_id, log_date, w_event)
         except Exception as e:
             log.error("Location->weather hatası (ignored): %s", e)
 
     # Return aggregated for immediate UI feedback
     events = []
-    if should_use_supabase_db(supabase, req.user_id):
+    if should_use_supabase_db(supabase, user_id):
         try:
             r = (
                 supabase.table("daily_events")
                 .select("event_time,type,payload,source")
-                .eq("user_id", req.user_id)
+                .eq("user_id", user_id)
                 .eq("log_date", log_date)
                 .order("event_time", desc=False)
                 .execute()
@@ -1328,11 +1405,11 @@ async def daily_tracking_ingest(request: Request, req: DailyTrackingIngestReques
             events = r.data or []
         except Exception as e:
             log.error("daily_events read hatası (fallback memory): %s", e)
-            events = _MEM_DAILY_EVENTS.get((req.user_id, log_date), [])
+            events = _MEM_DAILY_EVENTS.get((user_id, log_date), [])
     else:
-        events = _MEM_DAILY_EVENTS.get((req.user_id, log_date), [])
+        events = _MEM_DAILY_EVENTS.get((user_id, log_date), [])
 
-    return DailyTrackingIngestResponse(ok=True, log_date=log_date, aggregated=_aggregate_daily_events(events))
+    return log_date, _aggregate_daily_events(events)
 
 
 @app.get(
@@ -1699,6 +1776,7 @@ async def device_register(request: Request, req: DeviceRegisterRequest):
             "locale": req.locale,
             "app_version": req.app_version,
             "push_enabled": req.push_enabled,
+            "actions_supported": req.actions_supported,
             "last_seen_at": _utc_now_iso(),
         }, on_conflict="token").execute()
     except Exception as e:
@@ -1764,7 +1842,7 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
     try:
         rows = (
             supabase.table("device_tokens")
-            .select("user_id,token,utc_offset_minutes")
+            .select("user_id,token,platform,utc_offset_minutes,actions_supported")
             .eq("push_enabled", True)
             .order("last_seen_at", desc=True)
             .limit(max_users * _PUSH_MAX_TOKENS_PER_USER)
@@ -1782,10 +1860,13 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
             continue
         # İlk satır en son görülen cihaz olduğu için saat farkı ondan alınır.
         entry = by_user.setdefault(
-            uid, {"tokens": [], "offset": int(row.get("utc_offset_minutes") or 0)}
+            uid,
+            {"tokens": [], "data_only": set(), "offset": int(row.get("utc_offset_minutes") or 0)},
         )
         if len(entry["tokens"]) < _PUSH_MAX_TOKENS_PER_USER:
             entry["tokens"].append(token)
+            if row.get("platform") == "android" and row.get("actions_supported"):
+                entry["data_only"].add(token)
 
     reminders_sent = 0
     notifications_sent = 0
@@ -1819,7 +1900,18 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
                     "reminder_id": reminder["id"],
                     "log_event": reminder.get("log_event") or "",
                     "log_date": log_date,
+                    "slot": reminder["slot"],
+                    "open_path": reminder.get("open_path") or reminder_open_path(reminder["id"]),
+                    "actions": json.dumps(
+                        [
+                            {"id": a["id"], "label": a["label"]}
+                            for a in reminder.get("actions") or []
+                        ],
+                        ensure_ascii=False,
+                    ),
                 },
+                category=reminder.get("category") or reminder["id"],
+                data_only_tokens=entry["data_only"],
             )
             sent = int(result.get("sent") or 0)
             notifications_sent += sent
@@ -1835,6 +1927,90 @@ async def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=1
         notifications_sent=notifications_sent,
         invalid_tokens_removed=invalid_removed,
         push_configured=True,
+    )
+
+
+@app.get("/push/actions", tags=["push"])
+async def push_actions():
+    """
+    Bildirim kategorileri ve butonları. iOS kategorileri bildirim gelmeden önce
+    kaydedilmelidir; uygulama bu listeyi açılışta çeker.
+    """
+    return {
+        "categories": [
+            {
+                "id": reminder_id,
+                "actions": [{"id": a["id"], "label": a["label"]} for a in actions],
+                "open_path": reminder_open_path(reminder_id),
+            }
+            for reminder_id, actions in REMINDER_ACTIONS.items()
+        ],
+    }
+
+
+def _push_log_date(value: Optional[str]) -> Optional[str]:
+    """Bildirimdeki yerel gün; bugünden en fazla bir gün sapabilir."""
+    if not value:
+        return None
+    try:
+        parsed = date.fromisoformat(value)
+    except ValueError:
+        return None
+    today = datetime.now(timezone.utc).date()
+    return parsed.isoformat() if abs((parsed - today).days) <= 1 else None
+
+
+@app.post(
+    "/push/respond",
+    response_model=PushRespondResponse,
+    tags=["push"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_PUSH_RESPOND))],
+)
+async def push_respond(request: Request, req: PushRespondRequest):
+    """
+    Bildirim butonuna verilen cevabı günlük kayda yazar. Hangi olayın hangi
+    yükle yazılacağını sunucu belirler; aynı bildirime ikinci dokunuş sayılmaz.
+    """
+    enforce_supabase_user(request, req.user_id)
+    action = resolve_reminder_action(req.reminder_id, req.action_id)
+    if not action:
+        raise HTTPException(status_code=422, detail="Bu hatırlatıcı için böyle bir cevap yok.")
+
+    log_date = _push_log_date(req.log_date) or _safe_date_from_timestamp(req.timestamp)
+    client_event_id = (req.client_event_id or "").strip()[:64] or None
+    if not client_event_id and req.slot:
+        client_event_id = f"push:{req.reminder_id}:{log_date}:{req.slot}"[:64]
+
+    log_date, aggregated = await _store_daily_event(
+        req.user_id,
+        action["log_event"],
+        action["payload"],
+        timestamp=req.timestamp,
+        source="push",
+        client_event_id=client_event_id,
+        log_date=log_date,
+    )
+
+    supabase = get_supabase()
+    if req.slot and should_use_supabase_db(supabase, req.user_id):
+        # Yerel bildirime gelen cevap da deftere girer; sunucu aynı pencereye
+        # ayrıca push göndermez.
+        try:
+            supabase.table("push_sends").upsert({
+                "user_id": req.user_id,
+                "reminder_id": req.reminder_id,
+                "log_date": log_date,
+                "slot": req.slot,
+                "action_id": req.action_id,
+                "responded_at": _utc_now_iso(),
+            }, on_conflict="user_id,reminder_id,log_date,slot").execute()
+        except Exception as e:
+            log.error("Bildirim cevabı deftere yazılamadı: %s", type(e).__name__)
+
+    return PushRespondResponse(
+        log_date=log_date,
+        log_event=action["log_event"],
+        aggregated=aggregated,
     )
 
 
@@ -1892,6 +2068,11 @@ async def generate_routine(request: Request, req: AssessmentRequest):
         makeup_frequency=req.makeup_frequency,
         makeup_removal=req.makeup_removal or "cleanser",
         special_flags=req.special_flags,
+        concerns=req.concerns,
+        triggers=req.triggers,
+        past_treatments=req.past_treatments,
+        expectations=req.expectations,
+        nutrition=req.nutrition,
     )
 
     routine_items = flow_result["routine_items"]
@@ -2035,6 +2216,11 @@ async def generate_routine(request: Request, req: AssessmentRequest):
                     "makeup_frequency": req.makeup_frequency,
                     "makeup_removal": req.makeup_removal or "cleanser",
                     "special_flags": req.special_flags or {},
+                    "concerns": req.concerns or [],
+                    "triggers": req.triggers or [],
+                    "past_treatments": req.past_treatments or [],
+                    "expectations": req.expectations or [],
+                    "nutrition": req.nutrition or {},
                 },
                 "photo_url": req.photo_url,
                 "weather_data": weather_data,
@@ -2104,6 +2290,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
             "sources": knowledge_result.get("sources", []),
             "chain_coverage": chain_coverage,
             "cabinet_enrichment": flow_result.get("cabinet_enrichment"),
+            "multi_concern": flow_result.get("multi_concern"),
             "token_estimate": "~400 (sadece AI polish)",
         },
     )

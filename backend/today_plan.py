@@ -22,6 +22,62 @@ LIP_BALM_MAX_TEMPERATURE = 10
 LIP_BALM_MAX_HUMIDITY = 35
 
 
+def _action(action_id: str, label: str, log_event: str, payload: dict) -> dict:
+    return {"id": action_id, "label": label, "log_event": log_event, "payload": payload}
+
+
+# Bildirimin üzerindeki hazır cevaplar. Android en fazla 3 buton gösterdiği için
+# her hatırlatıcıda en fazla 3 cevap vardır. Cevabın hangi olayı yazacağına
+# sunucu karar verir; istemci yalnızca `id` gönderir.
+REMINDER_ACTIONS: dict[str, list[dict]] = {
+    "routine_morning": [
+        _action("done", "Yaptım", "routine_completed_block", {"morning": True}),
+    ],
+    "routine_evening": [
+        _action("done", "Yaptım", "routine_completed_block", {"evening": True}),
+    ],
+    "makeup_log": [
+        _action("yes", "Evet", "makeup", {"used": True}),
+        _action("no", "Hayır", "makeup", {"used": False}),
+    ],
+    "water_intake": [
+        _action("ml_250", "1 bardak (250 ml)", "water_intake", {"ml": 250}),
+        _action("ml_500", "2 bardak (500 ml)", "water_intake", {"ml": 500}),
+    ],
+    "spf_refresh": [
+        _action("done", "Tazeledim", "spf_refresh", {}),
+    ],
+    "nutrition_log": [
+        _action("junk", "Yedim", "nutrition", {"junk_food": True}),
+        _action("clean", "Yemedim", "nutrition", {"junk_food": False}),
+    ],
+    "makeup_removal": [
+        _action("double", "Çift temizlik", "makeup", {"removed": True, "method": "double"}),
+        _action("cleanser", "Temizleyici", "makeup", {"removed": True, "method": "cleanser"}),
+        _action("wipe", "Mendil", "makeup", {"removed": True, "method": "wipe"}),
+    ],
+}
+
+# Bildirime dokununca açılacak ekran (web yolu; mobil kendi ekranına eşler).
+_OPEN_PATHS = {"daily_checkin": "/dashboard/checkin"}
+DEFAULT_OPEN_PATH = "/dashboard"
+
+
+def reminder_actions(reminder_id: str) -> list[dict]:
+    return [dict(a, payload=dict(a["payload"])) for a in REMINDER_ACTIONS.get(reminder_id, [])]
+
+
+def resolve_reminder_action(reminder_id: str, action_id: str) -> dict | None:
+    for action in REMINDER_ACTIONS.get(reminder_id, []):
+        if action["id"] == action_id:
+            return dict(action, payload=dict(action["payload"]))
+    return None
+
+
+def reminder_open_path(reminder_id: str) -> str:
+    return _OPEN_PATHS.get(reminder_id, DEFAULT_OPEN_PATH)
+
+
 def _reminder(
     reminder_id: str,
     title: str,
@@ -39,6 +95,10 @@ def _reminder(
         "end": end,
         "every_minutes": every_minutes,
         "log_event": log_event,
+        # iOS bildirim kategorisi; uygulama bunu kayıtlı kategorilerle eşler.
+        "category": reminder_id,
+        "actions": reminder_actions(reminder_id),
+        "open_path": reminder_open_path(reminder_id),
     }
 
 

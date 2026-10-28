@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
   getRoutineSnapshot,
@@ -9,7 +9,9 @@ import {
 import { recordCheckInSuccess } from "../lib/checkinStats";
 import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import { useTheme } from "../context/ThemeContext";
-import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
+import RoutineStepChoices from "../components/RoutineStepChoices";
+import { getChosenOption, withResolvedChoices } from "../lib/routineStepChoices";
+import { friendlyRoutineTitle } from "../lib/routineDisplay";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { apiAuthHeaders } from "../lib/apiAuth";
 import { API_URL } from "../lib/supabase";
@@ -18,7 +20,7 @@ import {
   Moon, SmilePlus, Droplets, AlertCircle,
   CheckCircle2, Send, Loader2, ArrowRight, Sparkles,
   Palette, FlaskConical, Hand, Sun, Wind, Flower2,
-  ThumbsUp, ThumbsDown,
+  ThumbsUp, ThumbsDown, MessageCircle,
 } from "lucide-react";
 import { supabase } from "../lib/supabase";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
@@ -192,11 +194,72 @@ function WaterMlCheckInCard({ value, onChange, theme }) {
   );
 }
 
+function CheckInRoutineStep({ item, theme, userId }) {
+  const { t, i18n } = useTranslation();
+  const resolved = withResolvedChoices(item);
+  const [chosenId, setChosenId] = useState(() => getChosenOption(userId, resolved)?.id || null);
+  const [showDetail, setShowDetail] = useState(false);
+  const prefersLocalized = ((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] || "tr") !== "tr";
+  const chosen = (resolved.choices || []).find((c) => c.id === chosenId);
+  const action = chosen
+    ? (prefersLocalized ? (chosen.action_localized || chosen.action) : chosen.action)
+    : (prefersLocalized ? (item.action_localized || item.action) : item.action);
+  const detail = prefersLocalized ? (item.detail_localized || item.detail) : item.detail;
+  const hasStructuredChoices = Array.isArray(resolved.choices) && resolved.choices.length >= 2;
+  const title = friendlyRoutineTitle(action, t("dashboard.fallbackStepTitle", { defaultValue: "This step" }));
+  const isSkincare = item.category === "Bakım" || item.category === "Koruma";
+  return (
+    <div className="flex items-start gap-2.5 rounded-2xl border border-gray-100 bg-white px-3 py-2.5">
+      <span className="text-sm shrink-0 mt-0.5">{item.icon || "•"}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-gray-800 leading-snug">{title}</p>
+        {hasStructuredChoices ? (
+          <RoutineStepChoices
+            item={resolved}
+            userId={userId}
+            theme={theme}
+            selectedId={chosenId}
+            onChange={setChosenId}
+          />
+        ) : null}
+        <div className="mt-1 flex items-center gap-3">
+          {detail ? (
+            <button
+              type="button"
+              onClick={() => setShowDetail((v) => !v)}
+              className="text-[11px] font-medium py-1"
+              style={{ color: theme.primary }}
+            >
+              {showDetail ? t("common.hide") : t("dashboard.stepHow")}
+            </button>
+          ) : null}
+          {isSkincare ? (
+            <Link
+              to={`/dashboard/chat?q=${encodeURIComponent(t("dashboard.askRebiQuestion", { step: title }))}`}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-gray-700 py-1"
+            >
+              <MessageCircle className="w-3 h-3" />
+              {t("dashboard.askRebi")}
+            </Link>
+          ) : null}
+        </div>
+        {showDetail ? <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">{detail}</p> : null}
+      </div>
+      <span
+        className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5"
+        style={{ backgroundColor: theme.primaryLight, color: theme.primaryDark }}
+      >
+        {item.time}
+      </span>
+    </div>
+  );
+}
+
 export default function CheckIn() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const id = user?.id;
@@ -448,18 +511,7 @@ export default function CheckIn() {
               <h3 className="text-sm font-bold text-gray-700 mb-2">Bugünün Rutini</h3>
               <div className="space-y-1.5">
                 {result.today_routine.slice(0, 10).map((item, i) => (
-                  <div key={i} className="card !p-3 flex items-start gap-2.5">
-                    <span className="text-sm shrink-0">{item.icon || "•"}</span>
-                    <div className="min-w-0">
-                          <p className="text-xs font-semibold text-gray-800">{((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] !== "tr") ? (item.action_localized || item.action) : item.action}</p>
-                      <StructuredRoutineBadges item={item} />
-                          <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">{((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] !== "tr") ? (item.detail_localized || item.detail) : item.detail}</p>
-                    </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded-full shrink-0 mt-0.5"
-                      style={{ backgroundColor: theme.primaryLight, color: theme.primaryDark }}>
-                      {item.time}
-                    </span>
-                  </div>
+                  <CheckInRoutineStep key={i} item={item} theme={theme} userId={user?.id} />
                 ))}
               </div>
             </div>

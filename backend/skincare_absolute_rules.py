@@ -206,7 +206,8 @@ def _morning_violation(it: dict) -> bool:
 
 
 def _families_for_combo(it: dict) -> set[str]:
-    t = _item_text(it).lower()
+    # Yalnızca action: detail'de "retinol gecelerinde" geçmesi arbutin satırını retinoid yapmasın.
+    t = (it.get("action") or "").lower()
     s: set[str] = set()
     if any(k in t for k in ("retinol", "retinal", "tretinoin", "adapalen", "adapalen", "retinoid")):
         s.add("retinoid")

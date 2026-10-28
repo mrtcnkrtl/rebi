@@ -11,7 +11,9 @@ import {
   isRoutineTrackingAccepted,
   saveRoutineSnapshot,
 } from "../lib/routineTracking";
-import { StructuredRoutineBadges } from "../lib/structuredRoutineBadges";
+import RoutineStepChoices from "../components/RoutineStepChoices";
+import { applyChosenOptionIds, getChosenOption, withResolvedChoices } from "../lib/routineStepChoices";
+import { friendlyRoutineTitle } from "../lib/routineDisplay";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import AiDisclaimer from "../components/AiDisclaimer";
 import { useTranslation } from "react-i18next";
@@ -115,24 +117,6 @@ function getDefaultWeeklyDays(detail) {
     days.add(Math.min(6, Math.max(0, Math.round((i * 6) / (n - 1)))));
   }
   return [...days].sort((x, y) => x - y);
-}
-
-/** Uzun rutin satırından okunur kısa başlık (INCI ve kimyasal ön ek gizlenir). */
-function friendlyRoutineTitle(action, fallbackTitle = "This step") {
-  if (!action) return fallbackTitle;
-  let s = String(action)
-    .replace(/^⏸️\s*/u, "")
-    .replace(/\s*—\s*ARA VER\s*$/iu, "")
-    .replace(/\s*—\s*şimdilik kullanma\s*$/iu, "")
-    .trim();
-  const parts = s.split(/\s*[—–]\s*/).map((p) => p.trim()).filter(Boolean);
-  if (parts.length >= 2) {
-    const human = parts[1].replace(/\s*\(INCI[^)]*\)\s*/gi, "").trim();
-    if (human.length > 0 && human.length < 140) return human;
-  }
-  let one = parts[0] || s;
-  one = one.replace(/\s*\(INCI[^)]*\)\s*/gi, "").trim();
-  return one || fallbackTitle;
 }
 
 export default function Dashboard() {
@@ -268,7 +252,7 @@ export default function Dashboard() {
   const handleAcceptRoutine = () => {
     if (!uid) return;
     acceptRoutineTracking(uid, {
-      routine,
+      routine: applyChosenOptionIds(uid, routine),
       weather,
       userName,
       photoUrl,
@@ -557,9 +541,9 @@ export default function Dashboard() {
                   <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
                     ☀️ {t("dashboard.morning")} — {t("dashboard.lifestyleSuffix")}
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-0.5">
                     {wellnessMorningItems.map((item, i) => (
-                      <ProductStep key={`t-wm-${i}`} item={item} theme={theme} />
+                      <RoutineLine key={`t-wm-${i}`} item={item} pickAction={pickAction} fallbackTitle={fallbackStepTitle} />
                     ))}
                   </div>
                 </div>
@@ -579,9 +563,9 @@ export default function Dashboard() {
                   <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
                     🌙 {t("dashboard.evening")} — {t("dashboard.lifestyleSuffix")}
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-0.5">
                     {wellnessEveningItems.map((item, i) => (
-                      <ProductStep key={`t-we-${i}`} item={item} theme={theme} />
+                      <RoutineLine key={`t-we-${i}`} item={item} pickAction={pickAction} fallbackTitle={fallbackStepTitle} />
                     ))}
                   </div>
                 </div>
@@ -589,9 +573,9 @@ export default function Dashboard() {
               {dailyLifestyleItems.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">📌 {t("dashboard.allDay")}</div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-0.5">
                     {dailyLifestyleItems.map((item, i) => (
-                      <ProductStep key={`t-d-${i}`} item={item} theme={theme} />
+                      <RoutineLine key={`t-d-${i}`} item={item} pickAction={pickAction} fallbackTitle={fallbackStepTitle} />
                     ))}
                   </div>
                 </div>
@@ -611,17 +595,14 @@ export default function Dashboard() {
               <p className="text-xs font-bold text-gray-800 mb-2">{t("dashboard.weeklyTitle")}</p>
               <div className="space-y-2">
                 {weeklyItems.slice(0, 4).map((item) => (
-                  <div key={item.weeklyKey} className="text-[11px] text-gray-600">
-                    <div className="flex flex-wrap items-baseline gap-x-1 gap-y-0.5">
-                      <span className="font-semibold text-gray-800">{friendlyRoutineTitle(pickAction(item), fallbackStepTitle)}</span>
-                      <span>
-                        {" · "}
-                        {(item.displayDays || []).length
-                          ? (item.displayDays || []).map((i) => WEEK_DAYS[i]).join(", ")
-                          : "—"}
-                      </span>
-                    </div>
-                    <StructuredRoutineBadges item={item} />
+                  <div key={item.weeklyKey} className="text-[12px] text-gray-600">
+                    <span className="font-semibold text-gray-800">{friendlyRoutineTitle(pickAction(item), fallbackStepTitle)}</span>
+                    <span className="text-gray-500">
+                      {" · "}
+                      {(item.displayDays || []).length
+                        ? (item.displayDays || []).map((i) => WEEK_DAYS[i]).join(", ")
+                        : "—"}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -752,28 +733,21 @@ export default function Dashboard() {
         <DailyBalanceCard item={dailyBalanceItem} flowDebug={flowDebug} theme={theme} />
 
         {routineIngredientsList.length > 0 && (
-          <>
-            <SectionHeader
-              icon="🧪"
-              title={t("dashboard.productListTitle")}
-              subtitle={t("dashboard.productListSubtitle")}
-              color={theme.primary}
-              className="!mt-2"
-            />
-            <div className="card mb-5 p-4">
-              <div className="flex flex-wrap gap-2">
-                {routineIngredientsList.map((name, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center px-3 py-1.5 rounded-xl text-xs font-medium border"
-                    style={{ borderColor: theme.primaryLight, backgroundColor: theme.primary + "12", color: theme.primaryDark || "#0d9488" }}
-                  >
-                    {name}
-                  </span>
-                ))}
-              </div>
+          <details className="card mb-4 !p-3">
+            <summary className="cursor-pointer text-sm font-semibold text-gray-800">
+              {t("dashboard.productListTitle")}
+            </summary>
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {routineIngredientsList.map((name, i) => (
+                <span
+                  key={i}
+                  className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-gray-50 text-gray-700 border border-gray-100"
+                >
+                  {friendlyRoutineTitle(name, name)}
+                </span>
+              ))}
             </div>
-          </>
+          </details>
         )}
 
         {/* Daily Check-in — yalnız rutin kabul edildikten sonra */}
@@ -824,17 +798,12 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Aktif plan: dolaptaki önerilen maddeler ∩ bu rutin */}
         {activePlan.length > 0 && (
-          <div className="card mb-4 border-teal-100 bg-white">
-            <div className="flex items-start gap-3 mb-3">
-              <Sparkles className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
-              <div>
-                <h3 className="font-bold text-gray-900 text-sm">{t("dashboard.activePlanTitle")}</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{t("dashboard.activePlanSubtitle")}</p>
-              </div>
-            </div>
-            <ul className="space-y-2">
+          <details className="card mb-4 !p-3">
+            <summary className="cursor-pointer text-sm font-semibold text-gray-800">
+              {t("dashboard.activePlanTitle")}
+            </summary>
+            <ul className="space-y-2 mt-3">
               {activePlan.map((p, i) => {
                 const whenKey =
                   p?.when === "morning"
@@ -843,48 +812,28 @@ export default function Dashboard() {
                       ? "dashboard.activePlanWhenEvening"
                       : "dashboard.activePlanWhenBoth";
                 const name = p?.name_tr || p?.name || p?.active || "";
-                const why = p?.why || p?.why_tr || "";
                 return (
-                  <li
-                    key={`${p?.active || "active"}-${i}`}
-                    className="rounded-xl border border-gray-100 bg-gray-50/70 px-3 py-2"
-                  >
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm font-semibold text-gray-900">{name}</span>
-                      <span className="text-[10px] font-medium uppercase tracking-wide text-teal-700 shrink-0">
-                        {t(whenKey)}
-                      </span>
-                    </div>
-                    {why ? <p className="text-xs text-gray-600 mt-1 leading-relaxed">{why}</p> : null}
+                  <li key={`${p?.active || "active"}-${i}`} className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="font-medium text-gray-900">{name}</span>
+                    <span className="text-[11px] text-gray-500 shrink-0">{t(whenKey)}</span>
                   </li>
                 );
               })}
             </ul>
-          </div>
+          </details>
         )}
 
-        {/* ═══ SECTION 1: Gün gün rutin + uygulama sırası ═══ */}
         <SectionHeader icon="🧴" title={t("dashboard.routineByDayTitle")} subtitle={t("dashboard.routineByDaySubtitle")} color={theme.primary} />
 
-        {/* Yönlendirme: Marka kullanıcı seçer, biz sadece yönlendiririz */}
-        <div className="card mb-4 border-teal-100 bg-teal-50/30">
-          <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 shrink-0 mt-0.5" style={{ color: theme.primary }} />
-            <div>
-              <h3 className="font-bold text-gray-900 text-sm mb-1">{t("dashboard.howToChooseTitle")}</h3>
-              <p className="text-xs text-gray-600 mb-2">{t("dashboard.howToChooseDesc")}</p>
-              <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside">
-                <li><strong>{t("dashboard.howToChooseBullet1Title")}</strong>{" "}{t("dashboard.howToChooseBullet1Body")}</li>
-                <li><strong>{t("dashboard.howToChooseBullet2Title")}</strong>{" "}{t("dashboard.howToChooseBullet2Body")}</li>
-                <li><strong>{t("dashboard.howToChooseBullet3Title")}</strong>{" "}{t("dashboard.howToChooseBullet3Body")}</li>
-                <li><strong>{t("dashboard.howToChooseBullet4Title")}</strong>{" "}{t("dashboard.howToChooseBullet4Body")}</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        <details className="card mb-4 !p-3">
+          <summary className="cursor-pointer text-sm font-semibold text-gray-800">
+            {t("dashboard.howToChooseTitle")}
+          </summary>
+          <p className="text-xs text-gray-600 mt-2 leading-relaxed">{t("dashboard.howToChooseDesc")}</p>
+        </details>
 
-        {dailyLifestyleItems.length > 0 && (
-          <div className="card mb-4 overflow-hidden border-2 border-dashed border-teal-100">
+        {(dailyLifestyleItems.length > 0 || wellnessMorningItems.length > 0 || wellnessEveningItems.length > 0) && (
+          <div className="card mb-4 overflow-hidden">
             <div
               className="px-3 py-2 border-b border-gray-100 font-bold text-gray-800 text-sm flex items-center gap-2"
               style={{ backgroundColor: theme.primary + "10" }}
@@ -892,10 +841,15 @@ export default function Dashboard() {
               <Leaf className="w-4 h-4" style={{ color: theme.primary }} />
               {t("dashboard.everyDayAllDayTitle")}
             </div>
-            <div className="p-3 space-y-1.5">
-              <p className="text-[10px] text-gray-500 mb-2">{t("dashboard.everyDayAllDayHint")}</p>
+            <div className="p-3 space-y-2">
+              {wellnessMorningItems.map((item, i) => (
+                <RoutineLine key={`all-wm-${i}`} item={item} pickAction={pickAction} fallbackTitle={fallbackStepTitle} />
+              ))}
+              {wellnessEveningItems.map((item, i) => (
+                <RoutineLine key={`all-we-${i}`} item={item} pickAction={pickAction} fallbackTitle={fallbackStepTitle} />
+              ))}
               {dailyLifestyleItems.map((item, i) => (
-                <ProductStep key={`all-days-${i}`} item={item} theme={theme} />
+                <RoutineLine key={`all-days-${i}`} item={item} pickAction={pickAction} fallbackTitle={fallbackStepTitle} />
               ))}
             </div>
           </div>
@@ -903,12 +857,7 @@ export default function Dashboard() {
 
         {WEEK_DAYS.map((dayLabel, dayIndex) => {
           const { morning, evening } = routineByDay[dayIndex] || { morning: [], evening: [] };
-          const hasAny =
-            morning.length > 0 ||
-            evening.length > 0 ||
-            wellnessMorningItems.length > 0 ||
-            wellnessEveningItems.length > 0;
-          if (!hasAny) return null;
+          if (!morning.length && !evening.length) return null;
           return (
             <div key={dayIndex} className="card mb-4 overflow-hidden">
               <div className="px-3 py-2 border-b border-gray-100 font-bold text-gray-800 text-sm flex items-center gap-2" style={{ backgroundColor: theme.primary + "12" }}>
@@ -926,36 +875,12 @@ export default function Dashboard() {
                     </div>
                   </div>
                 )}
-                {wellnessMorningItems.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
-                      ☀️ {t("dashboard.morningLifestyleLabel", { time: t("dashboard.morning") })}
-                    </div>
-                    <div className="space-y-1.5">
-                      {wellnessMorningItems.map((item, i) => (
-                        <ProductStep key={`${dayIndex}-wm-${i}`} item={item} theme={theme} />
-                      ))}
-                    </div>
-                  </div>
-                )}
                 {evening.length > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">🌙 {t("dashboard.evening")}</div>
                     <div className="space-y-1.5">
                       {evening.map((item, i) => (
                         <ProductStep key={`${dayIndex}-e-${i}`} item={item} step={i + 1} theme={theme} />
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {wellnessEveningItems.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1.5 text-xs font-semibold text-gray-600">
-                      🌙 {t("dashboard.morningLifestyleLabel", { time: t("dashboard.evening") })}
-                    </div>
-                    <div className="space-y-1.5">
-                      {wellnessEveningItems.map((item, i) => (
-                        <ProductStep key={`${dayIndex}-we-${i}`} item={item} theme={theme} />
                       ))}
                     </div>
                   </div>
@@ -979,39 +904,14 @@ export default function Dashboard() {
             </div>
             <div className="space-y-4 mb-4">
               {weeklyItems.map((item) => (
-                <div key={item.weeklyKey} className="card !p-3 space-y-3">
-                  <div>
-                    <h4 className="font-bold text-gray-900 text-sm">{pickAction(item)}</h4>
-                    <StructuredRoutineBadges item={item} />
-                    {pickDetail(item) ? (
-                      <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
-                        <span className="font-medium text-gray-600">Kısaca: </span>
-                        {pickDetail(item)}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {WEEK_DAYS.map((label, dayIndex) => {
-                      const selected = (item.displayDays || []).includes(dayIndex);
-                      return (
-                        <span
-                          key={dayIndex}
-                          className={`min-w-[2.5rem] py-2 rounded-xl text-xs font-medium border-2 text-center inline-block ${
-                            selected ? "text-white border-transparent" : "border-gray-200 text-gray-400 bg-gray-50/50"
-                          }`}
-                          style={selected ? { backgroundColor: theme.primary } : {}}
-                        >
-                          {label}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  {(item.displayDays || []).length > 0 && (
-                    <p className="text-[10px] text-gray-500">
-                      Bu maddeyi şu günlerde uygula: {(item.displayDays || []).map((i) => WEEK_DAYS[i]).join(", ")}
-                    </p>
-                  )}
-                </div>
+                <WeeklyRoutineItem
+                  key={item.weeklyKey}
+                  item={item}
+                  theme={theme}
+                  weekDays={WEEK_DAYS}
+                  pickAction={pickAction}
+                  pickDetail={pickDetail}
+                />
               ))}
             </div>
           </>
@@ -1161,12 +1061,90 @@ function SectionHeader({ icon, title, subtitle, color, className = "" }) {
   );
 }
 
+function RoutineLine({ item, pickAction, fallbackTitle }) {
+  return (
+    <div className="flex items-start gap-2 py-1">
+      <span className="text-base leading-none shrink-0">{item.icon || "•"}</span>
+      <p className="text-sm text-gray-800 leading-snug">
+        {friendlyRoutineTitle(pickAction(item), fallbackTitle)}
+      </p>
+    </div>
+  );
+}
+
+function WeeklyRoutineItem({ item, theme, weekDays, pickAction, pickDetail }) {
+  const { user } = useAuth();
+  const { t } = useTranslation();
+  const uid = user?.id;
+  const resolved = withResolvedChoices(item);
+  const [chosenId, setChosenId] = useState(() => getChosenOption(uid, resolved)?.id || null);
+  const [showDetail, setShowDetail] = useState(false);
+  const chosen = (resolved.choices || []).find((c) => c.id === chosenId);
+  const title = friendlyRoutineTitle(chosen?.action || pickAction(item));
+  const hasStructuredChoices = Array.isArray(resolved.choices) && resolved.choices.length >= 2;
+  const detail = pickDetail(item);
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white px-3 py-3 space-y-2.5">
+      <div>
+        <h4 className="font-semibold text-gray-900 text-sm leading-snug">{title}</h4>
+        {hasStructuredChoices ? (
+          <RoutineStepChoices
+            item={resolved}
+            userId={uid}
+            theme={theme}
+            selectedId={chosenId}
+            onChange={setChosenId}
+          />
+        ) : null}
+        {detail ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowDetail((v) => !v)}
+              className="mt-1 text-[11px] font-medium text-gray-500"
+            >
+              {showDetail ? t("common.hide") : t("dashboard.stepHow")}
+            </button>
+            {showDetail ? <p className="text-xs text-gray-600 mt-1 leading-relaxed">{detail}</p> : null}
+          </>
+        ) : null}
+      </div>
+      <div className="flex items-center gap-1 flex-wrap">
+        {weekDays.map((label, dayIndex) => {
+          const selected = (item.displayDays || []).includes(dayIndex);
+          return (
+            <span
+              key={dayIndex}
+              className={`min-w-[2.25rem] py-1.5 rounded-lg text-[11px] font-medium text-center inline-block ${
+                selected ? "text-white" : "text-gray-400 bg-gray-50"
+              }`}
+              style={selected ? { backgroundColor: theme.primary } : {}}
+            >
+              {label}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ProductStep({ item, theme, step }) {
   const [showDetail, setShowDetail] = useState(false);
+  const { user } = useAuth();
+  const uid = user?.id;
   const { t, i18n } = useTranslation();
   const prefersLocalized = ((i18n.resolvedLanguage || i18n.language || "tr").toLowerCase().split("-")[0] || "tr") !== "tr";
   const pickAction = (it) => (prefersLocalized ? (it?.action_localized || it?.action) : it?.action);
   const pickDetail = (it) => (prefersLocalized ? (it?.detail_localized || it?.detail) : it?.detail);
+  const resolved = withResolvedChoices(item);
+  const [chosenId, setChosenId] = useState(() => getChosenOption(uid, resolved)?.id || null);
+  const chosen = (resolved.choices || []).find((c) => c.id === chosenId);
+  const displayAction = chosen
+    ? (prefersLocalized ? (chosen.action_localized || chosen.action) : chosen.action)
+    : pickAction(item);
+  const title = friendlyRoutineTitle(displayAction, t("dashboard.fallbackStepTitle", { defaultValue: "This step" }));
+  const hasStructuredChoices = Array.isArray(resolved.choices) && resolved.choices.length >= 2;
   const isSkincare = item.category === "Bakım" || item.category === "Koruma";
   const usageRaw = item.usage != null ? String(item.usage).trim() : "";
   const so = item.step_order ?? 50;
@@ -1183,75 +1161,58 @@ function ProductStep({ item, theme, step }) {
               ? t("dashboard.defaultUsage.sunscreen")
               : t("dashboard.defaultUsage.generic")
       : "");
-  const hasContent = Boolean((item.detail || item.detail_localized) || usage);
+  const detailText = pickDetail(item);
+  const hasContent = Boolean(detailText || usage);
   const showNumber = step != null && step !== undefined;
-  const actionLower = String(item.action || "").toLowerCase();
-  const hasPlusCombo = isSkincare && String(item.action || "").includes("+");
-  const looksLikeMoisturizerCombo =
-    hasPlusCombo &&
-    (actionLower.includes("nemlendirici") ||
-      actionLower.includes("bariyer") ||
-      actionLower.includes("onarım") ||
-      actionLower.includes("onarim") ||
-      actionLower.includes("krem"));
   return (
-    <div className="card !p-3 flex items-start gap-3 hover:shadow-md transition-shadow">
+    <div className="flex items-start gap-3 rounded-2xl bg-white/90 border border-gray-100 px-3 py-2.5">
       {showNumber ? (
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
-          style={{ backgroundColor: theme.primary }}>
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold text-white shrink-0 mt-0.5"
+          style={{ backgroundColor: theme.primary }}
+        >
           {step}
         </div>
       ) : (
-        <div className="w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0 bg-gray-100 border border-gray-200/80">
-          {item.icon || "🧴"}
-        </div>
+        <span className="text-base shrink-0 mt-0.5">{item.icon || "🧴"}</span>
       )}
       <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 gap-y-1">
-          <h4 className="font-bold text-gray-900 text-sm">{pickAction(item)}</h4>
-          {item.category && (
-            <span className="inline-block text-[9px] font-medium px-2 py-0.5 rounded-full shrink-0"
-              style={{ backgroundColor: theme.primaryLight, color: theme.primaryDark }}>
-              {item.category}
-            </span>
-          )}
-        </div>
-        <StructuredRoutineBadges item={item} />
-        {looksLikeMoisturizerCombo && (
-          <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-            <strong className="text-gray-700">Tek üründe hepsi şart değil:</strong>{" "}
-            Bu satır “hedef içerik örnekleri” gibi düşün; hepsini tek üründe bulamazsan benzerlerinden{" "}
-            <strong className="text-gray-700">birini</strong> seçebilirsin.
-          </p>
-        )}
-        {hasContent && (
-          <>
+        <h4 className="font-semibold text-gray-900 text-sm leading-snug">{title}</h4>
+        {hasStructuredChoices ? (
+          <RoutineStepChoices
+            item={resolved}
+            userId={uid}
+            theme={theme}
+            selectedId={chosenId}
+            onChange={setChosenId}
+          />
+        ) : null}
+        <div className="mt-1 flex items-center gap-3">
+          {hasContent && (
             <button
               type="button"
               onClick={() => setShowDetail((v) => !v)}
-              className="mt-2 block text-xs font-medium rounded-lg px-2 py-1 border transition-colors"
-              style={{ borderColor: theme.primaryLight, color: theme.primary }}
+              className="text-[11px] font-medium py-1"
+              style={{ color: theme.primary }}
             >
-              {showDetail ? t("common.hide") : isSkincare ? t("dashboard.whySkincareButton") : t("common.details")}
+              {showDetail ? t("common.hide") : t("dashboard.stepHow")}
             </button>
-            {showDetail && (
-              <div className="text-xs text-gray-600 mt-2 space-y-2 leading-relaxed">
-                {pickDetail(item) && (
-                  <p>
-                    <strong>
-                      {isSkincare ? t("dashboard.shortWhy") : usage ? t("dashboard.shortWhy") : t("dashboard.summary")}
-                    </strong>{" "}
-                    {pickDetail(item)}
-                  </p>
-                )}
-                {usage ? (
-                  <p>
-                    <strong>{isSkincare ? t("dashboard.howToApply") : t("dashboard.howToDo")}</strong> {usage}
-                  </p>
-                ) : null}
-              </div>
-            )}
-          </>
+          )}
+          {isSkincare && (
+            <Link
+              to={`/dashboard/chat?q=${encodeURIComponent(t("dashboard.askRebiQuestion", { step: title }))}`}
+              className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-gray-700 py-1"
+            >
+              <MessageCircle className="w-3 h-3" />
+              {t("dashboard.askRebi")}
+            </Link>
+          )}
+        </div>
+        {showDetail && (
+          <div className="text-xs text-gray-600 mt-1 space-y-1.5 leading-relaxed">
+            {detailText ? <p>{detailText}</p> : null}
+            {usage ? <p>{usage}</p> : null}
+          </div>
         )}
       </div>
     </div>

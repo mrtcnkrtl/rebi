@@ -271,7 +271,24 @@
     "edgeQuickAnalyze": "Start new analysis",
     "edgeRecentTitle": "Recent messages",
     "edgeRecentPick": "Reuse:",
-    "disclaimerShort": "Rebi is an AI assistant; suggestions have a margin of error and are not medical diagnosis or treatment."
+    "disclaimerShort": "Rebi is an AI assistant; suggestions have a margin of error and are not medical diagnosis or treatment.",
+    "routineChip": "My routine",
+    "analyzeChip": "Analyze",
+    "retry": "Try again",
+    "send": "Send",
+    "errorNoReply": "Couldn't get a reply right now.",
+    "errorNetwork": "Couldn't connect. Check your internet and try again.",
+    "errorGeneric": "Something went wrong. Could you try again?",
+    "suggestRoutine": [
+      "What should I watch out for in today's routine?",
+      "Can I use the actives in my routine together?"
+    ],
+    "suggestGeneral": [
+      "How do I start retinol?",
+      "Can I use niacinamide with vitamin C?",
+      "My skin barrier is damaged, what should I do?",
+      "Which SPF suits me?"
+    ]
   },
   "dashboard": {
     "noAnalyzeTitle": "Hi, {{name}}!",
@@ -317,6 +334,10 @@
     "acceptCta": "I accept my routine, start tracking",
     "feelsTodayHint": "How do you feel today? Your routine will adapt accordingly.",
     "whySkincareButton": "Why this product / ingredient?",
+    "stepChoicesTitle": "Which one will you use?",
+    "stepChoicesHint": "Pick the one you prefer; if you skip, the combined suggestion stays.",
+    "stepChoiceSelected": "Selected",
+    "stepHow": "How?",
     "shortWhy": "Why (briefly):",
     "summary": "Summary:",
     "howToApply": "How to apply:",
@@ -362,7 +383,9 @@
     "lifestyleSupportsSubtitle": "Nutrition, water, sleep, and lifestyle guidance",
     "nutritionTitle": "Nutrition",
     "mindMovementTitle": "Mind & movement",
-    "morningLifestyleLabel": "{{time}} — lifestyle"
+    "morningLifestyleLabel": "{{time}} — lifestyle",
+    "askRebi": "Ask Rebi",
+    "askRebiQuestion": "Can you explain this step in my routine: {{step}}"
   },
   "profile": {
     "title": "Profile",
