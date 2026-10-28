@@ -8,7 +8,7 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 
 | Konu | Durum |
 | --- | --- |
-| Paket / bundle kimliği `com.rebiovil.rebi`, iOS takımı `6LVDQJ9UMA` | hazır |
+| Paket kimliği: Android `com.rebiovil.rebi`, iOS `com.rebiovil.mobile` (App Store Connect'teki "Rebiovil Mobile" kaydı); iOS takımı `KJ7932W24A` | hazır |
 | Android release imzalama (`android/key.properties`) | **kod hazır, anahtar sizde yok** (bölüm 3) |
 | Android release derlemesi (R8 + kaynak küçültme, bildirim simgesi korunuyor) | derleme geçiyor (AAB 59,8 MB, 3 ABI; Play cihaza özel daha küçük parça verir); cihazda çalıştırılmadı |
 | iOS gizlilik bildirimi (`ios/Runner/PrivacyInfo.xcprivacy`) | hazır, Mac'te derlenmedi (CI derler, bölüm 4) |
@@ -57,9 +57,22 @@ Yalnızca Mac + Xcode'da derlenir. Bu repoda iOS hiç derlenmemişti; `Mobile CI
 işinde `flutter build ios --no-codesign` çalıştırır (proje dosyası, Pod çözümü ve `PrivacyInfo.xcprivacy`
 paketlemesi doğrulanır).
 
-1. Apple Developer hesabında uygulama kimliği `com.rebiovil.rebi` kayıtlı olmalı; App Store Connect'te uygulama
-   kaydı açılmalı.
-2. Xcode → Runner → Signing & Capabilities: takım `6LVDQJ9UMA` zaten ayarlı; otomatik imzalama önerilir.
+1. iOS uygulama kimliği `com.rebiovil.mobile`; App Store Connect'teki "Rebiovil Mobile" kaydı (Apple ID 6566180620)
+   buna bağlı. Önceki yüklemeler 7'ye kadar derleme numarası kullandı: yeni yüklemede derleme numarası 7'den büyük olmalı.
+2. Xcode → Runner → Signing & Capabilities: takım `KJ7932W24A` ayarlı, otomatik imzalama. Bireysel hesapta ekip üyesi
+   eklenemediği için imzalama App Store Connect API anahtarıyla yapılır (Admin, anahtar repoda değil,
+   `~/.appstoreconnect/private_keys/AuthKey_<KEY_ID>.p8`). Dağıtım sertifikası ve profil Apple tarafında üretilir
+   (bulut imzalama); Mac'e sertifika kurmak gerekmez:
+   ```bash
+   flutter build ios --release --no-codesign --build-number=<N> --dart-define-from-file=env/prod.json
+   xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release \
+     -destination 'generic/platform=iOS' -archivePath build/Runner.xcarchive archive \
+     -allowProvisioningUpdates -authenticationKeyPath <p8> -authenticationKeyID <KEY_ID> -authenticationKeyIssuerID <ISSUER_ID>
+   xcodebuild -exportArchive -archivePath build/Runner.xcarchive -exportPath build/ipa \
+     -exportOptionsPlist <method=app-store-connect, teamID=KJ7932W24A> -allowProvisioningUpdates <aynı anahtar bayrakları>
+   xcrun altool --upload-app -f build/ipa/Rebi.ipa -t ios --apiKey <KEY_ID> --apiIssuer <ISSUER_ID>
+   ```
+   İlk TestFlight yüklemesi: 1.0.0 (8), 28.10.2026.
 3. `tool/build_release.sh ios` → `build/ios/ipa/*.ipa`; Xcode Organizer ya da Transporter ile yükleyin,
    TestFlight'ta deneyin.
 4. **Push açılacaksa:** Xcode'da "Push Notifications" ve "Background Modes → Remote notifications" yeteneklerini

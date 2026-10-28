@@ -9,7 +9,7 @@ kişi (ve KVKK danışmanı) okuyup onaylamalıdır. Tıbbi iddia yoktur ("tedav
 
 | Alan | Değer |
 | --- | --- |
-| Paket / bundle | `com.rebiovil.rebi` |
+| Paket / bundle | Android `com.rebiovil.rebi`, iOS `com.rebiovil.mobile` |
 | Sürüm | 1.0.0 (derleme 1) |
 | Kategori (öneri) | **Play:** Güzellik (Beauty). **App Store:** Yaşam Tarzı (Lifestyle). "Sağlık ve Fitness" seçmek sağlık incelemesini ağırlaştırır; Rebi tanı koymadığı için gerekmez |
 | Fiyat | Ücretsiz. Uygulama içi satın alma **yok** (v1; `MOBIL-YAYIN.md` §6, seçenek A) |
