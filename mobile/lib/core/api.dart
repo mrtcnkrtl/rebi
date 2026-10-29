@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
+import 'i18n.dart';
 
 /// Supabase yapılandırılmamışsa null (web: `supabase` null).
 SupabaseClient? get supabase => Env.supabaseConfigured ? Supabase.instance.client : null;
@@ -112,7 +113,7 @@ Future<ApiResponse> apiDelete(String path, {Map<String, String?>? query, Duratio
 
 /// FastAPI / Starlette hata gövdesi: { detail: string | { msg }[] | ... } (web: `lib/apiErrors.js`).
 String formatApiErrorDetail(Map<String, dynamic>? data) {
-  if (data == null) return 'Sunucudan anlamlı bir yanıt alınamadı.';
+  if (data == null) return I18n.instance.t('mobileMisc.apiNoResponse');
   final d = data['detail'];
   if (d is String) return d;
   if (d is List) {
@@ -127,7 +128,7 @@ String formatApiErrorDetail(Map<String, dynamic>? data) {
   }
   if (d is Map && d['msg'] is String) return d['msg'] as String;
   if (data['message'] is String) return data['message'] as String;
-  return 'İşlem tamamlanamadı. Bir süre sonra tekrar dene.';
+  return I18n.instance.t('mobileMisc.apiFailed');
 }
 
 /// Web `isNetworkError`: "Failed to fetch" karşılığı bağlantı hataları.

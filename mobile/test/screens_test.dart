@@ -48,11 +48,12 @@ void main() {
       expect(find.text(tr('auth.fullName')), findsNothing);
     });
 
-    testWidgets('landing: Rebi ile konuş anonim sohbete gider', (tester) async {
+    testWidgets('landing: Rebi ile konuş misafiri girişe, sonra sohbete yönlendirir', (tester) async {
       final h = await pumpApp(tester, location: '/', loggedIn: false);
       await tapText(tester, tr('landing.ctaChat'));
-      expect(h.router.routeInformationProvider.value.uri.path, '/rebi');
-      expect(find.text(tr('chat.emptyTitle')), findsOneWidget);
+      final uri = h.router.routeInformationProvider.value.uri;
+      expect(uri.path, '/auth');
+      expect(uri.queryParameters['next'], '/dashboard/chat');
     });
 
     testWidgets('landing: yana kaydırınca sahne metinleri değişir', (tester) async {
@@ -410,12 +411,14 @@ void main() {
       expect(find.text(tr('common.consentRecoveryTitle')), findsNothing);
     });
 
-    testWidgets('anonim sohbet demo kimliğiyle gider', (tester) async {
+    testWidgets('eski /rebi bağlantısı: misafir girişe gider', (tester) async {
       final h = await pumpApp(tester, location: '/rebi', loggedIn: false);
-      await tester.enterText(find.byType(TextField), 'Selam');
-      await tester.testTextInput.receiveAction(TextInputAction.send);
-      await settle(tester);
-      expect(h.backend.bodyOf('/chat_general')['user_id'], '00000000-0000-4000-8000-000000000001');
+      expect(h.router.routeInformationProvider.value.uri.path, '/auth');
+    });
+
+    testWidgets('eski /rebi bağlantısı: oturumlu kullanıcı sohbete gider', (tester) async {
+      final h = await pumpApp(tester, location: '/rebi');
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/chat');
     });
   });
 

@@ -35,7 +35,8 @@ void main() {
       expect(find.text(tr('dashboard.routineByDayTitle')), findsOneWidget);
       expect(find.text(tr('dashboard.morning')), findsOneWidget);
       expect(find.text(tr('dashboard.evening')), findsOneWidget);
-      expect(find.text(tr('mobileRoutine.stepCount', {'n': 3})), findsOneWidget, reason: 'sabah: temizleyici, nemlendirici, SPF');
+      // Akşam bloğu da bazı günlerde 3 adımlı olabilir: en az biri (sabah) yeter.
+      expect(find.text(tr('mobileRoutine.stepCount', {'n': 3})), findsWidgets, reason: 'sabah: temizleyici, nemlendirici, SPF');
       final days = I18n.instance.tList('dashboard.weekDays', const []);
       final today = days[getTurkeyWeekdayIndex()];
       expect(find.text('$today · ${tr('dashboard.todayTitle')}'), findsOneWidget, reason: 'bugünün planı açık');

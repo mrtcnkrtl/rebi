@@ -1,9 +1,19 @@
 /// Dashboard / Check-in ekranlarındaki saf rutin mantığı (web: `pages/Dashboard.jsx`,
 /// `lib/structuredRoutineBadges.jsx`). Rutin satırları backend'den geldiği gibi
 /// `Map` olarak tutulur; bilinmeyen alanlar kaybolmaz, snapshot'a aynen yazılır.
+/// Kullanıcıya giden sabit metinler seçili dilde (`mobileRoutineHints`); çeviri yüklenmemişse Türkçe.
 library;
 
+import 'i18n.dart';
+import 'interpolate.dart';
+
 typedef RoutineItem = Map<String, dynamic>;
+
+/// Seçili dildeki metin; çeviri yüklenmemişse (saf mantık testleri) Türkçe [fallback].
+String _text(String key, String fallback, [Map<String, Object?> vars = const {}]) {
+  final v = I18n.instance.t(key, vars);
+  return v == key ? interpolate(fallback, vars) : v;
+}
 
 /// JS truthiness: null, false, 0, "" → false.
 bool truthy(Object? v) {
@@ -94,7 +104,7 @@ List<String> computeEveningActivesMorningHints(List<RoutineItem> routine) {
   for (final r in _hintRules) {
     if (!r.pattern.hasMatch(blob)) continue;
     if (!seen.add(r.id)) continue;
-    out.add(r.text);
+    out.add(_text('mobileRoutineHints.morning.${r.id}', r.text));
   }
   return out;
 }
@@ -276,10 +286,14 @@ List<String> structuredRoutineBadges(RoutineItem item) {
   if (!has) return const [];
 
   final chips = <String>[];
-  if (item['ramp_stage'] == 'starter') chips.add('Alıştırma');
-  if (truthy(item['strength_pct'])) chips.add('%${jsString(item['strength_pct'])}');
-  if (freq is num && freq > 0) chips.add(freq >= 7 ? 'Her gün' : '${jsString(freq)}×/hafta');
-  if (fam.isNotEmpty) chips.add(fam.take(4).map((f) => _familyLabels[f] ?? f).join(' · '));
+  if (item['ramp_stage'] == 'starter') chips.add(_text('mobileRoutineHints.starter', 'Alıştırma'));
+  if (truthy(item['strength_pct'])) chips.add(_text('mobileRoutineHints.percent', '%{{n}}', {'n': jsString(item['strength_pct'])}));
+  if (freq is num && freq > 0) {
+    chips.add(freq >= 7
+        ? _text('mobileRoutineHints.everyDay', 'Her gün')
+        : _text('mobileRoutineHints.perWeek', '{{n}}×/hafta', {'n': jsString(freq)}));
+  }
+  if (fam.isNotEmpty) chips.add(fam.take(4).map((f) => _text('mobileRoutineHints.families.$f', _familyLabels[f] ?? f)).join(' · '));
   return chips;
 }
 

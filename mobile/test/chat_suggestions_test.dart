@@ -149,12 +149,6 @@ void main() {
       expect(find.text(tr('mobileChat.suggestions.uvHigh', {'uv': 8})), findsNothing, reason: 'yazarken gizlenir');
     });
 
-    testWidgets('anonim sohbette genel öneriler çıkar ve plan istenmez', (tester) async {
-      final h = await pumpApp(tester, location: '/rebi', loggedIn: false);
-      expect(find.text(tr('mobileChat.suggestions.generic1')), findsOneWidget);
-      expect(h.backend.calls('/today/plan'), isEmpty);
-    });
-
     testWidgets('plan alınamazsa genel öneriler kalır', (tester) async {
       final backend = FakeBackend()..planFails = true;
       await pumpApp(tester, location: '/dashboard/chat', backend: backend);

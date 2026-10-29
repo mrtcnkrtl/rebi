@@ -271,7 +271,24 @@
     "edgeQuickAnalyze": "Yeni analiz başlat",
     "edgeRecentTitle": "Son konuşmalar",
     "edgeRecentPick": "Yeniden:",
-    "disclaimerShort": "Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez."
+    "disclaimerShort": "Rebi bir yapay zekâ asistanıdır; öneriler hata payı içerir ve tıbbi teşhis veya tedavi yerine geçmez.",
+    "routineChip": "Rutinim",
+    "analyzeChip": "Analiz",
+    "retry": "Tekrar dene",
+    "send": "Gönder",
+    "errorNoReply": "Şu an yanıt alınamadı.",
+    "errorNetwork": "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.",
+    "errorGeneric": "Bir şeyler ters gitti. Tekrar dener misin?",
+    "suggestRoutine": [
+      "Bugünkü rutinimde neye dikkat etmeliyim?",
+      "Rutinimdeki aktifleri birlikte kullanabilir miyim?"
+    ],
+    "suggestGeneral": [
+      "Retinole nasıl başlanır?",
+      "Niasinamid ile C vitamini birlikte olur mu?",
+      "Nem bariyerim bozuldu, ne yapmalıyım?",
+      "Hangi SPF bana uygun?"
+    ]
   },
   "dashboard": {
     "noAnalyzeTitle": "Merhaba, {{name}}!",
@@ -317,6 +334,10 @@
     "acceptCta": "Rutini kabul ediyorum, takibe başla",
     "feelsTodayHint": "Bugün nasıl hissediyorsun? Rutinin buna göre uyarlanacak.",
     "whySkincareButton": "Neden bu ürün / madde?",
+    "stepChoicesTitle": "Hangisini kullanırsın?",
+    "stepChoicesHint": "İstediğini seçebilirsin; seçmezsen birleşik öneri kalır.",
+    "stepChoiceSelected": "Seçildi",
+    "stepHow": "Nasıl?",
     "shortWhy": "Kısaca neden:",
     "summary": "Özet:",
     "howToApply": "Nasıl uygularsın:",
@@ -362,7 +383,9 @@
     "lifestyleSupportsSubtitle": "Beslenme, su, uyku ve yaşam önerileri",
     "nutritionTitle": "Beslenme",
     "mindMovementTitle": "Zihin & Hareket",
-    "morningLifestyleLabel": "{{time}} — yaşam"
+    "morningLifestyleLabel": "{{time}} — yaşam",
+    "askRebi": "Rebi'ye sor",
+    "askRebiQuestion": "Rutinimdeki şu adımı açıklar mısın: {{step}}"
   },
   "profile": {
     "title": "Profil",
@@ -378,5 +401,18 @@
     "fullAnalyze": "analiz formu",
     "photosTitle": "Cilt fotoğrafları",
     "refresh": "Yenile"
+  },
+  "support": {
+    "title": "Destek",
+    "subtitle": "Rebi hakkında soruların ve taleplerin için buradayız.",
+    "back": "Ana sayfa",
+    "link": "Destek",
+    "contactTitle": "Bize ulaş",
+    "contactBody": "Uygulamayla ilgili sorular, hata bildirimleri, öneriler ve kişisel verilerinle ilgili talepler için bize e-posta gönderebilirsin.",
+    "deleteTitle": "Hesabını ve verilerini silmek",
+    "deleteInApp": "Uygulamada: Ben → Hesap ve gizlilik → Hesabı kalıcı olarak sil. Profilin, rutinlerin, günlük kayıtların ve cilt fotoğrafların kalıcı olarak silinir.",
+    "deleteByEmail": "Uygulamaya erişemiyorsan, hesabına kayıtlı e-posta adresinden yukarıdaki adrese \"Hesap silme talebi\" konulu bir e-posta gönder; hesabın ve verilerin silinir.",
+    "medicalTitle": "Önemli",
+    "medicalBody": "Rebi kozmetik cilt bakımı ve günlük düzen için genel bilgi sunar; tıbbi tanı koymaz ve tedavi önermez. Ciddi ya da süren cilt sorunlarında bir dermatoloğa danış."
   }
 }

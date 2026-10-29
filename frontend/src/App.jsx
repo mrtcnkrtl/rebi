@@ -16,6 +16,7 @@ import Themes from "./pages/Themes";
 import Subscribe from "./pages/Subscribe";
 import Profile from "./pages/Profile";
 import Legal from "./pages/Legal";
+import Support from "./pages/Support";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -50,6 +51,8 @@ function AppRoutes() {
         <Route path="/auth" element={user ? <Navigate to={next} replace /> : <Auth />} />
         <Route path="/kvkk" element={<Legal />} />
         <Route path="/riza" element={<Legal />} />
+        <Route path="/destek" element={<Support />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/rebi" element={<Chat />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />

@@ -14,6 +14,9 @@ import '../ui/widgets/common.dart';
 
 /// Vurgu rengi seçimi + canlı önizleme (web: `pages/Themes.jsx`). Uygulamanın dili tektir; seçilen renk
 /// yalnızca düğmelerde, seçimlerde ve vurgularda görünür.
+/// Tema adı seçili dilde; çeviri yoksa tanımdaki Türkçe ad.
+String themeName(RebiTheme t) => I18n.instance.t('mobileMisc.themeNames.${t.id}', const {}, t.label);
+
 class ThemesScreen extends StatelessWidget {
   const ThemesScreen({super.key});
 
@@ -43,7 +46,7 @@ class ThemesScreen extends StatelessWidget {
         const SizedBox(height: 20),
         AppearanceCard(theme: theme),
         const SizedBox(height: 28),
-        Text('VURGU RENGİ', style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
+        Text(I18n.instance.t('mobileMisc.accentColor'), style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
         const SizedBox(height: 10),
         for (var i = 0; i < themes.length; i += 2) ...[
           if (i > 0) const SizedBox(height: 10),
@@ -73,14 +76,14 @@ class ThemesScreen extends StatelessWidget {
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('Rebi Plus için ', style: tx(12, c: Tw.gray500)),
-              TextLink('abonelik sayfası',
+              Text(I18n.instance.t('mobileMisc.plusFor'), style: tx(12, c: Tw.gray500)),
+              TextLink(I18n.instance.t('mobileMisc.plusPage'),
                   onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.fg)),
               Text('.', style: tx(12, c: Tw.gray500)),
             ],
           ),
         const SizedBox(height: 28),
-        Text('ÖNİZLEME', style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
+        Text(I18n.instance.t('mobileMisc.preview'), style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
         const SizedBox(height: 10),
         _Preview(theme: theme),
       ],
@@ -102,7 +105,7 @@ class _SwatchCard extends StatelessWidget {
     return Semantics(
       button: true,
       selected: active,
-      label: t.label,
+      label: themeName(t),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -147,7 +150,7 @@ class _SwatchCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: 7)),
+                      Text(themeName(t), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: 7)),
                       if (t.premium) ...[
                         const SizedBox(height: 2),
                         Row(
@@ -197,20 +200,20 @@ class _Preview extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Sabah rutini', style: Brand.serif(20, weight: 500))),
+              Expanded(child: Text(I18n.instance.t('mobileMisc.previewTitle'), style: Brand.serif(20, weight: 500))),
               Text('2 / 3', style: tx(12, w: 7, c: theme.fg)),
             ],
           ),
           const SizedBox(height: 4),
-          Text('Bugün için üç adım', style: tx(12, c: Tw.gray500)),
+          Text(I18n.instance.t('mobileMisc.previewSub'), style: tx(12, c: Tw.gray500)),
           const SizedBox(height: 14),
-          step(LucideIcons.droplets, 'Temizleyici', true),
+          step(LucideIcons.droplets, I18n.instance.t('mobileMisc.previewCleanser'), true),
           const SizedBox(height: 8),
-          step(LucideIcons.sparkles, 'Serum', true),
+          step(LucideIcons.sparkles, I18n.instance.t('mobileMisc.previewSerum'), true),
           const SizedBox(height: 8),
-          step(LucideIcons.sun, 'Güneş kremi', false),
+          step(LucideIcons.sun, I18n.instance.t('mobileMisc.previewSpf'), false),
           const SizedBox(height: 16),
-          PrimaryButton(onPressed: () {}, color: theme.primary, label: 'Sabah rutinini yaptım'),
+          PrimaryButton(onPressed: () {}, color: theme.primary, label: I18n.instance.t('mobileMisc.previewDone')),
         ],
       ),
     );

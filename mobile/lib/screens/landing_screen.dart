@@ -59,7 +59,8 @@ class _LandingScreenState extends State<LandingScreen> {
   @override
   Widget build(BuildContext context) {
     final authed = context.watch<AuthController>().user != null;
-    final chatHref = authed ? '/dashboard/chat' : '/rebi';
+    // Canlı sunucu sohbeti yalnızca oturumla kabul eder: misafir önce girişe, sonra sohbete gider.
+    final chatHref = authed ? '/dashboard/chat' : '/auth?next=${Uri.encodeComponent('/dashboard/chat')}';
     final overlay =
         (Brand.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
             .copyWith(

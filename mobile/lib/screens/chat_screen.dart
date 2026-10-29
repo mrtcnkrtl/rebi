@@ -369,7 +369,9 @@ class _ChatScreenState extends State<ChatScreen> {
     final user = context.watch<AuthController>().user;
     final hasConversation = _history.any((m) => m['role'] == 'user');
     final subscribeHref = user != null ? '/dashboard/subscribe' : '/auth?next=${Uri.encodeComponent('/dashboard/subscribe')}';
-    final wide = MediaQuery.of(context).size.width >= 640;
+    // Köşe sayacı ve rutin kenar düğmesi sohbet sütununun (672) iki yanındaki boşluğa yerleşir; boşluk yoksa
+    // (iPhone Duo dış ekranı yatay, küçük tablet) mesajların üstüne binmesinler diye gösterilmez.
+    final wide = MediaQuery.of(context).size.width >= 920;
 
     final routineItems = _routineSnap?['routine'];
     final routineHasItems = routineItems is List && routineItems.isNotEmpty;
