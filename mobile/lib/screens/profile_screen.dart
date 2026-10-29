@@ -23,7 +23,11 @@ import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/brand/palette.dart';
 
+/// Sunucunun beklediği onay metni (`/account/delete` → `confirm_text`); dilden bağımsız sabittir.
 const accountDeletePhrase = 'HESABIMI_SIL';
+
+/// Kullanıcının kutuya yazdığı onay kelimesi seçili dilde (EN: `DELETE`); sunucuya yine [accountDeletePhrase] gider.
+String get typedDeletePhrase => I18n.instance.t('mobileAccount.deletePhrase', const {}, accountDeletePhrase);
 
 String _formatJoined(String? iso) {
   if (iso == null || iso.isEmpty) return '—';
@@ -256,8 +260,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final uid = auth.user?.id;
     setState(() => _deleteMsg = ('', ''));
     if (uid == null) return;
-    if (_deletePhrase.text.trim() != accountDeletePhrase) {
-      setState(() => _deleteMsg = ('err', I18n.instance.t('mobileAccount.deletePhraseWrong', {'phrase': accountDeletePhrase})));
+    if (_deletePhrase.text.trim().toUpperCase() != typedDeletePhrase) {
+      setState(() => _deleteMsg = ('err', I18n.instance.t('mobileAccount.deletePhraseWrong', {'phrase': typedDeletePhrase})));
       return;
     }
     setState(() => _deleteBusy = true);
@@ -748,7 +752,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _deleteCard() {
-    final phraseOk = _deletePhrase.text.trim() == accountDeletePhrase;
+    final phraseOk = _deletePhrase.text.trim().toUpperCase() == typedDeletePhrase;
     return RCard(
       padding: const EdgeInsets.all(16),
       borderColor: Tw.red200,
@@ -771,7 +775,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(color: Tw.surface.withValues(alpha: .8), borderRadius: BorderRadius.circular(4)),
-                  child: Text(accountDeletePhrase, style: tx(12, w: 6, c: Tw.red950).copyWith(fontFamily: 'monospace')),
+                  child: Text(typedDeletePhrase, style: tx(12, w: 6, c: Tw.red950).copyWith(fontFamily: 'monospace')),
                 ),
               ),
             ]),
@@ -784,7 +788,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             enableSuggestions: false,
             textCapitalization: TextCapitalization.characters,
             style: tx(14).copyWith(fontFamily: 'monospace'),
-            decoration: inputDecoration(hint: accountDeletePhrase),
+            decoration: inputDecoration(hint: typedDeletePhrase),
           ),
           if (_deleteMsg.$2.isNotEmpty) ...[
             const SizedBox(height: 12),

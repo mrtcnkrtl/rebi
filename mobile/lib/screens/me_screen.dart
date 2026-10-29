@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../config/env.dart';
 
 import '../core/i18n.dart';
 import '../core/subscription.dart';
@@ -89,6 +92,14 @@ class MeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 10),
         ],
+        _MenuRow(
+          icon: LucideIcons.lifeBuoy,
+          color: theme.primary,
+          title: i18n.t('mobileMe.support.title'),
+          hint: i18n.t('mobileMe.support.hint'),
+          onTap: openSupport,
+        ),
+        const SizedBox(height: 10),
         RCard(
           padding: const EdgeInsets.all(14),
           radius: 20,
@@ -106,6 +117,17 @@ class MeScreen extends StatelessWidget {
       ],
     );
   }
+}
+
+/// E-posta uygulamasını destek adresiyle açar; e-posta uygulaması yoksa web'deki destek sayfasını açar.
+Future<void> openSupport() async {
+  final mail = Uri(scheme: 'mailto', path: Env.supportEmail, query: 'subject=Rebi');
+  try {
+    if (await launchUrl(mail)) return;
+  } catch (_) {
+    /* e-posta uygulaması yok */
+  }
+  await launchUrl(Uri.parse(Env.supportPageUrl), mode: LaunchMode.externalApplication);
 }
 
 class _Header extends StatelessWidget {

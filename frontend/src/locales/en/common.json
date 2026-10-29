@@ -401,5 +401,18 @@
     "fullAnalyze": "analysis form",
     "photosTitle": "Skin photos",
     "refresh": "Refresh"
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "We're here for your questions and requests about Rebi.",
+    "back": "Home",
+    "link": "Support",
+    "contactTitle": "Contact us",
+    "contactBody": "Email us with questions about the app, bug reports, suggestions or requests about your personal data.",
+    "deleteTitle": "Deleting your account and data",
+    "deleteInApp": "In the app: Me → Account and privacy → Delete account permanently. Your profile, routines, daily logs and skin photos are permanently deleted.",
+    "deleteByEmail": "If you can't access the app, email the address above from your account's email address with the subject \"Account deletion request\" and your account and data will be deleted.",
+    "medicalTitle": "Important",
+    "medicalBody": "Rebi offers general information for cosmetic skincare and daily routines; it does not diagnose or treat medical conditions. See a dermatologist for serious or persistent skin concerns."
   }
 }

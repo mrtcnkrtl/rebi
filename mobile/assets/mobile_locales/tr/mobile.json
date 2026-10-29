@@ -616,6 +616,10 @@
     "noName": "Rebi kullanıcısı",
     "shelf": {
       "hint": "Biten ürünlerini ve yenilerini takip et"
+    },
+    "support": {
+      "title": "Destek ve iletişim",
+      "hint": "Soru, öneri ve hesap/veri talepleri"
     }
   },
   "mobileCommon": {
@@ -821,7 +825,8 @@
     "deleteButton": "Hesabımı kalıcı sil",
     "noPhotos": "Henüz kayıtlı fotoğraf yok.",
     "noPreview": "Önizleme yok",
-    "photosIntro": "Analizde yüklediğin görseller burada tarih sırasıyla listelenir (sunucudaki dosya tarihine göre)."
+    "photosIntro": "Analizde yüklediğin görseller burada tarih sırasıyla listelenir (sunucudaki dosya tarihine göre).",
+    "deletePhrase": "HESABIMI_SIL"
   },
   "mobileCheckinForm": {
     "feel": {

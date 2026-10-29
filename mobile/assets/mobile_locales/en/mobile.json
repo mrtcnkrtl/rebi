@@ -616,6 +616,10 @@
     "noName": "Rebi user",
     "shelf": {
       "hint": "Keep track of finished products and restocks"
+    },
+    "support": {
+      "title": "Support and contact",
+      "hint": "Questions, feedback and account or data requests"
     }
   },
   "mobileCommon": {
@@ -821,7 +825,8 @@
     "deleteButton": "Delete my account permanently",
     "noPhotos": "No saved photos yet.",
     "noPreview": "No preview",
-    "photosIntro": "Images you uploaded in analysis are listed here by date (based on the file date on the server)."
+    "photosIntro": "Images you uploaded in analysis are listed here by date (based on the file date on the server).",
+    "deletePhrase": "DELETE"
   },
   "mobileCheckinForm": {
     "feel": {
