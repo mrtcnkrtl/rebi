@@ -254,16 +254,6 @@ void main() {
       expect(tester.widget<TextField>(find.byType(TextField)).readOnly, isFalse);
     });
 
-    testWidgets('giriş yapmamış kullanıcıya "Giriş yap" önerilir', (tester) async {
-      final backend = FakeBackend()..quotaAfter = 0;
-      final h = await pumpApp(tester, location: '/rebi', loggedIn: false, backend: backend);
-      await ask(tester, 'Merhaba');
-
-      expect(find.text(tr('mobileChat.limit.signIn')), findsOneWidget);
-      expect(find.text(tr('mobileChat.limit.signInNote')), findsOneWidget);
-      await tapText(tester, tr('mobileChat.limit.signIn'));
-      expect(h.router.routeInformationProvider.value.uri.path, '/auth');
-    });
   });
 
   group('320 px ve %200 yazı', () {

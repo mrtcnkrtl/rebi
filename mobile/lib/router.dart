@@ -64,6 +64,8 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
         return '/auth?next=${Uri.encodeComponent(state.uri.toString())}';
       }
       if (path == '/splash' && user != null) return '/dashboard';
+      // Misafir sohbeti canlı sunucuda kapalı (oturum zorunlu): eski `/rebi` bağlantıları girişe ya da sohbete gider.
+      if (path == '/rebi') return user == null ? '/auth?next=${Uri.encodeComponent('/dashboard/chat')}' : '/dashboard/chat';
       if (path == '/auth' && user != null && !auth.authFlowInProgress) {
         return safeNext(state.uri.queryParameters['next']);
       }
