@@ -154,29 +154,74 @@ class _HistoryScreenState extends State<HistoryScreen> {
         ]),
       );
 
+  /// Dönemin bir bakışta özeti: büyük sayılı karolar. Her karo ekran okuyucuya tam cümleyle ("2 kayıtlı gün") okunur.
   Widget _summaryCard(I18n i18n, RebiTheme theme, HistorySummary s) {
-    final lines = <String>[
-      i18n.t('mobileHistory.summary.recordedDays', {'n': s.recordedDays}),
-      if (s.checkins > 0) i18n.t('mobileHistory.summary.checkins', {'n': s.checkins}),
-      if (s.fullRoutineDays > 0) i18n.t('mobileHistory.summary.fullRoutine', {'n': s.fullRoutineDays}),
-      if (s.avgWaterMl != null) i18n.t('mobileHistory.summary.avgWater', {'ml': s.avgWaterMl}),
-      if (s.avgSleepHours != null) i18n.t('mobileHistory.summary.avgSleep', {'h': s.avgSleepHours}),
-      if (s.avgRiskScore != null) i18n.t('mobileHistory.summary.avgRisk', {'n': s.avgRiskScore}),
+    final nf = NumberFormat.decimalPattern(i18n.lang);
+    final nf1 = NumberFormat('#,##0.0', i18n.lang);
+    // (değer, birim, karo etiketi, ekran okuyucu cümlesi)
+    final tiles = <(String, String, String, String)>[
+      ('${s.recordedDays}', '', i18n.t('mobileHistory.tiles.days'), i18n.t('mobileHistory.summary.recordedDays', {'n': s.recordedDays})),
+      if (s.checkins > 0) ('${s.checkins}', '', i18n.t('mobileHistory.tiles.checkins'), i18n.t('mobileHistory.summary.checkins', {'n': s.checkins})),
+      if (s.fullRoutineDays > 0)
+        ('${s.fullRoutineDays}', '', i18n.t('mobileHistory.tiles.routine'), i18n.t('mobileHistory.summary.fullRoutine', {'n': s.fullRoutineDays})),
+      if (s.avgWaterMl != null) (nf.format(s.avgWaterMl), 'ml', i18n.t('mobileHistory.tiles.water'), i18n.t('mobileHistory.summary.avgWater', {'ml': s.avgWaterMl})),
+      if (s.avgSleepHours != null)
+        (nf1.format(s.avgSleepHours), i18n.t('mobileHistory.trends.hoursUnit'), i18n.t('mobileHistory.tiles.sleep'), i18n.t('mobileHistory.summary.avgSleep', {'h': s.avgSleepHours})),
+      if (s.avgRiskScore != null) ('${s.avgRiskScore}', '', i18n.t('mobileHistory.tiles.risk'), i18n.t('mobileHistory.summary.avgRisk', {'n': s.avgRiskScore})),
     ];
+    final tint = Color.alphaBlend(theme.primary.withValues(alpha: .07), Tw.surface);
     return RCard(
       padding: const EdgeInsets.all(16),
-      borderColor: theme.primaryLight,
-      color: Color.alphaBlend(theme.primary.withValues(alpha: .05), Tw.surface),
+      radius: 24,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(children: [
-            Icon(LucideIcons.chartLine, size: 16, color: theme.primary),
-            const SizedBox(width: 8),
-            Text(i18n.t('mobileHistory.summaryTitle'), style: tx(13.5, w: 7, c: Tw.gray800)),
+            Icon(LucideIcons.chartLine, size: 18, color: theme.fg),
+            const SizedBox(width: 10),
+            Text(i18n.t('mobileHistory.summaryTitle'), style: tx(15, w: 7, c: Tw.gray800)),
           ]),
-          const SizedBox(height: 8),
-          Wrap(spacing: 12, runSpacing: 4, children: [for (final l in lines) Text(l, style: tx(12, c: Tw.gray700))]),
+          const SizedBox(height: 14),
+          LayoutBuilder(builder: (context, c) {
+            // Dar ekranda ya da büyük yazıda iki sütun; aksi hâlde üç.
+            final big = MediaQuery.textScalerOf(context).scale(16) / 16 > 1.25;
+            final cols = c.maxWidth < 300 || big ? 2 : 3;
+            const gap = 8.0;
+            final w = (c.maxWidth - gap * (cols - 1)) / cols;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: [
+                for (final (value, unit, label, spoken) in tiles)
+                  Semantics(
+                    label: spoken,
+                    excludeSemantics: true,
+                    child: Container(
+                      width: w,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      decoration: BoxDecoration(color: tint, borderRadius: BorderRadius.circular(16)),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text.rich(
+                              TextSpan(children: [
+                                TextSpan(text: value, style: heading(28, h: 1.05)),
+                                if (unit.isNotEmpty) TextSpan(text: ' $unit', style: tx(13, w: 6, c: Tw.gray600)),
+                              ]),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(label, style: tx(12, c: Tw.gray600, h: snug)),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          }),
         ],
       ),
     );

@@ -192,11 +192,15 @@ void main() {
       });
       expect(find.text(tr('mobileHistory.title')), findsOneWidget);
 
-      // Özet
-      expect(find.text(tr('mobileHistory.summary.recordedDays', {'n': 2})), findsOneWidget);
-      expect(find.text(tr('mobileHistory.summary.checkins', {'n': 1})), findsOneWidget);
-      expect(find.text(tr('mobileHistory.summary.fullRoutine', {'n': 1})), findsOneWidget);
-      expect(find.text(tr('mobileHistory.summary.avgWater', {'ml': 1000})), findsOneWidget);
+      // Özet: büyük sayılı karolar; ekran okuyucu tam cümleyi okur.
+      final semantics = tester.ensureSemantics();
+      expect(find.bySemanticsLabel(tr('mobileHistory.summary.recordedDays', {'n': 2})), findsOneWidget);
+      expect(find.bySemanticsLabel(tr('mobileHistory.summary.checkins', {'n': 1})), findsOneWidget);
+      expect(find.bySemanticsLabel(tr('mobileHistory.summary.fullRoutine', {'n': 1})), findsOneWidget);
+      expect(find.bySemanticsLabel(tr('mobileHistory.summary.avgWater', {'ml': 1000})), findsOneWidget);
+      expect(find.text(tr('mobileHistory.tiles.days')), findsOneWidget);
+      expect(find.text(tr('mobileHistory.tiles.water')), findsOneWidget);
+      semantics.dispose();
 
       // Sıra: 10 Ekim, 8 Ekim'den önce
       final dayTitles = find.textContaining('Ekim');

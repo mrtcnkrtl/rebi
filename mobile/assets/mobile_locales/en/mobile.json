@@ -412,6 +412,14 @@
     "retry": "Try again",
     "notSynced": "Logs aren't stored on the server for this account; history may look empty.",
     "summaryTitle": "Summary",
+    "tiles": {
+      "days": "days logged",
+      "checkins": "check-ins",
+      "routine": "full routine days",
+      "water": "avg water",
+      "sleep": "avg sleep",
+      "risk": "avg risk"
+    },
     "summary": {
       "recordedDays": "{{n}} days logged",
       "checkins": "{{n}} check-ins",

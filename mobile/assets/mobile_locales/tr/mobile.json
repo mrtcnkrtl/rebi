@@ -412,6 +412,14 @@
     "retry": "Tekrar dene",
     "notSynced": "Bu hesapta kayıtlar sunucuda tutulmuyor; geçmiş boş görünebilir.",
     "summaryTitle": "Özet",
+    "tiles": {
+      "days": "kayıtlı gün",
+      "checkins": "check-in",
+      "routine": "tam rutin günü",
+      "water": "ort. su",
+      "sleep": "ort. uyku",
+      "risk": "ort. risk"
+    },
     "summary": {
       "recordedDays": "{{n}} kayıtlı gün",
       "checkins": "{{n}} check-in",
