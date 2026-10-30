@@ -64,22 +64,22 @@ class _SkinTypeVisualState extends State<SkinTypeVisual> {
         const SizedBox(height: 4),
         InkWell(
           onTap: () => setState(() => _showGuide = !_showGuide),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(LucideIcons.circleHelp, size: 14, color: Tw.teal600),
+                Icon(LucideIcons.circleHelp, size: 14, color: Tw.readable(Tw.teal600)),
                 const SizedBox(width: 6),
                 Flexible(
                   child: Text(_showGuide ? sp.s('skinPicker.guideClose') : sp.s('skinPicker.guideOpen'),
-                      style: tx(12, c: Tw.teal600)),
+                      style: tx(12.5, w: 6, c: Tw.readable(Tw.teal600))),
                 ),
                 const SizedBox(width: 6),
                 AnimatedRotation(
                   turns: _showGuide ? .5 : 0,
                   duration: const Duration(milliseconds: 150),
-                  child: Icon(LucideIcons.chevronDown, size: 12, color: Tw.teal600),
+                  child: Icon(LucideIcons.chevronDown, size: 12, color: Tw.readable(Tw.teal600)),
                 ),
               ],
             ),

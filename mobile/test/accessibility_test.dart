@@ -5,6 +5,7 @@ import 'package:flutter/material.dart' show Checkbox, Key, Size, TextField, Text
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/device_location.dart';
 import 'package:rebi/core/routine_tracking.dart';
+import 'package:rebi/screens/profile_screen.dart' show debugAccountAvailable;
 import 'package:rebi/screens/today/today_clock.dart';
 import 'package:rebi/ui/tw.dart';
 
@@ -147,9 +148,30 @@ void main() {
       await pumpApp(t, location: '/dashboard/reminders', prefs: accepted(), backend: populated());
       await tapText(t, tr('mobileReminders.categories.routine.title'));
     }),
+    ('Hatırlatıcılar · kaydet çubuğu', (t) async {
+      await pumpApp(t, location: '/dashboard/reminders', prefs: accepted(), backend: populated());
+      await tapText(t, tr('mobileReminders.water.every.60'));
+    }),
+    ('Hesap', (t) async {
+      debugAccountAvailable = true;
+      addTearDown(() => debugAccountAvailable = null);
+      await pumpApp(t, location: '/dashboard/account', prefs: accepted(), backend: populated());
+    }),
+    ('Ben · çıkış onayı', (t) async {
+      await pumpApp(t, location: '/dashboard/profile', prefs: accepted(), backend: populated());
+      await tapText(t, tr('mobileMe.logout'));
+    }),
+    ('Ben · dil sayfası', (t) async {
+      await pumpApp(t, location: '/dashboard/profile', prefs: accepted(), backend: populated());
+      await tapText(t, tr('lang.label'));
+    }),
     ('Rafım', (t) => pumpApp(t, location: '/dashboard/shelf', prefs: accepted(), backend: populated())),
     ('Temalar', (t) => pumpApp(t, location: '/dashboard/themes', prefs: accepted(), backend: populated())),
     ('Check-in', (t) => pumpApp(t, location: '/dashboard/checkin', prefs: accepted(), backend: populated())),
+    ('Check-in · cilt seçili', (t) async {
+      await pumpApp(t, location: '/dashboard/checkin', prefs: accepted(), backend: populated());
+      await tapText(t, tr('mobileCheckin.skin.kuru.title'));
+    }),
     ('Abonelik', (t) => pumpApp(t, location: '/dashboard/subscribe', prefs: accepted(), backend: populated())),
     ('Analiz · hazır', (t) => pumpApp(t, location: '/dashboard/analyze', prefs: accepted(), backend: populated())),
     ('Analiz · karşılama', (t) => pumpApp(t, location: '/dashboard/analyze', backend: FakeBackend())),

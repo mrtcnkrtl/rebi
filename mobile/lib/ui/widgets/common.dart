@@ -232,9 +232,11 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = this.borderColor ?? Tw.gray200;
-    final textColor = this.textColor ?? Tw.gray900;
     final enabled = onPressed != null && !loading;
+    // Kapalı düğme: yarı saydam (soluk, kontrast düşer) yerine sakin gri çerçeve ve okunur gri metin (PrimaryButton'daki gibi).
+    final disabled = !enabled && !loading;
+    final borderColor = disabled ? Tw.gray200 : (this.borderColor ?? Tw.gray200);
+    final textColor = disabled ? Tw.gray600 : (this.textColor ?? Tw.gray900);
     final content = loading
         ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: textColor))
         : child ??
@@ -250,22 +252,19 @@ class SecondaryButton extends StatelessWidget {
                 if (trailingIcon != null) ...[const SizedBox(width: 8), Icon(trailingIcon, size: 20, color: textColor)],
               ],
             );
-    return Opacity(
-      opacity: enabled || loading ? 1 : 0.5,
-      child: Container(
-        constraints: BoxConstraints(minHeight: minHeight),
-        decoration: BoxDecoration(
-          color: Tw.surface,
+    return Container(
+      constraints: BoxConstraints(minHeight: minHeight),
+      decoration: BoxDecoration(
+        color: disabled ? Tw.gray50 : Tw.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: borderColor, width: 1.5),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(999),
-            onTap: enabled ? onPressed : null,
-            child: Padding(padding: padding, child: Center(widthFactor: 1, child: content)),
-          ),
+          onTap: enabled ? onPressed : null,
+          child: Padding(padding: padding, child: Center(widthFactor: 1, child: content)),
         ),
       ),
     );
