@@ -1,19 +1,20 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
-import '../tw.dart';
+import '../../core/i18n.dart';
+import '../../state/theme_controller.dart';
+import '../brand/brand_mark.dart';
+import '../brand/motion.dart';
 import '../brand/palette.dart';
+import '../tw.dart';
 
-List<(IconData, String, Color)> get _steps => [
-  (LucideIcons.cloudSun, 'Hava durumu inceleniyor...', Tw.blue500),
-  (LucideIcons.bookOpen, 'Bilimsel literatür taranıyor...', Tw.purple500),
-  (LucideIcons.brain, 'Yapay zeka analiz ediyor...', Tw.teal500),
-  (LucideIcons.sparkles, 'Rutinin hazırlanıyor...', Tw.amber500),
-];
-
-/// Rutin üretilirken gösterilen adım adım bekleme ekranı (web: `LoadingScreen.jsx`).
+/// Rutin üretilirken (birkaç saniyeden bir-iki dakikaya) gösterilen bekleme ekranı. Uygulamanın dilindedir: temanın derin tonunda
+/// tam ekran sahne, krem Fraunces başlık, dört adımlı sakin bir zaman çizelgesi (biten adım solar ve tik alır, sıradaki nefes alır).
+/// Adımlar gerçek ilerleme değil, sürecin ne yaptığını anlatır; son adım iş bitene kadar sürer. "Animasyonları azalt" açıkken nefes yoktur.
 class LoadingScreen extends StatefulWidget {
   const LoadingScreen({super.key});
 
@@ -21,152 +22,181 @@ class LoadingScreen extends StatefulWidget {
   State<LoadingScreen> createState() => _LoadingScreenState();
 }
 
-class _LoadingScreenState extends State<LoadingScreen> with TickerProviderStateMixin {
+class _LoadingScreenState extends State<LoadingScreen> with SingleTickerProviderStateMixin {
+  static const _stepKeys = ['weather', 'science', 'ai', 'build'];
+
   int _current = 0;
   Timer? _timer;
-  late final AnimationController _pulse =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1000))..repeat(reverse: true);
-  late final AnimationController _bounce =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 500))..repeat(reverse: true);
+  late final AnimationController _breath = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600));
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
-      if (_current < _steps.length - 1) setState(() => _current++);
+    _timer = Timer.periodic(const Duration(milliseconds: 2800), (_) {
+      if (_current < _stepKeys.length - 1) setState(() => _current++);
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (reduceMotion(context)) {
+      _breath.stop();
+      _breath.value = 0;
+    } else if (!_breath.isAnimating) {
+      _breath.repeat(reverse: true);
+    }
   }
 
   @override
   void dispose() {
     _timer?.cancel();
-    _pulse.dispose();
-    _bounce.dispose();
+    _breath.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [Tw.teal50, Tw.surface]),
-      ),
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 384),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                FadeTransition(
-                  opacity: Tween(begin: 1.0, end: .5).animate(_pulse),
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(24),
-                      color: Tw.teal600,
+    final i18n = context.i18n;
+    final theme = context.watch<ThemeController>().theme;
+    final cream = Brand.cream;
+    final top = MediaQuery.paddingOf(context).top;
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+      child: ColoredBox(
+        color: theme.stage,
+        child: Stack(
+          children: [
+            const Positioned(right: -64, top: -18, child: BrandWatermark(size: 260)),
+            SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(28, top + 56, 28, bottom + 32),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 420),
+                  child: MediaQuery.withClampedTextScaling(
+                    maxScaleFactor: 1.4,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Reveal(
+                          offset: const Offset(0, 14),
+                          child: Semantics(
+                            header: true,
+                            child: Text(i18n.t('mobileAnalyze.loading.title'), style: Brand.serif(36, color: cream, h: 1.08, ls: -1)),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Reveal(
+                          delay: const Duration(milliseconds: 120),
+                          offset: const Offset(0, 10),
+                          child: Text(i18n.t('mobileAnalyze.loading.subtitle'), style: tx(15, c: cream.withValues(alpha: .8), h: 1.45)),
+                        ),
+                        const SizedBox(height: 44),
+                        for (var i = 0; i < _stepKeys.length; i++)
+                          _Step(
+                            label: i18n.t('mobileAnalyze.loading.${_stepKeys[i]}'),
+                            state: i < _current ? _StepState.done : (i == _current ? _StepState.active : _StepState.pending),
+                            last: i == _stepKeys.length - 1,
+                            breath: _breath,
+                            ink: theme.stage,
+                          ),
+                        const SizedBox(height: 36),
+                        Text(i18n.t('mobileAnalyze.loading.note'), style: tx(13, c: cream.withValues(alpha: .66), h: 1.5)),
+                      ],
                     ),
-                    child: const Icon(LucideIcons.leaf, size: 40, color: Colors.white),
                   ),
                 ),
-                const SizedBox(height: 32),
-                Text('Rebi Analiz Ediyor', style: heading(26)),
-                const SizedBox(height: 8),
-                Text('Sana özel bütüncül rutin hazırlanıyor', textAlign: TextAlign.center, style: tx(16, c: Tw.gray500)),
-                const SizedBox(height: 40),
-                for (var i = 0; i < _steps.length; i++) ...[
-                  _StepRow(index: i, current: _current, bounce: _bounce),
-                  const SizedBox(height: 16),
-                ],
-                const SizedBox(height: 24),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: Container(
-                    height: 8,
-                    color: Tw.gray100,
-                    alignment: Alignment.centerLeft,
-                    child: AnimatedFractionallySizedBox(
-                      duration: const Duration(milliseconds: 1000),
-                      curve: Curves.easeOut,
-                      widthFactor: (_current + 1) / _steps.length,
-                      child: Container(
-                        color: Tw.teal600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );
   }
 }
 
-class _StepRow extends StatelessWidget {
-  const _StepRow({required this.index, required this.current, required this.bounce});
+enum _StepState { done, active, pending }
 
-  final int index;
-  final int current;
-  final AnimationController bounce;
+/// Zaman çizelgesi satırı: sol düğüm (biten: dolu + tik; sıradaki: nefes alan halka; bekleyen: silik halka) ve altına inen ince çizgi.
+class _Step extends StatelessWidget {
+  const _Step({required this.label, required this.state, required this.last, required this.breath, required this.ink});
+
+  final String label;
+  final _StepState state;
+  final bool last;
+  final Animation<double> breath;
+
+  /// Dolu düğmenin içindeki tik rengi (sahnenin derin tonu).
+  final Color ink;
 
   @override
   Widget build(BuildContext context) {
-    final step = _steps[index];
-    final active = index == current;
-    final done = index < current;
-    final opacity = active ? 1.0 : (done ? .7 : .3);
+    final cream = Brand.cream;
+    final active = state == _StepState.active;
+    final done = state == _StepState.done;
+    final textColor = active ? cream : cream.withValues(alpha: done ? .62 : .38);
 
-    Widget icon = done
-        ? const Icon(LucideIcons.check, size: 20, color: Colors.white)
-        : Icon(step.$1, size: 20, color: active ? step.$3 : Tw.gray400);
+    Widget node = AnimatedContainer(
+      duration: const Duration(milliseconds: 400),
+      width: 26,
+      height: 26,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: done ? cream.withValues(alpha: .92) : Colors.transparent,
+        border: Border.all(color: cream.withValues(alpha: active ? .95 : (done ? .92 : .3)), width: active ? 2 : 1.5),
+      ),
+      child: done
+          ? Icon(LucideIcons.check, size: 15, color: ink)
+          : (active ? Center(child: Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: cream))) : null),
+    );
     if (active) {
-      icon = AnimatedBuilder(
-        animation: bounce,
-        builder: (context, child) => Transform.translate(offset: Offset(0, -4 * bounce.value), child: child),
-        child: icon,
+      node = AnimatedBuilder(
+        animation: breath,
+        builder: (context, child) => Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 26 + 14 * breath.value,
+              height: 26 + 14 * breath.value,
+              decoration: BoxDecoration(shape: BoxShape.circle, color: cream.withValues(alpha: .14 * (1 - breath.value))),
+            ),
+            child!,
+          ],
+        ),
+        child: node,
       );
     }
 
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 500),
-      opacity: opacity,
-      child: AnimatedScale(
-        duration: const Duration(milliseconds: 500),
-        scale: active ? 1.02 : 1,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 500),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: active ? Tw.surface : (done ? Tw.teal50.withValues(alpha: .5) : Colors.transparent),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: active ? [BoxShadow(color: Tw.gray200.withValues(alpha: .5), blurRadius: 15, offset: const Offset(0, 8))] : null,
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 40,
+            child: Column(
+              children: [
+                SizedBox(width: 40, height: 40, child: Center(child: node)),
+                if (!last) Expanded(child: Container(width: 1.5, color: cream.withValues(alpha: done ? .5 : .18))),
+              ],
+            ),
           ),
-          child: Row(
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 500),
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: active ? Tw.teal100 : (done ? Tw.teal500 : Tw.gray100),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(child: icon),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  step.$2,
-                  style: tx(16, w: 5, c: active ? Tw.gray900 : (done ? Tw.teal700 : Tw.gray400)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(top: 9, bottom: last ? 0 : 22),
+              child: Semantics(
+                liveRegion: active,
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 400),
+                  style: tx(16, w: active ? 6 : 5, c: textColor, h: 1.35),
+                  child: Text(label),
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

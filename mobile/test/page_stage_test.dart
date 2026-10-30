@@ -181,6 +181,11 @@ void main() {
       expect(find.text('ACCENT COLOR'), findsOneWidget);
       expect(find.text('PREVIEW'), findsOneWidget);
       expect(find.text('VURGU RENGİ'), findsNothing);
+      for (final en in ['Forest', 'Sage', 'Powder', 'Lavender']) {
+        expect(find.text(en), findsOneWidget, reason: 'tema adı: $en');
+      }
+      expect(find.text('Orman'), findsNothing);
+      expect(find.text('Morning routine'), findsOneWidget, reason: 'önizleme metinleri de çevrilir');
     });
   });
 }

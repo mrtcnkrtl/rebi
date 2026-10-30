@@ -610,7 +610,24 @@
     "accent": "Accent color",
     "preview": "Preview",
     "plusPrefix": "For Rebi Plus, see the ",
-    "plusLink": "subscription page"
+    "plusLink": "subscription page",
+    "names": {
+      "teal": "Forest",
+      "green": "Sage",
+      "pink": "Powder",
+      "lavender": "Lavender",
+      "sunset": "Sunset",
+      "ocean": "Deep Water",
+      "noir": "Night"
+    },
+    "sample": {
+      "title": "Morning routine",
+      "hint": "Three steps for today",
+      "cleanser": "Cleanser",
+      "serum": "Serum",
+      "sunscreen": "Sunscreen",
+      "done": "I did my morning routine"
+    }
   },
   "mobileNav": {
     "today": "Today",
@@ -659,6 +676,11 @@
   },
   "mobileCommon": {
     "loading": "Loading",
+    "errorScreen": {
+      "title": "Something went wrong",
+      "body": "There was a problem loading this page.",
+      "home": "Back to home"
+    },
     "errors": {
       "noResponse": "Didn't get a meaningful reply from the server.",
       "incomplete": "Couldn't complete that. Try again in a while.",
@@ -950,6 +972,15 @@
     "errNetwork": "Could not reach the server. Make sure your internet / VPN connection is on, then try again."
   },
   "mobileAnalyze": {
+    "loading": {
+      "title": "Preparing your routine.",
+      "subtitle": "Your skin, the weather where you are and your daily habits are being considered together.",
+      "weather": "Checking today's weather",
+      "science": "Reading scientific sources",
+      "ai": "AI is assessing your skin and habits",
+      "build": "Building your morning and evening routine",
+      "note": "Just keep the screen on; your routine opens by itself when it's ready."
+    },
     "chapters": {
       "about": "You",
       "skin": "Your skin",

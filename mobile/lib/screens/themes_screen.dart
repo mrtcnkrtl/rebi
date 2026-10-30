@@ -89,6 +89,9 @@ class ThemesScreen extends StatelessWidget {
   }
 }
 
+/// Temanın görünen adı (uygulama dilinde); çeviri yoksa kayıtlı ad.
+String themeLabel(RebiTheme t) => I18n.instance.t('mobileThemes.names.${t.id}', const {}, t.label);
+
 /// Renk örneği kartı: dolu daire, ad ve seçili işareti.
 class _SwatchCard extends StatelessWidget {
   const _SwatchCard({required this.t, required this.active, required this.locked, required this.onTap});
@@ -103,7 +106,7 @@ class _SwatchCard extends StatelessWidget {
     return Semantics(
       button: true,
       selected: active,
-      label: t.label,
+      label: themeLabel(t),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -148,7 +151,7 @@ class _SwatchCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: 7)),
+                      Text(themeLabel(t), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: 7)),
                       if (t.premium) ...[
                         const SizedBox(height: 2),
                         Row(
@@ -198,20 +201,20 @@ class _Preview extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Sabah rutini', style: Brand.serif(20, weight: 500))),
+              Expanded(child: Text(I18n.instance.t('mobileThemes.sample.title'), style: Brand.serif(20, weight: 500))),
               Text('2 / 3', style: tx(12, w: 7, c: theme.fg)),
             ],
           ),
           const SizedBox(height: 4),
-          Text('Bugün için üç adım', style: tx(12, c: Tw.gray500)),
+          Text(I18n.instance.t('mobileThemes.sample.hint'), style: tx(12, c: Tw.gray600)),
           const SizedBox(height: 14),
-          step(LucideIcons.droplets, 'Temizleyici', true),
+          step(LucideIcons.droplets, I18n.instance.t('mobileThemes.sample.cleanser'), true),
           const SizedBox(height: 8),
-          step(LucideIcons.sparkles, 'Serum', true),
+          step(LucideIcons.sparkles, I18n.instance.t('mobileThemes.sample.serum'), true),
           const SizedBox(height: 8),
-          step(LucideIcons.sun, 'Güneş kremi', false),
+          step(LucideIcons.sun, I18n.instance.t('mobileThemes.sample.sunscreen'), false),
           const SizedBox(height: 16),
-          PrimaryButton(onPressed: () {}, color: theme.primary, label: 'Sabah rutinini yaptım'),
+          PrimaryButton(onPressed: () {}, color: theme.primary, label: I18n.instance.t('mobileThemes.sample.done')),
         ],
       ),
     );

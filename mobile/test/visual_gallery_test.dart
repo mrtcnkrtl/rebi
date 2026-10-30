@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/device_location.dart';
 import 'package:rebi/screens/profile_screen.dart' show debugAccountAvailable;
 import 'package:rebi/screens/today/today_clock.dart';
+import 'package:rebi/ui/components/loading_screen.dart';
 import 'package:rebi/ui/tw.dart';
 
 import 'helpers/app_harness.dart';
@@ -230,6 +231,23 @@ void main() {
       try {
         await pumpApp(tester, location: '/dashboard/analyze', backend: FakeBackend(), realFonts: true, size: const Size(390, 1500));
         await shoot(tester, '${dark ? 'koyu' : 'acik'}-analiz-adim1', width: 585);
+      } finally {
+        debugDisableShadows = true;
+      }
+    }, skip: !screenshotsEnabled);
+  }
+
+  // Rutin üretilirken bekleme ekranı (üçüncü adım etkin).
+  for (final dark in [false, true]) {
+    testWidgets('${dark ? 'koyu' : 'acik'} · yukleniyor-rutin', (tester) async {
+      Tw.dark = dark;
+      debugDisableShadows = false;
+      try {
+        await pumpStandalone(tester, (theme) => const LoadingScreen());
+        for (var i = 0; i < 12; i++) {
+          await tester.pump(const Duration(milliseconds: 500));
+        }
+        await shoot(tester, '${dark ? 'koyu' : 'acik'}-yukleniyor-rutin', width: 585);
       } finally {
         debugDisableShadows = true;
       }

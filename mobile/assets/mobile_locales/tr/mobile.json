@@ -610,7 +610,24 @@
     "accent": "Vurgu rengi",
     "preview": "Önizleme",
     "plusPrefix": "Rebi Plus için ",
-    "plusLink": "abonelik sayfası"
+    "plusLink": "abonelik sayfası",
+    "names": {
+      "teal": "Orman",
+      "green": "Adaçayı",
+      "pink": "Pudra",
+      "lavender": "Lavanta",
+      "sunset": "Gün Batımı",
+      "ocean": "Derin Su",
+      "noir": "Gece"
+    },
+    "sample": {
+      "title": "Sabah rutini",
+      "hint": "Bugün için üç adım",
+      "cleanser": "Temizleyici",
+      "serum": "Serum",
+      "sunscreen": "Güneş kremi",
+      "done": "Sabah rutinini yaptım"
+    }
   },
   "mobileNav": {
     "today": "Bugün",
@@ -659,6 +676,11 @@
   },
   "mobileCommon": {
     "loading": "Yükleniyor",
+    "errorScreen": {
+      "title": "Bir sorun oluştu",
+      "body": "Sayfa yüklenirken bir hata meydana geldi.",
+      "home": "Ana sayfaya dön"
+    },
     "errors": {
       "noResponse": "Sunucudan anlamlı bir yanıt alınamadı.",
       "incomplete": "İşlem tamamlanamadı. Bir süre sonra tekrar dene.",
@@ -950,6 +972,15 @@
     "errNetwork": "Sunucuya bağlanılamadı. İnternet / VPN bağlantının açık olduğundan emin ol, sonra tekrar dene."
   },
   "mobileAnalyze": {
+    "loading": {
+      "title": "Rutinin hazırlanıyor.",
+      "subtitle": "Cildin, bulunduğun yerin havası ve günlük düzenin birlikte değerlendiriliyor.",
+      "weather": "Bugünün havası inceleniyor",
+      "science": "Bilimsel kaynaklar taranıyor",
+      "ai": "Yapay zekâ cildini ve alışkanlıklarını değerlendiriyor",
+      "build": "Sabah ve akşam rutinin kuruluyor",
+      "note": "Ekranı açık tutman yeterli; bittiğinde rutinin kendiliğinden açılır."
+    },
     "chapters": {
       "about": "Sen",
       "skin": "Cildin",
