@@ -11,6 +11,7 @@ import '../core/subscription.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/brand/palette.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import 'today/today_widgets.dart';
@@ -34,24 +35,25 @@ class SubscribeScreen extends StatelessWidget {
       (LucideIcons.shield, 'tracking'),
     ];
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
+      title: i18n.t('subscribe.title'),
+      subtitle: i18n.t('subscribe.subtitle'),
+      backTo: '/dashboard/profile',
       maxWidth: 512,
-      padding: const EdgeInsets.fromLTRB(16, 32, 16, 40),
-      children: [
-        Center(
-          child: Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(color: theme.primary.withValues(alpha: .12), borderRadius: BorderRadius.circular(20)),
-            child: Icon(LucideIcons.crown, size: 28, color: theme.fg),
+      leading: ExcludeSemantics(
+        child: Container(
+          width: 60,
+          height: 60,
+          decoration: BoxDecoration(
+            color: Brand.cream.withValues(alpha: .1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Brand.cream.withValues(alpha: .34), width: 1.3),
           ),
+          child: Icon(LucideIcons.crown, size: 28, color: Brand.cream),
         ),
-        const SizedBox(height: 16),
-        Text(i18n.t('subscribe.title'), textAlign: TextAlign.center, style: heading(32, h: 1.1)),
-        const SizedBox(height: 8),
-        Text(i18n.t('subscribe.subtitle'), textAlign: TextAlign.center, style: tx(14.5, c: Tw.gray600, h: relaxed)),
-        const SizedBox(height: 24),
+      ),
+      children: [
         if (plus) ...[
           RCard(
             padding: const EdgeInsets.all(16),

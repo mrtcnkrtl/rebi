@@ -16,27 +16,15 @@ import '../core/routine_tracking.dart';
 import '../core/today_plan.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/brand/glyphs.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import '../ui/widgets/skeleton.dart';
 import 'analyze/analyze_widgets.dart';
-import '../ui/brand/glyphs.dart';
-import '../ui/brand/palette.dart';
 
-const _skinFeelings = [
-  ('iyi', 'İyi', 'Normal hissediyorum'),
-  ('kuru', 'Kuru', 'Sıkışma, gerginlik'),
-  ('yagli', 'Yağlı', 'Parlaklık, yağlanma'),
-  ('kirik', 'Hassas', 'Kızarıklık, soyulma'),
-  ('irritasyon', 'İrritasyon', 'Yanma, batma'),
-];
-
-const _stressLevels = [
-  (1, 'Çok düşük'),
-  (2, 'Düşük'),
-  (3, 'Orta'),
-  (4, 'Yüksek'),
-  (5, 'Çok yüksek'),
-];
+/// Cilt hissi seçenekleri: kimlikler sunucuya giden değerlerdir, başlık/açıklama `mobileCheckin.skin.<kimlik>` içindedir.
+const _skinFeelingIds = ['iyi', 'kuru', 'yagli', 'kirik', 'irritasyon'];
 
 const _concernExtraKeys = [
   'picked_skin_today',
@@ -63,15 +51,15 @@ int? parseWaterMlInput(String? raw) {
 }
 
 String formatGlassesLabel(int ml) {
-  if (ml <= 0) return '0 bardak';
+  final i18n = I18n.instance;
+  if (ml <= 0) return i18n.t('mobileCheckin.water.zeroGlasses');
   final glasses = ml / mlPerGlass;
   final num rounded = (glasses - glasses.round()).abs() < 0.05 ? glasses.round() : (glasses * 10).round() / 10;
-  return 'yaklaşık ${jsString(rounded)} bardak';
+  return i18n.t('mobileCheckin.water.aboutGlasses', {'n': jsString(rounded)});
 }
 
-const _networkMsg = 'Bağlantı kurulamadı. İnternetini ve API adresini kontrol et; backend çalışıyor mu?';
-
-/// Günlük check-in (web: `pages/CheckIn.jsx`).
+/// Günlük check-in (web: `pages/CheckIn.jsx`). Üst sahne (`StagePage`) diğer ekranlarla aynı dildedir; dört durum
+/// (yükleniyor, bugün yapıldı, form, rapor) hep sahneyle başlar. Tüm metinler `mobileCheckin.*` / `checkin.*` içindedir.
 class CheckInScreen extends StatefulWidget {
   const CheckInScreen({super.key});
 
@@ -225,7 +213,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       }
       if (res.data['already_checked_in'] == true) setState(() => _alreadyCheckedIn = true);
     } catch (e) {
-      if (mounted && isNetworkError(e)) setState(() => _submitError = _networkMsg);
+      if (mounted && isNetworkError(e)) setState(() => _submitError = I18n.instance.t('mobileCheckin.errors.network'));
     } finally {
       if (mounted) setState(() => _statusLoading = false);
     }
@@ -244,6 +232,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   Future<void> _submit() async {
     if (!_canSubmit) return;
+    final i18n = I18n.instance;
     final user = context.read<AuthController>().user;
     setState(() {
       _loading = true;
@@ -279,7 +268,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       if (res.status == 409) {
         final d = res.data['detail'];
         setState(() {
-          _submitError = d is String ? d : 'Bugün için check-in zaten yapıldı.';
+          _submitError = d is String ? d : i18n.t('mobileCheckin.errors.alreadyDone');
           _alreadyCheckedIn = true;
         });
         return;
@@ -296,7 +285,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
         _result = res.data;
       });
     } catch (e) {
-      if (mounted) setState(() => _submitError = isNetworkError(e) ? _networkMsg : 'Beklenmeyen bir hata oluştu.');
+      if (mounted) {
+        setState(() => _submitError = i18n.t(isNetworkError(e) ? 'mobileCheckin.errors.network' : 'mobileCheckin.errors.unexpected'));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -336,23 +327,34 @@ class _CheckInScreenState extends State<CheckInScreen> {
     if (_result != null) return _resultView(i18n, theme);
 
     if (_statusLoading) {
-      return ThemedBackground(
+      return StagePage(
         theme: theme,
-        child: Center(child: SizedBox(width: 32, height: 32, child: CircularProgressIndicator(color: Tw.gray400))),
+        title: i18n.t('checkin.title'),
+        subtitle: i18n.t('checkin.subtitle'),
+        backTo: '/dashboard',
+        children: const [SkeletonCard(lines: 3), SizedBox(height: 12), SkeletonCard(lines: 3)],
       );
     }
 
     if (_alreadyCheckedIn) {
-      return ThemedPage(
+      return StagePage(
         theme: theme,
+        title: i18n.t('checkin.alreadyTitle'),
+        subtitle: i18n.t('checkin.alreadyDesc'),
+        backTo: '/dashboard',
         children: [
-          Icon(LucideIcons.circleCheckBig, size: 56, color: Tw.teal500),
-          const SizedBox(height: 16),
-          Text(i18n.t('checkin.alreadyTitle'), textAlign: TextAlign.center, style: heading(24)),
-          const SizedBox(height: 8),
-          Text(i18n.t('checkin.alreadyDesc'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray500)),
-          const SizedBox(height: 24),
-          _solidButton(theme.primary, i18n.t('checkin.backToDashboard'), () => context.go('/dashboard')),
+          RCard(
+            padding: const EdgeInsets.all(20),
+            radius: 24,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(child: Icon(LucideIcons.circleCheckBig, size: 44, color: theme.fg)),
+                const SizedBox(height: 18),
+                PrimaryButton(color: theme.primary, label: i18n.t('checkin.backToDashboard'), onPressed: () => context.go('/dashboard')),
+              ],
+            ),
+          ),
         ],
       );
     }
@@ -360,158 +362,114 @@ class _CheckInScreenState extends State<CheckInScreen> {
     return _formView(i18n, theme);
   }
 
-  Widget _solidButton(Color color, String label, VoidCallback? onTap, {Widget? leading, Widget? trailing, double vPad = 12}) {
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: vPad, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (leading != null) ...[leading, const SizedBox(width: 8)],
-              Flexible(child: Text(label, textAlign: TextAlign.center, style: tx(16, w: 6, c: Colors.white))),
-              if (trailing != null) ...[const SizedBox(width: 8), trailing],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  // ---- Rapor ----
 
   Widget _resultView(I18n i18n, RebiTheme theme) {
     final result = _result!;
     final changes = (result['changes'] as List?)?.whereType<Map>().toList() ?? const [];
     final today = asRoutine(result['today_routine']);
     final localized = i18n.prefersLocalized;
+    final risk = i18n.t('mobileCheckin.result.risk', {'level': str(result['risk_level'])});
+    final subtitle = result['adaptation_type'] == 'major' ? '$risk · ${i18n.t('mobileCheckin.result.major')}' : risk;
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
+      title: i18n.t('checkin.todayReport'),
+      subtitle: subtitle,
+      backTo: '/dashboard',
       children: [
-        Center(child: GradientIconBox(icon: LucideIcons.sparkles, from: theme.accent, to: theme.primary, size: 64, iconSize: 32)),
-        const SizedBox(height: 16),
-        Text(i18n.t('checkin.todayReport'), textAlign: TextAlign.center, style: heading(24)),
-        const SizedBox(height: 4),
-        Text.rich(
-          TextSpan(children: [
-            const TextSpan(text: 'Risk: '),
-            TextSpan(text: str(result['risk_level']), style: tx(14, w: 6, c: theme.fg)),
-            if (result['adaptation_type'] == 'major') const TextSpan(text: ' — Büyük değişiklikler yapıldı'),
-          ]),
-          textAlign: TextAlign.center,
-          style: tx(14, c: Tw.gray500),
-        ),
-        const SizedBox(height: 24),
         if (truthy(result['ai_note'])) ...[
           RCard(
             leftBorderColor: theme.primary,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(padding: const EdgeInsets.only(top: 2), child: Icon(LucideIcons.sparkles, size: 20, color: theme.primary)),
+                Padding(padding: const EdgeInsets.only(top: 2), child: Icon(LucideIcons.sparkles, size: 20, color: theme.fg)),
                 const SizedBox(width: 12),
-                Expanded(child: Text(str(result['ai_note']), style: tx(14, c: Tw.gray700, h: relaxed))),
+                Expanded(child: Text(str(result['ai_note']), style: tx(14.5, c: Tw.gray700, h: relaxed))),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
         ],
         if (changes.isNotEmpty) ...[
-          Row(
-            children: [
-              Icon(LucideIcons.circleAlert, size: 16, color: Tw.amber500),
-              const SizedBox(width: 8),
-              Expanded(child: Text('Değişiklikler', style: tx(14, w: 7, c: Tw.gray700))),
-            ],
-          ),
-          const SizedBox(height: 8),
-          for (final c in changes) ...[
-            RCard(
-              padding: const EdgeInsets.all(12),
-              borderColor: Tw.amber100,
-              color: Color.alphaBlend(Tw.amber50.withValues(alpha: .5), Tw.surface),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(str(c['item']), style: tx(14, w: 5, c: Tw.gray800)),
-                  const SizedBox(height: 2),
-                  Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: '${str(c['old'])} → '),
-                      TextSpan(text: str(c['new']), style: tx(12, w: 6, c: theme.fg)),
-                    ]),
-                    style: tx(12, c: Tw.gray500),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(str(c['reason']), style: tx(12, c: Tw.gray500)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 12),
-        ],
-        if (today.isNotEmpty) ...[
-          Text('Bugünün Rutini', style: tx(14, w: 7, c: Tw.gray700)),
-          const SizedBox(height: 8),
-          for (final item in today.take(10)) ...[
-            RCard(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.dot), size: 16, color: Tw.gray600),
-                  const SizedBox(width: 10),
-                  Expanded(
+          RCard(
+            padding: const EdgeInsets.all(18),
+            radius: 22,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _cardTitle(LucideIcons.circleAlert, Tw.amber600, i18n.t('mobileCheckin.result.changes')),
+                const SizedBox(height: 12),
+                for (var i = 0; i < changes.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Color.alphaBlend(Tw.amber50.withValues(alpha: .6), Tw.surface),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Tw.amber100),
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(pickAction(item, localized: localized), style: tx(12, w: 6, c: Tw.gray800)),
-                        StructuredBadges(item: item),
-                        const SizedBox(height: 2),
-                        Text(
-                          pickDetail(item, localized: localized),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: tx(11, c: Tw.gray500),
+                        Text(str(changes[i]['item']), style: tx(14, w: 6, c: Tw.gray800)),
+                        const SizedBox(height: 3),
+                        Text.rich(
+                          TextSpan(children: [
+                            TextSpan(text: '${str(changes[i]['old'])} → '),
+                            TextSpan(text: str(changes[i]['new']), style: tx(12.5, w: 6, c: theme.fg)),
+                          ]),
+                          style: tx(12.5, c: Tw.gray600),
                         ),
+                        const SizedBox(height: 3),
+                        Text(str(changes[i]['reason']), style: tx(12.5, c: Tw.gray600, h: snug)),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Container(
-                    margin: const EdgeInsets.only(top: 2),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: theme.primaryLight, borderRadius: BorderRadius.circular(999)),
-                    child: Text(str(item['time']), style: tx(9, c: theme.primaryDark)),
-                  ),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(height: 6),
-          ],
-          const SizedBox(height: 14),
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (today.isNotEmpty) ...[
+          RCard(
+            padding: const EdgeInsets.all(18),
+            radius: 22,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _cardTitle(LucideIcons.listChecks, theme.fg, i18n.t('mobileCheckin.result.todayRoutine')),
+                const SizedBox(height: 12),
+                for (var i = 0; i < today.take(10).length; i++) ...[
+                  if (i > 0) const Divider(height: 20, thickness: 1),
+                  _routineRow(today[i], theme, localized),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
         if (_feedbackStatus == null)
           RCard(
+            padding: const EdgeInsets.all(18),
+            radius: 22,
             margin: const EdgeInsets.only(bottom: 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(i18n.t('checkin.feedbackTitle'), style: tx(14, w: 6, c: Tw.gray800)),
-                const SizedBox(height: 8),
+                Text(i18n.t('checkin.feedbackTitle'), style: tx(14, w: 6, c: Tw.gray800, h: snug)),
+                const SizedBox(height: 10),
                 TextField(
                   controller: _feedbackNote,
                   minLines: 2,
-                  maxLines: 2,
-                  style: tx(12),
+                  maxLines: 3,
+                  style: tx(14),
                   decoration: inputDecoration(
-                    radius: 12,
+                    radius: 14,
                     borderWidth: 1,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -538,15 +496,17 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: _feedbackBusy ? null : () => setState(() => _feedbackStatus = 'skipped'),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Tw.gray200),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        minimumSize: Size.zero,
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: TextButton(
+                        onPressed: _feedbackBusy ? null : () => setState(() => _feedbackStatus = 'skipped'),
+                        style: TextButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: BorderSide(color: Tw.gray200)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
+                          minimumSize: const Size(48, 48),
+                        ),
+                        child: Text(i18n.t('checkin.feedbackSkip'), style: tx(13, w: 5, c: Tw.gray600)),
                       ),
-                      child: Text(i18n.t('checkin.feedbackSkip'), style: tx(12, w: 5, c: Tw.gray500)),
                     ),
                   ],
                 ),
@@ -556,13 +516,48 @@ class _CheckInScreenState extends State<CheckInScreen> {
         else if (_feedbackStatus == 'sent')
           Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: Text(i18n.t('checkin.feedbackThanks'), textAlign: TextAlign.center, style: tx(12, c: Tw.emerald700)),
+            child: Text(i18n.t('checkin.feedbackThanks'), textAlign: TextAlign.center, style: tx(13, c: Tw.readable(Tw.emerald700))),
           ),
-        _solidButton(
-          theme.primary,
-          i18n.t('checkin.backToDashboard'),
-          _backToDashboard,
-          trailing: const Icon(LucideIcons.arrowRight, size: 16, color: Colors.white),
+        PrimaryButton(
+          color: theme.primary,
+          label: i18n.t('checkin.backToDashboard'),
+          trailingIcon: LucideIcons.arrowRight,
+          onPressed: _backToDashboard,
+        ),
+      ],
+    );
+  }
+
+  Widget _routineRow(RoutineItem item, RebiTheme theme, bool localized) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.dot), size: 18, color: Tw.gray600),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(pickAction(item, localized: localized), style: tx(13.5, w: 6, c: Tw.gray800, h: snug)),
+              StructuredBadges(item: item),
+              const SizedBox(height: 2),
+              Text(
+                pickDetail(item, localized: localized),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: tx(12, c: Tw.gray600, h: snug),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(color: theme.primaryLight, borderRadius: BorderRadius.circular(999)),
+          child: Text(str(item['time']), style: tx(11, w: 6, c: theme.primaryDark)),
         ),
       ],
     );
@@ -580,17 +575,17 @@ class _CheckInScreenState extends State<CheckInScreen> {
       opacity: onTap == null ? .6 : 1,
       child: Material(
         color: bg,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: border, width: 2)),
+            constraints: const BoxConstraints(minHeight: 48),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: border, width: 1.5)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 16, color: fg),
+                Icon(icon, size: 17, color: fg),
                 if (label != null) ...[const SizedBox(width: 8), Text(label, style: tx(14, w: 6, c: fg))],
               ],
             ),
@@ -603,27 +598,29 @@ class _CheckInScreenState extends State<CheckInScreen> {
   Widget _cardTitle(IconData icon, Color color, String text) => Row(
         children: [
           Icon(icon, size: 20, color: color),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: tx(14, w: 7, c: Tw.gray800))),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: tx(14.5, w: 7, c: Tw.gray800, h: snug))),
         ],
       );
 
+  // ---- Seçim parçaları ----
+
+  /// Seçilebilir kutu (stres düzeyi, cilt hissi): seçiliyken tema çerçevesi ve soluk dolgu, ölçeklenme yok.
   Widget _selectable({required bool selected, required RebiTheme theme, required Widget child, required VoidCallback onTap, EdgeInsets? padding}) {
-    return AnimatedScale(
-      scale: selected ? 1.05 : 1,
-      duration: const Duration(milliseconds: 150),
+    return Semantics(
+      button: true,
+      selected: selected,
       child: Material(
-        color: selected ? theme.primaryLight : Tw.gray50,
-        borderRadius: BorderRadius.circular(12),
+        color: selected ? theme.primaryLight.withValues(alpha: Tw.dark ? .35 : .55) : Tw.gray50,
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: Container(
             padding: padding,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: selected ? theme.primary : Colors.transparent, width: 2),
-              boxShadow: selected ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 4))] : null,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: selected ? theme.primary : Colors.transparent, width: 1.6),
             ),
             child: child,
           ),
@@ -632,42 +629,84 @@ class _CheckInScreenState extends State<CheckInScreen> {
     );
   }
 
+  Widget _yesNo(String label, bool selected, RebiTheme theme, VoidCallback onTap) {
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
+        color: selected ? Tw.fillWithWhiteText(theme.primary) : Tw.gray50,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 52),
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(label, textAlign: TextAlign.center, style: tx(16, w: selected ? 6 : 5, c: selected ? Colors.white : Tw.gray700)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Evet / Hayır / Atla düğmesi (ek sorular, makyaj).
+  Widget _tri(String label, bool selected, RebiTheme theme, VoidCallback onTap, {bool plain = false}) => Semantics(
+        button: true,
+        selected: selected,
+        child: Material(
+          color: selected ? theme.primaryLight.withValues(alpha: Tw.dark ? .35 : .55) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: onTap,
+            child: Container(
+              constraints: const BoxConstraints(minHeight: 48),
+              alignment: Alignment.center,
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: selected ? theme.primary : Tw.gray200, width: selected ? 1.6 : 1.3),
+              ),
+              child: Text(label, textAlign: TextAlign.center, style: tx(13.5, w: selected ? 6 : 5, c: plain ? Tw.gray600 : Tw.gray900)),
+            ),
+          ),
+        ),
+      );
+
+  // ---- Form ----
+
   Widget _formView(I18n i18n, RebiTheme theme) {
     const gap = SizedBox(height: 16);
-    return ThemedPage(
+    final skinSevere = _skinFeeling == 'irritasyon' || _skinFeeling == 'kirik';
+    return StagePage(
       theme: theme,
+      title: i18n.t('checkin.title'),
+      subtitle: i18n.t('checkin.subtitle'),
+      backTo: '/dashboard',
       children: [
-        Text(i18n.t('checkin.title'), textAlign: TextAlign.center, style: heading(28)),
-        const SizedBox(height: 4),
-        Text(i18n.t('checkin.subtitle'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray500)),
-        const SizedBox(height: 8),
-        Text(
-          'Uyku ve stres cevapların, geçmiş check-in kayıtlarınla kısa süreli harmanlanarak risk özetine girer.',
-          textAlign: TextAlign.center,
-          style: tx(11, c: Tw.gray500, h: relaxed),
-        ),
-        const SizedBox(height: 32),
         if (_submitError.isNotEmpty) ...[
-          NoticeBox(text: _submitError, bg: Tw.amber50, border: Tw.amber200, fg: Tw.amber900),
+          NoticeBox(text: _submitError, bg: Tw.amber50, border: Tw.amber200, fg: Tw.amber900, fontSize: 13.5),
           gap,
         ],
         if (_prefilled > 0) ...[
           NoticeBox(
             text: i18n.t('mobileCheckin.prefilled', {'n': _prefilled}),
-            bg: theme.primaryLight.withValues(alpha: .35),
+            // Sahneye binebilir: yarı saydam dolgu sahnenin koyusunu geçirir, bu yüzden yüzeyle karıştırılıp opak yapılır.
+            bg: Color.alphaBlend(theme.primaryLight.withValues(alpha: .35), Tw.surface),
             border: theme.primaryLight,
-            fg: theme.primaryDark,
+            fg: Tw.readable(theme.primaryDark, bg: Color.alphaBlend(theme.primaryLight.withValues(alpha: .35), Tw.surface)),
             icon: LucideIcons.sparkles,
-            fontSize: 12,
+            fontSize: 13,
           ),
           gap,
         ],
-        // S1: Uyku
+        // Uyku
         RCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _cardTitle(LucideIcons.moon, Tw.indigo500, 'Dün gece kaç saat uyudun?'),
+              _cardTitle(LucideIcons.moon, Tw.indigo500, i18n.t('mobileCheckin.sleep.question')),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -683,8 +722,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   ),
                   const SizedBox(width: 16),
                   SizedBox(
-                    width: 48,
-                    child: Text('${jsString(_sleepHours)}s', textAlign: TextAlign.center, style: tx(18, w: 7, c: Tw.dark ? Tw.indigo400 : Tw.indigo600)),
+                    width: 56,
+                    child: Text(
+                      i18n.t('mobileCheckin.sleep.unit', {'h': jsString(_sleepHours)}),
+                      textAlign: TextAlign.center,
+                      style: tx(18, w: 7, c: Tw.dark ? Tw.indigo400 : Tw.indigo600),
+                    ),
                   ),
                 ],
               ),
@@ -693,9 +736,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('3s', style: tx(10, c: Tw.gray500)),
-                    Text('7.5s', style: tx(10, c: Tw.gray500)),
-                    Text('12s', style: tx(10, c: Tw.gray500)),
+                    for (final h in const ['3', '7.5', '12']) Text(i18n.t('mobileCheckin.sleep.unit', {'h': h}), style: tx(11.5, c: Tw.gray500)),
                   ],
                 ),
               ),
@@ -703,29 +744,33 @@ class _CheckInScreenState extends State<CheckInScreen> {
           ),
         ),
         gap,
-        // S2: Stres
+        // Stres
         RCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _cardTitle(LucideIcons.smilePlus, Tw.purple500, 'Bugün stres seviyeni nasıl tanımlarsın?'),
+              _cardTitle(LucideIcons.smilePlus, Tw.purple500, i18n.t('mobileCheckin.stress.question')),
               const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (final (value, label) in _stressLevels) ...[
-                    if (value > 1) const SizedBox(width: 8),
+                  for (var value = 1; value <= 5; value++) ...[
+                    if (value > 1) const SizedBox(width: 6),
                     Expanded(
                       child: _selectable(
                         selected: _stressToday == value,
                         theme: theme,
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
                         onTap: () => setState(() => _stressToday = value),
                         child: Column(
                           children: [
-                            Icon(stressGlyph(value), size: 22, color: _stressToday == value ? theme.primary : Tw.gray400),
-                            const SizedBox(height: 2),
-                            Text(label, textAlign: TextAlign.center, style: tx(10, w: _stressToday == value ? 6 : 5, c: _stressToday == value ? theme.primaryDark : Tw.gray600, h: tight)),
+                            Icon(stressGlyph(value), size: 24, color: _stressToday == value ? theme.fg : Tw.gray500),
+                            const SizedBox(height: 4),
+                            Text(
+                              i18n.t('mobileCheckin.stress.l$value'),
+                              textAlign: TextAlign.center,
+                              style: tx(11.5, w: _stressToday == value ? 6 : 5, c: _stressToday == value ? Tw.readable(theme.primaryDark) : Tw.gray600, h: tight),
+                            ),
                           ],
                         ),
                       ),
@@ -737,14 +782,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
           ),
         ),
         gap,
-        // S3: Cilt hissi
+        // Cilt hissi
         RCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _cardTitle(LucideIcons.droplets, theme.primary, 'Cildin bugün nasıl hissediyor?'),
+              _cardTitle(LucideIcons.droplets, theme.fg, i18n.t('mobileCheckin.skin.question')),
               const SizedBox(height: 12),
-              for (final (id, label, desc) in _skinFeelings) ...[
+              for (final id in _skinFeelingIds) ...[
                 _selectable(
                   selected: _skinFeeling == id,
                   theme: theme,
@@ -752,18 +797,18 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   onTap: () => setState(() => _skinFeeling = id),
                   child: Row(
                     children: [
-                      Icon(skinFeelingGlyph(id), size: 22, color: _skinFeeling == id ? theme.primary : Tw.gray500),
+                      Icon(skinFeelingGlyph(id), size: 22, color: _skinFeeling == id ? theme.fg : Tw.gray500),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(label, style: tx(14, w: 5, c: Tw.gray800)),
-                            Text(desc, style: tx(11, c: Tw.gray500)),
+                            Text(i18n.t('mobileCheckin.skin.$id.title'), style: tx(14.5, w: 6, c: Tw.gray800)),
+                            Text(i18n.t('mobileCheckin.skin.$id.desc'), style: tx(12.5, c: Tw.gray600)),
                           ],
                         ),
                       ),
-                      if (_skinFeeling == id) Icon(LucideIcons.circleCheckBig, size: 20, color: theme.primary),
+                      if (_skinFeeling == id) Icon(LucideIcons.circleCheckBig, size: 20, color: theme.fg),
                     ],
                   ),
                 ),
@@ -777,9 +822,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(i18n.t('checkin.symptomsTitle'), style: tx(14, w: 7, c: Tw.gray800)),
+              Text(i18n.t('checkin.symptomsTitle'), style: tx(14.5, w: 7, c: Tw.gray800, h: snug)),
               const SizedBox(height: 4),
-              Text(i18n.t('checkin.symptomsHint'), style: tx(11, c: Tw.gray500, h: relaxed)),
+              Text(i18n.t('checkin.symptomsHint'), style: tx(12.5, c: Tw.gray600, h: relaxed)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -803,15 +848,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ],
           ),
         ),
-        if (_skinFeeling == 'irritasyon' || _skinFeeling == 'kirik') ...[
+        if (skinSevere) ...[
           gap,
           RCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(i18n.t('checkin.reactionSeverityTitle'), style: tx(14, w: 7, c: Tw.gray800)),
+                Text(i18n.t('checkin.reactionSeverityTitle'), style: tx(14.5, w: 7, c: Tw.gray800, h: snug)),
                 const SizedBox(height: 4),
-                Text(i18n.t('checkin.reactionSeverityHint'), style: tx(11, c: Tw.gray500)),
+                Text(i18n.t('checkin.reactionSeverityHint'), style: tx(12.5, c: Tw.gray600, h: relaxed)),
                 const SizedBox(height: 8),
                 RangeSlider1(
                   value: _reactionSeverity.toDouble(),
@@ -823,25 +868,25 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [for (final n in ['1', '2', '3']) Text(n, style: tx(10, c: Tw.gray500))],
+                  children: [for (final n in ['1', '2', '3']) Text(n, style: tx(11.5, c: Tw.gray500))],
                 ),
               ],
             ),
           ),
         ],
         gap,
-        // S4: Rutin uygulandı mı
+        // Rutin uygulandı mı
         RCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _cardTitle(LucideIcons.circleCheckBig, Tw.green500, 'Dünkü rutini uyguladın mı?'),
+              _cardTitle(LucideIcons.circleCheckBig, Tw.green600, i18n.t('mobileCheckin.routineQuestion')),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: _yesNo('Evet', _appliedRoutine, theme.primary, () => setState(() => _appliedRoutine = true))),
+                  Expanded(child: _yesNo(i18n.t('common.yes'), _appliedRoutine, theme, () => setState(() => _appliedRoutine = true))),
                   const SizedBox(width: 12),
-                  Expanded(child: _yesNo('Hayır', !_appliedRoutine, Tw.red500, () => setState(() => _appliedRoutine = false))),
+                  Expanded(child: _yesNo(i18n.t('common.no'), !_appliedRoutine, theme, () => setState(() => _appliedRoutine = false))),
                 ],
               ),
             ],
@@ -854,19 +899,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
             color: Color.alphaBlend(Tw.slate50.withValues(alpha: .9), Tw.surface),
             child: Text.rich(
               TextSpan(children: [
-                TextSpan(text: 'Endişene özel:', style: TextStyle(fontWeight: FontWeight.w600, color: Tw.slate800)),
-                TextSpan(
-                  text: ' Aşağıdaki ek sorular analizindeki ana soruna göre seçilir. Cevap vermezsen atla; geçmiş check-in '
-                      'örüntüleri bazen risk özetine yansır. Uyku ve stres üstte, geçmiş kayıtlarla harmanlanır.',
-                ),
+                TextSpan(text: i18n.t('mobileCheckin.concernIntro.lead'), style: TextStyle(fontWeight: FontWeight.w600, color: Tw.slate800)),
+                TextSpan(text: ' ${i18n.t('mobileCheckin.concernIntro.body')}'),
               ]),
-              style: tx(11, c: Tw.slate600, h: relaxed),
+              style: tx(12.5, c: Tw.slate600, h: relaxed),
             ),
           ),
         ],
-        if (_showWaterExtra) ...[gap, _waterCard(theme)],
-        if (_showMakeupExtra) ...[gap, _makeupCard()],
-        ..._concernExtras(),
+        if (_showWaterExtra) ...[gap, _waterCard(i18n, theme)],
+        if (_showMakeupExtra) ...[gap, _makeupCard(i18n, theme)],
+        ..._concernExtras(i18n, theme),
         gap,
         RCard(
           child: Column(
@@ -874,10 +916,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
             children: [
               Text.rich(
                 TextSpan(children: [
-                  const TextSpan(text: 'Eklemek istediğin bir şey var mı? '),
-                  TextSpan(text: '(opsiyonel)', style: tx(14, c: Tw.gray500)),
+                  TextSpan(text: '${i18n.t('mobileCheckin.notes.question')} '),
+                  TextSpan(text: i18n.t('mobileCheckin.notes.optional'), style: tx(14, c: Tw.gray500)),
                 ]),
-                style: tx(14, w: 7, c: Tw.gray800),
+                style: tx(14.5, w: 7, c: Tw.gray800, h: snug),
               ),
               const SizedBox(height: 8),
               TextField(
@@ -886,8 +928,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 maxLines: 4,
                 style: tx(14),
                 decoration: inputDecoration(
-                  hint: 'Dün yeni bir madde denedim, güneşte kaldım...',
-                  radius: 12,
+                  hint: i18n.t('mobileCheckin.notes.hint'),
+                  radius: 14,
                   borderWidth: 1,
                   focusColor: theme.primary,
                 ),
@@ -895,45 +937,29 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        Opacity(
-          opacity: _canSubmit || _loading ? 1 : .5,
-          child: _solidButton(
-            _canSubmit || _loading ? theme.primary : Tw.gray400,
-            _loading ? 'Analiz ediliyor...' : i18n.t('checkin.submit'),
-            _canSubmit ? _submit : null,
-            vPad: 16,
-            leading: _loading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
-                : const Icon(LucideIcons.send, size: 20, color: Colors.white),
+        const SizedBox(height: 20),
+        PrimaryButton(
+          color: theme.primary,
+          loading: _loading,
+          icon: LucideIcons.send,
+          label: i18n.t('checkin.submit'),
+          onPressed: _canSubmit ? _submit : null,
+          minHeight: 56,
+        ),
+        if (_loading)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Semantics(liveRegion: true, child: Text(i18n.t('mobileCheckin.analyzing'), textAlign: TextAlign.center, style: tx(13, c: Tw.gray600))),
           ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 14, 8, 0),
+          child: Text(i18n.t('mobileCheckin.blendNote'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500, h: relaxed)),
         ),
       ],
     );
   }
 
-  Widget _yesNo(String label, bool selected, Color color, VoidCallback onTap) {
-    return Material(
-      color: selected ? Tw.fillWithWhiteText(color) : Tw.gray50,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: selected ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 4))] : null,
-          ),
-          child: Text(label, textAlign: TextAlign.center, style: tx(16, w: 5, c: selected ? Colors.white : Tw.gray600)),
-        ),
-      ),
-    );
-  }
-
-  Widget _waterCard(RebiTheme theme) {
+  Widget _waterCard(I18n i18n, RebiTheme theme) {
     final parsed = parseWaterMlInput(_waterMl.text);
     void bump(int delta) {
       final next = ((parsed ?? 0) + delta).clamp(0, 8000);
@@ -941,71 +967,58 @@ class _CheckInScreenState extends State<CheckInScreen> {
     }
 
     Widget smallBtn(String label, VoidCallback onTap, {bool primary = false}) => Material(
-          color: primary ? theme.primary : Tw.surface,
-          borderRadius: BorderRadius.circular(8),
+          color: primary ? Tw.fillWithWhiteText(theme.primary) : Tw.surface,
+          borderRadius: BorderRadius.circular(12),
           child: InkWell(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(12),
             onTap: onTap,
             child: Container(
               constraints: const BoxConstraints(minHeight: 48),
               alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: primary ? theme.primary : Tw.gray200),
               ),
-              child: Text(label, style: tx(12, w: 5, c: primary ? Colors.white : Tw.gray700)),
+              child: Text(label, style: tx(13, w: 6, c: primary ? Colors.white : Tw.gray700)),
             ),
           ),
         );
 
+    final nf = NumberFormat.decimalPattern(i18n.lang);
     return RCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _cardTitle(LucideIcons.droplets, Tw.sky500, 'Bugün içtiğin su (ml)'),
+          _cardTitle(LucideIcons.droplets, Tw.sky500, i18n.t('mobileCheckin.water.title')),
           const SizedBox(height: 8),
-          Text.rich(
-            TextSpan(children: [
-              const TextSpan(text: 'Miktarı '),
-              TextSpan(text: 'mililitre (ml)', style: tx(11, w: 7, c: Tw.gray700)),
-              const TextSpan(text: ' olarak yaz. Hesaplama: '),
-              TextSpan(text: '1 bardak = $mlPerGlass ml', style: tx(11, w: 7, c: Tw.gray700)),
-              const TextSpan(
-                text: ' (standart su bardağı). Boş bırakırsan uygulama içi su takibi veya analizdeki günlük hedefin kullanılır.',
-              ),
-            ]),
-            style: tx(11, c: Tw.gray500, h: relaxed),
-          ),
-          const SizedBox(height: 8),
+          Text(i18n.t('mobileCheckin.water.help', {'glass': mlPerGlass}), style: tx(12.5, c: Tw.gray600, h: relaxed)),
+          const SizedBox(height: 10),
           TextField(
             controller: _waterMl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
             style: tx(14, w: 5),
             decoration: inputDecoration(
-              hint: 'Örn. ${mlPerGlass * 8} (8 bardak)',
+              hint: i18n.t('mobileCheckin.water.placeholder', {'ml': mlPerGlass * 8}),
               suffixText: 'ml',
-              radius: 12,
+              radius: 14,
               borderWidth: 1,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
             ),
           ),
           const SizedBox(height: 6),
-          Text('Gönderirken değer tam sayı ml olarak kaydedilir (en fazla 8000 ml).', style: tx(10, c: Tw.gray500)),
+          Text(i18n.t('mobileCheckin.water.note'), style: tx(12, c: Tw.gray500, h: snug)),
           if (parsed != null && parsed > 0) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
                 color: Tw.sky50,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Tw.sky100),
               ),
-              child: Text(
-                '${NumberFormat.decimalPattern('tr').format(parsed)} ml → ${formatGlassesLabel(parsed)}',
-                style: tx(12, w: 6, c: Tw.sky800),
-              ),
+              child: Text('${nf.format(parsed)} ml → ${formatGlassesLabel(parsed)}', style: tx(13, w: 6, c: Tw.sky800)),
             ),
           ],
           const SizedBox(height: 12),
@@ -1013,9 +1026,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              smallBtn('−1 bardak (−$mlPerGlass ml)', () => bump(-mlPerGlass)),
-              smallBtn('+1 bardak (+$mlPerGlass ml)', () => bump(mlPerGlass), primary: true),
-              smallBtn('+½ bardak (+125 ml)', () => bump(125)),
+              smallBtn(i18n.t('mobileCheckin.water.minus', {'ml': mlPerGlass}), () => bump(-mlPerGlass)),
+              smallBtn(i18n.t('mobileCheckin.water.plus', {'ml': mlPerGlass}), () => bump(mlPerGlass), primary: true),
+              smallBtn(i18n.t('mobileCheckin.water.half', {'ml': mlPerGlass ~/ 2}), () => bump(mlPerGlass ~/ 2)),
             ],
           ),
         ],
@@ -1023,43 +1036,23 @@ class _CheckInScreenState extends State<CheckInScreen> {
     );
   }
 
-  Widget _tri(String label, bool selected, VoidCallback onTap, {bool plain = false}) => Material(
-        color: selected ? Tw.teal50 : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 48),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: selected ? Tw.teal500 : Tw.gray200, width: 2),
-            ),
-            child: Text(label, textAlign: TextAlign.center, style: tx(13, w: 5, c: plain ? Tw.gray600 : Tw.gray900)),
-          ),
-        ),
-      );
-
-  Widget _makeupCard() {
+  Widget _makeupCard(I18n i18n, RebiTheme theme) {
     return RCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _cardTitle(LucideIcons.palette, Tw.rose500, 'Bugün makyaj'),
+          _cardTitle(LucideIcons.palette, Tw.rose600, i18n.t('mobileCheckin.makeup.title')),
           const SizedBox(height: 8),
-          Text('İstersen atla; seçmezsen risk hesabında yalnızca profil makyaj sıklığın kullanılır.',
-              style: tx(11, c: Tw.gray500, h: relaxed)),
-          const SizedBox(height: 8),
+          Text(i18n.t('mobileCheckin.makeup.hint'), style: tx(12.5, c: Tw.gray600, h: relaxed)),
+          const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _tri('Evet', _makeupUsedToday == true, () => setState(() => _makeupUsedToday = true))),
+              Expanded(child: _tri(i18n.t('common.yes'), _makeupUsedToday == true, theme, () => setState(() => _makeupUsedToday = true))),
               const SizedBox(width: 8),
-              Expanded(child: _tri('Hayır', _makeupUsedToday == false, () => setState(() => _makeupUsedToday = false))),
+              Expanded(child: _tri(i18n.t('common.no'), _makeupUsedToday == false, theme, () => setState(() => _makeupUsedToday = false))),
               const SizedBox(width: 8),
               Expanded(
-                child: _tri('Atla', false, plain: true, () {
+                child: _tri(i18n.t('common.skip'), false, theme, plain: true, () {
                   setState(() {
                     _makeupUsedToday = null;
                     _makeupRemovalToday = 'cleanser';
@@ -1069,26 +1062,20 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ],
           ),
           if (_makeupUsedToday == true) ...[
-            const SizedBox(height: 12),
-            Text('Nasıl temizledin?', style: tx(11, w: 5, c: Tw.gray700)),
-            const SizedBox(height: 4),
+            const SizedBox(height: 14),
+            Text(i18n.t('mobileCheckin.makeup.how'), style: tx(13, w: 6, c: Tw.gray700)),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: 8,
+              runSpacing: 8,
               children: [
-                for (final (id, label) in const [
-                  ('cleanser', 'Temizleyici'),
-                  ('double', 'Çift aşama'),
-                  ('water', 'Sadece su'),
-                  ('wipe', 'Misel su / mendil'),
-                  ('none', 'Temizlemedim'),
-                ])
+                for (final id in const ['cleanser', 'double', 'water', 'wipe', 'none'])
                   ChoiceChipBox(
-                    label: label,
+                    label: i18n.t('mobileCheckin.makeup.$id'),
                     selected: _makeupRemovalToday == id,
-                    radius: 8,
-                    fontSize: 10,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    radius: 12,
+                    fontSize: 13,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     activeText: Tw.gray900,
                     inactiveText: Tw.gray600,
                     onTap: () => setState(() => _makeupRemovalToday = id),
@@ -1101,28 +1088,28 @@ class _CheckInScreenState extends State<CheckInScreen> {
     );
   }
 
-  /// Evet / Hayır / Atla — check-in ek soruları.
-  Widget _extraTristate(String title, String key, {String? description}) {
-    final i18n = I18n.instance;
+  /// Evet / Hayır / Atla — check-in ek soruları. Soru ve açıklama `mobileCheckin.extras.<anahtar>` içindedir.
+  Widget _extraTristate(I18n i18n, RebiTheme theme, String key) {
     final value = _concernExtra[key];
+    final description = i18n.t('mobileCheckin.extras.$key.d', const {}, '');
     return RCard(
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(title, style: tx(14, w: 7, c: Tw.gray800)),
-          if (description != null) ...[
+          Text(i18n.t('mobileCheckin.extras.$key.q'), style: tx(14.5, w: 7, c: Tw.gray800, h: snug)),
+          if (description.isNotEmpty) ...[
             const SizedBox(height: 4),
-            Text(description, style: tx(11, c: Tw.gray500, h: relaxed)),
+            Text(description, style: tx(12.5, c: Tw.gray600, h: relaxed)),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(child: _tri(i18n.t('common.yes'), value == true, () => setState(() => _concernExtra[key] = true))),
+              Expanded(child: _tri(i18n.t('common.yes'), value == true, theme, () => setState(() => _concernExtra[key] = true))),
               const SizedBox(width: 8),
-              Expanded(child: _tri(i18n.t('common.no'), value == false, () => setState(() => _concernExtra[key] = false))),
+              Expanded(child: _tri(i18n.t('common.no'), value == false, theme, () => setState(() => _concernExtra[key] = false))),
               const SizedBox(width: 8),
-              Expanded(child: _tri(i18n.t('common.skip'), false, plain: true, () => setState(() => _concernExtra[key] = null))),
+              Expanded(child: _tri(i18n.t('common.skip'), false, theme, plain: true, () => setState(() => _concernExtra[key] = null))),
             ],
           ),
         ],
@@ -1131,65 +1118,59 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   Widget _extraHeader(IconData icon, Color color, String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: 10, left: 2),
         child: Row(
           children: [
-            Icon(icon, size: 16, color: color),
+            Icon(icon, size: 17, color: color),
             const SizedBox(width: 8),
-            Expanded(child: Text(text, style: tx(12, w: 7, c: Tw.gray800))),
+            Expanded(child: Text(text, style: tx(13, w: 7, c: Tw.gray800))),
           ],
         ),
       );
 
-  List<Widget> _concernExtras() {
+  List<Widget> _concernExtras(I18n i18n, RebiTheme theme) {
+    Widget q(String key) => _extraTristate(i18n, theme, key);
     switch (_concern) {
       case 'acne':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.hand, Tw.rose500, 'Akneye özel'),
-          _extraTristate('Ciltte sivilce/komedon kurcaladın mı?', 'picked_skin_today',
-              description: 'Mekanik irritasyon bariyeri zayıflatır; risk özetine yansır.'),
-          _extraTristate('Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?', 'high_glycemic_intake_today',
-              description: 'Beyaz un, tatlı, şekerli içecek gibi.'),
-          _extraTristate('Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?', 'heavy_dairy_today',
-              description: 'Bazı akne eğilimlerinde tetikleyici olabilir.'),
+          _extraHeader(LucideIcons.hand, Tw.rose600, i18n.t('mobileCheckin.extras.acne')),
+          q('picked_skin_today'),
+          q('high_glycemic_intake_today'),
+          q('heavy_dairy_today'),
         ];
       case 'aging':
       case 'pigmentation':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.sun, Tw.amber500, _concern == 'aging' ? 'Yaşlanma endişesine özel' : 'Lekelenmeye özel'),
-          _extraTristate('Uzun süre doğrudan güneş altında kaldın mı?', 'long_sun_exposure_today',
-              description: '30 dk+ açık güneş veya yoğun UV günü.'),
-          _extraTristate('Yüz için güneş koruyucu uyguladın mı?', 'spf_applied_today',
-              description: 'Rutindeki SPF adımını tamamladıysan Evet.'),
+          _extraHeader(LucideIcons.sun, Tw.amber600, i18n.t('mobileCheckin.extras.$_concern')),
+          q('long_sun_exposure_today'),
+          q('spf_applied_today'),
         ];
       case 'dryness':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.wind, Tw.sky500, 'Kuruluğa özel'),
-          _extraTristate('Ev/iş ortamı çok kuru muydu? (ısıtma, klima, rüzgâr)', 'very_dry_environment_today'),
-          _extraTristate('Uzun veya çok sıcak duş aldın mı?', 'long_hot_shower_today',
-              description: 'Bariyer kuruluğunu artırabilir.'),
+          _extraHeader(LucideIcons.wind, Tw.sky500, i18n.t('mobileCheckin.extras.dryness')),
+          q('very_dry_environment_today'),
+          q('long_hot_shower_today'),
         ];
       case 'sensitivity':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.flower, Tw.violet400, 'Hassasiyete özel'),
-          _extraTristate('Yeni parfüm veya yoğun kokulu ürün kullandın mı?', 'fragrance_new_product_today'),
-          _extraTristate('Uzun veya çok sıcak duş aldın mı?', 'long_hot_shower_today'),
+          _extraHeader(LucideIcons.flower, Tw.violet400, i18n.t('mobileCheckin.extras.sensitivity')),
+          q('fragrance_new_product_today'),
+          q('long_hot_shower_today'),
           Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 4),
+            padding: const EdgeInsets.only(top: 4, bottom: 10, left: 2),
             child: Row(
               children: [
-                Icon(LucideIcons.flaskConical, size: 16, color: Tw.violet400),
+                Icon(LucideIcons.flaskConical, size: 17, color: Tw.violet400),
                 const SizedBox(width: 8),
-                Expanded(child: Text('Aktif madde', style: tx(11, w: 6, c: Tw.gray700))),
+                Expanded(child: Text(i18n.t('mobileCheckin.extras.active'), style: tx(13, w: 7, c: Tw.gray800))),
               ],
             ),
           ),
-          _extraTristate('Yeni güçlü madde veya peeling denedin mi?', 'tried_new_active_today',
-              description: 'Örn. retinol, AHA/BHA, yüksek konsantrasyon serum.'),
+          q('tried_new_active_today'),
         ];
     }
     return const [];

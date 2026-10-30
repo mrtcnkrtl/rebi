@@ -13,6 +13,8 @@ import 'package:rebi/screens/analyze/analyze_screen.dart';
 import 'package:rebi/screens/checkin_screen.dart';
 import 'package:rebi/ui/components/severity_test.dart';
 
+import 'helpers/app_harness.dart';
+
 void main() {
   group('check-in serisi (web: lib/checkinStats.js)', () {
     final now = DateTime.utc(2026, 10, 10, 12);
@@ -105,6 +107,7 @@ void main() {
       expect(parseWaterMlInput('-5'), isNull);
     });
     test('formatGlassesLabel', () {
+      loadTestI18n();
       expect(formatGlassesLabel(0), '0 bardak');
       expect(formatGlassesLabel(2000), 'yaklaşık 8 bardak');
       expect(formatGlassesLabel(375), 'yaklaşık 1.5 bardak');

@@ -11,6 +11,7 @@ import '../core/i18n.dart';
 import '../core/user_history.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/widgets/skeleton.dart';
@@ -84,34 +85,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final theme = context.watch<ThemeController>().theme;
     final history = _history;
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
-      maxWidth: 672,
+      title: i18n.t('mobileHistory.title'),
+      subtitle: i18n.t('mobileHistory.subtitle'),
+      onRefresh: _load,
+      footer: StageSegments<int>(
+        theme: theme,
+        options: [for (final r in _ranges) (r, i18n.t('mobileHistory.range$r'))],
+        value: _range,
+        onChanged: _setRange,
+      ),
       children: [
-        Text(i18n.t('mobileHistory.title'), style: heading(30)),
-        const SizedBox(height: 4),
-        Text(i18n.t('mobileHistory.subtitle'), style: tx(14, c: Tw.gray500)),
-        const SizedBox(height: 16),
-        Row(children: [
-          for (final r in _ranges) ...[
-            if (r != _ranges.first) const SizedBox(width: 8),
-            Expanded(
-              child: ChoiceChipBox(
-                label: i18n.t('mobileHistory.range$r'),
-                selected: _range == r,
-                radius: 12,
-                center: true,
-                fontSize: 13,
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                activeBorder: theme.primary,
-                activeBg: theme.primaryLight.withValues(alpha: .4),
-                activeText: theme.primaryDark,
-                onTap: () => _setRange(r),
-              ),
-            ),
-          ],
-        ]),
-        const SizedBox(height: 16),
         if (_loading && history == null)
           const Column(children: [SkeletonCard(lines: 2), SizedBox(height: 12), SkeletonCard(lines: 2), SizedBox(height: 12), SkeletonCard(lines: 2)])
         else if (_failed && history == null)

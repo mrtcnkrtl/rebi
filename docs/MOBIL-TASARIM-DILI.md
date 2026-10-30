@@ -192,6 +192,25 @@ Karşılamadaki "Rebi ile konuş" buraya açılır; oturumluyken aynı ekran soh
   ya da Android geri tuşu) kullanıcıyı davette bırakır; giriş/kayıt tamamlanınca sekmeli sohbete (`/dashboard/chat`) geçilir.
   Karşılamadan doğrudan girişe gidildiğinde altında sohbet yoktur ve geri yine karşılamadır.
 
+## Sayfa sahnesi (Ben, Geçmiş, Rafım, Hatırlatıcılar, Görünüm, Abonelik, Hesap, Check-in)
+
+Ana sekmelerin dışındaki ekranlar da aynı dilde açılır: **derin ton sahne + krem gövde**. Ortak bileşen `PageStage` (sahne) ve
+`StagePage` (sahne + kaydırılabilir gövde) `ui/shell/page_stage.dart`'tadır; yeni ekran bunu kullanır, kendi başlık satırını çizmez.
+
+- **Sahne:** seçili temanın derin tonu, çok silik sabit "R", alt köşeler yuvarlak. Yukarıdan aşağı: (varsa) **"Geri"** bağlantısı ve sağ üst
+  öğe → küçük harfli üst etiket / küçük hap (`badge`) → Fraunces başlık → açıklama → `footer` (ör. `StageSegments`). Sahne içeriğin yeridir,
+  sistem yazısı en çok %130 büyür (başlık satır kırar). Durum çubuğu simgeleri açıktır.
+- **Gövde:** ilk kart sahnenin alt kenarına **30 dp biner** (`StageOverlap`); bu yüzden **gövdenin ilk öğesi bir kart/yüzey** olmalıdır (yarı
+  saydam dolgulu kutu sahnenin koyusunu geçirir; opak yap: `Color.alphaBlend(..., Tw.surface)`). Sahneye binen ilk öğe başlık/etiket olamaz.
+- **Geri:** alt sayfalar `backTo:` verir; geçmişte sayfa varsa ona, yoksa ilgili sekmenin köküne döner (`popOrGo`). Sekme kökleri
+  (Ben, Geçmiş) geri göstermez. Kabuk bu yollarda (`hasStage`) üst güvenli alanı ve eski geri çubuğunu uygulamaz; **her durumda
+  (yükleniyor, hata, boş) sahne çizilmelidir**, yoksa içerik durum çubuğunun altında kalır.
+- **Gruplanmış liste (`MenuGroup` + `MenuRow`):** ilgili eylemler tek yüzeyde, satırlar arası ince çizgi; satır = simge kutusu + başlık + tek satır
+  açıklama + ok, ≥ 64 dp. Ayrı kartlar yığmak yerine bunu kullan.
+- **Aşağı çekip yenileme:** veri getiren ekranlar `onRefresh:` verir (`StagePage`/`ThemedPage`); gösterge yüzey renkli yuvarlaktır.
+- **Metinler yerelleştirilir:** ekran kodunda Türkçe sabit metin yok; `mobileCheckin.*`, `mobileAccount.*`, `mobileThemes.*` (TR + EN).
+  Sunucuya giden kimlikler (`iyi/kuru/...`, `acne/...`) çeviri anahtarıdır, görünen metin değildir.
+
 ## Rutin sekmesi
 
 Rutin, ilk görülen şeydir: uyarılar ve notlar rutinin önüne değil içine/arkasına konur. Yukarıdan aşağı:

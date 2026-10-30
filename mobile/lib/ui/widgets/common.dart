@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/i18n.dart';
@@ -322,6 +325,7 @@ class ThemedPage extends StatelessWidget {
     this.controller,
     this.crossAxisAlignment = CrossAxisAlignment.stretch,
     this.background,
+    this.onRefresh,
   });
 
   final RebiTheme theme;
@@ -332,21 +336,50 @@ class ThemedPage extends StatelessWidget {
   final CrossAxisAlignment crossAxisAlignment;
   final Widget? background;
 
+  /// Verilirse sayfa aşağı çekilerek yenilenir ([PullToRefresh]).
+  final Future<void> Function()? onRefresh;
+
   @override
   Widget build(BuildContext context) {
+    final scroll = SingleChildScrollView(
+      controller: controller,
+      padding: padding,
+      physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Column(crossAxisAlignment: crossAxisAlignment, children: children),
+        ),
+      ),
+    );
     return ThemedBackground(
       theme: theme,
       extra: background,
-      child: SingleChildScrollView(
-        controller: controller,
-        padding: padding,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Column(crossAxisAlignment: crossAxisAlignment, children: children),
-          ),
-        ),
-      ),
+      child: onRefresh == null ? scroll : PullToRefresh(color: theme.primary, onRefresh: onRefresh!, child: scroll),
+    );
+  }
+}
+
+/// Aşağı çekip yenileme: gösterge durum çubuğunun altında, yüzey renkli yuvarlak olarak belirir (üst sahnenin üstünde de okunur).
+/// Çekme bırakıldığında hafif bir titreşim verir. Kaydırılan alan `AlwaysScrollableScrollPhysics` kullanmalıdır (kısa içerikte de çekilsin).
+class PullToRefresh extends StatelessWidget {
+  const PullToRefresh({super.key, required this.onRefresh, required this.child, required this.color});
+
+  final Future<void> Function() onRefresh;
+  final Widget child;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      color: color,
+      backgroundColor: Tw.surface,
+      edgeOffset: MediaQuery.paddingOf(context).top + 8,
+      onRefresh: () {
+        unawaited(HapticFeedback.selectionClick().catchError((_) {}));
+        return onRefresh();
+      },
+      child: child,
     );
   }
 }

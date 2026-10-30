@@ -117,9 +117,11 @@ void main() {
       expect(ChatFailure.fromStatus(502), ChatFailure.server);
       expect(ChatFailure.fromStatus(503), ChatFailure.server);
       expect(ChatFailure.fromStatus(504), ChatFailure.server);
+      expect(ChatFailure.fromStatus(429), ChatFailure.rateLimited);
       expect(ChatFailure.fromStatus(500), ChatFailure.generic);
       expect(ChatFailure.fromStatus(422), ChatFailure.generic);
       expect(ChatFailure.server.messageKey, 'mobileChat.error.server');
+      expect(ChatFailure.rateLimited.messageKey, 'mobileChat.error.rateLimited');
     });
   });
 

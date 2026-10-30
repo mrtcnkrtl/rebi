@@ -47,6 +47,15 @@ bool isSubPage(String path) {
   return tab != null && path != tab.path;
 }
 
+/// Kendi üst sahnesini çizen yollar: sahne durum çubuğunun altına uzanır, bu yüzden kabuk burada üst güvenli alanı
+/// uygulamaz ve geri çubuğu çizmez (alt sayfalarda "Geri" sahnenin içindedir). Sahnesiz kalan tek alt sayfa, kendi
+/// akışını çizen analizdir (hızlı fotoğraf yükleme kabuklu kalır).
+bool hasStage(String path) {
+  if (!path.startsWith('/dashboard')) return false;
+  if (path == '/dashboard/analyze') return false;
+  return true;
+}
+
 /// Düzen: genel sayfalarda (sohbet, yasal) üstte logo ve menü; açılış ve giriş kendi üst çubuğunu çizer; giriş yapmış kullanıcıda
 /// `/dashboard*` altında üst çubuk yok, beş sekmeli alt çubuk ve alt sayfalarda geri çubuğu var.
 /// Yapay zekâ yüzeylerinde beyan kutusu, oturum varken rıza kurtarma kutusu üstte durur.
@@ -133,13 +142,13 @@ class _AppShellState extends State<AppShell> {
                 // Krem kâğıt + temanın hafif yıkaması tek yerde çizilir: geri çubuğu ve sayfa aynı zeminde durur.
                 ? DecoratedBox(
                     decoration: BoxDecoration(gradient: theme.bg),
-                    // Bugün, Rutin (boş durumda) ve Rebi sohbet kökünde üst sahne durum çubuğunun altına uzanır: güvenli alanı sayfa uygular.
+                    // Sahneli ekranlarda (`hasStage`) üst sahne durum çubuğunun altına uzanır: güvenli alanı sayfa uygular.
                     child: SafeArea(
-                      top: !focusFlow && path != AppTab.today.path && path != AppTab.routine.path && path != AppTab.chat.path,
+                      top: !focusFlow && !hasStage(path),
                       bottom: false,
                       child: Column(
                         children: [
-                          if (isSubPage(path) && !focusFlow) _SubBar(path: path),
+                          if (isSubPage(path) && !focusFlow && !hasStage(path)) _SubBar(path: path),
                           Expanded(child: widget.child),
                         ],
                       ),

@@ -591,6 +591,7 @@ class ChatErrorCard extends StatelessWidget {
     ChatFailure.offline => LucideIcons.wifiOff,
     ChatFailure.server => LucideIcons.cloudOff,
     ChatFailure.auth => LucideIcons.lock,
+    ChatFailure.rateLimited => LucideIcons.hourglass,
     ChatFailure.generic => LucideIcons.circleAlert,
   };
 

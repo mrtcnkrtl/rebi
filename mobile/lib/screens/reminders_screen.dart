@@ -14,9 +14,9 @@ import '../state/home_sync_controller.dart';
 import '../state/notifications_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/components/notification_widgets.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
-import '../ui/brand/palette.dart';
 import 'reminders/delivery_card.dart';
 import 'reminders/quiet_card.dart';
 import 'reminders/time_picker.dart';
@@ -164,14 +164,12 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final theme = context.watch<ThemeController>().theme;
     final saved = _saved;
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
-      maxWidth: 672,
+      title: i18n.t('mobileReminders.title'),
+      subtitle: i18n.t('mobileReminders.subtitle'),
+      backTo: '/dashboard/profile',
       children: [
-        Text(i18n.t('mobileReminders.title'), style: heading(30)),
-        const SizedBox(height: 4),
-        Text(i18n.t('mobileReminders.subtitle'), style: tx(14, c: Tw.gray500)),
-        const SizedBox(height: 16),
         NotificationSettingsCard(theme: theme),
         DeliveryCard(theme: theme),
         const SizedBox(height: 16),

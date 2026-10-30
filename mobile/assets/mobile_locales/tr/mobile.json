@@ -606,6 +606,12 @@
     "light": "Açık",
     "dark": "Koyu"
   },
+  "mobileThemes": {
+    "accent": "Vurgu rengi",
+    "preview": "Önizleme",
+    "plusPrefix": "Rebi Plus için ",
+    "plusLink": "abonelik sayfası"
+  },
   "mobileNav": {
     "today": "Bugün",
     "routine": "Rutin",
@@ -699,11 +705,155 @@
       "offline": "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.",
       "server": "Sunucu şu an yanıt vermiyor. Biraz sonra tekrar dene.",
       "auth": "Oturum süren dolmuş olabilir. Çıkış yapıp tekrar giriş yapmayı dene.",
+      "rateLimited": "Çok hızlı gidiyoruz. Birkaç saniye bekleyip tekrar dene.",
       "generic": "Yanıt alınamadı. Tekrar dener misin?"
     }
   },
+  "mobileAccount": {
+    "unavailable": "Hesap ayarları şu an kullanılamıyor.",
+    "intro": {
+      "a": "Rebi verilerini güvenle saklar. Yeni cilt fotoğrafını ",
+      "b": " ile ekleyebilir veya tam ",
+      "c": "na gidebilirsin. Aşağıda yüklediğin görseller listelenir."
+    },
+    "passwordNote": "Şifre değişikliği e-posta ile giriş yaptığın hesaplar içindir. Sosyal giriş kullanıyorsan şifre bu ekrandan değişmez.",
+    "name": {
+      "title": "Görünen ad",
+      "hint": "Adın soyadın",
+      "save": "Bilgileri kaydet",
+      "saved": "Bilgilerin güncellendi.",
+      "failed": "Kaydedilemedi."
+    },
+    "password": {
+      "title": "Şifre değiştir",
+      "hint": "Yeni şifre (en az 6 karakter)",
+      "confirm": "Yeni şifre tekrar",
+      "update": "Şifreyi güncelle",
+      "tooShort": "Şifre en az 6 karakter olmalı.",
+      "mismatch": "Şifreler eşleşmiyor.",
+      "updated": "Şifren güncellendi.",
+      "failed": "Şifre değiştirilemedi."
+    },
+    "privacy": {
+      "title": "Gizlilik izinleri",
+      "body": "Rutin ve sohbet için yapay zekâ işlemesi A3 Biyoteknoloji tarafından yapılır; ayrıntı KVKK ve açık rıza metinlerindedir. Konum ve fotoğraf izinlerini istediğin zaman değiştirebilirsin.",
+      "location": "Hava/UV için kesin konum aktarımı",
+      "photo": "Private alanda cilt fotoğrafı saklama",
+      "save": "İzinleri kaydet",
+      "saved": "Gizlilik tercihlerin kaydedildi.",
+      "failed": "Gizlilik tercihleri kaydedilemedi.",
+      "loadFailed": "Gizlilik tercihleri yüklenemedi."
+    },
+    "stats": {
+      "intro": "Günlük check-in yaptıkça seri ve sadakat burada güncellenir. Hedef: üst üste {{n}} gün check-in alışkanlığı.",
+      "applied": "Check-in kayıtlarında rutini uyguladım dediğin günler: ",
+      "goal": "Hedef seri ({{n}} gün)",
+      "journey": "Rutin yolculuğun: ",
+      "days": "{{n}} gün",
+      "sinceAccept": " (kabul tarihinden)",
+      "noAcceptDate": "Rutin kabul tarihi bir sonraki güncellemeden itibaren otomatik kaydedilir.",
+      "checkin": "Check-in yap",
+      "addPhoto": "Fotoğraf ekle"
+    },
+    "delete": {
+      "title": "Hesabı kalıcı olarak sil",
+      "body": "Profil, rutinler, günlük kayıtlar ve analiz verilerin veritabanından silinir. Cilt fotoğrafların depodan kaldırılır. Bu işlem geri alınamaz; Rebi Plus veya başka üyelik bilgisi ayrıca faturalandırma sisteminde kalıyorsa oradan da iptal etmen gerekebilir.",
+      "confirm": "Onay için tam yaz: ",
+      "phraseMismatch": "Kalıcı silmek için kutuya tam olarak {{phrase}} yazmalısın.",
+      "requestFailed": "İstek başarısız",
+      "failed": "Hesap silinemedi.",
+      "button": "Hesabımı kalıcı sil"
+    },
+    "photos": {
+      "error": "Fotoğraflar yüklenemedi.",
+      "empty": "Henüz kayıtlı fotoğraf yok.",
+      "noPreview": "Önizleme yok",
+      "hint": "Analizde yüklediğin görseller burada tarih sırasıyla listelenir (sunucudaki dosya tarihine göre)."
+    }
+  },
   "mobileCheckin": {
-    "prefilled": "Bugünkü takip kayıtlarından {{n}} cevap dolduruldu. İstersen değiştir."
+    "prefilled": "Bugünkü takip kayıtlarından {{n}} cevap dolduruldu. İstersen değiştir.",
+    "blendNote": "Uyku ve stres cevapların, geçmiş check-in kayıtlarınla kısa süreli harmanlanarak risk özetine girer.",
+    "analyzing": "Analiz ediliyor...",
+    "errors": {
+      "network": "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.",
+      "alreadyDone": "Bugün için check-in zaten yapıldı.",
+      "unexpected": "Beklenmeyen bir hata oluştu."
+    },
+    "result": {
+      "risk": "Risk: {{level}}",
+      "major": "Büyük değişiklikler yapıldı",
+      "changes": "Değişiklikler",
+      "todayRoutine": "Bugünün Rutini"
+    },
+    "sleep": {
+      "question": "Dün gece kaç saat uyudun?",
+      "unit": "{{h}}s"
+    },
+    "stress": {
+      "question": "Bugün stres seviyeni nasıl tanımlarsın?",
+      "l1": "Çok düşük",
+      "l2": "Düşük",
+      "l3": "Orta",
+      "l4": "Yüksek",
+      "l5": "Çok yüksek"
+    },
+    "skin": {
+      "question": "Cildin bugün nasıl hissediyor?",
+      "iyi": { "title": "İyi", "desc": "Normal hissediyorum" },
+      "kuru": { "title": "Kuru", "desc": "Sıkışma, gerginlik" },
+      "yagli": { "title": "Yağlı", "desc": "Parlaklık, yağlanma" },
+      "kirik": { "title": "Hassas", "desc": "Kızarıklık, soyulma" },
+      "irritasyon": { "title": "İrritasyon", "desc": "Yanma, batma" }
+    },
+    "routineQuestion": "Dünkü rutini uyguladın mı?",
+    "concernIntro": {
+      "lead": "Endişene özel:",
+      "body": "Aşağıdaki ek sorular analizindeki ana soruna göre seçilir. Cevap vermezsen atla; geçmiş check-in örüntüleri bazen risk özetine yansır. Uyku ve stres üstte, geçmiş kayıtlarla harmanlanır."
+    },
+    "notes": {
+      "question": "Eklemek istediğin bir şey var mı?",
+      "optional": "(opsiyonel)",
+      "hint": "Dün yeni bir madde denedim, güneşte kaldım..."
+    },
+    "water": {
+      "title": "Bugün içtiğin su (ml)",
+      "help": "Miktarı mililitre (ml) olarak yaz. Hesaplama: 1 bardak = {{glass}} ml (standart su bardağı). Boş bırakırsan uygulama içi su takibi veya analizdeki günlük hedefin kullanılır.",
+      "placeholder": "Örn. {{ml}} (8 bardak)",
+      "note": "Gönderirken değer tam sayı ml olarak kaydedilir (en fazla 8000 ml).",
+      "minus": "−1 bardak (−{{ml}} ml)",
+      "plus": "+1 bardak (+{{ml}} ml)",
+      "half": "+½ bardak (+{{ml}} ml)",
+      "zeroGlasses": "0 bardak",
+      "aboutGlasses": "yaklaşık {{n}} bardak"
+    },
+    "makeup": {
+      "title": "Bugün makyaj",
+      "hint": "İstersen atla; seçmezsen risk hesabında yalnızca profil makyaj sıklığın kullanılır.",
+      "how": "Nasıl temizledin?",
+      "cleanser": "Temizleyici",
+      "double": "Çift aşama",
+      "water": "Sadece su",
+      "wipe": "Misel su / mendil",
+      "none": "Temizlemedim"
+    },
+    "extras": {
+      "acne": "Akneye özel",
+      "aging": "Yaşlanma endişesine özel",
+      "pigmentation": "Lekelenmeye özel",
+      "dryness": "Kuruluğa özel",
+      "sensitivity": "Hassasiyete özel",
+      "active": "Aktif madde",
+      "picked_skin_today": { "q": "Ciltte sivilce/komedon kurcaladın mı?", "d": "Mekanik irritasyon bariyeri zayıflatır; risk özetine yansır." },
+      "high_glycemic_intake_today": { "q": "Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?", "d": "Beyaz un, tatlı, şekerli içecek gibi." },
+      "heavy_dairy_today": { "q": "Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?", "d": "Bazı akne eğilimlerinde tetikleyici olabilir." },
+      "long_sun_exposure_today": { "q": "Uzun süre doğrudan güneş altında kaldın mı?", "d": "30 dk+ açık güneş veya yoğun UV günü." },
+      "spf_applied_today": { "q": "Yüz için güneş koruyucu uyguladın mı?", "d": "Rutindeki SPF adımını tamamladıysan Evet." },
+      "very_dry_environment_today": { "q": "Ev/iş ortamı çok kuru muydu? (ısıtma, klima, rüzgâr)" },
+      "long_hot_shower_today": { "q": "Uzun veya çok sıcak duş aldın mı?", "d": "Bariyer kuruluğunu artırabilir." },
+      "fragrance_new_product_today": { "q": "Yeni parfüm veya yoğun kokulu ürün kullandın mı?" },
+      "tried_new_active_today": { "q": "Yeni güçlü madde veya peeling denedin mi?", "d": "Örn. retinol, AHA/BHA, yüksek konsantrasyon serum." }
+    }
   },
   "mobileSubscribe": {
     "unavailable": "Rebi Plus şu an uygulama içinden satın alınamıyor. Hesabında etkinleştirildiğinde burada görünür.",

@@ -482,6 +482,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       theme: theme,
       maxWidth: 672,
       padding: EdgeInsets.zero,
+      onRefresh: actions?.plan.reload,
       children: [
         StageOverlap(
           overlap: TodayHeader.overlap,

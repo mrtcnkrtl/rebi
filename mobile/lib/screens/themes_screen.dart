@@ -8,9 +8,12 @@ import '../core/subscription.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/brand/palette.dart';
+import '../ui/brand/brand_caps.dart';
 import '../ui/components/appearance_card.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import 'today/today_widgets.dart';
 
 /// Vurgu rengi seçimi + canlı önizleme (web: `pages/Themes.jsx`). Uygulamanın dili tektir; seçilen renk
 /// yalnızca düğmelerde, seçimlerde ve vurgularda görünür.
@@ -34,17 +37,16 @@ class ThemesScreen extends StatelessWidget {
       ctrl.setThemeId(t.id);
     }
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
+      title: i18n.t('themes.title'),
+      subtitle: i18n.t('themes.subtitle'),
+      backTo: '/dashboard/profile',
+      maxWidth: 512,
       children: [
-        Text(i18n.t('themes.title'), style: Brand.serif(30, weight: 500)),
-        const SizedBox(height: 6),
-        Text(i18n.t('themes.subtitle'), style: tx(14, c: Tw.gray500, h: relaxed)),
-        const SizedBox(height: 20),
         AppearanceCard(theme: theme),
         const SizedBox(height: 28),
-        Text('VURGU RENGİ', style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
-        const SizedBox(height: 10),
+        SectionLabel(brandCaps(i18n.t('mobileThemes.accent'), i18n.lang)),
         for (var i = 0; i < themes.length; i += 2) ...[
           if (i > 0) const SizedBox(height: 10),
           IntrinsicHeight(
@@ -73,15 +75,14 @@ class ThemesScreen extends StatelessWidget {
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('Rebi Plus için ', style: tx(12, c: Tw.gray500)),
-              TextLink('abonelik sayfası',
+              Text(i18n.t('mobileThemes.plusPrefix'), style: tx(12, c: Tw.gray500)),
+              TextLink(i18n.t('mobileThemes.plusLink'),
                   onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.fg)),
               Text('.', style: tx(12, c: Tw.gray500)),
             ],
           ),
         const SizedBox(height: 28),
-        Text('ÖNİZLEME', style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
-        const SizedBox(height: 10),
+        SectionLabel(brandCaps(i18n.t('mobileThemes.preview'), i18n.lang)),
         _Preview(theme: theme),
       ],
     );

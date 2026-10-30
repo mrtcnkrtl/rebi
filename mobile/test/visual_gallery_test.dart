@@ -4,7 +4,6 @@ import 'package:flutter/material.dart' show Size, TextField, TextInputAction;
 import 'package:flutter/painting.dart' show debugDisableShadows;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/device_location.dart';
-import 'package:rebi/core/i18n.dart';
 import 'package:rebi/screens/today/today_clock.dart';
 import 'package:rebi/ui/tw.dart';
 
@@ -215,7 +214,7 @@ void main() {
     }
   }
 
-  // Analiz sihirbazı (yeni kullanıcı): adım 1 ve adım 2.
+  // Analiz sihirbazı (yeni kullanıcı): karşılama. Soru ekranlarının görselleri `analyze_flow_test`'te.
   for (final dark in [false, true]) {
     testWidgets('${dark ? 'koyu' : 'acik'} · analiz-adim1', (tester) async {
       Tw.dark = dark;
@@ -223,20 +222,6 @@ void main() {
       try {
         await pumpApp(tester, location: '/dashboard/analyze', backend: FakeBackend(), realFonts: true, size: const Size(390, 1500));
         await shoot(tester, '${dark ? 'koyu' : 'acik'}-analiz-adim1', width: 585);
-      } finally {
-        debugDisableShadows = true;
-      }
-    }, skip: !screenshotsEnabled);
-
-    testWidgets('${dark ? 'koyu' : 'acik'} · analiz-adim2', (tester) async {
-      Tw.dark = dark;
-      debugDisableShadows = false;
-      try {
-        await pumpApp(tester, location: '/dashboard/analyze', backend: FakeBackend(), realFonts: true, size: const Size(390, 2200));
-        await tester.enterText(find.widgetWithText(TextField, '25'), '28');
-        await tapText(tester, Pack(I18n.instance.analyzeWizardPack).s('gender.female'));
-        await tapText(tester, tr('analyze.continue'));
-        await shoot(tester, '${dark ? 'koyu' : 'acik'}-analiz-adim2', width: 585);
       } finally {
         debugDisableShadows = true;
       }
