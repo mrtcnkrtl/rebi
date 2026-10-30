@@ -104,7 +104,8 @@ class _AppShellState extends State<AppShell> {
     final theme = context.watch<ThemeController>().theme;
     final path = widget.location.path;
     final isDashboard = path.startsWith('/dashboard');
-    final isAiSurface = isDashboard || path.startsWith('/rebi');
+    // Oturumsuz `/rebi` bir davettir (yapay zekâ yok): beyan penceresi davetin üstüne binmez, sohbette gösterilir.
+    final isAiSurface = isDashboard || (path.startsWith('/rebi') && user != null);
     final inApp = user != null && isDashboard;
     // Analiz sihirbazı (tam form) tam ekran bir akıştır: alt çubuk ve geri çubuğu yoktur, üst güvenli alanı kendisi uygular.
     final focusFlow = inApp && path == '/dashboard/analyze' && widget.location.queryParameters['photo'] != '1';

@@ -47,11 +47,14 @@ void main() {
       expect(find.text(tr('auth.fullName')), findsNothing);
     });
 
-    testWidgets('landing: Rebi ile konuş anonim sohbete gider', (tester) async {
+    testWidgets('landing: Rebi ile konuş oturumsuzken sohbet davetine gider (yazı alanı yok, giriş/kayıt eylemleri var)', (tester) async {
       final h = await pumpApp(tester, location: '/', loggedIn: false);
       await tapText(tester, tr('landing.ctaChat'));
       expect(h.router.routeInformationProvider.value.uri.path, '/rebi');
-      expect(find.text(tr('chat.emptyTitle')), findsOneWidget);
+      expect(find.text(tr('mobileChat.gate.title')), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text(tr('auth.signup')), findsOneWidget);
+      expect(find.text(tr('auth.login')), findsOneWidget);
     });
 
     testWidgets('landing: tek kahraman, tek ana eylem; kaydırmalı sahne, yüzen kart ve ilerleme göstergesi yoktur', (tester) async {
@@ -412,14 +415,6 @@ void main() {
       expect(accept['ai_processing_accepted'], true);
       expect(accept['document_version'], 'v2');
       expect(find.text(tr('common.consentRecoveryTitle')), findsNothing);
-    });
-
-    testWidgets('anonim sohbet demo kimliğiyle gider', (tester) async {
-      final h = await pumpApp(tester, location: '/rebi', loggedIn: false);
-      await tester.enterText(find.byType(TextField), 'Selam');
-      await tester.testTextInput.receiveAction(TextInputAction.send);
-      await settle(tester);
-      expect(h.backend.bodyOf('/chat_general')['user_id'], '00000000-0000-4000-8000-000000000001');
     });
   });
 

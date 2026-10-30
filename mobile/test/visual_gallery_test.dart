@@ -34,6 +34,7 @@ void main() {
     ('bugun', '/dashboard', true),
     ('rutin', '/dashboard/routine', true),
     ('sohbet', '/dashboard/chat', true),
+    ('sohbet-davet', '/rebi', false),
     ('gecmis', '/dashboard/history', true),
     ('ben', '/dashboard/profile', true),
     ('gorunum', '/dashboard/themes', true),

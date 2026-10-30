@@ -2,6 +2,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import 'motion.dart';
+import 'palette.dart';
+
 /// Yol komutu: `('M', [x, y])`, `('L', [x, y])`, `('C', [x1, y1, x2, y2, x, y])`, `('Q', [x1, y1, x, y])`, `('Z', [])`.
 typedef BrandSeg = (String, List<double>);
 
@@ -130,6 +133,65 @@ class BrandWatermark extends StatelessWidget {
           child: Opacity(
             opacity: opacity,
             child: CustomPaint(size: Size.square(size), painter: const BrandGlyphPainter(1, 1, color: Color(0xFFF7F3EC))),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dev, çok silik "R": sayfa açılırken harf çizilir, sonra köşedeki parıltı belirir (giriş ve oturumsuz sohbet sahnesi).
+/// Tek katman saydamlık (üst üste binen çizgiler koyulaşmasın diye) ve süsleme olduğu için ekran okuyuculardan gizli.
+/// [Positioned] içinde, sahnenin köşesine taşırarak kullanın. "Animasyonları azalt" açıkken çizilmiş hâlde durur.
+class DrawnWatermark extends StatefulWidget {
+  const DrawnWatermark({super.key, required this.size});
+
+  final double size;
+
+  @override
+  State<DrawnWatermark> createState() => _DrawnWatermarkState();
+}
+
+class _DrawnWatermarkState extends State<DrawnWatermark> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (reduceMotion(context)) {
+      _c.value = 1;
+    } else {
+      _c.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: IgnorePointer(
+        child: RepaintBoundary(
+          child: AnimatedBuilder(
+            animation: _c,
+            builder: (context, _) {
+              final draw = Curves.easeInOutCubic.transform(Interval(.05, .78).transform(_c.value));
+              final spark = Curves.easeOutBack.transform(Interval(.74, 1).transform(_c.value));
+              return Opacity(
+                opacity: .075,
+                child: CustomPaint(
+                  size: Size.square(widget.size),
+                  painter: BrandGlyphPainter(draw, spark, color: Brand.cream),
+                ),
+              );
+            },
           ),
         ),
       ),

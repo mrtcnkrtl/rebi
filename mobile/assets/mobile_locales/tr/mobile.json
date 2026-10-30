@@ -673,13 +673,16 @@
       "bodyDay": "Hakkın yarın yenilenir. Bugün rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
       "bodyMonth": "Hakkın ay başında yenilenir. O zamana kadar rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
       "close": "Tamam",
-      "signIn": "Giriş yap",
       "plusOpen": "Rebi Plus’ı aç",
       "plusSwitch": "Plus’a geç",
       "notNow": "Şimdilik kapat",
       "bulletData": "Takip + check-in verisiyle daha tutarlı öneriler",
-      "bulletThemes": "Premium temalar ve yeni özellikler",
-      "signInNote": "Rutin tarafına geçmek istersen zaten kayıt/giriş gerekiyor."
+      "bulletThemes": "Premium temalar ve yeni özellikler"
+    },
+    "gate": {
+      "title": "Önce tanışalım.",
+      "hello": "Merhaba, ben Rebi. Cildini ve rutinini tanırsam herkese göre değil, sana göre yanıt veririm.",
+      "why": "Bunun için ücretsiz bir hesap yeter: konuşmaların sana ait kalır, her cihazında kaldığın yerden devam edersin."
     },
     "contextLabel": "Rebi bugünü biliyor",
     "context": {

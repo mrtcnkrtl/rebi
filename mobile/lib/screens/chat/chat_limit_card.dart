@@ -17,9 +17,7 @@ class ChatLimitCard extends StatelessWidget {
     required this.theme,
     required this.month,
     required this.offer,
-    required this.loggedIn,
     required this.onClose,
-    required this.onSignIn,
     required this.onPlus,
   });
 
@@ -28,9 +26,7 @@ class ChatLimitCard extends StatelessWidget {
   /// true: aylık Plus kotası doldu; false: günlük ücretsiz hak doldu.
   final bool month;
   final bool offer;
-  final bool loggedIn;
   final VoidCallback onClose;
-  final VoidCallback onSignIn;
   final VoidCallback onPlus;
 
   @override
@@ -128,17 +124,6 @@ class ChatLimitCard extends StatelessWidget {
           label: label,
         );
 
-    if (!loggedIn) {
-      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        primary(i18n.t('mobileChat.limit.signIn'), LucideIcons.lock, onSignIn),
-        const SizedBox(height: 8),
-        offer
-            ? secondary(i18n.t('mobileChat.limit.plusSwitch'), onPlus, icon: LucideIcons.crown)
-            : secondary(i18n.t('mobileChat.limit.close'), onClose),
-        const SizedBox(height: 8),
-        Text(i18n.t('mobileChat.limit.signInNote'), textAlign: TextAlign.center, style: tx(11, c: Tw.gray500, h: snug)),
-      ]);
-    }
     if (offer) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         primary(i18n.t('mobileChat.limit.plusOpen'), LucideIcons.crown, onPlus),

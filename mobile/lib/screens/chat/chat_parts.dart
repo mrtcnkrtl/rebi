@@ -29,6 +29,8 @@ class ChatStage extends StatelessWidget {
     this.onBack,
     this.contextItems = const [],
     this.onContextTap,
+    this.introducing = false,
+    this.heroLift = 0,
   });
 
   final RebiTheme theme;
@@ -52,6 +54,12 @@ class ChatStage extends StatelessWidget {
   final List<ChatContextItem> contextItems;
   final VoidCallback? onContextTap;
 
+  /// Oturumsuz karşılama ("Önce tanışalım"): sağdaki silik "R" sabit durmaz, sayfa açılırken kendini çizer (girişin sahnesiyle aynı).
+  final bool introducing;
+
+  /// Uzun ekranda sahneyi yükseltir (girişteki gibi başlık alta oturur, "R" imzası büyür): davetin altında boş kalan yer sahnenin olur.
+  final double heroLift;
+
   @override
   Widget build(BuildContext context) {
     final i18n = I18n.instance;
@@ -59,14 +67,14 @@ class ChatStage extends StatelessWidget {
     final cream = Brand.cream;
     final hero = Padding(
       key: const ValueKey('hero'),
-      padding: const EdgeInsets.only(top: 14, right: 12),
+      padding: EdgeInsets.only(top: 14 + heroLift, right: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Reveal(
             delay: const Duration(milliseconds: 80),
             offset: const Offset(0, 12),
-            child: Text(title, style: Brand.serif(31, color: cream, h: 1.1, ls: -.9)),
+            child: Semantics(header: true, child: Text(title, style: Brand.serif(31, color: cream, h: 1.1, ls: -.9))),
           ),
           if (contextItems.isNotEmpty)
             ChatContextStrip(items: contextItems, theme: theme, onTap: onContextTap ?? () {}, padding: const EdgeInsets.only(top: 6, bottom: 2)),
@@ -81,7 +89,12 @@ class ChatStage extends StatelessWidget {
           color: theme.stage,
           child: Stack(
             children: [
-              if (expanded) const Positioned(right: -56, top: -4, child: BrandWatermark(size: 210)),
+              if (expanded)
+                Positioned(
+                  right: -56 - heroLift * .25,
+                  top: -4,
+                  child: introducing ? DrawnWatermark(size: 210 + heroLift * .6) : const BrandWatermark(size: 210),
+                ),
               Padding(
                 padding: EdgeInsets.fromLTRB(20, top + 6, 8, 18),
                 // Üst çubuk ekranın değil içeriğin yeridir: sistem yazısı %200 olsa da en çok %130 büyür.

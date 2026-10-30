@@ -197,6 +197,7 @@ void main() {
       await pumpApp(t, location: '/dashboard/analyze');
       await analyzeWalkTo(t, 'summary');
     }),
+    ('Sohbet · oturumsuz davet', (t) => pumpApp(t, location: '/rebi', loggedIn: false)),
     ('Giriş', (t) => pumpApp(t, location: '/auth', loggedIn: false)),
     ('Giriş · e-posta kodu', (t) async {
       await pumpApp(t, location: '/auth?mode=signup', loggedIn: false, authController: FakeAuth());

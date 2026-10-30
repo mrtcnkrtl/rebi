@@ -530,7 +530,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                 physics: const ClampingScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(
-                    child: _AuthStage(modeKey: mode, compact: signup || verify, title: title, subtitle: subtitle, onBack: () => context.go('/')),
+                    child: _AuthStage(modeKey: mode, compact: signup || verify, title: title, subtitle: subtitle, onBack: () => context.canPop() ? context.pop() : context.go('/')),
                   ),
                   SliverToBoxAdapter(
                     child: Reveal(
@@ -862,7 +862,7 @@ class _AuthStage extends StatelessWidget {
     final extra = compact ? 0.0 : (MediaQuery.sizeOf(context).height * .40 - natural).clamp(0.0, 150.0);
     return Stack(
       children: [
-        const Positioned(right: -90, top: -20, child: _RWatermark(size: 300)),
+        const Positioned(right: -90, top: -20, child: DrawnWatermark(size: 300)),
         Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -898,64 +898,6 @@ class _AuthStage extends StatelessWidget {
           ],
         ),
       ],
-    );
-  }
-}
-
-/// Dev, çok silik "R": sayfa açılırken harf çizilir, sonra köşedeki parıltı belirir. Tek katman saydamlık
-/// (üst üste binen çizgiler koyulaşmasın diye) ve süsleme olduğu için ekran okuyuculardan gizli.
-class _RWatermark extends StatefulWidget {
-  const _RWatermark({required this.size});
-
-  final double size;
-
-  @override
-  State<_RWatermark> createState() => _RWatermarkState();
-}
-
-class _RWatermarkState extends State<_RWatermark> with SingleTickerProviderStateMixin {
-  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1800));
-  bool _started = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_started) return;
-    _started = true;
-    if (reduceMotion(context)) {
-      _c.value = 1;
-    } else {
-      _c.forward();
-    }
-  }
-
-  @override
-  void dispose() {
-    _c.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ExcludeSemantics(
-      child: IgnorePointer(
-        child: RepaintBoundary(
-          child: AnimatedBuilder(
-            animation: _c,
-            builder: (context, _) {
-              final draw = Curves.easeInOutCubic.transform(Interval(.05, .78).transform(_c.value));
-              final spark = Curves.easeOutBack.transform(Interval(.74, 1).transform(_c.value));
-              return Opacity(
-                opacity: .075,
-                child: CustomPaint(
-                  size: Size.square(widget.size),
-                  painter: BrandGlyphPainter(draw, spark, color: Brand.cream),
-                ),
-              );
-            },
-          ),
-        ),
-      ),
     );
   }
 }

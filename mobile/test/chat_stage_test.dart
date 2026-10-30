@@ -17,7 +17,7 @@ void main() {
 
   ChatStage stage(WidgetTester tester) => tester.widget<ChatStage>(find.byType(ChatStage));
 
-  group('oturumsuz sohbet (/rebi)', () {
+  group('oturumsuz davet (/rebi)', () {
     testWidgets('kabuğun logo çubuğu yoktur; geri düğmesi karşılamaya döner', (tester) async {
       final h = await pumpApp(tester, location: '/rebi', loggedIn: false);
       expect(find.byType(ChatStage), findsOneWidget);
@@ -27,9 +27,17 @@ void main() {
       await settle(tester, 8);
       expect(h.router.routeInformationProvider.value.uri.path, '/');
     });
+  });
+
+  group('oturumlu sohbet (/dashboard/chat)', () {
+    testWidgets('geri düğmesi yoktur (alt sekme)', (tester) async {
+      await pumpApp(tester, location: '/dashboard/chat');
+      expect(find.byType(ChatStage), findsOneWidget);
+      expect(find.byIcon(LucideIcons.chevronLeft), findsNothing);
+    });
 
     testWidgets('boşken büyük sahne karşılama sorusunu taşır; ilk mesajla ince çubuğa katlanır, "Temizle" belirir', (tester) async {
-      await pumpApp(tester, location: '/rebi', loggedIn: false);
+      await pumpApp(tester, location: '/dashboard/chat');
       expect(stage(tester).expanded, isTrue);
       expect(find.text(tr('chat.emptyTitle')), findsOneWidget);
       expect(find.text(tr('chat.clear')), findsNothing, reason: 'boş sohbette silinecek bir şey yok');
@@ -47,7 +55,7 @@ void main() {
     testWidgets('yanıt beklenirken imza "düşünüyor" durumundadır, yanıt gelince durur', (tester) async {
       final gate = Completer<void>();
       final backend = FakeBackend()..chatGate = gate;
-      await pumpApp(tester, location: '/rebi', loggedIn: false, backend: backend);
+      await pumpApp(tester, location: '/dashboard/chat', backend: backend);
       await tester.enterText(find.byType(TextField), 'Merhaba');
       await tester.testTextInput.receiveAction(TextInputAction.send);
       await tester.pump(const Duration(milliseconds: 300));
@@ -61,24 +69,16 @@ void main() {
     });
   });
 
-  group('oturumlu sohbet (/dashboard/chat)', () {
-    testWidgets('geri düğmesi yoktur (alt sekme)', (tester) async {
-      await pumpApp(tester, location: '/dashboard/chat');
-      expect(find.byType(ChatStage), findsOneWidget);
-      expect(find.byIcon(LucideIcons.chevronLeft), findsNothing);
-    });
-  });
-
   group('sığmayan durumlar', () {
     testWidgets('dar yükseklikte (320×568) sahne ince kalır; karşılama sorusu kaydırılabilir gövdede, tam bir kez görünür', (tester) async {
-      await pumpApp(tester, location: '/rebi', loggedIn: false, size: const Size(320, 568));
+      await pumpApp(tester, location: '/dashboard/chat', size: const Size(320, 568));
       expect(stage(tester).expanded, isFalse);
       expect(find.text(tr('chat.emptyTitle')), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
 
     testWidgets('klavye açılınca kota notu ve yapay zekâ beyanı gizlenir, kapanınca geri gelir', (tester) async {
-      await pumpApp(tester, location: '/rebi', loggedIn: false);
+      await pumpApp(tester, location: '/dashboard/chat');
       expect(find.text(tr('common.aiDisclaimer')), findsOneWidget);
 
       // Cihaz oranı 3: 300 mantıksal piksellik klavye.

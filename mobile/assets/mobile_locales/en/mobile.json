@@ -673,13 +673,16 @@
       "bodyDay": "Your allowance renews tomorrow. You can keep using your routine, tracking and check-in today.",
       "bodyMonth": "Your allowance renews at the start of the month. Until then you can keep using your routine, tracking and check-in.",
       "close": "OK",
-      "signIn": "Sign in",
       "plusOpen": "Open Rebi Plus",
       "plusSwitch": "Go Plus",
       "notNow": "Close for now",
       "bulletData": "More consistent advice from your tracking and check-ins",
-      "bulletThemes": "Premium themes and new features",
-      "signInNote": "You'll need an account to use the routine side anyway."
+      "bulletThemes": "Premium themes and new features"
+    },
+    "gate": {
+      "title": "Let's meet first.",
+      "hello": "Hi, I'm Rebi. Once I know your skin and your routine, my answers are made for you, not for everyone.",
+      "why": "All it takes is a free account: your conversations stay yours and pick up where you left off on any device."
     },
     "contextLabel": "Rebi knows your day",
     "context": {

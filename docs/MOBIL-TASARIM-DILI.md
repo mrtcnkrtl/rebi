@@ -151,10 +151,10 @@ göre üç karar → gün içi kayıtlar → "Daha fazlası"**; altta yüzen "Ya
 
 ## Sohbet ("Rebi ile konuş")
 
-Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır. Karşılamadan açılan oturumsuz sayfa (`/rebi`) ve oturumlu sekme
-(`/dashboard/chat`) aynı ekrandır; dil de aynıdır: **tema derin tonunda üst sahne + krem zemin**.
+Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır. Oturumlu sekme (`/dashboard/chat`) ve oturumluyken `/rebi` aynı ekrandır; dil
+de aynıdır: **tema derin tonunda üst sahne + krem zemin**. Oturumsuz `/rebi` bir davettir (aşağıda).
 
-- **Üst sahne (`ChatStage`).** Tam genişlikte, krem yazılı. Soldan sağa: geri düğmesi (yalnız oturumsuzken; karşılamaya döner),
+- **Üst sahne (`ChatStage`).** Tam genişlikte, krem yazılı. Soldan sağa:
   Rebi imzası (marka karosu + Fraunces "Rebi"; **yanıt hazırlanırken karonun çevresinde iki halka sırayla yayılır**), kota hapı
   ve "Temizle" (yalnız konuşma varken). Kabuğun ayrı logo/menü çubuğu yoktur (çift başlık olmasın); kabuk `/rebi`'de çubuk
   çizmez, `/dashboard/chat`'te üst güvenli alanı sayfaya bırakır.
@@ -170,6 +170,27 @@ Sohbet "yazı kutusu" değil, **Rebi ile konuşma**dır. Karşılamadan açılan
   dolunca sohbetin altında bilgi kartı çıkar, giriş alanı kilitlenir. Rutin adımından "Rebi'ye sor" sohbeti hazır soruyla açar.
 - **Yazı alanı** yüzen yuvarlak bir dock'tur (alan + gönder düğmesi tek yüzeyde; gönder düğmesi yazı varken yaylı büyür).
   Klavye açılınca kota notu ve yapay zekâ beyanı gizlenir (pencere metrikleri dinlenir; `MediaQuery` gövdede klavyeyi vermez).
+
+### Oturumsuz sohbet: "Önce tanışalım" (`ChatGate`)
+
+Sohbet bir hesap ister (sunucu yapay zekâ rızasını ve kullanıcının profilini arar; kota ve geçmiş hesaba bağlıdır). Bu yüzden
+oturum yokken `/rebi` bir sohbet değil **davettir** ve ekran hiç istek atmaz (demo kimliğiyle kota/geçmiş sorgusu da yoktur).
+Karşılamadaki "Rebi ile konuş" buraya açılır; oturumluyken aynı ekran sohbettir (yazı alanı, öneriler, kota; değişmedi).
+
+- **Yazı alanı çekilir, yerine davet gelir.** Yazılamayan bir alan göstermek ya da dokunuşu sessizce yutmak yalan söylerdi;
+  dokununca açılan "giriş yap" penceresi ise merakı cezalandırırdı. Öneri soruları da yoktur (dokununca gönderilmeyecek bir
+  şeyi öneri diye sunmayız). Dock aynı yerde, aynı yüzey dilindedir.
+- **Sahne girişin sahnesidir.** `ChatStage(introducing)`: derin orman yeşili, geri + Rebi imzası, Fraunces "Önce tanışalım."
+  ve sağda sayfa açılırken **kendini çizen** dev "R" (`DrawnWatermark`, girişle ortak). Uzun ekranda sahne yükselir, başlık
+  alta oturur (`heroLift`; girişteki gibi), boşluk sahnenin olur. Kısa ekranda (<700 dp) ya da büyük yazıda sahne ince kalır, başlık
+  gövdenin başına iner.
+- **Neden hesap gerektiği Rebi'nin ağzından, iki kısa mesajla söylenir** (özellik listesi, rozet, ikon yok): kendini tanıtır,
+  cildini ve rutinini tanırsa sana göre yanıt vereceğini; ücretsiz bir hesapla konuşmanın sana ait kaldığını ve cihazlar arasında
+  sürdüğünü. Mesajlar sırayla belirir, eylemler en son (animasyonları azalt açıkken hepsi ilk karede).
+- **İki net eylem:** dolu "Kayıt ol" (karşılamadan gelen çoğu kişinin hesabı yoktur) ve aynı genişlikte çerçeveli "Giriş yap"; altında
+  tek satır güven notu (KVKK). İkisi de girişe bir **üst sayfa olarak** açılır (`push`, `?next=/dashboard/chat`): geri (düğme, kaydırma
+  ya da Android geri tuşu) kullanıcıyı davette bırakır; giriş/kayıt tamamlanınca sekmeli sohbete (`/dashboard/chat`) geçilir.
+  Karşılamadan doğrudan girişe gidildiğinde altında sohbet yoktur ve geri yine karşılamadır.
 
 ## Rutin sekmesi
 

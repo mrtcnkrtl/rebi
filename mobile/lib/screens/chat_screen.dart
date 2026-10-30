@@ -23,6 +23,7 @@ import '../ui/widgets/common.dart';
 import '../ui/brand/motion.dart';
 import '../ui/brand/palette.dart';
 import 'chat/chat_composer.dart';
+import 'chat/chat_gate.dart';
 import 'chat/chat_limit_card.dart';
 import 'chat/chat_parts.dart';
 
@@ -75,7 +76,10 @@ class _Usage {
   }
 }
 
-/// Rebi sohbeti (web: `pages/Chat.jsx`). `/rebi` (anonim) ve `/dashboard/chat` aynı ekranı kullanır.
+/// Rebi sohbeti (web: `pages/Chat.jsx`). `/rebi` (karşılamadan açılan) ve `/dashboard/chat` (sekme) aynı ekranı kullanır.
+///
+/// Sohbet bir hesap ister (sunucu `/chat_general` için oturum ve yapay zekâ rızası arar). Oturum yokken ekran hiç istek
+/// atmaz ve yazı alanı yerine bir davet ([ChatGate]: Kayıt ol · Giriş yap) gösterir; oturum açılınca aynı ekran sohbete döner.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, this.initialPrompt});
 
@@ -180,6 +184,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
   void _loadForUser() {
     final gen = ++_generation;
+    // Oturumsuz davette geçmiş, kota ve öneri yok: sunucuya (demo kimliğiyle) boşuna istek atılmaz.
+    if (_auth.user == null) return;
     _loadServerHistory(gen);
     _loadUsage(gen);
     _loadSuggestions(gen);
@@ -387,26 +393,24 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final theme = context.watch<ThemeController>().theme;
     final user = context.watch<AuthController>().user;
     final hasConversation = _history.any((m) => m['role'] == 'user');
-    final subscribeHref = user != null ? '/dashboard/subscribe' : '/auth?next=${Uri.encodeComponent('/dashboard/subscribe')}';
     final wide = MediaQuery.of(context).size.width >= 640;
+    if (user == null) return _gate(i18n, theme);
 
     final routineItems = _routineSnap?['routine'];
     final routineHasItems = routineItems is List && routineItems.isNotEmpty;
-    final routineCorner = user == null
-        ? null
-        : routineHasItems
-            ? (
-                i18n.t('chat.cornerRoutineReadyTitle'),
-                _routineAccepted ? i18n.t('chat.cornerRoutineAcceptedBody') : i18n.t('chat.cornerRoutineDraftBody'),
-                '/dashboard',
-                i18n.t('chat.cornerRoutineCta'),
-              )
-            : (
-                i18n.t('chat.cornerRoutineMissingTitle'),
-                i18n.t('chat.cornerRoutineMissingBody'),
-                '/dashboard/analyze',
-                i18n.t('chat.cornerRoutineMissingCta'),
-              );
+    final routineCorner = routineHasItems
+        ? (
+            i18n.t('chat.cornerRoutineReadyTitle'),
+            _routineAccepted ? i18n.t('chat.cornerRoutineAcceptedBody') : i18n.t('chat.cornerRoutineDraftBody'),
+            '/dashboard',
+            i18n.t('chat.cornerRoutineCta'),
+          )
+        : (
+            i18n.t('chat.cornerRoutineMissingTitle'),
+            i18n.t('chat.cornerRoutineMissingBody'),
+            '/dashboard/analyze',
+            i18n.t('chat.cornerRoutineMissingCta'),
+          );
 
     final u = _usage;
     String? usageLabel;
@@ -428,7 +432,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       theme: theme,
       child: Column(
         children: [
-          // Üst sahne tam genişlikte; kabuğun logo çubuğu yoktur (oturumsuzken `/rebi` sayfanın kendisi çizer).
+          // Üst sahne tam genişlikte; kabuğun logo çubuğu yoktur.
           ChatStage(
             theme: theme,
             title: title,
@@ -437,7 +441,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
             onClear: _clearChat,
             expanded: bigStage,
             thinking: _loading,
-            onBack: user == null ? () => context.go('/') : null,
             contextItems: chatContext(_plan, i18n),
             onContextTap: () => context.go('/dashboard'),
           ),
@@ -450,7 +453,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                     children: [
                       Expanded(child: hasConversation ? _messages(i18n, theme) : _empty(i18n, theme, title: tight && !_keyboardOpen ? title : null)),
                       if (_paywallOpen)
-                        _limitCard(theme, user != null, subscribeHref)
+                        _limitCard(theme)
                       else if (hasConversation)
                         _suggestionStrip(i18n, theme),
                       ChatComposer(
@@ -467,11 +470,55 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   ),
                 ),
                 // Geniş ekranda (tablet) rutin kenar çekmecesi.
-                if (routineCorner != null && wide) ...[
+                if (wide) ...[
                   Positioned(top: 24, left: 0, child: _edgeHandle(i18n, theme, routineCorner.$1)),
                   if (_edgeOpen) Positioned.fill(child: _edgePanel(i18n, theme, routineCorner)),
                 ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Girişe ya da kayda bir üst sayfa olarak gider: geri dönünce kullanıcı bu davette kalır, girişten sonra sekmeli sohbete geçer.
+  void _openAuth({required bool signup}) {
+    final next = Uri.encodeComponent('/dashboard/chat');
+    context.push('/auth?next=$next${signup ? '&mode=signup' : ''}');
+  }
+
+  /// Oturumsuz görünüm: üst sahne ("Önce tanışalım") + davet. Sahne ince kalırsa (kısa ekran, büyük yazı) başlık gövdeye iner.
+  Widget _gate(I18n i18n, RebiTheme theme) {
+    final tight = MediaQuery.sizeOf(context).height < 700 || MediaQuery.textScalerOf(context).scale(16) / 16 > 1.3;
+    final title = i18n.t('mobileChat.gate.title');
+    // Uzun ekranda sahne yükselir (girişin sahnesi gibi): davet altta, mesajlar ortada; arada boş şerit kalmaz.
+    final lift = tight ? 0.0 : ((MediaQuery.sizeOf(context).height - 700) * .9).clamp(0.0, 130.0);
+    return ThemedBackground(
+      theme: theme,
+      child: Column(
+        children: [
+          ChatStage(
+            theme: theme,
+            title: title,
+            usageLabel: null,
+            canClear: false,
+            onClear: () {},
+            expanded: !tight,
+            thinking: false,
+            introducing: true,
+            heroLift: lift,
+            onBack: () => context.go('/'),
+          ),
+          Expanded(
+            child: CenteredBox(
+              maxWidth: 672,
+              child: ChatGate(
+                theme: theme,
+                title: tight ? title : null,
+                onSignUp: () => _openAuth(signup: true),
+                onSignIn: () => _openAuth(signup: false),
+              ),
             ),
           ),
         ],
@@ -489,7 +536,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         children: [
           if (plusPurchasable) ...[
             GestureDetector(
-              onTap: () => context.go(_auth.user != null ? '/dashboard/subscribe' : '/auth?next=${Uri.encodeComponent('/dashboard/subscribe')}'),
+              onTap: () => context.go('/dashboard/subscribe'),
               child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(11, w: 6, c: theme.fg)),
             ),
             Text(' · ', style: tx(11, c: Tw.gray500)),
@@ -515,7 +562,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   /// Sohbet hakkı doldu kartı; sohbetin altında, kısa ekranda kayar.
-  Widget _limitCard(RebiTheme theme, bool loggedIn, String subscribeHref) {
+  Widget _limitCard(RebiTheme theme) {
     return Flexible(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -523,10 +570,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           theme: theme,
           month: _paywallKind == 'plus_monthly',
           offer: plusPurchasable,
-          loggedIn: loggedIn,
           onClose: () => setState(() => _paywallOpen = false),
-          onSignIn: () => context.go('/auth?next=${Uri.encodeComponent('/dashboard/chat')}'),
-          onPlus: () => context.go(loggedIn ? '/dashboard/subscribe' : subscribeHref),
+          onPlus: () => context.go('/dashboard/subscribe'),
         ),
       ),
     );
