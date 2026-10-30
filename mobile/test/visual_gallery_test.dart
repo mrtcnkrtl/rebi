@@ -44,6 +44,7 @@ void main() {
     ('analiz', '/dashboard/analyze', true),
     ('karsilama', '/', false),
     ('giris', '/auth', false),
+    ('yasal', '/kvkk', false),
   ];
 
   for (final dark in [false, true]) {

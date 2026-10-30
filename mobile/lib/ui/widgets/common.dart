@@ -528,16 +528,22 @@ class ChoiceChipBox extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           // Dokunma alanı en az 48 dp.
           constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-          alignment: center ? Alignment.center : Alignment.centerLeft,
           padding: padding,
           decoration: BoxDecoration(
             color: selected ? activeBg : inactiveBg,
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: selected ? activeBorder : Tw.gray200, width: 1.5),
           ),
-          child: leading == null
-              ? text
-              : Row(mainAxisSize: MainAxisSize.min, children: [leading!, const SizedBox(width: 6), Flexible(child: text)]),
+          // `alignment` kullanılmaz: sınırlı genişlikte kutuyu tam genişliğe şişirir ve Wrap içindeki çipler satır doldururdu.
+          // Ortalı çip (Expanded içinde) genişler; ortasız çip içeriği kadar olur, Column(stretch) içinde yine tam genişliktedir.
+          child: Align(
+            alignment: center ? Alignment.center : Alignment.centerLeft,
+            widthFactor: center ? null : 1,
+            heightFactor: 1,
+            child: leading == null
+                ? text
+                : Row(mainAxisSize: MainAxisSize.min, children: [leading!, const SizedBox(width: 6), Flexible(child: text)]),
+          ),
         ),
       ),
     );

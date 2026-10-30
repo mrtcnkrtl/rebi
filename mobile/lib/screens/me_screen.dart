@@ -9,6 +9,7 @@ import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/brand/palette.dart';
 import '../ui/components/appearance_card.dart';
+import '../ui/components/language_sheet.dart';
 import '../ui/shell/app_shell.dart';
 import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
@@ -82,8 +83,8 @@ class MeScreen extends StatelessWidget {
         ]),
         const SizedBox(height: 28),
         SectionLabel(i18n.t('mobileMe.groups.more')),
-        if (plus || plusPurchasable) ...[
-          MenuGroup(rows: [
+        MenuGroup(rows: [
+          if (plus || plusPurchasable)
             MenuRow(
               icon: LucideIcons.crown,
               color: Tw.amber600,
@@ -91,14 +92,14 @@ class MeScreen extends StatelessWidget {
               hint: i18n.t(plus ? 'mobileMe.plus.active' : 'mobileMe.plus.hint'),
               onTap: () => context.go('/dashboard/subscribe'),
             ),
-          ]),
-          const SizedBox(height: 10),
-        ],
-        RCard(
-          padding: const EdgeInsets.all(14),
-          radius: 22,
-          child: const Align(alignment: Alignment.centerLeft, child: LanguageSelect()),
-        ),
+          MenuRow(
+            icon: LucideIcons.languages,
+            color: theme.primary,
+            title: i18n.t('lang.label'),
+            hint: languageLabels[i18n.lang] ?? i18n.lang,
+            onTap: () => showLanguageSheet(context),
+          ),
+        ]),
         const SizedBox(height: 28),
         SecondaryButton(
           onPressed: () => signOutAndGoHome(context),

@@ -31,6 +31,7 @@ class PageStage extends StatelessWidget {
     this.badge,
     this.subtitle,
     this.onBack,
+    this.backLabel,
     this.trailing,
     this.leading,
     this.footer,
@@ -52,6 +53,9 @@ class PageStage extends StatelessWidget {
 
   /// Verilirse sol üstte "Geri" düğmesi çizilir (alt sayfalar). Sekme köklerinde null.
   final VoidCallback? onBack;
+
+  /// "Geri" yerine yazılacak metin (ör. "Girişe dön"); verilmezse `mobileNav.back`.
+  final String? backLabel;
 
   /// Sağ üstteki öğe (ör. durum hapı).
   final Widget? trailing;
@@ -89,7 +93,7 @@ class PageStage extends StatelessWidget {
                           height: 52,
                           child: Row(
                             children: [
-                              if (onBack != null) _BackLink(onTap: onBack!),
+                              if (onBack != null) _BackLink(onTap: onBack!, label: backLabel),
                               const Spacer(),
                               ?trailing,
                             ],
@@ -217,13 +221,14 @@ class _Segment extends StatelessWidget {
 
 /// Sahnenin "Geri" bağlantısı: krem, çizgi ok + yazı; dokunma alanı en az 48 dp.
 class _BackLink extends StatelessWidget {
-  const _BackLink({required this.onTap});
+  const _BackLink({required this.onTap, this.label});
 
   final VoidCallback onTap;
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
-    final label = I18n.instance.t('mobileNav.back');
+    final label = this.label ?? I18n.instance.t('mobileNav.back');
     return Semantics(
       button: true,
       label: label,
@@ -263,6 +268,7 @@ class StagePage extends StatelessWidget {
     this.badge,
     this.subtitle,
     this.backTo,
+    this.backLabel,
     this.trailing,
     this.leading,
     this.footer,
@@ -281,6 +287,7 @@ class StagePage extends StatelessWidget {
 
   /// Verilirse sahnede "Geri" çıkar: geçmişte sayfa varsa ona, yoksa bu yola döner (alt sayfalar).
   final String? backTo;
+  final String? backLabel;
   final Widget? trailing;
   final Widget? leading;
   final Widget? footer;
@@ -308,6 +315,7 @@ class StagePage extends StatelessWidget {
             badge: badge,
             subtitle: subtitle,
             onBack: back == null ? null : () => popOrGo(context, back),
+            backLabel: backLabel,
             trailing: trailing,
             leading: leading,
             footer: footer,

@@ -974,13 +974,17 @@ class _CheckInScreenState extends State<CheckInScreen> {
             onTap: onTap,
             child: Container(
               constraints: const BoxConstraints(minHeight: 48),
-              alignment: Alignment.center,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: primary ? theme.primary : Tw.gray200),
               ),
-              child: Text(label, style: tx(13, w: 6, c: primary ? Colors.white : Tw.gray700)),
+              // Wrap içinde içeriği kadar geniş olsun (alignment kutuyu tam genişliğe şişirirdi).
+              child: Align(
+                widthFactor: 1,
+                heightFactor: 1,
+                child: Text(label, style: tx(13, w: 6, c: primary ? Colors.white : Tw.gray700)),
+              ),
             ),
           ),
         );
