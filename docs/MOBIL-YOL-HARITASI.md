@@ -324,6 +324,10 @@ Check-in hâlâ "düz başlık + geri çubuğu" idi ve bir kısmı İngilizce ar
 | H5 | Hesap ekranındaki ~40 sabit Türkçe metin `mobileAccount.*`; Görünüm ekranındaki 4 metin `mobileThemes.*`. | İngilizce arayüz artık bu ekranlarda İngilizce. |
 | H6 | Aşağı çekip yenileme (`PullToRefresh`): Bugün (plan), Geçmiş, Rafım. | Hafif titreşim. |
 | H7 | Sohbet 429 (kullanıcı başına hız sınırı) için ayrı, sakin mesaj (`ChatFailure.rateLimited`). | Backend limiti zaten 20/dk + 200/sa. |
+| H8 | Hesap ekranı `screens/account/` altında 7 karta bölündü (özet, rutin özeti, ad, şifre, gizlilik, fotoğraflar, hesabı sil); `account_screen_test`. **Hata düzeltildi:** hesap silinince planlı yerel bildirimler ve cihaz kaydı kalıyordu. | Üyelik tarihi artık uygulama dilinde. |
+| H9 | Check-in `screens/checkin/` altına bölündü (1197 → 460 satır); giriş ekranının yapı taşları `screens/auth/`. Sabit alt çubuk: Check-in gönder (kapalıysa nedenini söyler), Hatırlatıcıları kaydet (yalnız değişiklik varken). | Davranış aynı. |
+| H10 | `LoadingScreen` (rutin üretimi) sahne dilinde; tema adları, önizleme ve genel hata ekranı TR+EN; Geçmiş özeti büyük sayılı karolar; çıkış onayı; dil = satır + alt sayfa; `apiErrorMessage` (5xx'te ham ayrıntı yok). | |
+| H11 | Ortak `StageSurface`; solarak geçiş (`_fadeThroughPage`); klavye açılınca alt gezinme gizlenir; sahne metni tablette gövdeyle hizalı; `ChoiceChipBox` Wrap'te şişmesi ve kapalı `SecondaryButton` kontrastı düzeltildi. | Erişilebilirlik 52 → 88 senaryo; testler 1039. |
 
 ---
 
