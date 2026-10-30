@@ -646,13 +646,29 @@
     },
     "plusBadge": "Plus",
     "logout": "Çıkış yap",
+    "logoutConfirm": {
+      "title": "Çıkış yapılsın mı?",
+      "body": "Hatırlatıcıların bu cihazda durur. İstediğin zaman tekrar giriş yapabilirsin.",
+      "confirm": "Evet, çıkış yap",
+      "cancel": "Vazgeç"
+    },
     "noName": "Rebi kullanıcısı",
     "shelf": {
       "hint": "Biten ürünlerini ve yenilerini takip et"
     }
   },
   "mobileCommon": {
-    "loading": "Yükleniyor"
+    "loading": "Yükleniyor",
+    "errors": {
+      "noResponse": "Sunucudan anlamlı bir yanıt alınamadı.",
+      "incomplete": "İşlem tamamlanamadı. Bir süre sonra tekrar dene.",
+      "session": "Oturum süren dolmuş olabilir. Çıkış yapıp tekrar giriş yapmayı dene.",
+      "rateLimited": "Çok hızlı gidiyoruz. Birkaç saniye bekleyip tekrar dene.",
+      "busy": "Sunucu şu an yoğun. Biraz sonra tekrar dene.",
+      "server": "Sunucuda bir sorun oluştu. Biraz sonra tekrar dene.",
+      "profileSave": "Profil kaydedilemedi.",
+      "privacy": "Gizlilik tercihi işlemi başarısız."
+    }
   },
   "mobileChat": {
     "suggestionsTitle": "Bugün için önerilen sorular",

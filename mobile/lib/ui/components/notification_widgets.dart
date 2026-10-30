@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -86,42 +85,6 @@ class _NotificationPromptCardState extends State<NotificationPromptCard> {
                 ),
               ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Hatırlatıcı saatleri ekranına giden satır (Profil).
-class ReminderSettingsLink extends StatelessWidget {
-  const ReminderSettingsLink({super.key, required this.theme});
-
-  final RebiTheme theme;
-
-  @override
-  Widget build(BuildContext context) {
-    final i18n = context.i18n;
-    return RCard(
-      padding: EdgeInsets.zero,
-      onTap: () => context.push('/dashboard/reminders'),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Icon(LucideIcons.clock, size: 16, color: theme.primary),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(i18n.t('mobileReminders.open'), style: tx(14, w: 7, c: Tw.gray800)),
-                  const SizedBox(height: 2),
-                  Text(i18n.t('mobileReminders.openHint'), style: tx(12, c: Tw.gray500, h: relaxed)),
-                ],
-              ),
-            ),
-            Icon(LucideIcons.chevronRight, size: 18, color: Tw.gray400),
           ],
         ),
       ),

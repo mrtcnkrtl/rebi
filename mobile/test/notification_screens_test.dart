@@ -255,6 +255,7 @@ void main() {
 
       await tapText(tester, tr('mobileNav.me'));
       await tapText(tester, tr('mobileMe.logout'));
+      await tapText(tester, tr('mobileMe.logoutConfirm.confirm'));
       await settle(tester);
 
       final delete = h.backend.calls('/devices/register').where((r) => r.method == 'DELETE');

@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
+import 'i18n.dart';
 
 /// Supabase yapılandırılmamışsa null (web: `supabase` null).
 SupabaseClient? get supabase => Env.supabaseConfigured ? Supabase.instance.client : null;
@@ -112,7 +113,8 @@ Future<ApiResponse> apiDelete(String path, {Map<String, String?>? query, Duratio
 
 /// FastAPI / Starlette hata gövdesi: { detail: string | { msg }[] | ... } (web: `lib/apiErrors.js`).
 String formatApiErrorDetail(Map<String, dynamic>? data) {
-  if (data == null) return 'Sunucudan anlamlı bir yanıt alınamadı.';
+  final i18n = I18n.instance;
+  if (data == null) return i18n.t('mobileCommon.errors.noResponse', const {}, 'Sunucudan anlamlı bir yanıt alınamadı.');
   final d = data['detail'];
   if (d is String) return d;
   if (d is List) {
@@ -127,7 +129,19 @@ String formatApiErrorDetail(Map<String, dynamic>? data) {
   }
   if (d is Map && d['msg'] is String) return d['msg'] as String;
   if (data['message'] is String) return data['message'] as String;
-  return 'İşlem tamamlanamadı. Bir süre sonra tekrar dene.';
+  return i18n.t('mobileCommon.errors.incomplete', const {}, 'İşlem tamamlanamadı. Bir süre sonra tekrar dene.');
+}
+
+/// Kullanıcıya gösterilecek hata cümlesi (durum koduna göre). Sunucu hatasında (5xx) ham ayrıntı ("Internal Server Error" gibi)
+/// yerine sakin bir cümle; 401/429 için ne yapacağını söyleyen cümle; diğer istemci hatalarında sunucunun kendi açıklaması.
+String apiErrorMessage(ApiResponse res) {
+  final i18n = I18n.instance;
+  final s = res.status;
+  if (s == 401) return i18n.t('mobileCommon.errors.session');
+  if (s == 429) return i18n.t('mobileCommon.errors.rateLimited');
+  if (s == 408 || s == 502 || s == 503 || s == 504) return i18n.t('mobileCommon.errors.busy');
+  if (s >= 500) return i18n.t('mobileCommon.errors.server');
+  return formatApiErrorDetail(res.data);
 }
 
 /// Web `isNetworkError`: "Failed to fetch" karşılığı bağlantı hataları.

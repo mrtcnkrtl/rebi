@@ -412,8 +412,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
           if (mounted) setState(() => _submitError = I18n.instance.t('common.consentRecoveryBody'));
           return;
         }
-        final msg = formatApiErrorDetail(res.data);
-        if (mounted) setState(() => _submitError = '$msg (${res.status})');
+        if (mounted) setState(() => _submitError = '${apiErrorMessage(res)} (${res.status})');
         return;
       }
       final data = res.data;

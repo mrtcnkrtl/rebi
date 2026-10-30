@@ -13,6 +13,7 @@ import '../ui/components/language_sheet.dart';
 import '../ui/shell/app_shell.dart';
 import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
+import '../ui/widgets/app_sheet.dart';
 import '../ui/widgets/common.dart';
 import '../ui/widgets/menu_list.dart';
 import 'today/today_widgets.dart';
@@ -102,7 +103,7 @@ class MeScreen extends StatelessWidget {
         ]),
         const SizedBox(height: 28),
         SecondaryButton(
-          onPressed: () => signOutAndGoHome(context),
+          onPressed: () => _confirmSignOut(context),
           borderColor: Tw.red200,
           textColor: Tw.readable(Tw.red600),
           icon: LucideIcons.logOut,
@@ -112,6 +113,30 @@ class MeScreen extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Çıkış, yanlışlıkla dokunmaya karşı bir onay sayfasından geçer (çıkış bildirimleri ve cihaz kaydını da siler).
+Future<void> _confirmSignOut(BuildContext context) async {
+  final i18n = I18n.instance;
+  final confirmed = await AppSheet.show<bool>(
+    context,
+    title: i18n.t('mobileMe.logoutConfirm.title'),
+    subtitle: i18n.t('mobileMe.logoutConfirm.body'),
+    body: (ctx) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PrimaryButton(
+          color: Tw.fillWithWhiteText(Tw.red600),
+          icon: LucideIcons.logOut,
+          label: i18n.t('mobileMe.logoutConfirm.confirm'),
+          onPressed: () => Navigator.of(ctx).pop(true),
+        ),
+        const SizedBox(height: 10),
+        SecondaryButton(onPressed: () => Navigator.of(ctx).pop(false), label: i18n.t('mobileMe.logoutConfirm.cancel')),
+      ],
+    ),
+  );
+  if (confirmed == true && context.mounted) await signOutAndGoHome(context);
 }
 
 /// Plus hesabının küçük hapı: krem çerçeveli, taç simgeli (renk yok; sahne sakin kalır).

@@ -274,7 +274,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         return;
       }
       if (!res.ok) {
-        setState(() => _submitError = '${formatApiErrorDetail(res.data)} (${res.status})');
+        setState(() => _submitError = '${apiErrorMessage(res)} (${res.status})');
         return;
       }
       await recordCheckInSuccess(user?.id, appliedRoutine: _appliedRoutine);

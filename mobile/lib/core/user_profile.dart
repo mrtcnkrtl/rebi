@@ -1,4 +1,7 @@
 import 'api.dart';
+import 'i18n.dart';
+
+String _saveFailed() => I18n.instance.t('mobileCommon.errors.profileSave', const {}, 'Profil kaydedilemedi.');
 
 /// `GET /me/profile` yanıtı: sunucudaki `profiles` kaydı. Analiz sihirbazı da bu kaydı yazar;
 /// cilt tipi, bugünün havaya göre önerilerini ve sohbetin kişiselleştirmesini etkiler.
@@ -91,9 +94,9 @@ Future<ProfileSaveResult> updateMyProfile(String userId, ProfileUpdate update) a
   if (update.isEmpty) return const ProfileSaveResult(error: 'Güncellenecek alan yok.');
   try {
     final res = await apiPatch('/me/profile', update.toBody(userId));
-    if (!res.ok) return ProfileSaveResult(error: detailOr(res.data, 'Profil kaydedilemedi.'));
+    if (!res.ok) return ProfileSaveResult(error: detailOr(res.data, _saveFailed()));
     return ProfileSaveResult(profile: UserProfile.fromJson(res.data));
   } catch (e) {
-    return ProfileSaveResult(error: 'Profil kaydedilemedi.', networkError: isNetworkError(e));
+    return ProfileSaveResult(error: _saveFailed(), networkError: isNetworkError(e));
   }
 }

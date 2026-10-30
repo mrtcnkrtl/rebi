@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -402,7 +404,11 @@ class _BottomNav extends StatelessWidget {
                         active: active == tab,
                         color: theme.fg,
                         lightColor: theme.primaryLight,
-                        onTap: () => context.go(tab.path),
+                        onTap: () {
+                          // Başka bir sekmeye geçerken hafif tıkırtı (aynı sekmeye dokunmak yalnızca köke döner).
+                          if (active != tab) unawaited(HapticFeedback.selectionClick().catchError((_) {}));
+                          context.go(tab.path);
+                        },
                       ),
                     ),
                 ],

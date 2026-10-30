@@ -1,17 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart' show MaterialApp, Scaffold, Scrollable, SizedBox, Size, Switch, Text, TimeOfDay;
+import 'package:flutter/material.dart' show Scrollable, Size, Switch, TimeOfDay;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/demo_user.dart';
 import 'package:rebi/core/reminder_settings.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/reminders_screen.dart';
-import 'package:rebi/state/theme_controller.dart';
-import 'package:rebi/ui/components/notification_widgets.dart';
 import 'package:rebi/ui/widgets/common.dart';
 
 import 'helpers/app_harness.dart';
@@ -199,23 +194,11 @@ void main() {
   });
 
   group('erişim', () {
-    testWidgets('profildeki satır ayar ekranına götürür', (tester) async {
-      // Tam Profil ekranı Supabase ister; satırın kendisi yönlendirmeyle birlikte denenir.
-      await pumpStandalone(tester, (theme) => const SizedBox.shrink());
-      final router = GoRouter(routes: [
-        GoRoute(path: '/', builder: (context, state) => Scaffold(body: ReminderSettingsLink(theme: rebiThemes['teal']!))),
-        GoRoute(path: '/dashboard/reminders', builder: (context, state) => const Text('AYAR EKRANI')),
-      ]);
-      await tester.pumpWidget(ChangeNotifierProvider<I18n>.value(
-        value: I18n.instance,
-        child: MaterialApp.router(routerConfig: router),
-      ));
-      expect(find.text(tr('mobileReminders.open')), findsOneWidget);
+    testWidgets('Ben menüsündeki satır ayar ekranına götürür', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard/profile', prefs: acceptedPrefs());
       expect(find.text(tr('mobileReminders.openHint')), findsOneWidget);
-
-      await tester.tap(find.text(tr('mobileReminders.open')));
-      await settle(tester, 4);
-      expect(find.text('AYAR EKRANI'), findsOneWidget);
+      await tapText(tester, tr('mobileReminders.open'));
+      expect(h.router.state.uri.path, '/dashboard/reminders');
     });
 
     testWidgets('Bugün ekranındaki ayar simgesinden açılır', (tester) async {

@@ -53,6 +53,35 @@ void main() {
     test('null gövde', () => expect(formatApiErrorDetail(null), 'Sunucudan anlamlı bir yanıt alınamadı.'));
   });
 
+  group('apiErrorMessage (kullanıcıya gösterilen hata cümlesi)', () {
+    setUp(loadTestI18n);
+
+    test('5xx ham ayrıntıyı göstermez, sakin cümle verir', () {
+      final raw = {'detail': 'Internal Server Error'};
+      expect(apiErrorMessage(ApiResponse(500, raw)), isNot(contains('Internal')));
+      expect(apiErrorMessage(ApiResponse(500, raw)), 'Sunucuda bir sorun oluştu. Biraz sonra tekrar dene.');
+      for (final s in [408, 502, 503, 504]) {
+        expect(apiErrorMessage(ApiResponse(s, raw)), 'Sunucu şu an yoğun. Biraz sonra tekrar dene.', reason: '$s');
+      }
+    });
+
+    test('401 ve 429 ne yapacağını söyler', () {
+      expect(apiErrorMessage(const ApiResponse(401, {})), contains('Oturum'));
+      expect(apiErrorMessage(const ApiResponse(429, {})), contains('Birkaç saniye'));
+    });
+
+    test('diğer istemci hatalarında sunucunun kendi açıklaması gösterilir', () {
+      expect(apiErrorMessage(const ApiResponse(409, {'detail': 'Bugün için check-in zaten yapıldı.'})), 'Bugün için check-in zaten yapıldı.');
+      expect(apiErrorMessage(const ApiResponse(422, {})), 'İşlem tamamlanamadı. Bir süre sonra tekrar dene.');
+    });
+
+    test('İngilizce arayüzde İngilizce', () {
+      loadTestI18n('en');
+      expect(apiErrorMessage(const ApiResponse(503, {})), 'The server is busy right now. Try again in a moment.');
+      expect(apiErrorMessage(const ApiResponse(422, {})), "Couldn't complete that. Try again in a while.");
+    });
+  });
+
   test('rıza hatası yalnızca 403 + "izni gerekli"', () {
     expect(isConsentError(403, {'detail': 'AI işleme izni gerekli'}), isTrue);
     expect(isConsentError(403, {'detail': 'Token ile user_id eşleşmiyor'}), isFalse);

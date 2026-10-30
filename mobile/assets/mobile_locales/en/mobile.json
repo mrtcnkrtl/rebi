@@ -646,13 +646,29 @@
     },
     "plusBadge": "Plus",
     "logout": "Sign out",
+    "logoutConfirm": {
+      "title": "Sign out?",
+      "body": "Your reminders will stop on this device. You can sign back in any time.",
+      "confirm": "Yes, sign out",
+      "cancel": "Cancel"
+    },
     "noName": "Rebi user",
     "shelf": {
       "hint": "Keep track of finished products and restocks"
     }
   },
   "mobileCommon": {
-    "loading": "Loading"
+    "loading": "Loading",
+    "errors": {
+      "noResponse": "Didn't get a meaningful reply from the server.",
+      "incomplete": "Couldn't complete that. Try again in a while.",
+      "session": "Your session may have expired. Try signing out and back in.",
+      "rateLimited": "We're going a bit fast. Wait a few seconds and try again.",
+      "busy": "The server is busy right now. Try again in a moment.",
+      "server": "Something went wrong on the server. Try again in a moment.",
+      "profileSave": "Couldn't save your profile.",
+      "privacy": "Couldn't update the privacy preference."
+    }
   },
   "mobileChat": {
     "suggestionsTitle": "Suggested questions for today",
