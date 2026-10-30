@@ -122,6 +122,9 @@ class FakeBackend {
   bool privacyPhoto = false;
   bool privacyFails = false;
 
+  /// `POST /account/delete` durum kodu (200: hesap silindi).
+  int accountDeleteStatus = 200;
+
   /// `POST /generate_routine` (analiz sihirbazı) hata döndürsün.
   bool generateFails = false;
 
@@ -372,6 +375,9 @@ class FakeBackend {
               'usage_remaining': 3,
               'usage_limit': 5,
             });
+          case 'POST /account/delete':
+            if (accountDeleteStatus != 200) return http.Response('{"detail":"Hesap silinemedi (sunucu)"}', accountDeleteStatus);
+            return ok({'ok': true});
           case 'GET /privacy-preferences':
             if (privacyFails) return http.Response('{"detail":"hata"}', 502);
             return ok({'location_processing_allowed': privacyLocation, 'photo_processing_allowed': privacyPhoto});

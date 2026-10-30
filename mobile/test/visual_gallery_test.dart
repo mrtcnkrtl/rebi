@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' show Size, TextField, TextInputAction;
 import 'package:flutter/painting.dart' show debugDisableShadows;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/device_location.dart';
+import 'package:rebi/screens/profile_screen.dart' show debugAccountAvailable;
 import 'package:rebi/screens/today/today_clock.dart';
 import 'package:rebi/ui/tw.dart';
 
@@ -23,9 +24,13 @@ void main() {
   setUpAll(() async {
     if (screenshotsEnabled) await loadBrandFonts();
   });
-  setUp(() => todayPanelClock = () => DateTime(2026, 10, 10, 9, 15));
+  setUp(() {
+    todayPanelClock = () => DateTime(2026, 10, 10, 9, 15);
+    debugAccountAvailable = true; // hesap ekranı Supabase yapılandırması olmadan da çizilsin
+  });
   tearDown(() {
     todayPanelClock = DateTime.now;
+    debugAccountAvailable = null;
     Tw.dark = false;
   });
 
@@ -36,6 +41,7 @@ void main() {
     ('sohbet-davet', '/rebi', false),
     ('gecmis', '/dashboard/history', true),
     ('ben', '/dashboard/profile', true),
+    ('hesap', '/dashboard/account', true),
     ('gorunum', '/dashboard/themes', true),
     ('hatirlaticilar', '/dashboard/reminders', true),
     ('rafim', '/dashboard/shelf', true),
@@ -161,6 +167,7 @@ void main() {
     ('sohbet-uzun', '/dashboard/chat', 1500),
     ('gecmis-uzun', '/dashboard/history', 3400),
     ('ben-uzun', '/dashboard/profile', 1900),
+    ('hesap-uzun', '/dashboard/account', 4200),
     ('checkin-uzun', '/dashboard/checkin', 2600),
     ('abonelik-uzun', '/dashboard/subscribe', 2600),
   ];

@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/i18n.dart';
 import '../../core/today_plan.dart';
 import '../../state/theme_controller.dart';
 import '../../ui/brand/brand_caps.dart';
-import '../../ui/brand/brand_mark.dart';
 import '../../ui/brand/motion.dart';
 import '../../ui/brand/palette.dart';
+import '../../ui/shell/page_stage.dart';
 import '../../ui/tw.dart';
 import 'today_clock.dart';
 
@@ -49,64 +48,52 @@ class TodayHeader extends StatelessWidget {
     final lang = i18n.lang;
     final first = name.trim().split(RegExp(r'\s+')).first;
     final top = MediaQuery.paddingOf(context).top;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-        child: ColoredBox(
-          color: theme.stage,
-          child: Stack(
-            children: [
-              // Marka imzası: çok silik, sabit "R" (karşılama ve girişteki monogramın sakin hâli).
-              const Positioned(right: -64, top: -18, child: BrandWatermark(size: 250)),
-              Padding(
-                // Hava özeti yoksa (rutinsiz karşılama) sahne biraz uzar: selamlama ile kart arasında nefes payı kalsın.
-                padding: EdgeInsets.fromLTRB(22, top + 14, 16, 22 + overlap + (plan != null && plan!.weather['temperature'] != null ? 0 : 10)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 14),
-                            child: Reveal(
-                              offset: const Offset(0, 6),
-                              child: Text(
-                                brandCaps(dateLine, lang),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .72), ls: brandTracking(lang, 1.6)),
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Reveal(
-                      delay: const Duration(milliseconds: 60),
-                      offset: const Offset(0, 12),
+    return StageSurface(
+      theme: theme,
+      child: Padding(
+        // Hava özeti yoksa (rutinsiz karşılama) sahne biraz uzar: selamlama ile kart arasında nefes payı kalsın.
+        padding: EdgeInsets.fromLTRB(22, top + 14, 16, 22 + overlap + (plan != null && plan!.weather['temperature'] != null ? 0 : 10)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 14),
+                    child: Reveal(
+                      offset: const Offset(0, 6),
                       child: Text(
-                        greeting ?? i18n.t('mobileToday.greet.${greetingKey(todayPanelClock())}', {'name': first}),
-                        style: Brand.serif(34, color: Brand.cream, h: 1.08, ls: -.9),
+                        brandCaps(dateLine, lang),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .72), ls: brandTracking(lang, 1.6)),
                       ),
                     ),
-                    if (plan != null && plan!.weather['temperature'] != null) ...[
-                      const SizedBox(height: 20),
-                      Reveal(
-                        delay: const Duration(milliseconds: 160),
-                        offset: const Offset(0, 8),
-                        child: _WeatherPanel(plan: plan!),
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
+                if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+              ],
+            ),
+            const SizedBox(height: 10),
+            Reveal(
+              delay: const Duration(milliseconds: 60),
+              offset: const Offset(0, 12),
+              child: Text(
+                greeting ?? i18n.t('mobileToday.greet.${greetingKey(todayPanelClock())}', {'name': first}),
+                style: Brand.serif(34, color: Brand.cream, h: 1.08, ls: -.9),
+              ),
+            ),
+            if (plan != null && plan!.weather['temperature'] != null) ...[
+              const SizedBox(height: 20),
+              Reveal(
+                delay: const Duration(milliseconds: 160),
+                offset: const Offset(0, 8),
+                child: _WeatherPanel(plan: plan!),
               ),
             ],
-          ),
+          ],
         ),
       ),
     );

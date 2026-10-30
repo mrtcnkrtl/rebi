@@ -1,51 +1,34 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/api.dart';
 import '../core/checkin_stats.dart';
 import '../core/demo_user.dart';
 import '../core/i18n.dart';
-import '../core/privacy_preferences.dart';
-import '../core/privacy_storage.dart';
 import '../core/routine_tracking.dart';
 import '../core/subscription.dart';
-import '../core/user_profile.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
-import '../ui/components/notification_widgets.dart';
 import '../ui/components/profile_details_card.dart';
 import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import 'account/delete_card.dart';
+import 'account/name_card.dart';
+import 'account/password_card.dart';
+import 'account/photos_card.dart';
+import 'account/privacy_card.dart';
+import 'account/routine_stats_card.dart';
+import 'account/summary_card.dart';
 
-const accountDeletePhrase = 'HESABIMI_SIL';
+export 'account/delete_card.dart' show accountDeletePhrase;
 
-String _formatJoined(String? iso) {
-  if (iso == null || iso.isEmpty) return '—';
-  try {
-    return DateFormat.yMMMMd('tr').format(DateTime.parse(iso).toLocal());
-  } catch (_) {
-    return '—';
-  }
-}
+/// Testlerde hesap ekranını Supabase yapılandırması olmadan açmak için (null: gerçek duruma bak).
+@visibleForTesting
+bool? debugAccountAvailable;
 
-final _imageExt = RegExp(r'\.(jpe?g|png|webp|gif|heic|avif)$', caseSensitive: false);
-
-class _Photo {
-  const _Photo(this.name, this.path, this.url, this.createdAt);
-
-  final String name;
-  final String path;
-  final String url;
-  final String? createdAt;
-}
-
-/// Profil (web: `pages/Profile.jsx`).
+/// Hesap ve gizlilik (web: `pages/Profile.jsx`). Ekran yalnızca bir kompozisyondur: her bölüm kendi durumunu taşıyan ayrı bir
+/// kart (`screens/account/`). Sıra: özet → rutin özeti → cilt profili → ad → şifre → gizlilik → fotoğraflar → hesabı sil (en sonda).
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -54,279 +37,26 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _displayName = TextEditingController();
-  (String, String) _profileMsg = ('', '');
-  bool _profileSaving = false;
-
-  final _newPassword = TextEditingController();
-  final _confirmPassword = TextEditingController();
-  (String, String) _pwdMsg = ('', '');
-  bool _pwdSaving = false;
-
-  List<_Photo> _photos = [];
-  bool _photosLoading = true;
-  String _photosError = '';
-
-  final _deletePhrase = TextEditingController();
-  bool _deleteBusy = false;
-  (String, String) _deleteMsg = ('', '');
-
-  bool _locationPermission = false;
-  bool _photoPermission = false;
-  bool _privacySaving = false;
-  String _privacyMsg = '';
-
-  late final TapGestureRecognizer _quickUploadTap = TapGestureRecognizer()
-    ..onTap = () => context.push('/dashboard/analyze?photo=1');
-  late final TapGestureRecognizer _fullAnalyzeTap = TapGestureRecognizer()..onTap = () => context.go('/dashboard/analyze');
-
-  String? _lastName;
-  late final AuthController _auth = context.read<AuthController>();
-
-  /// Görünen ad, oturumdaki `full_name` değişince güncellenir.
-  void _syncName() {
-    final name = (_auth.user?.userMetadata?['full_name'] ?? '').toString();
-    if (name == _lastName) return;
-    _lastName = name;
-    _displayName.text = name;
-  }
-
   @override
   void initState() {
     super.initState();
-    _auth.addListener(_syncName);
-    _syncName();
-    _newPassword.addListener(() => setState(() {}));
-    _deletePhrase.addListener(() => setState(() {}));
+    _backfillAcceptedAt();
+  }
+
+  /// Eski kayıtlarda acceptedAt yoktu; profil açılınca bir kez tamamlanır.
+  void _backfillAcceptedAt() {
     final uid = context.read<AuthController>().user?.id;
-    if (uid != null && uid != demoUserId) {
-      getPrivacyPreferences(uid).then((data) {
-        if (!mounted) return;
-        setState(() {
-          _locationPermission = data['location_processing_allowed'] == true;
-          _photoPermission = data['photo_processing_allowed'] == true;
-        });
-      }).catchError((_) {
-        if (mounted) setState(() => _privacyMsg = I18n.instance.t('mobileAccount.privacy.loadFailed'));
+    if (uid == null || !isRoutineTrackingAccepted(uid)) return;
+    final s = getRoutineSnapshot(uid);
+    final r = s?['routine'];
+    if (s != null && s['acceptedAt'] == null && r is List && r.isNotEmpty) {
+      saveRoutineSnapshot(uid, {
+        'acceptedAt': s['updatedAt'] is num ? s['updatedAt'] : DateTime.now().millisecondsSinceEpoch,
+      }).then((_) {
+        if (mounted) setState(() {});
       });
     }
-    // Eski kayıtlarda acceptedAt yoktu; profil açılınca bir kez tamamlanır.
-    if (uid != null && isRoutineTrackingAccepted(uid)) {
-      final s = getRoutineSnapshot(uid);
-      final r = s?['routine'];
-      if (s != null && s['acceptedAt'] == null && r is List && r.isNotEmpty) {
-        saveRoutineSnapshot(uid, {
-          'acceptedAt': s['updatedAt'] is num ? s['updatedAt'] : DateTime.now().millisecondsSinceEpoch,
-        }).then((_) {
-          if (mounted) setState(() {});
-        });
-      }
-    }
-    _loadPhotos();
   }
-
-  @override
-  void dispose() {
-    _auth.removeListener(_syncName);
-    _displayName.dispose();
-    _newPassword.dispose();
-    _confirmPassword.dispose();
-    _deletePhrase.dispose();
-    _quickUploadTap.dispose();
-    _fullAnalyzeTap.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadPhotos() async {
-    final client = supabase;
-    final uid = context.read<AuthController>().user?.id;
-    if (client == null || uid == null) {
-      setState(() {
-        _photos = [];
-        _photosLoading = false;
-      });
-      return;
-    }
-    setState(() {
-      _photosLoading = true;
-      _photosError = '';
-    });
-    try {
-      final bucket = client.storage.from('skin-photos');
-      List<FileObject> list;
-      try {
-        list = await bucket.list(
-          path: uid,
-          searchOptions: const SearchOptions(limit: 100, offset: 0, sortBy: SortBy(column: 'created_at', order: 'desc')),
-        );
-      } catch (_) {
-        list = await bucket.list(path: uid, searchOptions: const SearchOptions(limit: 100, offset: 0));
-      }
-      final files = list.where((f) => f.name.isNotEmpty && !f.name.startsWith('.') && _imageExt.hasMatch(f.name));
-      final withUrls = await Future.wait(files.map((f) async {
-        final path = '$uid/${f.name}';
-        var url = '';
-        try {
-          url = await bucket.createSignedUrl(path, 900);
-        } catch (_) {
-          url = '';
-        }
-        return _Photo(f.name, path, url, f.createdAt);
-      }));
-      int ts(_Photo p) => p.createdAt == null ? 0 : (DateTime.tryParse(p.createdAt!)?.millisecondsSinceEpoch ?? 0);
-      final sorted = withUrls.toList()
-        ..sort((a, b) {
-          final d = ts(b) - ts(a);
-          return d != 0 ? d : b.name.compareTo(a.name);
-        });
-      if (mounted) setState(() => _photos = sorted);
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _photosError = e is StorageException ? e.message : I18n.instance.t('mobileAccount.photos.error');
-          _photos = [];
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _photosLoading = false);
-    }
-  }
-
-  Future<void> _saveProfile() async {
-    final client = supabase;
-    if (client == null) return;
-    final auth = context.read<AuthController>();
-    setState(() {
-      _profileMsg = ('', '');
-      _profileSaving = true;
-    });
-    try {
-      final trimmed = _displayName.text.trim();
-      await client.auth.updateUser(UserAttributes(data: {'full_name': trimmed.isEmpty ? null : trimmed}));
-      await auth.refreshUser();
-      // Sunucudaki profil kaydındaki ad da güncellensin (en iyi çaba; ad zaten oturumda güncellendi).
-      final uid = auth.user?.id;
-      if (uid != null && uid != demoUserId && trimmed.isNotEmpty) {
-        try {
-          await updateMyProfile(uid, ProfileUpdate(fullName: trimmed));
-        } catch (_) {
-          /* çevrimdışı: bir sonraki analizde sunucu adı yine yazar */
-        }
-      }
-      if (mounted) setState(() => _profileMsg = ('ok', I18n.instance.t('mobileAccount.name.saved')));
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _profileMsg = ('err', e.message.isEmpty ? I18n.instance.t('mobileAccount.name.failed') : e.message));
-    } catch (_) {
-      if (mounted) setState(() => _profileMsg = ('err', I18n.instance.t('mobileAccount.name.failed')));
-    } finally {
-      if (mounted) setState(() => _profileSaving = false);
-    }
-  }
-
-  Future<void> _changePassword() async {
-    setState(() => _pwdMsg = ('', ''));
-    if (_newPassword.text.length < 6) {
-      setState(() => _pwdMsg = ('err', I18n.instance.t('mobileAccount.password.tooShort')));
-      return;
-    }
-    if (_newPassword.text != _confirmPassword.text) {
-      setState(() => _pwdMsg = ('err', I18n.instance.t('mobileAccount.password.mismatch')));
-      return;
-    }
-    final client = supabase;
-    if (client == null) return;
-    setState(() => _pwdSaving = true);
-    try {
-      await client.auth.updateUser(UserAttributes(password: _newPassword.text));
-      _newPassword.clear();
-      _confirmPassword.clear();
-      if (mounted) setState(() => _pwdMsg = ('ok', I18n.instance.t('mobileAccount.password.updated')));
-    } on AuthException catch (e) {
-      if (mounted) setState(() => _pwdMsg = ('err', e.message.isEmpty ? I18n.instance.t('mobileAccount.password.failed') : e.message));
-    } catch (_) {
-      if (mounted) setState(() => _pwdMsg = ('err', I18n.instance.t('mobileAccount.password.failed')));
-    } finally {
-      if (mounted) setState(() => _pwdSaving = false);
-    }
-  }
-
-  Future<void> _deleteAccount() async {
-    final auth = context.read<AuthController>();
-    final router = GoRouter.of(context);
-    final uid = auth.user?.id;
-    setState(() => _deleteMsg = ('', ''));
-    if (uid == null) return;
-    if (_deletePhrase.text.trim() != accountDeletePhrase) {
-      setState(() => _deleteMsg = ('err', I18n.instance.t('mobileAccount.delete.phraseMismatch', {'phrase': accountDeletePhrase})));
-      return;
-    }
-    setState(() => _deleteBusy = true);
-    try {
-      final res = await apiPost('/account/delete', {'user_id': uid, 'confirm_text': accountDeletePhrase}, timeout: apiLongTimeout);
-      if (!res.ok) throw Exception(detailOr(res.data, I18n.instance.t('mobileAccount.delete.requestFailed')));
-      _deletePhrase.clear();
-      await clearUserLocalData(uid);
-      await auth.signOut();
-      router.go('/');
-    } catch (e) {
-      final m = e.toString().replaceFirst('Exception: ', '');
-      if (mounted) setState(() => _deleteMsg = ('err', m.isEmpty ? I18n.instance.t('mobileAccount.delete.failed') : m));
-    } finally {
-      if (mounted) setState(() => _deleteBusy = false);
-    }
-  }
-
-  Future<void> _savePrivacy() async {
-    final uid = context.read<AuthController>().user?.id;
-    if (uid == null) return;
-    setState(() {
-      _privacySaving = true;
-      _privacyMsg = '';
-    });
-    try {
-      await updatePrivacyPreferences(uid, location: _locationPermission, photo: _photoPermission);
-      if (mounted) setState(() => _privacyMsg = I18n.instance.t('mobileAccount.privacy.saved'));
-    } catch (e) {
-      final m = e.toString().replaceFirst('Exception: ', '');
-      if (mounted) setState(() => _privacyMsg = m.isEmpty ? I18n.instance.t('mobileAccount.privacy.failed') : m);
-    } finally {
-      if (mounted) setState(() => _privacySaving = false);
-    }
-  }
-
-  Widget _sectionTitle(IconData icon, Color color, String text, {Color? textColor}) => Row(
-        children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: tx(14, w: 7, c: textColor ?? Tw.gray800))),
-        ],
-      );
-
-  Widget _checkboxRow(bool value, ValueChanged<bool> onChanged, String label) => MergeSemantics(
-        child: InkWell(
-          onTap: () => onChanged(!value),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 48),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: Checkbox(
-                    value: value,
-                    onChanged: (v) => onChanged(v ?? false),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    visualDensity: VisualDensity.compact,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Text(label, style: tx(14, c: Tw.gray700))),
-              ],
-            ),
-          ),
-        ),
-      );
 
   @override
   Widget build(BuildContext context) {
@@ -334,11 +64,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final theme = context.watch<ThemeController>().theme;
     final user = context.watch<AuthController>().user;
     final uid = user?.id;
-    final plus = userHasRebiPlus(user);
+    final real = uid != null && uid != demoUserId;
     final stats = uid != null ? getProfileRoutineStats(uid) : null;
-    const gap = SizedBox(height: 24);
+    const gap = SizedBox(height: 16);
 
-    if (supabase == null) {
+    if (!(debugAccountAvailable ?? supabase != null)) {
       return ThemedBackground(
         theme: theme,
         child: SafeArea(
@@ -352,8 +82,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
 
-    final linkStyle = tx(14, w: 6, c: Tw.sky950.withValues(alpha: .9)).copyWith(decoration: TextDecoration.underline);
-
     return StagePage(
       theme: theme,
       title: i18n.t('profile.title'),
@@ -362,536 +90,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
       maxWidth: 512,
       bottomPadding: 48,
       children: [
-        RCard(
-          padding: const EdgeInsets.all(16),
-          borderColor: theme.primaryLight,
-          color: Color.alphaBlend(Tw.sky50.withValues(alpha: .6), Tw.surface),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(padding: EdgeInsets.only(top: 2), child: Icon(LucideIcons.info, size: 20, color: Tw.sky700)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text.rich(
-                      TextSpan(children: [
-                        TextSpan(text: i18n.t('mobileAccount.intro.a')),
-                        TextSpan(text: i18n.t('profile.quickUpload'), style: linkStyle, recognizer: _quickUploadTap),
-                        TextSpan(text: i18n.t('mobileAccount.intro.b')),
-                        TextSpan(text: i18n.t('profile.fullAnalyze'), style: linkStyle, recognizer: _fullAnalyzeTap),
-                        TextSpan(text: i18n.t('mobileAccount.intro.c')),
-                      ]),
-                      style: tx(14, c: Tw.sky950.withValues(alpha: .9), h: relaxed),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(i18n.t('mobileAccount.passwordNote'), style: tx(12.5, c: Tw.sky900.withValues(alpha: .85), h: snug)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        AccountSummaryCard(theme: theme, email: user?.email, createdAt: user?.createdAt, plus: userHasRebiPlus(user)),
+        if (stats?.hasAcceptedRoutine ?? false) ...[gap, AccountRoutineStatsCard(theme: theme, stats: stats!)],
+        if (real) ...[gap, ProfileDetailsCard(theme: theme)],
         gap,
-        RCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _sectionTitle(LucideIcons.shield, theme.primary, i18n.t('profile.accountSummary')),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(LucideIcons.mail, size: 16, color: Tw.gray400),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(user?.email ?? '—', style: tx(14, c: Tw.gray700))),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(LucideIcons.calendar, size: 16, color: Tw.gray400),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(i18n.t('profile.membership', {'date': _formatJoined(user?.createdAt)}),
-                        style: tx(14, c: Tw.gray700)),
-                  ),
-                ],
-              ),
-              if (plus) ...[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Tw.amber50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Tw.amber200),
-                    ),
-                    child: Text(i18n.t('profile.plusActive'), style: tx(12, w: 6, c: Tw.amber800)),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        if (stats?.hasAcceptedRoutine ?? false) ...[gap, _statsCard(i18n, theme, stats!)],
+        AccountNameCard(theme: theme),
         gap,
-        RCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _sectionTitle(LucideIcons.user, theme.primary, i18n.t('mobileAccount.name.title')),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _displayName,
-                maxLength: 120,
-                textCapitalization: TextCapitalization.words,
-                decoration: inputDecoration(hint: i18n.t('mobileAccount.name.hint')).copyWith(counterText: ''),
-                onSubmitted: (_) => _saveProfile(),
-              ),
-              if (_profileMsg.$2.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                StatusLine(ok: _profileMsg.$1 == 'ok', text: _profileMsg.$2),
-              ],
-              const SizedBox(height: 12),
-              PrimaryButton(
-                onPressed: _profileSaving ? null : _saveProfile,
-                loading: _profileSaving,
-                color: theme.primary,
-                fontSize: 14,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                label: i18n.t('mobileAccount.name.save'),
-              ),
-            ],
-          ),
-        ),
+        AccountPasswordCard(theme: theme),
+        if (real) ...[gap, AccountPrivacyCard(theme: theme)],
         gap,
-        RCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _sectionTitle(LucideIcons.lock, theme.primary, i18n.t('mobileAccount.password.title')),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _newPassword,
-                obscureText: true,
-                autofillHints: const [AutofillHints.newPassword],
-                decoration: inputDecoration(hint: i18n.t('mobileAccount.password.hint')),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _confirmPassword,
-                obscureText: true,
-                autofillHints: const [AutofillHints.newPassword],
-                decoration: inputDecoration(hint: i18n.t('mobileAccount.password.confirm')),
-                onSubmitted: (_) => _changePassword(),
-              ),
-              if (_pwdMsg.$2.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                StatusLine(ok: _pwdMsg.$1 == 'ok', text: _pwdMsg.$2),
-              ],
-              const SizedBox(height: 12),
-              SecondaryButton(
-                onPressed: _pwdSaving || _newPassword.text.isEmpty ? null : _changePassword,
-                loading: _pwdSaving,
-                borderColor: theme.primaryLight,
-                textColor: theme.primary,
-                fontSize: 14,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                label: i18n.t('mobileAccount.password.update'),
-              ),
-            ],
-          ),
-        ),
-        gap,
-        RCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _sectionTitle(LucideIcons.shield, theme.primary, i18n.t('legal.kvkkTitle')),
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 12,
-                children: [
-                  TextLink(i18n.t('legal.kvkkTitle'), onTap: () => context.push('/kvkk'), style: tx(12, w: 6, c: Tw.teal700)),
-                  TextLink(i18n.t('legal.rizaTitle'), onTap: () => context.push('/riza'), style: tx(12, w: 6, c: Tw.teal700)),
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (uid != null && uid != demoUserId) ...[
-          gap,
-          ProfileDetailsCard(theme: theme),
-          const SizedBox(height: 12),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextLink(
-              i18n.t('mobileProfile.historyLink'),
-              onTap: () => context.go('/dashboard/history'),
-              style: tx(14, w: 6, c: theme.primary),
-            ),
-          ),
-          gap,
-          NotificationSettingsCard(theme: theme),
-          gap,
-          ReminderSettingsLink(theme: theme),
-          gap,
-          RCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _sectionTitle(LucideIcons.shield, theme.primary, i18n.t('mobileAccount.privacy.title')),
-                const SizedBox(height: 12),
-                Text(i18n.t('mobileAccount.privacy.body'), style: tx(12.5, c: Tw.gray600, h: relaxed)),
-                const SizedBox(height: 12),
-                const AiDisclaimer(),
-                const SizedBox(height: 12),
-                _checkboxRow(_locationPermission, (v) => setState(() => _locationPermission = v), i18n.t('mobileAccount.privacy.location')),
-                const SizedBox(height: 12),
-                _checkboxRow(_photoPermission, (v) => setState(() => _photoPermission = v), i18n.t('mobileAccount.privacy.photo')),
-                if (_privacyMsg.isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  Text(_privacyMsg, style: tx(12, c: Tw.gray600)),
-                ],
-                const SizedBox(height: 12),
-                SecondaryButton(
-                  onPressed: _privacySaving ? null : _savePrivacy,
-                  loading: _privacySaving,
-                  fontSize: 14,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                  label: i18n.t('mobileAccount.privacy.save'),
-                ),
-              ],
-            ),
-          ),
-          gap,
-          _deleteCard(i18n),
-        ],
-        gap,
-        _photosCard(i18n, theme),
+        AccountPhotosCard(theme: theme),
+        if (real) ...[const SizedBox(height: 28), const AccountDeleteCard()],
       ],
-    );
-  }
-
-  Widget _statsCard(I18n i18n, RebiTheme theme, ProfileRoutineStats s) {
-    Widget tile(String value, String label, Color color) => Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Tw.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Tw.gray100),
-            ),
-            child: Column(
-              children: [
-                Text(value, style: tx(24, w: 7, c: color).copyWith(fontFeatures: const [FontFeature.tabularFigures()])),
-                const SizedBox(height: 2),
-                Text(label, textAlign: TextAlign.center, style: tx(12, w: 5, c: Tw.gray600)),
-              ],
-            ),
-          ),
-        );
-
-    Widget smallLink(String label, VoidCallback onTap, Color border, Color color) => Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: onTap,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 48),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: border)),
-              child: Text(label, style: tx(13, w: 6, c: color)),
-            ),
-          ),
-        );
-
-    return RCard(
-      padding: const EdgeInsets.all(16),
-      borderColor: theme.primaryLight,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(LucideIcons.target, theme.primary, i18n.t('profile.routineSummaryTitle')),
-          const SizedBox(height: 12),
-          Text(i18n.t('mobileAccount.stats.intro', {'n': routineStreakGoalDays}), style: tx(12.5, c: Tw.gray600, h: relaxed)),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              tile('${s.streak}', i18n.t('profile.streak'), theme.primary),
-              const SizedBox(width: 8),
-              tile('${s.totalCheckIns}', i18n.t('profile.totalCheckins'), Tw.gray800),
-            ],
-          ),
-          if (s.appliedRatePercent != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Tw.gray50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Tw.gray100),
-              ),
-              child: Row(
-                children: [
-                  Icon(LucideIcons.clipboardCheck, size: 16, color: Tw.gray500),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(i18n.t('profile.adherence'), style: tx(12, w: 6, c: Tw.gray800)),
-                        Text.rich(
-                          TextSpan(children: [
-                            TextSpan(text: i18n.t('mobileAccount.stats.applied')),
-                            TextSpan(text: '${s.appliedRatePercent}%', style: tx(12, w: 7, c: Tw.gray800)),
-                          ]),
-                          style: tx(12, c: Tw.gray600),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(i18n.t('mobileAccount.stats.goal', {'n': routineStreakGoalDays}), style: tx(12, c: Tw.gray600)),
-              Text('${s.goalProgress}%', style: tx(12, c: Tw.gray600)),
-            ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              height: 8,
-              color: Tw.gray100,
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: s.goalProgress / 100,
-                child: Container(decoration: BoxDecoration(color: theme.primary, borderRadius: BorderRadius.circular(999))),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          if (s.daysSinceAccept != null)
-            Text.rich(
-              TextSpan(children: [
-                TextSpan(text: i18n.t('mobileAccount.stats.journey')),
-                TextSpan(text: i18n.t('mobileAccount.stats.days', {'n': s.daysSinceAccept}), style: tx(12, w: 7, c: Tw.gray800)),
-                TextSpan(text: i18n.t('mobileAccount.stats.sinceAccept')),
-              ]),
-              textAlign: TextAlign.center,
-              style: tx(12, c: Tw.gray600),
-            )
-          else
-            Text(i18n.t('mobileAccount.stats.noAcceptDate'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500)),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              smallLink(i18n.t('mobileAccount.stats.checkin'), () => context.go('/dashboard/checkin'), theme.primaryLight, theme.primary),
-              smallLink(i18n.t('mobileAccount.stats.addPhoto'), () => context.push('/dashboard/analyze?photo=1'), Tw.gray200, Tw.gray700),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _deleteCard(I18n i18n) {
-    final phraseOk = _deletePhrase.text.trim() == accountDeletePhrase;
-    return RCard(
-      padding: const EdgeInsets.all(16),
-      borderColor: Tw.red200,
-      color: Color.alphaBlend(Tw.red50.withValues(alpha: .4), Tw.surface),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _sectionTitle(LucideIcons.trash2, Tw.red900, i18n.t('mobileAccount.delete.title'), textColor: Tw.red900),
-          const SizedBox(height: 12),
-          Text(i18n.t('mobileAccount.delete.body'), style: tx(12.5, c: Tw.red900.withValues(alpha: .9), h: relaxed)),
-          const SizedBox(height: 12),
-          Text.rich(
-            TextSpan(children: [
-              TextSpan(text: i18n.t('mobileAccount.delete.confirm')),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  decoration: BoxDecoration(color: Tw.surface.withValues(alpha: .8), borderRadius: BorderRadius.circular(4)),
-                  child: Text(accountDeletePhrase, style: tx(12, w: 6, c: Tw.red950).copyWith(fontFamily: 'monospace')),
-                ),
-              ),
-            ]),
-            style: tx(12, w: 6, c: Tw.red950.withValues(alpha: .9)),
-          ),
-          const SizedBox(height: 4),
-          TextField(
-            controller: _deletePhrase,
-            autocorrect: false,
-            enableSuggestions: false,
-            textCapitalization: TextCapitalization.characters,
-            style: tx(14).copyWith(fontFamily: 'monospace'),
-            decoration: inputDecoration(hint: accountDeletePhrase),
-          ),
-          if (_deleteMsg.$2.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            StatusLine(ok: _deleteMsg.$1 == 'ok', text: _deleteMsg.$2, errorColor: Tw.red700),
-          ],
-          const SizedBox(height: 12),
-          Opacity(
-            opacity: _deleteBusy || !phraseOk ? .5 : 1,
-            child: Material(
-              color: Tw.surface,
-              borderRadius: BorderRadius.circular(12),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: _deleteBusy || !phraseOk ? null : _deleteAccount,
-                child: Container(
-                  constraints: const BoxConstraints(minHeight: 48),
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Tw.red600, width: 2),
-                  ),
-                  child: Center(
-                    child: _deleteBusy
-                        ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Tw.red700))
-                        : Text(i18n.t('mobileAccount.delete.button'), style: tx(14, w: 6, c: Tw.red700)),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _photosCard(I18n i18n, RebiTheme theme) {
-    Widget body;
-    if (_photosLoading) {
-      body = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 32),
-        child: Center(child: SizedBox(width: 32, height: 32, child: CircularProgressIndicator(color: theme.primary))),
-      );
-    } else if (_photosError.isNotEmpty) {
-      body = Row(
-        children: [
-          Icon(LucideIcons.circleAlert, size: 16, color: Tw.red600),
-          const SizedBox(width: 8),
-          Expanded(child: Text(_photosError, style: tx(14, c: Tw.red600))),
-        ],
-      );
-    } else if (_photos.isEmpty) {
-      body = RCard(
-        dashed: true,
-        borderColor: Tw.gray200,
-        color: Tw.surface.withValues(alpha: .5),
-        radius: 16,
-        padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 16),
-        child: Column(
-          children: [
-            Icon(LucideIcons.image, size: 40, color: Tw.gray300),
-            const SizedBox(height: 8),
-            Text(i18n.t('mobileAccount.photos.empty'), style: tx(14, c: Tw.gray600)),
-            const SizedBox(height: 12),
-            TextLink(i18n.t('analyze.quickPhotoUpload'),
-                onTap: () => context.push('/dashboard/analyze?photo=1'), style: tx(14, w: 6, c: theme.primary)),
-          ],
-        ),
-      );
-    } else {
-      body = Column(
-        children: [
-          for (final p in _photos) ...[
-            Container(
-              clipBehavior: Clip.antiAlias,
-              decoration: BoxDecoration(
-                color: Tw.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Tw.gray100),
-                boxShadow: const [BoxShadow(color: Color(0x0D000000), blurRadius: 2, offset: Offset(0, 1))],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (p.url.isNotEmpty)
-                    Image.network(
-                      p.url,
-                      height: 192,
-                      fit: BoxFit.cover,
-                      errorBuilder: (c, e, s) => Container(height: 192, color: Tw.gray100),
-                      loadingBuilder: (c, child, prog) => prog == null ? child : Container(height: 192, color: Tw.gray100),
-                    )
-                  else
-                    SizedBox(
-                      height: 128,
-                      child: Center(child: Text(i18n.t('mobileAccount.photos.noPreview'), style: tx(14, c: Tw.gray600))),
-                    ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(border: Border(top: BorderSide(color: Tw.gray50))),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(p.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: tx(12, c: Tw.gray500).copyWith(fontFamily: 'monospace')),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          p.createdAt != null
-                              ? DateFormat('dd.MM.yyyy HH:mm:ss').format(DateTime.parse(p.createdAt!).toLocal())
-                              : '—',
-                          style: tx(12, c: Tw.gray500),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-        ],
-      );
-    }
-
-    return RCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Expanded(child: _sectionTitle(LucideIcons.camera, theme.primary, i18n.t('profile.photosTitle'))),
-              TextLink(i18n.t('profile.refresh'), onTap: _loadPhotos, style: tx(12, w: 6, c: theme.primary)),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(i18n.t('mobileAccount.photos.hint'), style: tx(12.5, c: Tw.gray600, h: relaxed)),
-          const SizedBox(height: 12),
-          body,
-        ],
-      ),
     );
   }
 }

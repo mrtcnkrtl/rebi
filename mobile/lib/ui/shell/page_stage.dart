@@ -16,6 +16,37 @@ import '../widgets/stage_overlap.dart';
 /// Bir alt sayfadan çıkış: geçmişte bir sayfa varsa ona, yoksa [fallback] (ilgili sekmenin kökü) yoluna döner.
 void popOrGo(BuildContext context, String fallback) => context.canPop() ? context.pop() : context.go(fallback);
 
+/// Bütün sahnelerin ortak yüzeyi (Bugün, Rutin, Sohbet, sayfa sahnesi): temanın derin tonu, alt köşeleri yuvarlak, çok silik
+/// "R" imzası; durum çubuğu simgeleri sahne ekrandayken açıktır. Her sahne yalnızca kendi içeriğini ([child]) ve gerekirse imzanın
+/// yerini/boyutunu ([watermark]) verir; köşe yarıçapı, renk ve durum çubuğu davranışı böylece tek yerde durur.
+class StageSurface extends StatelessWidget {
+  const StageSurface({super.key, required this.theme, required this.child, this.watermark = defaultWatermark, this.radius = 32});
+
+  /// Köşeye taşan, çok silik sabit "R" (karşılama ve girişteki monogramın sakin hâli).
+  static const defaultWatermark = Positioned(right: -64, top: -18, child: BrandWatermark(size: 250));
+
+  final RebiTheme theme;
+  final Widget child;
+
+  /// [Positioned] bir öğe ya da null (imzasız sahne).
+  final Widget? watermark;
+  final double radius;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
+      child: ClipRRect(
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(radius)),
+        child: ColoredBox(
+          color: theme.stage,
+          child: Stack(children: [?watermark, child]),
+        ),
+      ),
+    );
+  }
+}
+
 /// Ana sekmelerin dışındaki ekranların (Ben, Geçmiş, Rafım, Hatırlatıcılar, Görünüm, Abonelik, Hesap, Check-in) ortak üst sahnesi.
 /// Bugün, Rutin ve Sohbet sahneleriyle aynı dil: seçili temanın derin tonu, krem Fraunces başlık, çok silik "R" imzası.
 /// Alt köşeleri yuvarlaktır; ilk kart [overlap] kadar sahneye biner ([StagePage]). Durum çubuğu simgeleri sahne ekrandayken açıktır.
@@ -72,86 +103,76 @@ class PageStage extends StatelessWidget {
     final lang = I18n.instance.lang;
     final top = MediaQuery.paddingOf(context).top;
     final hasBar = onBack != null || trailing != null;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-        child: ColoredBox(
-          color: theme.stage,
-          child: Stack(
+    return StageSurface(
+      theme: theme,
+      watermark: const Positioned(right: -64, top: -18, child: BrandWatermark(size: 240)),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, top + (hasBar ? 4 : 24), 16, 20 + overlap),
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Positioned(right: -64, top: -18, child: BrandWatermark(size: 240)),
-              Padding(
-                padding: EdgeInsets.fromLTRB(20, top + (hasBar ? 4 : 24), 16, 20 + overlap),
-                child: MediaQuery.withClampedTextScaling(
-                  maxScaleFactor: 1.3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+              if (hasBar)
+                SizedBox(
+                  height: 52,
+                  child: Row(
                     children: [
-                      if (hasBar)
-                        SizedBox(
-                          height: 52,
-                          child: Row(
-                            children: [
-                              if (onBack != null) _BackLink(onTap: onBack!, label: backLabel),
-                              const Spacer(),
-                              ?trailing,
-                            ],
-                          ),
-                        ),
-                      if (hasBar) const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          if (leading != null) ...[leading!, const SizedBox(width: 16)],
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                if (eyebrow != null && eyebrow!.isNotEmpty)
-                                  Reveal(
-                                    offset: const Offset(0, 6),
-                                    child: Padding(
-                                      padding: const EdgeInsets.only(bottom: 8),
-                                      child: Text(
-                                        brandCaps(eyebrow!, lang),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .72), ls: brandTracking(lang, 1.6)),
-                                      ),
-                                    ),
-                                  ),
-                                if (badge != null && (eyebrow == null || eyebrow!.isEmpty))
-                                  Padding(padding: const EdgeInsets.only(bottom: 8), child: Align(alignment: Alignment.centerLeft, child: badge!)),
-                                Reveal(
-                                  delay: const Duration(milliseconds: 60),
-                                  offset: const Offset(0, 12),
-                                  child: Semantics(
-                                    header: true,
-                                    child: Text(title, style: Brand.serif(33, color: Brand.cream, h: 1.1, ls: -.8)),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (subtitle != null && subtitle!.isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Reveal(
-                          delay: const Duration(milliseconds: 120),
-                          offset: const Offset(0, 8),
-                          child: Text(subtitle!, style: tx(14, c: Brand.cream.withValues(alpha: .8), h: 1.45)),
-                        ),
-                      ],
-                      if (footer != null) ...[
-                        const SizedBox(height: 18),
-                        Reveal(delay: const Duration(milliseconds: 180), offset: const Offset(0, 8), child: footer!),
-                      ],
+                      if (onBack != null) _BackLink(onTap: onBack!, label: backLabel),
+                      const Spacer(),
+                      ?trailing,
                     ],
                   ),
                 ),
+              if (hasBar) const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  if (leading != null) ...[leading!, const SizedBox(width: 16)],
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (eyebrow != null && eyebrow!.isNotEmpty)
+                          Reveal(
+                            offset: const Offset(0, 6),
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Text(
+                                brandCaps(eyebrow!, lang),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .72), ls: brandTracking(lang, 1.6)),
+                              ),
+                            ),
+                          ),
+                        if (badge != null && (eyebrow == null || eyebrow!.isEmpty))
+                          Padding(padding: const EdgeInsets.only(bottom: 8), child: Align(alignment: Alignment.centerLeft, child: badge!)),
+                        Reveal(
+                          delay: const Duration(milliseconds: 60),
+                          offset: const Offset(0, 12),
+                          child: Semantics(
+                            header: true,
+                            child: Text(title, style: Brand.serif(33, color: Brand.cream, h: 1.1, ls: -.8)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
+              if (subtitle != null && subtitle!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Reveal(
+                  delay: const Duration(milliseconds: 120),
+                  offset: const Offset(0, 8),
+                  child: Text(subtitle!, style: tx(14, c: Brand.cream.withValues(alpha: .8), h: 1.45)),
+                ),
+              ],
+              if (footer != null) ...[
+                const SizedBox(height: 18),
+                Reveal(delay: const Duration(milliseconds: 180), offset: const Offset(0, 8), child: footer!),
+              ],
             ],
           ),
         ),

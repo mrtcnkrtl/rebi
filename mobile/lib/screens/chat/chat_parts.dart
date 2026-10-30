@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/chat_context.dart';
 import '../../core/chat_failure.dart';
 import '../../core/i18n.dart';
 import '../../state/theme_controller.dart';
+import '../../ui/shell/page_stage.dart';
 import '../../ui/tw.dart';
 import '../../ui/brand/brand_mark.dart';
 import '../../ui/brand/motion.dart';
@@ -81,87 +81,79 @@ class ChatStage extends StatelessWidget {
         ],
       ),
     );
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
-        child: ColoredBox(
-          color: theme.stage,
-          child: Stack(
+    return StageSurface(
+      theme: theme,
+      radius: 28,
+      watermark: expanded
+          ? Positioned(
+              right: -56 - heroLift * .25,
+              top: -4,
+              child: introducing ? DrawnWatermark(size: 210 + heroLift * .6) : const BrandWatermark(size: 210),
+            )
+          : null,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, top + 6, 8, 18),
+        // Üst çubuk ekranın değil içeriğin yeridir: sistem yazısı %200 olsa da en çok %130 büyür.
+        child: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.3,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (expanded)
-                Positioned(
-                  right: -56 - heroLift * .25,
-                  top: -4,
-                  child: introducing ? DrawnWatermark(size: 210 + heroLift * .6) : const BrandWatermark(size: 210),
+              SizedBox(
+                height: 52,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: Row(
+                        children: [
+                          if (onBack != null) ...[_BackCircle(onTap: onBack!), const SizedBox(width: 10)],
+                          _Presence(thinking: thinking),
+                          const SizedBox(width: 10),
+                          Flexible(
+                            child: Text('Rebi', maxLines: 1, overflow: TextOverflow.ellipsis, style: Brand.serif(23, weight: 600, color: cream, ls: -.5, h: 1)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Kota hapı dar ekran ve büyük yazıda orantılı küçülür (yalnızca hap; dokunulan "Temizle" hiç küçülmez,
+                    // dokunma alanı 48 dp kalır).
+                    if (usageLabel != null)
+                      Flexible(
+                        flex: 2,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: cream.withValues(alpha: .26))),
+                            child: Text(usageLabel!, maxLines: 1, style: tx(11, w: 6, c: cream.withValues(alpha: .88))),
+                          ),
+                        ),
+                      ),
+                    // Boş sohbette silinecek bir şey yok: düğme yalnızca konuşma varken görünür.
+                    if (canClear)
+                      TextButton(
+                        onPressed: onClear,
+                        style: TextButton.styleFrom(
+                          minimumSize: const Size(48, 48),
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                        child: Text(i18n.t('chat.clear'), style: tx(13, w: 6, c: cream.withValues(alpha: .82))),
+                      ),
+                  ],
                 ),
-              Padding(
-                padding: EdgeInsets.fromLTRB(20, top + 6, 8, 18),
-                // Üst çubuk ekranın değil içeriğin yeridir: sistem yazısı %200 olsa da en çok %130 büyür.
-                child: MediaQuery.withClampedTextScaling(
-                  maxScaleFactor: 1.3,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        height: 52,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 3,
-                              child: Row(
-                                children: [
-                                  if (onBack != null) ...[_BackCircle(onTap: onBack!), const SizedBox(width: 10)],
-                                  _Presence(thinking: thinking),
-                                  const SizedBox(width: 10),
-                                  Flexible(
-                                    child: Text('Rebi', maxLines: 1, overflow: TextOverflow.ellipsis, style: Brand.serif(23, weight: 600, color: cream, ls: -.5, h: 1)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Kota hapı dar ekran ve büyük yazıda orantılı küçülür (yalnızca hap; dokunulan "Temizle" hiç küçülmez,
-                            // dokunma alanı 48 dp kalır).
-                            if (usageLabel != null)
-                              Flexible(
-                                flex: 2,
-                                child: FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  alignment: Alignment.centerRight,
-                                  child: Container(
-                                    margin: const EdgeInsets.only(right: 2),
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(borderRadius: BorderRadius.circular(999), border: Border.all(color: cream.withValues(alpha: .26))),
-                                    child: Text(usageLabel!, maxLines: 1, style: tx(11, w: 6, c: cream.withValues(alpha: .88))),
-                                  ),
-                                ),
-                              ),
-                            // Boş sohbette silinecek bir şey yok: düğme yalnızca konuşma varken görünür.
-                            if (canClear)
-                              TextButton(
-                                onPressed: onClear,
-                                style: TextButton.styleFrom(
-                                  minimumSize: const Size(48, 48),
-                                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                ),
-                                child: Text(i18n.t('chat.clear'), style: tx(13, w: 6, c: cream.withValues(alpha: .82))),
-                              ),
-                          ],
-                        ),
-                      ),
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 380),
-                        curve: Curves.easeOutCubic,
-                        alignment: Alignment.topLeft,
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          layoutBuilder: (current, previous) => Stack(alignment: Alignment.topLeft, children: [...previous, ?current]),
-                          child: expanded ? hero : const SizedBox(key: ValueKey('collapsed'), width: double.infinity),
-                        ),
-                      ),
-                    ],
-                  ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 380),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topLeft,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  layoutBuilder: (current, previous) => Stack(alignment: Alignment.topLeft, children: [...previous, ?current]),
+                  child: expanded ? hero : const SizedBox(key: ValueKey('collapsed'), width: double.infinity),
                 ),
               ),
             ],

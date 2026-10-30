@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../core/i18n.dart';
 import '../../state/theme_controller.dart';
 import '../../ui/brand/brand_caps.dart';
-import '../../ui/brand/brand_mark.dart';
 import '../../ui/brand/motion.dart';
 import '../../ui/brand/palette.dart';
+import '../../ui/shell/page_stage.dart';
 import '../../ui/tw.dart';
 
 /// Rutin sayfasının üst sahnesi: seçili temanın derin tonunda (Bugün sahnesiyle aynı dil), krem Fraunces başlık, cilt
@@ -49,65 +48,54 @@ class RoutineStage extends StatelessWidget {
   Widget build(BuildContext context) {
     final lang = context.i18n.lang;
     final top = MediaQuery.paddingOf(context).top;
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(statusBarColor: Colors.transparent),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(32)),
-        child: ColoredBox(
-          color: theme.stage,
-          child: Stack(
-            children: [
-              const Positioned(right: -64, top: -18, child: BrandWatermark(size: 250)),
-              Padding(
-                padding: EdgeInsets.fromLTRB(20, top + 14, 16, 22 + overlap),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.only(top: 12),
-                            child: Reveal(
-                              offset: const Offset(0, 6),
-                              child: Text(
-                                brandCaps(dateLine, lang),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .72), ls: brandTracking(lang, 1.6)),
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Reveal(
-                      delay: const Duration(milliseconds: 60),
-                      offset: const Offset(0, 12),
-                      child: Semantics(header: true, child: Text(title, style: Brand.serif(32, color: Brand.cream, h: 1.1, ls: -.8))),
-                    ),
-                    if (chips.isNotEmpty) ...[
-                      const SizedBox(height: 14),
-                      Reveal(
-                        delay: const Duration(milliseconds: 140),
-                        offset: const Offset(0, 8),
-                        child: Wrap(spacing: 8, runSpacing: 8, children: [for (final c in chips) _Chip(c)]),
+    return StageSurface(
+      theme: theme,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, top + 14, 16, 22 + overlap),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Reveal(
+                      offset: const Offset(0, 6),
+                      child: Text(
+                        brandCaps(dateLine, lang),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .72), ls: brandTracking(lang, 1.6)),
                       ),
-                    ],
-                    const SizedBox(height: 22),
-                    Text(dayLabel, style: tx(13, w: 6, c: Brand.cream.withValues(alpha: .78))),
-                    const SizedBox(height: 8),
-                    strip,
-                    const SizedBox(height: 18),
-                    Text(caption, style: Brand.serif(24, color: Brand.cream, h: 1.15, ls: -.4)),
-                  ],
+                    ),
+                  ),
                 ),
+                if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+              ],
+            ),
+            const SizedBox(height: 10),
+            Reveal(
+              delay: const Duration(milliseconds: 60),
+              offset: const Offset(0, 12),
+              child: Semantics(header: true, child: Text(title, style: Brand.serif(32, color: Brand.cream, h: 1.1, ls: -.8))),
+            ),
+            if (chips.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Reveal(
+                delay: const Duration(milliseconds: 140),
+                offset: const Offset(0, 8),
+                child: Wrap(spacing: 8, runSpacing: 8, children: [for (final c in chips) _Chip(c)]),
               ),
             ],
-          ),
+            const SizedBox(height: 22),
+            Text(dayLabel, style: tx(13, w: 6, c: Brand.cream.withValues(alpha: .78))),
+            const SizedBox(height: 8),
+            strip,
+            const SizedBox(height: 18),
+            Text(caption, style: Brand.serif(24, color: Brand.cream, h: 1.15, ls: -.4)),
+          ],
         ),
       ),
     );

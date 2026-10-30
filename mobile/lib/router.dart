@@ -61,6 +61,23 @@ CustomTransitionPage<void> _landingPage(GoRouterState state, Widget child) {
   );
 }
 
+/// Uygulama içi ekran geçişi: kısa "solarak geçiş" (eski ekran çabuk solar, yenisi ardından belirir; iki ekran üst üste binmez).
+/// Alt sekmeler birbirinin kardeşidir; platformun "itme" animasyonu (iOS'ta yatay kayma, Android'de yakınlaşma) sekme değiştirirken
+/// yanlış hissettirir. Alt sayfaya girişte de aynısı kullanılır, böylece geçişler her yerde aynı dildedir.
+CustomTransitionPage<void> _fadeThroughPage(GoRouterState state, Widget child) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionDuration: const Duration(milliseconds: 260),
+    reverseTransitionDuration: const Duration(milliseconds: 200),
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final incoming = CurvedAnimation(parent: animation, curve: const Interval(.35, 1, curve: Curves.easeOut));
+      final outgoing = ReverseAnimation(CurvedAnimation(parent: secondaryAnimation, curve: const Interval(0, .35, curve: Curves.easeIn)));
+      return FadeTransition(opacity: outgoing, child: FadeTransition(opacity: incoming, child: child));
+    },
+  );
+}
+
 Map<String, dynamic>? _extraMap(Object? extra) => extra is Map ? extra.cast<String, dynamic>() : null;
 
 /// Web `App.jsx` rotaları. `/dashboard*` korumalıdır (web: `ProtectedRoute`).
@@ -119,29 +136,32 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
           GoRoute(path: '/rebi', builder: (context, state) => const ChatScreen()),
           GoRoute(
             path: '/dashboard',
-            builder: (context, state) => DashboardScreen(nav: _extraMap(state.extra)),
+            pageBuilder: (context, state) => _fadeThroughPage(state, DashboardScreen(nav: _extraMap(state.extra))),
           ),
           GoRoute(
             path: '/dashboard/analyze',
-            builder: (context, state) => AnalyzeScreen(
-              key: ValueKey('analyze-${state.uri.queryParameters['photo'] == '1'}'),
-              photoOnly: state.uri.queryParameters['photo'] == '1',
+            pageBuilder: (context, state) => _fadeThroughPage(
+              state,
+              AnalyzeScreen(
+                key: ValueKey('analyze-${state.uri.queryParameters['photo'] == '1'}'),
+                photoOnly: state.uri.queryParameters['photo'] == '1',
+              ),
             ),
           ),
-          GoRoute(path: '/dashboard/checkin', builder: (context, state) => const CheckInScreen()),
+          GoRoute(path: '/dashboard/checkin', pageBuilder: (context, state) => _fadeThroughPage(state, const CheckInScreen())),
           // `extra: {'prompt': '...'}` ile açılırsa mesaj sohbete hazır yazılıp gönderilir (ör. Rafım'dan "yerine ne kullanabilirim?").
           GoRoute(
             path: '/dashboard/chat',
-            builder: (context, state) => ChatScreen(initialPrompt: _extraMap(state.extra)?['prompt'] as String?),
+            pageBuilder: (context, state) => _fadeThroughPage(state, ChatScreen(initialPrompt: _extraMap(state.extra)?['prompt'] as String?)),
           ),
-          GoRoute(path: '/dashboard/shelf', builder: (context, state) => const ShelfScreen()),
-          GoRoute(path: '/dashboard/themes', builder: (context, state) => const ThemesScreen()),
-          GoRoute(path: '/dashboard/subscribe', builder: (context, state) => const SubscribeScreen()),
-          GoRoute(path: '/dashboard/routine', builder: (context, state) => const DashboardScreen(planOnly: true)),
-          GoRoute(path: '/dashboard/profile', builder: (context, state) => const MeScreen()),
-          GoRoute(path: '/dashboard/account', builder: (context, state) => const ProfileScreen()),
-          GoRoute(path: '/dashboard/history', builder: (context, state) => const HistoryScreen()),
-          GoRoute(path: '/dashboard/reminders', builder: (context, state) => const RemindersScreen()),
+          GoRoute(path: '/dashboard/shelf', pageBuilder: (context, state) => _fadeThroughPage(state, const ShelfScreen())),
+          GoRoute(path: '/dashboard/themes', pageBuilder: (context, state) => _fadeThroughPage(state, const ThemesScreen())),
+          GoRoute(path: '/dashboard/subscribe', pageBuilder: (context, state) => _fadeThroughPage(state, const SubscribeScreen())),
+          GoRoute(path: '/dashboard/routine', pageBuilder: (context, state) => _fadeThroughPage(state, const DashboardScreen(planOnly: true))),
+          GoRoute(path: '/dashboard/profile', pageBuilder: (context, state) => _fadeThroughPage(state, const MeScreen())),
+          GoRoute(path: '/dashboard/account', pageBuilder: (context, state) => _fadeThroughPage(state, const ProfileScreen())),
+          GoRoute(path: '/dashboard/history', pageBuilder: (context, state) => _fadeThroughPage(state, const HistoryScreen())),
+          GoRoute(path: '/dashboard/reminders', pageBuilder: (context, state) => _fadeThroughPage(state, const RemindersScreen())),
         ],
       ),
     ],
