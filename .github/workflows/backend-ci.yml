@@ -45,4 +45,13 @@ jobs:
 
       - name: Testler
         working-directory: backend
-        run: python -m pytest -q -m "not slow"
+        run: |
+          set +e
+          python -m pytest -q -m "not slow" -rfE --tb=short -p no:cacheprovider > pytest.out 2>&1
+          code=$?
+          cat pytest.out
+          if [ $code -ne 0 ]; then
+            msg=$(tail -c 6500 pytest.out | python3 -c "import sys; print(sys.stdin.read().replace('%','%25').replace(chr(13),'%0D').replace(chr(10),'%0A'))")
+            echo "::error title=pytest-cikti::$msg"
+          fi
+          exit $code
