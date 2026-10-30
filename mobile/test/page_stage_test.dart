@@ -66,6 +66,21 @@ void main() {
       expect(find.text(tr('checkin.title')), findsOneWidget);
     });
 
+    testWidgets('check-in: gönder düğmesi sabit çubukta, kapalıyken nedenini söyler', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard/checkin', prefs: acceptedPrefs());
+      // Formun sonuna kaydırmadan görünür ve ekrana sığar.
+      final submit = find.text(tr('checkin.submit'));
+      expect(submit, findsOneWidget);
+      expect(tester.getBottomLeft(submit).dy, lessThan(844));
+      expect(find.text(tr('mobileCheckin.needSkin')), findsOneWidget);
+
+      await tapText(tester, tr('mobileCheckin.skin.kuru.title'));
+      expect(find.text(tr('mobileCheckin.needSkin')), findsNothing);
+      await tester.tap(submit);
+      await settle(tester, 6);
+      expect(h.backend.calls('/daily_checkin'), hasLength(1));
+    });
+
     testWidgets('check-in: bugün yapıldıysa da sahneyle açılır (içerik durum çubuğunun altında kalmaz)', (tester) async {
       final backend = FakeBackend()..checkinStatus = {'already_checked_in': true};
       await pumpApp(tester, location: '/dashboard/checkin', prefs: acceptedPrefs(), backend: backend);

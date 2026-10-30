@@ -298,6 +298,7 @@ class StagePage extends StatelessWidget {
     this.bottomPadding = 40,
     this.overlap = PageStage.defaultOverlap,
     this.onRefresh,
+    this.bottomBar,
   });
 
   final RebiTheme theme;
@@ -320,6 +321,9 @@ class StagePage extends StatelessWidget {
 
   /// Verilirse sayfa aşağı çekilerek yenilenir.
   final Future<void> Function()? onRefresh;
+
+  /// Kaydırma alanının altında sabit duran çubuk (uzun formlarda ana eylem: her zaman görünür ve neden kapalı olduğunu söyler).
+  final Widget? bottomBar;
 
   @override
   Widget build(BuildContext context) {
@@ -353,9 +357,31 @@ class StagePage extends StatelessWidget {
           ),
         ),
       );
-    return ThemedBackground(
+    final page = ThemedBackground(
       theme: theme,
       child: onRefresh == null ? scroll : PullToRefresh(color: theme.primary, onRefresh: onRefresh!, child: scroll),
+    );
+    final bar = bottomBar;
+    return bar == null ? page : Column(children: [Expanded(child: page), bar]);
+  }
+}
+
+/// [StagePage.bottomBar] için ortak çerçeve: yüzey rengi, üstte ince çizgi, içerik [maxWidth] ile ortalı.
+class StageBottomBar extends StatelessWidget {
+  const StageBottomBar({super.key, required this.child, this.maxWidth = 512});
+
+  final Widget child;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(color: Tw.surface, border: Border(top: BorderSide(color: Tw.gray100))),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      child: Center(
+        heightFactor: 1,
+        child: ConstrainedBox(constraints: BoxConstraints(maxWidth: maxWidth), child: child),
+      ),
     );
   }
 }

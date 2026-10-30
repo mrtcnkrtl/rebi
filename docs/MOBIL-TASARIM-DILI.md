@@ -207,6 +207,9 @@ Ana sekmelerin dışındaki ekranlar da aynı dilde açılır: **derin ton sahne
   (yükleniyor, hata, boş) sahne çizilmelidir**, yoksa içerik durum çubuğunun altında kalır.
 - **Gruplanmış liste (`MenuGroup` + `MenuRow`):** ilgili eylemler tek yüzeyde, satırlar arası ince çizgi; satır = simge kutusu + başlık + tek satır
   açıklama + ok, ≥ 64 dp. Ayrı kartlar yığmak yerine bunu kullan.
+- **Sabit alt çubuk (`StagePage.bottomBar` + `StageBottomBar`):** uzun formların ana eylemi (Check-in gönder, Hatırlatıcıları kaydet) sayfanın
+  sonunda değil, kaydırma alanının altında sabittir. Eylem kapalıysa **nedenini söyler** ("Göndermek için cildinin nasıl hissettiğini seç");
+  yalnız değişiklik varken çıkan çubuklarda (Hatırlatıcılar) değişiklik yokken çubuk hiç görünmez.
 - **Aşağı çekip yenileme:** veri getiren ekranlar `onRefresh:` verir (`StagePage`/`ThemedPage`); gösterge yüzey renkli yuvarlaktır.
 - **Metinler yerelleştirilir:** ekran kodunda Türkçe sabit metin yok; `mobileCheckin.*`, `mobileAccount.*`, `mobileThemes.*` (TR + EN).
   Sunucuya giden kimlikler (`iyi/kuru/...`, `acne/...`) çeviri anahtarıdır, görünen metin değildir.

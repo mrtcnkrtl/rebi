@@ -684,6 +684,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       title: i18n.t('checkin.title'),
       subtitle: i18n.t('checkin.subtitle'),
       backTo: '/dashboard',
+      bottomBar: _submitBar(i18n, theme),
       children: [
         if (_submitError.isNotEmpty) ...[
           NoticeBox(text: _submitError, bg: Tw.amber50, border: Tw.amber200, fg: Tw.amber900, fontSize: 13.5),
@@ -937,25 +938,42 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 20),
-        PrimaryButton(
-          color: theme.primary,
-          loading: _loading,
-          icon: LucideIcons.send,
-          label: i18n.t('checkin.submit'),
-          onPressed: _canSubmit ? _submit : null,
-          minHeight: 56,
-        ),
-        if (_loading)
-          Padding(
-            padding: const EdgeInsets.only(top: 12),
-            child: Semantics(liveRegion: true, child: Text(i18n.t('mobileCheckin.analyzing'), textAlign: TextAlign.center, style: tx(13, c: Tw.gray600))),
-          ),
         Padding(
-          padding: const EdgeInsets.fromLTRB(8, 14, 8, 0),
+          padding: const EdgeInsets.fromLTRB(8, 18, 8, 0),
           child: Text(i18n.t('mobileCheckin.blendNote'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500, h: relaxed)),
         ),
       ],
+    );
+  }
+
+  /// Sabit gönder çubuğu: uzun formun sonuna kaydırmadan gönderilir; düğme kapalıyken nedenini söyler (cilt hissi seçilmedi).
+  Widget _submitBar(I18n i18n, RebiTheme theme) {
+    final needsSkin = _skinFeeling.isEmpty && !_loading;
+    return StageBottomBar(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (needsSkin)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(i18n.t('mobileCheckin.needSkin'), textAlign: TextAlign.center, style: tx(12.5, w: 5, c: Tw.gray600, h: snug)),
+            ),
+          if (_loading)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Semantics(liveRegion: true, child: Text(i18n.t('mobileCheckin.analyzing'), textAlign: TextAlign.center, style: tx(12.5, c: Tw.gray600))),
+            ),
+          PrimaryButton(
+            color: theme.primary,
+            loading: _loading,
+            icon: LucideIcons.send,
+            label: i18n.t('checkin.submit'),
+            onPressed: _canSubmit ? _submit : null,
+            minHeight: 54,
+          ),
+        ],
+      ),
     );
   }
 

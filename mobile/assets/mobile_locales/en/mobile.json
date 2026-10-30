@@ -791,6 +791,7 @@
     "prefilled": "{{n}} answers were filled in from today's tracking. Change them if you like.",
     "blendNote": "Your sleep and stress answers are briefly blended with your recent check-ins before they feed into the risk summary.",
     "analyzing": "Analyzing...",
+    "needSkin": "Pick how your skin feels today to send your check-in.",
     "errors": {
       "network": "Couldn't connect. Check your internet and try again.",
       "alreadyDone": "You've already checked in today.",

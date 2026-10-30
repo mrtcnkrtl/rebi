@@ -791,6 +791,7 @@
     "prefilled": "Bugünkü takip kayıtlarından {{n}} cevap dolduruldu. İstersen değiştir.",
     "blendNote": "Uyku ve stres cevapların, geçmiş check-in kayıtlarınla kısa süreli harmanlanarak risk özetine girer.",
     "analyzing": "Analiz ediliyor...",
+    "needSkin": "Göndermek için cildinin bugün nasıl hissettiğini seç.",
     "errors": {
       "network": "Bağlantı kurulamadı. İnternetini kontrol edip tekrar dene.",
       "alreadyDone": "Bugün için check-in zaten yapıldı.",

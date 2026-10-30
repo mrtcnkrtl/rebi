@@ -29,7 +29,8 @@ void main() {
       };
 
   Finder saveButton() => find.widgetWithText(PrimaryButton, tr('mobileReminders.save'));
-  bool saveEnabled(WidgetTester tester) => tester.widget<PrimaryButton>(saveButton()).onPressed != null;
+  /// Kaydet çubuğu yalnızca değişiklik varken görünür; çubuk yoksa kaydet "kapalı" sayılır.
+  bool saveEnabled(WidgetTester tester) => saveButton().evaluate().isNotEmpty && tester.widget<PrimaryButton>(saveButton()).onPressed != null;
 
   void pickTimes(Map<String, TimeOfDay> byCall) {
     var call = 0;

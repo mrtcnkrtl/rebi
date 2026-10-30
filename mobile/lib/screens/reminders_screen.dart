@@ -169,6 +169,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
       title: i18n.t('mobileReminders.title'),
       subtitle: i18n.t('mobileReminders.subtitle'),
       backTo: '/dashboard/profile',
+      bottomBar: _saveBar(i18n, theme),
       children: [
         NotificationSettingsCard(theme: theme),
         DeliveryCard(theme: theme),
@@ -194,21 +195,27 @@ class _RemindersScreenState extends State<RemindersScreen> {
           _categoriesCard(i18n, theme),
           const SizedBox(height: 16),
           QuietHoursCard(settings: _draft, onChanged: _edit, theme: theme),
-          const SizedBox(height: 16),
+        ],
+      ],
+    );
+  }
+
+  /// Sabit kaydet çubuğu: değişiklik olduğunda (ve kaydedildi/hata mesajı görünürken) çıkar; uzun sayfanın sonuna kaydırmadan kaydedilir.
+  Widget? _saveBar(I18n i18n, RebiTheme theme) {
+    final visible = _real && _saved != null && (_dirty || _saving || _showSaved || _error != null);
+    if (!visible) return null;
+    return StageBottomBar(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           if (_error != null) ...[
-            NoticeBox(
-              text: _error!,
-              bg: Tw.red50,
-              border: Tw.red200,
-              fg: Tw.red700,
-              icon: LucideIcons.circleAlert,
-              fontSize: 12,
-            ),
-            const SizedBox(height: 12),
+            NoticeBox(text: _error!, bg: Tw.red50, border: Tw.red200, fg: Tw.red700, icon: LucideIcons.circleAlert, fontSize: 12.5),
+            const SizedBox(height: 8),
           ],
           if (_showSaved) ...[
             StatusLine(ok: true, text: i18n.t('mobileReminders.saved')),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
           ],
           PrimaryButton(
             color: theme.primary,
@@ -217,7 +224,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
             onPressed: _dirty && _draft.dayIsValid ? _save : null,
           ),
         ],
-      ],
+      ),
     );
   }
 
