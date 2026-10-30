@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/ui/shell/app_shell.dart';
 import 'package:rebi/ui/shell/page_stage.dart';
+import 'package:rebi/ui/widgets/common.dart' show RCard;
 import 'package:rebi/ui/widgets/menu_list.dart';
 
 import 'helpers/app_harness.dart';
@@ -96,6 +97,38 @@ void main() {
         expect(find.byType(PageStage), findsOneWidget);
       });
     }
+  });
+
+  group('geniş ekran (tablet)', () {
+    testWidgets('sahne metni gövdeyle aynı sütunda hizalanır (672 dp)', (tester) async {
+      await pumpApp(tester, location: '/dashboard/history', prefs: acceptedPrefs(), size: const Size(1000, 900));
+      final title = tester.getTopLeft(find.text(tr('mobileHistory.title'))).dx;
+      final card = tester.getTopLeft(find.byType(RCard).first).dx;
+      expect(card, closeTo((1000 - 672) / 2 + 16, 1), reason: 'gövde 672 dp sütunda');
+      expect(title, closeTo(card + 4, 1), reason: 'başlık kartın 4 dp içinden başlar (telefondaki gibi)');
+    });
+
+    testWidgets('telefonda başlık 20 dp, kart 16 dp içeriden başlar', (tester) async {
+      await pumpApp(tester, location: '/dashboard/history', prefs: acceptedPrefs());
+      expect(tester.getTopLeft(find.text(tr('mobileHistory.title'))).dx, closeTo(20, 1));
+      expect(tester.getTopLeft(find.byType(RCard).first).dx, closeTo(16, 1));
+    });
+  });
+
+  group('klavye', () {
+    testWidgets('klavye açılınca alt gezinme çubuğu gizlenir, kapanınca geri gelir', (tester) async {
+      await pumpApp(tester, location: '/dashboard/checkin', prefs: acceptedPrefs());
+      expect(find.text(tr('mobileNav.history')), findsOneWidget);
+
+      tester.view.viewInsets = const FakeViewPadding(bottom: 900);
+      addTearDown(tester.view.resetViewInsets);
+      await settle(tester, 3);
+      expect(find.text(tr('mobileNav.history')), findsNothing, reason: 'yazarken yer açılır');
+
+      tester.view.resetViewInsets();
+      await settle(tester, 3);
+      expect(find.text(tr('mobileNav.history')), findsOneWidget);
+    });
   });
 
   group('bileşenler', () {

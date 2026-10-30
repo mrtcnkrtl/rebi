@@ -67,6 +67,7 @@ class PageStage extends StatelessWidget {
     this.leading,
     this.footer,
     this.overlap = defaultOverlap,
+    this.maxWidth = 672,
   });
 
   /// Kartın sahneye binen yüksekliği (dp); sahnenin alt boşluğu bunu içerir.
@@ -98,6 +99,10 @@ class PageStage extends StatelessWidget {
   final Widget? footer;
   final double overlap;
 
+  /// Sahne içeriğinin (başlık, geri, alt öğe) en geniş hâli; gövdeyle aynı olmalıdır ki tablette metin kartlarla hizalı kalsın.
+  /// Sahnenin rengi her zaman tam genişliktedir.
+  final double maxWidth;
+
   @override
   Widget build(BuildContext context) {
     final lang = I18n.instance.lang;
@@ -106,74 +111,81 @@ class PageStage extends StatelessWidget {
     return StageSurface(
       theme: theme,
       watermark: const Positioned(right: -64, top: -18, child: BrandWatermark(size: 240)),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20, top + (hasBar ? 4 : 24), 16, 20 + overlap),
-        child: MediaQuery.withClampedTextScaling(
-          maxScaleFactor: 1.3,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (hasBar)
-                SizedBox(
-                  height: 52,
-                  child: Row(
-                    children: [
-                      if (onBack != null) _BackLink(onTap: onBack!, label: backLabel),
-                      const Spacer(),
-                      ?trailing,
-                    ],
-                  ),
-                ),
-              if (hasBar) const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+      child: Align(
+        alignment: Alignment.topCenter,
+        heightFactor: 1,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20, top + (hasBar ? 4 : 24), 16, 20 + overlap),
+            child: MediaQuery.withClampedTextScaling(
+              maxScaleFactor: 1.3,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (leading != null) ...[leading!, const SizedBox(width: 16)],
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (eyebrow != null && eyebrow!.isNotEmpty)
-                          Reveal(
-                            offset: const Offset(0, 6),
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
-                              child: Text(
-                                brandCaps(eyebrow!, lang),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .72), ls: brandTracking(lang, 1.6)),
+                  if (hasBar)
+                    SizedBox(
+                      height: 52,
+                      child: Row(
+                        children: [
+                          if (onBack != null) _BackLink(onTap: onBack!, label: backLabel),
+                          const Spacer(),
+                          ?trailing,
+                        ],
+                      ),
+                    ),
+                  if (hasBar) const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (leading != null) ...[leading!, const SizedBox(width: 16)],
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (eyebrow != null && eyebrow!.isNotEmpty)
+                              Reveal(
+                                offset: const Offset(0, 6),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: Text(
+                                    brandCaps(eyebrow!, lang),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: tx(11.5, w: 6, c: Brand.cream.withValues(alpha: .72), ls: brandTracking(lang, 1.6)),
+                                  ),
+                                ),
+                              ),
+                            if (badge != null && (eyebrow == null || eyebrow!.isEmpty))
+                              Padding(padding: const EdgeInsets.only(bottom: 8), child: Align(alignment: Alignment.centerLeft, child: badge!)),
+                            Reveal(
+                              delay: const Duration(milliseconds: 60),
+                              offset: const Offset(0, 12),
+                              child: Semantics(
+                                header: true,
+                                child: Text(title, style: Brand.serif(33, color: Brand.cream, h: 1.1, ls: -.8)),
                               ),
                             ),
-                          ),
-                        if (badge != null && (eyebrow == null || eyebrow!.isEmpty))
-                          Padding(padding: const EdgeInsets.only(bottom: 8), child: Align(alignment: Alignment.centerLeft, child: badge!)),
-                        Reveal(
-                          delay: const Duration(milliseconds: 60),
-                          offset: const Offset(0, 12),
-                          child: Semantics(
-                            header: true,
-                            child: Text(title, style: Brand.serif(33, color: Brand.cream, h: 1.1, ls: -.8)),
-                          ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    Reveal(
+                      delay: const Duration(milliseconds: 120),
+                      offset: const Offset(0, 8),
+                      child: Text(subtitle!, style: tx(14, c: Brand.cream.withValues(alpha: .8), h: 1.45)),
+                    ),
+                  ],
+                  if (footer != null) ...[
+                    const SizedBox(height: 18),
+                    Reveal(delay: const Duration(milliseconds: 180), offset: const Offset(0, 8), child: footer!),
+                  ],
                 ],
               ),
-              if (subtitle != null && subtitle!.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Reveal(
-                  delay: const Duration(milliseconds: 120),
-                  offset: const Offset(0, 8),
-                  child: Text(subtitle!, style: tx(14, c: Brand.cream.withValues(alpha: .8), h: 1.45)),
-                ),
-              ],
-              if (footer != null) ...[
-                const SizedBox(height: 18),
-                Reveal(delay: const Duration(milliseconds: 180), offset: const Offset(0, 8), child: footer!),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -345,6 +357,7 @@ class StagePage extends StatelessWidget {
             leading: leading,
             footer: footer,
             overlap: overlap,
+            maxWidth: maxWidth,
           ),
           body: Center(
             child: ConstrainedBox(

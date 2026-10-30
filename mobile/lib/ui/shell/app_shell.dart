@@ -118,6 +118,7 @@ class _AppShellState extends State<AppShell> {
     // Oturumsuz `/rebi` bir davettir (yapay zekâ yok): beyan penceresi davetin üstüne binmez, sohbette gösterilir.
     final isAiSurface = isDashboard || (path.startsWith('/rebi') && user != null);
     final inApp = user != null && isDashboard;
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
     // Analiz sihirbazı (tam form) tam ekran bir akıştır: alt çubuk ve geri çubuğu yoktur, üst güvenli alanı kendisi uygular.
     final focusFlow = inApp && path == '/dashboard/analyze' && widget.location.queryParameters['photo'] != '1';
     // Açılış ve giriş ekranları kendi üst çubuğunu çizer (hero zeminin üstünde).
@@ -168,7 +169,8 @@ class _AppShellState extends State<AppShell> {
                         ),
                     ],
                   ),
-            bottomNavigationBar: inApp && !focusFlow ? _BottomNav(path: path) : null,
+            // Klavye açıkken (sohbet, check-in notu, arama alanları) alt çubuk gizlenir: yazma alanına yer açılır, çubuk klavyenin üstünde asılı kalmaz.
+            bottomNavigationBar: inApp && !focusFlow && !keyboardOpen ? _BottomNav(path: path) : null,
           ),
           if (isAiSurface) const Positioned.fill(child: AiDisclaimerModal()),
           if (user != null) const Positioned.fill(child: ConsentRecoveryModal()),
