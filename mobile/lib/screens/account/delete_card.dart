@@ -61,8 +61,13 @@ class _AccountDeleteCardState extends State<AccountDeleteCard> {
       if (!res.ok) throw Exception(detailOr(res.data, i18n.t('mobileAccount.delete.requestFailed')));
       _phrase.clear();
       // Silinen hesabın planlı yerel bildirimleri ve cihaz kaydı da gider (oturum kapanınca kimlik gittiği için önce).
-      await notifications.prepareSignOut();
-      await clearUserLocalData(uid);
+      // Hesap sunucuda gitti: yerel temizlikteki bir hata kullanıcıya "silinemedi" dedirtmemeli, oturum kapanmalı.
+      try {
+        await notifications.prepareSignOut();
+        await clearUserLocalData(uid);
+      } catch (_) {
+        /* kalan yerel veri bir sonraki girişte temizlenir */
+      }
       await auth.signOut();
       router.go('/');
     } catch (e) {

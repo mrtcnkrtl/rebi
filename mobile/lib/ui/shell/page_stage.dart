@@ -232,7 +232,9 @@ class _Segment extends StatelessWidget {
       label: label,
       excludeSemantics: true,
       child: Pressable(
-        onTap: selected ? null : onTap,
+        onTap: () {
+          if (!selected) onTap();
+        },
         scale: .96,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
