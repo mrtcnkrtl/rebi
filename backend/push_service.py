@@ -67,14 +67,55 @@ def _access_token(info: dict) -> str:
         return str(_credentials.token)
 
 
+def build_message(
+    token: str,
+    title: str,
+    body: str,
+    data: dict | None = None,
+    category: str | None = None,
+    data_only: bool = False,
+) -> dict:
+    """
+    Tek cihaz için FCM mesajı.
+
+    iOS butonları `aps.category` ile uygulamanın kayıtlı kategorisinden çizer.
+    Android'de sistemin gösterdiği bildirim buton taşıyamaz; bu yüzden butonları
+    destekleyen uygulamalara (`data_only`) başlık ve gövde veri içinde gider ve
+    bildirimi uygulama kendisi kurar.
+    """
+    payload = {k: str(v) for k, v in (data or {}).items()}
+    aps: dict = {}
+    if category:
+        aps["category"] = category
+    message: dict = {
+        "token": token,
+        "data": payload,
+        "android": {"priority": "high"},
+        "apns": {"headers": {"apns-priority": "10"}},
+    }
+    if aps:
+        message["apns"]["payload"] = {"aps": aps}
+    if data_only:
+        message["data"] = {**payload, "title": title, "body": body}
+    else:
+        message["notification"] = {"title": title, "body": body}
+    return {"message": message}
+
+
 async def send_push(
     tokens: list[str],
     title: str,
     body: str,
     data: dict | None = None,
+    category: str | None = None,
+    action_tokens: set[str] | frozenset[str] = frozenset(),
+    data_only_tokens: set[str] | frozenset[str] = frozenset(),
 ) -> dict:
     """
-    Verilen cihazlara tek bildirim gönderir.
+    Verilen cihazlara tek bildirim gönderir. iOS kategorisi yalnızca butonları
+    işleyebilen cihazlara (`action_tokens`) eklenir; yoksa basınca kayıt
+    yazmayan butonlar görünür. `data_only_tokens` içindeki cihazlara yalnızca
+    veri taşıyan mesaj gider.
 
     Döner: {"status": "sent" | "skipped" | "error", "sent": int,
             "invalid_tokens": [...]} — geçersiz token'ları çağıran siler.
@@ -96,21 +137,19 @@ async def send_push(
 
     url = f"https://fcm.googleapis.com/v1/projects/{project}/messages:send"
     headers = {"Authorization": f"Bearer {access_token}"}
-    payload = {k: str(v) for k, v in (data or {}).items()}
     sent = 0
     invalid: list[str] = []
 
     async with httpx.AsyncClient(timeout=_FCM_TIMEOUT) as client:
         for token in tokens:
-            message = {
-                "message": {
-                    "token": token,
-                    "notification": {"title": title, "body": body},
-                    "data": payload,
-                    "android": {"priority": "high"},
-                    "apns": {"headers": {"apns-priority": "10"}},
-                }
-            }
+            message = build_message(
+                token,
+                title,
+                body,
+                data,
+                category if token in action_tokens else None,
+                data_only=token in data_only_tokens,
+            )
             try:
                 response = await client.post(url, json=message, headers=headers)
             except Exception as e:

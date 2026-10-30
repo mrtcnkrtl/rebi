@@ -48,7 +48,7 @@ class _Sender:
         self.in_flight = 0
         self.max_in_flight = 0
 
-    async def __call__(self, tokens, title, body, data=None):
+    async def __call__(self, tokens, title, body, data=None, category=None, action_tokens=(), data_only_tokens=()):
         self.in_flight += 1
         self.max_in_flight = max(self.max_in_flight, self.in_flight)
         try:

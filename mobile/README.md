@@ -308,7 +308,7 @@ Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu mod
 
 ## Uygulama kimliği ve yayın
 
-- Paket / bundle kimliği: `com.rebiovil.rebi`, görünen ad: `Rebi`.
+- Paket kimliği: Android `com.rebiovil.rebi`, iOS `com.rebiovil.mobile`; görünen ad: `Rebi`.
 - **Logo ve ikonlar tek kaynaktan üretilir:** uygulama içindeki `BrandMark`'ın geometrisi (`BrandGlyph`,
   `lib/ui/brand/brand_mark.dart`). Logoyu değiştirirseniz:
 

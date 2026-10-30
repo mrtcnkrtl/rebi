@@ -149,9 +149,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
   String _errorText(AuthErrorKind kind, String raw) {
     switch (kind) {
       case AuthErrorKind.notConfigured:
-        return 'Giriş şu an yapılamıyor: uygulama Supabase ayarları olmadan başlatılmış. '
-            'Geliştirme sırasında "main.dart (dev)" ayarıyla ya da '
-            '`flutter run --dart-define-from-file=env/dev.json` ile çalıştır.';
+        return I18n.instance.t('mobileMisc.authNotConfigured');
       case AuthErrorKind.network:
         return _t('mobileAuth.errNetwork');
       case AuthErrorKind.invalidCredentials:

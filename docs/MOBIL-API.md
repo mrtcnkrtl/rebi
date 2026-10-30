@@ -71,7 +71,13 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
       "start": "09:00",
       "end": "21:00",
       "every_minutes": 120,
-      "log_event": "water_intake"
+      "log_event": "water_intake",
+      "category": "rebi_water_intake",
+      "actions": [
+        { "id": "water250", "label": "+250 ml", "log_event": "water_intake", "payload": { "ml": 250 } },
+        { "id": "water500", "label": "+500 ml", "log_event": "water_intake", "payload": { "ml": 500 } }
+      ],
+      "open_path": "/dashboard"
     }
   ],
   "progress": {
@@ -280,9 +286,16 @@ POST /devices/register
   "utc_offset_minutes": 180,
   "locale": "tr",
   "app_version": "1.0.0",
-  "push_enabled": true
+  "push_enabled": true,
+  "actions_supported": true
 }
 ```
+
+`actions_supported`: uygulama **sunucudan gelen** bildirimin butonlarını (aşağıya bakın)
+işleyebiliyorsa `true` gönderin. Bu durumda iOS mesajına `aps.category` eklenir; Android'e
+**yalnızca veri taşıyan** mesaj gider ve bildirimi butonlarıyla birlikte uygulama kendisi
+kurar. Varsayılan `false`'tur: kategori eklenmez (yoksa iOS, basınca kayıt yazmayan
+butonlar gösterir) ve sistem düz bildirimi gösterir.
 
 `utc_offset_minutes` zorunludur: hatırlatıcı saatleri yerel olduğu için sunucu cihazın
 saat dilimini bilmek zorundadır. Uygulama açılışta, **saat farkı değişince** (yolculuk, yaz saati), **12 saatten uzun
@@ -337,10 +350,107 @@ sorgularla okunur. Tur `PUSH_DISPATCH_BUDGET_SECONDS` (varsayılan 200 sn) ya da
 `truncated: true` döner ve sunucu günlüğüne uyarı düşer; sonraki tur kaldığı kullanıcıdan devam eder, sondaki
 kullanıcılar aç kalmaz.
 
-Her hatırlatıcı gün içinde bir kez gider (`push_sends` defteri). Bildirim verisinde
-`reminder_id`, `log_event` ve `log_date` taşınır; kullanıcı bildirime dokunduğunda
-uygulama ilgili ekranı açıp `log_event` ile kayıt gönderebilir. Geçersiz hâle gelen
+Her hatırlatıcı gün içinde bir kez gider (`push_sends` defteri). Geçersiz hâle gelen
 cihaz anahtarları (FCM 403/404) otomatik silinir.
+
+Bildirim verisi (`data`, tüm değerler metin):
+
+| alan | örnek | not |
+| --- | --- | --- |
+| `reminder_id` | `water_intake` | hatırlatıcı kimliği |
+| `log_event` | `water_intake` | ilgili olay tipi |
+| `log_date` | `2026-10-28` | kullanıcının **yerel** günü |
+| `slot` | `13:00` | pencere içindeki gönderim saati |
+| `open_path` | `/dashboard` | dokununca açılacak ekran (web yolu) |
+| `actions` | `[{"id":"water250","label":"+250 ml"}]` | JSON metni; buton yoksa `[]` |
+| `title`, `body` | | yalnızca Android `actions_supported` cihazlarda |
+
+`actions_supported` iOS cihazlarda `aps.category` = `rebi_<reminder_id>` olarak gelir
+(uygulamanın yerel bildirimde kullandığı kategori adıyla aynı).
+
+### Bildirimden günlük veri toplama
+
+Kullanıcı uygulamayı açmadan bildirimin üzerindeki butonla cevap verir; cevap günlük
+kayda (`daily_events`) yazılır ve hatırlatıcı planı buna göre güncellenir (ör. su hedefi
+dolunca su hatırlatıcısı susar, makyaj temizlendiyse temizlik hatırlatıcısı düşer).
+
+**1. Kategorileri kaydet.** iOS butonları ancak bildirim gelmeden önce kaydedilmiş
+kategoriden çizer. Açılışta `GET /push/actions` çağırın ve her kategoriyi
+`UNNotificationCategory` olarak kaydedin (kimlik doğrulaması gerekmez):
+
+```json
+{
+  "categories": [
+    { "id": "water_intake", "category": "rebi_water_intake", "open_path": "/dashboard",
+      "actions": [ { "id": "water250", "label": "+250 ml" }, { "id": "water500", "label": "+500 ml" } ] },
+    { "id": "nutrition_log", "category": "rebi_nutrition_log", "open_path": "/dashboard",
+      "actions": [ { "id": "junkNo", "label": "Hayır" } ] }
+  ]
+}
+```
+
+Android'de `onMessageReceived` içinde `data.actions` listesinden `NotificationCompat`
+butonları kurulur. Butonlar arka planda çalışmalı (uygulamayı öne getirmeden).
+
+**2. Cevabı gönder.**
+
+```
+POST /push/respond
+Authorization: Bearer <supabase_access_token>
+{
+  "user_id": "…",
+  "reminder_id": "water_intake",
+  "action_id": "water250",
+  "log_date": "2026-10-28",
+  "slot": "13:00"
+}
+```
+
+`log_date` ve `slot` bildirim verisinden aynen geri gönderilir. Hangi olayın hangi yükle
+yazılacağına sunucu karar verir; uygulama yük göndermez. Aynı bildirime (aynı
+`reminder_id` + `log_date` + `slot`) ikinci dokunuş sayılmaz, bu yüzden çevrimdışı
+kuyruğun tekrar denemesi güvenlidir. Kendi kimliğinizi kullanmak isterseniz
+`client_event_id` gönderebilirsiniz.
+
+Yanıt:
+
+```json
+{ "ok": true, "log_date": "2026-10-28", "log_event": "water_intake",
+  "aggregated": { "water_ml_total": 750, "…": "…" } }
+```
+
+| kod | anlamı |
+| --- | --- |
+| 422 | bu hatırlatıcıda böyle bir buton yok veya `slot` biçimi `SS:DD` değil |
+| 403 | `user_id` anahtarla uyuşmuyor |
+
+Butonlar:
+
+| reminder_id | butonlar (`action_id` → yazılan kayıt) |
+| --- | --- |
+| `routine_morning` | `done` → sabah rutini yapıldı |
+| `routine_evening` | `done` → akşam rutini yapıldı |
+| `makeup_log` | `yes` / `no` → makyaj yapıldı / yapılmadı |
+| `water_intake` | `water250` / `water500` → su eklendi |
+| `spf_refresh` | `done` → güneş kremi tazelendi |
+| `nutrition_log` | `junkNo` → abur cubur yemedi |
+| `makeup_removal`, `lip_balm`, `daily_checkin`, `restock_check` | buton yok; dokununca `open_path` açılır |
+
+Liste uygulamanın `reminderActions` listesindeki **olay yazan** eylemlerle aynıdır
+(kimlikler `mobileToday.actions.*` çeviri anahtarlarıdır). Seçim ekranı açan eylemler
+("Evet, yedim", "Temizledim") buton değildir. Uygulamanın düğme kimliği biçimi
+(`water_intake:water250`) da `action_id` olarak kabul edilir. İki liste birbirinden
+saparsa `backend/tests/test_push_actions.py` kırılır.
+
+**Yerel bildirimler.** Sunucuda FCM kapalıysa (`push_configured: false`) uygulama
+`GET /today/plan` yanıtındaki `reminders` ile yerel bildirim kurar; her hatırlatıcıda
+`category`, `actions` ve `open_path` aynı biçimde gelir. Cevap yine `POST /push/respond`
+ile gönderilir (`slot` = bildirimin kurulduğu saat). Cevap deftere de yazıldığı için
+sunucu aynı pencereye ayrıca push göndermez.
+
+**Arka planda oturum.** Buton arka planda çalıştığında erişim anahtarının süresi dolmuş
+olabilir; isteği göndermeden önce Supabase SDK'sıyla oturumu tazeleyin. İstek
+başarısız olursa cevabı kuyruğa alıp uygulama açıldığında tekrar gönderin.
 
 ## Rıza ve gizlilik
 

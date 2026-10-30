@@ -297,7 +297,24 @@
     "edgeQuickAnalyze": "Start new analysis",
     "edgeRecentTitle": "Recent messages",
     "edgeRecentPick": "Reuse:",
-    "disclaimerShort": "Rebi is an AI assistant; suggestions have a margin of error and are not medical diagnosis or treatment."
+    "disclaimerShort": "Rebi is an AI assistant; suggestions have a margin of error and are not medical diagnosis or treatment.",
+    "routineChip": "My routine",
+    "analyzeChip": "Analyze",
+    "retry": "Try again",
+    "send": "Send",
+    "errorNoReply": "Couldn't get a reply right now.",
+    "errorNetwork": "Couldn't connect. Check your internet and try again.",
+    "errorGeneric": "Something went wrong. Could you try again?",
+    "suggestRoutine": [
+      "What should I watch out for in today's routine?",
+      "Can I use the actives in my routine together?"
+    ],
+    "suggestGeneral": [
+      "How do I start retinol?",
+      "Can I use niacinamide with vitamin C?",
+      "My skin barrier is damaged, what should I do?",
+      "Which SPF suits me?"
+    ]
   },
   "dashboard": {
     "noAnalyzeTitle": "Hi, {{name}}!",
@@ -343,6 +360,10 @@
     "acceptCta": "I accept my routine, start tracking",
     "feelsTodayHint": "How do you feel today? Your routine will adapt accordingly.",
     "whySkincareButton": "Why this product / ingredient?",
+    "stepChoicesTitle": "Which one will you use?",
+    "stepChoicesHint": "Pick the one you prefer; if you skip, the combined suggestion stays.",
+    "stepChoiceSelected": "Selected",
+    "stepHow": "How?",
     "shortWhy": "Why (briefly):",
     "summary": "Summary:",
     "howToApply": "How to apply:",
@@ -389,7 +410,9 @@
     "lifestyleSupportsSubtitle": "Nutrition, water, sleep, and lifestyle guidance",
     "nutritionTitle": "Nutrition",
     "mindMovementTitle": "Mind & movement",
-    "morningLifestyleLabel": "{{time}} — lifestyle"
+    "morningLifestyleLabel": "{{time}} — lifestyle",
+    "askRebi": "Ask Rebi",
+    "askRebiQuestion": "Can you explain this step in my routine: {{step}}"
   },
   "profile": {
     "title": "Profile",
@@ -405,5 +428,18 @@
     "fullAnalyze": "analysis form",
     "photosTitle": "Skin photos",
     "refresh": "Refresh"
+  },
+  "support": {
+    "title": "Support",
+    "subtitle": "We're here for your questions and requests about Rebi.",
+    "back": "Home",
+    "link": "Support",
+    "contactTitle": "Contact us",
+    "contactBody": "Email us with questions about the app, bug reports, suggestions or requests about your personal data.",
+    "deleteTitle": "Deleting your account and data",
+    "deleteInApp": "In the app: Me → Account and privacy → Delete account permanently. Your profile, routines, daily logs and skin photos are permanently deleted.",
+    "deleteByEmail": "If you can't access the app, email the address above from your account's email address with the subject \"Account deletion request\" and your account and data will be deleted.",
+    "medicalTitle": "Important",
+    "medicalBody": "Rebi offers general information for cosmetic skincare and daily routines; it does not diagnose or treat medical conditions. See a dermatologist for serious or persistent skin concerns."
   }
 }

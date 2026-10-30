@@ -12,8 +12,11 @@ import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import 'account_parts.dart';
 
-/// Hesabı silme onay ifadesi (sunucu da aynısını bekler).
+/// Sunucunun beklediği onay metni (`/account/delete` → `confirm_text`); dilden bağımsız sabittir.
 const accountDeletePhrase = 'HESABIMI_SIL';
+
+/// Kullanıcının kutuya yazdığı onay kelimesi seçili dilde (EN: `DELETE`); sunucuya yine [accountDeletePhrase] gider.
+String get typedDeletePhrase => I18n.instance.t('mobileAccount.deletePhrase', const {}, accountDeletePhrase);
 
 /// Hesabı kalıcı silme ("tehlikeli bölge"): kullanıcı ifadeyi aynen yazınca düğme açılır. Sunucu silince cihazdaki kişisel veri
 /// ve planlı bildirimler de temizlenir (silinmiş hesabın hatırlatıcıları çalmaya devam etmesin), oturum kapanır, karşılamaya dönülür.
@@ -41,7 +44,7 @@ class _AccountDeleteCardState extends State<AccountDeleteCard> {
     super.dispose();
   }
 
-  bool get _phraseOk => _phrase.text.trim() == accountDeletePhrase;
+  bool get _phraseOk => _phrase.text.trim().toUpperCase() == typedDeletePhrase;
 
   Future<void> _delete() async {
     final auth = context.read<AuthController>();
@@ -52,7 +55,7 @@ class _AccountDeleteCardState extends State<AccountDeleteCard> {
     setState(() => _msg = ('', ''));
     if (uid == null) return;
     if (!_phraseOk) {
-      setState(() => _msg = ('err', i18n.t('mobileAccount.delete.phraseMismatch', {'phrase': accountDeletePhrase})));
+      setState(() => _msg = ('err', i18n.t('mobileAccount.delete.phraseMismatch', {'phrase': typedDeletePhrase})));
       return;
     }
     setState(() => _busy = true);
@@ -102,7 +105,7 @@ class _AccountDeleteCardState extends State<AccountDeleteCard> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   decoration: BoxDecoration(color: Tw.surface.withValues(alpha: .8), borderRadius: BorderRadius.circular(4)),
-                  child: Text(accountDeletePhrase, style: tx(12.5, w: 6, c: Tw.red950).copyWith(fontFamily: 'monospace')),
+                  child: Text(typedDeletePhrase, style: tx(12.5, w: 6, c: Tw.red950).copyWith(fontFamily: 'monospace')),
                 ),
               ),
             ]),
@@ -115,7 +118,7 @@ class _AccountDeleteCardState extends State<AccountDeleteCard> {
             enableSuggestions: false,
             textCapitalization: TextCapitalization.characters,
             style: tx(14).copyWith(fontFamily: 'monospace'),
-            decoration: inputDecoration(hint: accountDeletePhrase),
+            decoration: inputDecoration(hint: typedDeletePhrase),
           ),
           if (_msg.$2.isNotEmpty) ...[
             const SizedBox(height: 12),

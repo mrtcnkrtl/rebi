@@ -36,6 +36,7 @@ void main() {
   });
 
   group('formatApiErrorDetail (web: lib/apiErrors.js)', () {
+    setUp(loadTestI18n);
     test('string detail', () => expect(formatApiErrorDetail({'detail': 'Yetkisiz'}), 'Yetkisiz'));
     test('pydantic liste detayı birleştirilir', () {
       expect(

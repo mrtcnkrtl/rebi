@@ -655,6 +655,9 @@ export default function Landing() {
               <Link to="/riza" className="hover:text-teal-700 underline underline-offset-2">
                 {t("legal.rizaTitle")}
               </Link>
+              <Link to="/destek" className="hover:text-teal-700 underline underline-offset-2">
+                {t("support.link")}
+              </Link>
             </p>
           </div>
         </div>

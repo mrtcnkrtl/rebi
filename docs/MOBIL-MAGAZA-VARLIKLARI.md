@@ -9,7 +9,7 @@ kişi (ve KVKK danışmanı) okuyup onaylamalıdır. Tıbbi iddia yoktur ("tedav
 
 | Alan | Değer |
 | --- | --- |
-| Paket / bundle | `com.rebiovil.rebi` |
+| Paket / bundle | Android `com.rebiovil.rebi`, iOS `com.rebiovil.mobile` |
 | Sürüm | 1.0.0 (derleme 1) |
 | Kategori (öneri) | **Play:** Güzellik (Beauty). **App Store:** Yaşam Tarzı (Lifestyle). "Sağlık ve Fitness" seçmek sağlık incelemesini ağırlaştırır; Rebi tanı koymadığı için gerekmez |
 | Fiyat | Ücretsiz. Uygulama içi satın alma **yok** (v1; `MOBIL-YAYIN.md` §6, seçenek A) |
@@ -86,32 +86,19 @@ First release. Personal routine, today screen, weather-based sunscreen decisions
 
 ## 4. Ekran görüntüleri
 
-Üretim (gerçek yazı tipleri ve gerçek ekran koduyla; durum çubuğu ve cihaz çerçevesi yoktur):
+Üretim (gerçek yazı tipleri ve gerçek ekran koduyla), her arayüz dili (TR, EN) için ayrı:
 
 ```bash
 cd mobile
-REBI_STORE_SHOTS=1 flutter test test/store_screenshots_test.dart
+REBI_STORE_SHOTS=1 flutter test test/store_screenshots_test.dart   # ham: build/store/<dil>/{apple-6.9,play-telefon}
+python3 tool/store_frames.py                                       # çerçeveli: build/store/framed/<dil>/ (Pillow gerekir)
 ```
 
-Çıktı `mobile/build/store/` altındadır (git'e girmez):
-
-| Klasör | Boyut | Nerede kullanılır |
-| --- | --- | --- |
-| `apple-6.9/` | 1320×2868 | App Store iPhone 6,9" (en az 3, en fazla 10) |
-| `play-telefon/` | 1080×2160 (2:1) | Google Play telefon (en az 2, en fazla 8) |
-
-Sırayla (ilk 3'ü mağaza listesinde ilk görünenlerdir):
-
-| Dosya | Ekran | Önerilen başlık (görsele sen yazarsan) |
-| --- | --- | --- |
-| `01-bugun.png` | Bugün: kahraman rutin kartı | Bugünkü rutinin hazır |
-| `02-rutin.png` | Rutin | Her ürünün nedenini gör |
-| `03-sohbet.png` | Rebi sohbet, bugünün çipleriyle | Bugününü bilen cilt asistanı |
-| `04-gecmis.png` | Geçmiş grafikleri | Su, uyku ve rutinini takip et |
-| `05-hatirlaticilar.png` | Hatırlatıcılar, kendi saat aralığı | Hatırlatıcılar senin saatlerinde |
-| `06-rafim.png` | Rafım | Biten ürünü unutma |
-| `07-su.png` | Su sayfası | Tek dokunuşla kaydet |
-| `08-bugun-koyu.png` | Karanlık mod | Karanlık modda da rahat |
+Çerçeveli görseller (1320×2868, App Store iPhone 6,9") başlık + alt satır + telefon içinde ekran görüntüsüdür; başlıklar
+`tool/store_frames.py` içindeki `SHOTS` tablosundadır. Sıra: 01 Bugün · 02 Rutin · 03 Rebi sohbet · 04 Hatırlatıcılar ·
+05 Su · 06 Geçmiş · 07 Rafım · 08 Karanlık mod. Mağaza verisinde son 30 günün düzenli kayıtları vardır. Mağaza görüntülerinde
+örnek gün "dengeli" risk düzeyindedir (vitrinde kırmızı kriz uyarısı görünmesin); İngilizce örnek kişi "Emma".
+Play telefon görüntüleri (`play-telefon/`, 1080×2160) çerçevesizdir.
 
 Dikkat:
 
@@ -120,8 +107,12 @@ Dikkat:
   (`MOBIL-MUSTERI-DEMOSU.md`'deki hazırlıkla).
 - Mağazalar ekran görüntüsünün uygulamayı **gerçekten gösterdiğini** ister: çerçeveye yazı eklemek serbesttir, olmayan
   bir özelliği göstermek değildir. Hepsi bu sürümde vardır.
-- App Store iPad destekleniyorsa (`TARGETED_DEVICE_FAMILY = 1,2`) iPad 13" (2064×2752) görüntüleri de gerekir
-  (`MOBIL-YAYIN.md` §4, madde 6); yalnızca iPhone isterseniz bu atlanır. Bu araç iPad boyutu üretmez.
+- Biçimler: iPhone 6,9" (1320×2868), iPhone Duo dış (1398×2034) ve iç ekran (2007×2853), iPad 13" (2064×2752).
+  App Store Connect'te Duo için tek yuva (`APP_IPHONE_DUO`) var; iç ekran seti yüklendi. iPad setinde su kaydı yerine
+  yoktur (alttan açılan pencere çerçevede kesilir).
+- Ürün sayfası başlığı (3840×1646) ve arama sonucu görseli (3840×2560), iOS 27: `python3 tool/store_creatives.py` →
+  `build/store/creatives/<dil>/`. Önemli içerik Apple'ın güvenli alanındadır.
+- Apple Watch görüntüsü yoktur: Rebi'nin watchOS uygulaması yok; App Store yalnızca Watch uygulaması olanlara izin verir.
 - **Play öne çıkan görsel** (1024×500) zorunludur ve burada **üretilmedi**: marka tasarımı gerektirir (logo + slogan).
   **Uygulama ikonları** hazır: Play Console için `mobile/assets/icon/play-store-512.png` (512×512), App Store için
   `mobile/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png` (1024×1024, alfasız). İkisi de

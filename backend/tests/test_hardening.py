@@ -26,7 +26,7 @@ SECRET = "test-secret-at-least-32-bytes-long"
 
 # Gerçekten asenkron iş yapmayan tek uçlar (G/Ç yok). Yeni bir `async def` uç eklenirse içinde senkron
 # Supabase/Redis/Postgres çağrısı olup olmadığına bakılmalıdır; bu test kazara eklenmeyi yakalar.
-_ASYNC_ENDPOINTS_ALLOWED = {"root", "health"}
+_ASYNC_ENDPOINTS_ALLOWED = {"root", "health", "push_actions"}
 
 
 def test_no_endpoint_runs_sync_io_on_the_event_loop():

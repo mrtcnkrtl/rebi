@@ -80,7 +80,12 @@
     "experienceLabel": "Your experience",
     "severityTitle": "Severity per concern",
     "severitySubtitle": "Answer for each selected concern.",
-    "durationLabel": "How long has this been going on?",
+    "durationLabel": "How long has this concern been present?",
+    "timelineTitle": "Duration and frequency — per concern",
+    "timelineSubtitle": "Severity is how intense it is. Here you record, for each concern, how long it has lasted and how often it appears. Nightly frequency is adjusted from this.",
+    "frequencyLabel": "How often does it happen?",
+    "noteLabel": "Your own words (optional)",
+    "notePlaceholder": "e.g. Chin breakouts start a week before my period…",
     "triggersTitle": "Triggers",
     "triggersSubtitle": "When do issues flare? (multi-select)",
     "pastTitle": "Past treatments",
@@ -193,14 +198,24 @@
     "cheeks": "Cheeks",
     "chin": "Chin",
     "undereye": "Under eyes",
+    "eye_corner": "Outer eye corners",
     "lips": "Around lips",
     "temples": "Temples"
   },
   "duration": {
+    "lt1": "Less than 1 month",
     "1-3": "1–3 months",
     "3-6": "3–6 months",
     "6-12": "6–12 months",
     "1y+": "More than a year"
+  },
+  "frequency": {
+    "daily": "Almost every day",
+    "several_week": "A few times a week",
+    "weekly": "Once a week",
+    "monthly": "A few times a month",
+    "flare": "In flares / attacks",
+    "constant": "Constant / never clears"
   },
   "trigger": {
     "stress": "Stress",

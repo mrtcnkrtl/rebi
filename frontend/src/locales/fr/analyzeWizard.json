@@ -80,13 +80,18 @@
     "experienceLabel": "Your experience",
     "severityTitle": "Severity per concern",
     "severitySubtitle": "Answer for each selected concern.",
-    "durationLabel": "How long has this been going on?",
+    "durationLabel": "How long has this concern been present?",
     "triggersTitle": "Triggers",
     "triggersSubtitle": "When do issues flare? (multi-select)",
     "pastTitle": "Past treatments",
     "pastSubtitle": "What have you tried before? (multi-select)",
     "expectationsTitle": "Your goals",
-    "expectationsSubtitle": "What do you want? (multi-select)"
+    "expectationsSubtitle": "What do you want? (multi-select)",
+    "timelineTitle": "Duration and frequency — per concern",
+    "timelineSubtitle": "Severity is how intense it is. Here you record, for each concern, how long it has lasted and how often it appears. Nightly frequency is adjusted from this.",
+    "frequencyLabel": "How often does it happen?",
+    "noteLabel": "Your own words (optional)",
+    "notePlaceholder": "e.g. Chin breakouts start a week before my period…"
   },
   "step4": {
     "finalLead": "You can generate your routine now. For {{tracking}} (comparing progress), a clear face photo is {{recommended}} — gallery, camera, or webcam.",
@@ -191,9 +196,11 @@
     "chin": "Chin",
     "undereye": "Under eyes",
     "lips": "Around lips",
-    "temples": "Temples"
+    "temples": "Temples",
+    "eye_corner": "Outer eye corners"
   },
   "duration": {
+    "lt1": "Less than 1 month",
     "1-3": "1–3 months",
     "3-6": "3–6 months",
     "6-12": "6–12 months",
@@ -336,5 +343,13 @@
       "cleanser": "With cleanser",
       "double": "Double cleanse"
     }
+  },
+  "frequency": {
+    "daily": "Almost every day",
+    "several_week": "A few times a week",
+    "weekly": "Once a week",
+    "monthly": "A few times a month",
+    "flare": "In flares / attacks",
+    "constant": "Constant / never clears"
   }
 }

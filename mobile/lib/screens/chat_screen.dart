@@ -393,7 +393,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final theme = context.watch<ThemeController>().theme;
     final user = context.watch<AuthController>().user;
     final hasConversation = _history.any((m) => m['role'] == 'user');
-    final wide = MediaQuery.of(context).size.width >= 640;
+    // Köşe sayacı ve rutin kenar düğmesi sohbet sütununun (672) iki yanındaki boşluğa yerleşir; boşluk yoksa
+    // (iPhone Duo dış ekranı yatay, küçük tablet) mesajların üstüne binmesinler diye gösterilmez.
+    final wide = MediaQuery.of(context).size.width >= 920;
     if (user == null) return _gate(i18n, theme);
 
     final routineItems = _routineSnap?['routine'];

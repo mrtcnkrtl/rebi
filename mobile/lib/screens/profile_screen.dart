@@ -21,7 +21,7 @@ import 'account/privacy_card.dart';
 import 'account/routine_stats_card.dart';
 import 'account/summary_card.dart';
 
-export 'account/delete_card.dart' show accountDeletePhrase;
+export 'account/delete_card.dart' show accountDeletePhrase, typedDeletePhrase;
 
 /// Testlerde hesap ekranını Supabase yapılandırması olmadan açmak için (null: gerçek duruma bak).
 @visibleForTesting

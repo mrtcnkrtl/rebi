@@ -16,6 +16,8 @@ const ZONES = [
   { id: "left_cheek", label: "Sol Yanak", cause: "Telefon bakterisi, yastık kirliliği" },
   { id: "right_cheek", label: "Sağ Yanak", cause: "Telefon bakterisi, yastık kirliliği" },
   { id: "chin", label: "Çene / Alt Çene", cause: "Hormonal (özellikle adet döngüsü)" },
+  { id: "undereye", label: "Göz altı", cause: "İnce deri, nem kaybı" },
+  { id: "eye_corner", label: "Göz kenarı", cause: "Mimik (kaz ayağı), UV" },
   { id: "temples", label: "Şakaklar", cause: "Saç bakımı, stres" },
 ];
 
@@ -127,6 +129,38 @@ export default function FaceZoneSelector({ value = [], onChange }) {
               className="cursor-pointer transition-all duration-200"
               onClick={() => toggle("chin")}
               onMouseEnter={() => setHovered("chin")}
+              onMouseLeave={() => setHovered(null)}
+            />
+
+            {/* Outer eye corners */}
+            <ellipse cx="64" cy="138" rx="10" ry="8"
+              fill={getZoneFill("eye_corner")} stroke={getZoneStroke("eye_corner")} strokeWidth="1.5" strokeDasharray={isActive("eye_corner") ? "0" : "4 2"}
+              className="cursor-pointer transition-all duration-200"
+              onClick={() => toggle("eye_corner")}
+              onMouseEnter={() => setHovered("eye_corner")}
+              onMouseLeave={() => setHovered(null)}
+            />
+            <ellipse cx="156" cy="138" rx="10" ry="8"
+              fill={getZoneFill("eye_corner")} stroke={getZoneStroke("eye_corner")} strokeWidth="1.5" strokeDasharray={isActive("eye_corner") ? "0" : "4 2"}
+              className="cursor-pointer transition-all duration-200"
+              onClick={() => toggle("eye_corner")}
+              onMouseEnter={() => setHovered("eye_corner")}
+              onMouseLeave={() => setHovered(null)}
+            />
+
+            {/* Under-eye */}
+            <ellipse cx="82" cy="148" rx="14" ry="6"
+              fill={getZoneFill("undereye")} stroke={getZoneStroke("undereye")} strokeWidth="1.5" strokeDasharray={isActive("undereye") ? "0" : "4 2"}
+              className="cursor-pointer transition-all duration-200"
+              onClick={() => toggle("undereye")}
+              onMouseEnter={() => setHovered("undereye")}
+              onMouseLeave={() => setHovered(null)}
+            />
+            <ellipse cx="138" cy="148" rx="14" ry="6"
+              fill={getZoneFill("undereye")} stroke={getZoneStroke("undereye")} strokeWidth="1.5" strokeDasharray={isActive("undereye") ? "0" : "4 2"}
+              className="cursor-pointer transition-all duration-200"
+              onClick={() => toggle("undereye")}
+              onMouseEnter={() => setHovered("undereye")}
               onMouseLeave={() => setHovered(null)}
             />
 

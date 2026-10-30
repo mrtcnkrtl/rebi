@@ -37,6 +37,16 @@
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  /* Navbar 4rem; panelde alt menü ek 4rem + çentik payı. dvh: mobil adres çubuğu açılıp kapanınca kayma olmasın. */
+  .chat-shell {
+    height: calc(100vh - 4rem);
+    height: calc(100dvh - 4rem);
+  }
+  .chat-shell--with-nav {
+    height: calc(100vh - 8rem - env(safe-area-inset-bottom, 0px));
+    height: calc(100dvh - 8rem - env(safe-area-inset-bottom, 0px));
+  }
 }
 
 @layer components {
