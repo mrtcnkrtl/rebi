@@ -786,13 +786,15 @@
     },
     "privacy": {
       "title": "Gizlilik izinleri",
-      "body": "Rutin ve sohbet için yapay zekâ işlemesi A3 Biyoteknoloji tarafından yapılır; ayrıntı KVKK ve açık rıza metinlerindedir. Konum ve fotoğraf izinlerini istediğin zaman değiştirebilirsin.",
+      "body": "Rutin, günlük kayıt yorumu ve sohbet için verilerin Google Gemini API'ye gönderilir; ayrıntı aşağıdaki bağlantıda ve KVKK metnindedir. İzinleri istediğin zaman değiştirebilirsin.",
       "location": "Hava/UV için kesin konum aktarımı",
       "photo": "Private alanda cilt fotoğrafı saklama",
       "save": "İzinleri kaydet",
       "saved": "Gizlilik tercihlerin kaydedildi.",
       "failed": "Gizlilik tercihleri kaydedilemedi.",
-      "loadFailed": "Gizlilik tercihleri yüklenemedi."
+      "loadFailed": "Gizlilik tercihleri yüklenemedi.",
+      "aiSharing": "Google Gemini ile veri paylaşımı (rutin, günlük kayıt yorumu ve sohbet için gerekli)",
+      "aiSharingDetails": "Neler paylaşılıyor?"
     },
     "stats": {
       "intro": "Günlük check-in yaptıkça seri ve sadakat burada güncellenir. Hedef: üst üste {{n}} gün check-in alışkanlığı.",
@@ -1412,5 +1414,19 @@
       "pigment": "Leke"
     },
     "percent": "%{{n}}"
+  },
+  "mobileAiSharing": {
+    "title": "Yapay zekâ ile veri paylaşımı",
+    "intro": "Rutinini oluşturmak, günlük kaydını yorumlamak ve sohbette yanıt vermek için Rebi aşağıdaki bilgileri üçüncü taraf bir yapay zekâ servisine gönderir. İzin vermeden hiçbir veri gönderilmez.",
+    "whatTitle": "Gönderilen veriler",
+    "items": "Profil bilgilerin: adın, yaşın ve cinsiyetin\nCilt tipin, cilt sorunların ve analiz cevapların\nSağlık ve yaşam tarzı cevapların: hamilelik, döngü evresi, sigara, alkol, uyku, stres ve su tüketimi\nGünlük kayıtların ve rutinindeki ürünler\nSohbette yazdığın mesajlar\nKonum iznin açıksa bulunduğun yerin hava ve UV bilgisi",
+    "whoTitle": "Kime gönderilir",
+    "who": "Google LLC (Gemini API). Veriler şifreli bağlantıyla iletilir ve yalnızca sana yanıt üretmek için kullanılır. Google, ücretli Gemini API kapsamında bu verileri kendi modellerini eğitmek için kullanmaz ve en az bizim sağladığımız düzeyde koruma uygular.",
+    "notSent": "Cilt fotoğrafların, e-posta adresin ve şifren yapay zekâya gönderilmez.",
+    "control": "Bu izni istediğin zaman Hesap > Gizlilik izinleri bölümünden geri alabilirsin. İzin vermezsen rutin oluşturma, günlük kayıt yorumu ve sohbet çalışmaz; diğer özellikleri kullanmaya devam edebilirsin.",
+    "privacyLink": "Gizlilik politikası (KVKK Aydınlatma Metni)",
+    "allow": "İzin ver ve devam et",
+    "decline": "Şimdi değil",
+    "declined": "Bu özellik için yapay zekâ ile veri paylaşımına izin vermen gerekiyor."
   }
 }

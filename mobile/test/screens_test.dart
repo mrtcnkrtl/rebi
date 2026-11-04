@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:rebi/core/ai_sharing.dart';
 import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/local_store.dart';
 import 'package:rebi/core/routine_tracking.dart';
@@ -141,12 +142,21 @@ void main() {
       expect(find.text(tr('dashboard.startAnalyze')), findsOneWidget);
     });
 
-    testWidgets('yapay zekâ beyanı bir kez onaylanır ve kalıcıdır', (tester) async {
+    testWidgets('yapay zekâ veri paylaşımı: Google Gemini ve gönderilen veriler açıklanır, izin kalıcıdır', (tester) async {
       await pumpApp(tester, location: '/dashboard', acknowledgeAi: false);
-      expect(find.text(tr('common.aiDisclaimerTitle')), findsOneWidget);
-      await tapText(tester, tr('common.aiDisclaimerAck'));
-      expect(find.text(tr('common.aiDisclaimerTitle')), findsNothing);
-      expect(LocalStore.instance.getString('rebi-ai-disclaimer-ack-v1'), '1');
+      expect(find.text(tr('mobileAiSharing.title')), findsOneWidget);
+      expect(find.text(tr('mobileAiSharing.who')), findsOneWidget);
+      expect(find.textContaining('Google'), findsWidgets);
+      await tapText(tester, tr('mobileAiSharing.allow'));
+      expect(find.text(tr('mobileAiSharing.title')), findsNothing);
+      expect(hasAiSharingConsent(testUserId), isTrue);
+    });
+
+    testWidgets('yapay zekâ veri paylaşımı: "Şimdi değil" kutuyu kapatır, izin verilmiş sayılmaz', (tester) async {
+      await pumpApp(tester, location: '/dashboard', acknowledgeAi: false);
+      await tapText(tester, tr('mobileAiSharing.decline'));
+      expect(find.text(tr('mobileAiSharing.title')), findsNothing);
+      expect(hasAiSharingConsent(testUserId), isFalse);
     });
 
     testWidgets('kabul edilmiş rutin: takip modu, günün planı ve hızlı kayıt', (tester) async {

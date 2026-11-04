@@ -144,12 +144,32 @@ void main() {
   group('yapay zekâ beyanı', () {
     testWidgets('davetin üstüne binmez; oturum açılınca sohbette ilk kez gösterilir', (tester) async {
       final h = await pumpApp(tester, location: '/rebi', loggedIn: false, acknowledgeAi: false);
-      expect(find.text(tr('common.aiDisclaimerTitle')), findsNothing, reason: 'davette yapay zekâ kullanılmıyor');
+      expect(find.text(tr('mobileAiSharing.title')), findsNothing, reason: 'davette yapay zekâ kullanılmıyor');
       expect(_signUp, findsOneWidget);
 
       h.auth.debugSetUser(fakeUser());
       await settle(tester, 6);
-      expect(find.text(tr('common.aiDisclaimerTitle')), findsOneWidget, reason: 'sohbet açıldı: beyan şimdi gösterilir');
+      expect(find.text(tr('mobileAiSharing.title')), findsOneWidget, reason: 'sohbet açıldı: beyan şimdi gösterilir');
+    });
+
+    testWidgets('izin verilmeden mesaj Gemini\'ye gönderilmez; izin verilince gider', (tester) async {
+      final h = await pumpApp(tester, location: '/rebi', acknowledgeAi: false);
+      // Kendiliğinden açılan kutu "Şimdi değil" ile kapatılır.
+      await tapText(tester, tr('mobileAiSharing.decline'));
+
+      await tester.enterText(find.byType(TextField), 'Selam');
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await settle(tester);
+      expect(find.text(tr('mobileAiSharing.title')), findsOneWidget, reason: 'göndermeden önce izin sorulur');
+      await tapText(tester, tr('mobileAiSharing.decline'));
+      expect(h.backend.calls('/chat_general'), isEmpty);
+      expect(find.text('Selam'), findsOneWidget, reason: 'yazı alanı korunur');
+
+      await tester.enterText(find.byType(TextField), 'Selam');
+      await tester.testTextInput.receiveAction(TextInputAction.send);
+      await settle(tester);
+      await tapText(tester, tr('mobileAiSharing.allow'));
+      expect(h.backend.bodyOf('/chat_general')['message'], 'Selam');
     });
   });
 

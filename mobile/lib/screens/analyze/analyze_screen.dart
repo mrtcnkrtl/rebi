@@ -25,6 +25,7 @@ import '../../ui/brand/brand_mark.dart' show BrandWatermark;
 import '../../ui/brand/motion.dart';
 import '../../ui/brand/palette.dart';
 import '../../ui/components/loading_screen.dart';
+import '../../ui/components/modals.dart';
 import '../../ui/components/photo_picker.dart';
 import '../../ui/widgets/app_sheet.dart';
 import '../../ui/tw.dart';
@@ -364,6 +365,11 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
   }
 
   Future<void> _submit() async {
+    if (!await ensureAiSharing(context)) {
+      if (mounted) setState(() => _submitError = I18n.instance.t('mobileAiSharing.declined'));
+      return;
+    }
+    if (!mounted) return;
     final user = context.read<AuthController>().user;
     final router = GoRouter.of(context);
     final f = _form;

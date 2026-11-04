@@ -172,7 +172,7 @@ class _AppShellState extends State<AppShell> {
             // Klavye açıkken (sohbet, check-in notu, arama alanları) alt çubuk gizlenir: yazma alanına yer açılır, çubuk klavyenin üstünde asılı kalmaz.
             bottomNavigationBar: inApp && !focusFlow && !keyboardOpen ? _BottomNav(path: path) : null,
           ),
-          if (isAiSurface) const Positioned.fill(child: AiDisclaimerModal()),
+          if (isAiSurface) const Positioned.fill(child: AiSharingModal()),
           if (user != null) const Positioned.fill(child: ConsentRecoveryModal()),
         ],
         ),

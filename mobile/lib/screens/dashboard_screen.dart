@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../core/api.dart';
 import '../core/day_log.dart';
 import '../core/demo_user.dart';
+import '../core/ai_sharing.dart';
 import '../core/i18n.dart';
 import '../core/routine_logic.dart';
 import '../core/routine_tracking.dart';
@@ -188,6 +189,8 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     final fetched = _fetchedRoutine;
     final uid = _uid;
     if (!prefersLocalized || uid == null || fetched == null || fetched.isEmpty || _translating) return;
+    // Çeviri de Gemini'den geçer: izin yoksa sessizce atlanır (rutin Türkçe satırlarla görünür).
+    if (!hasAiSharingConsent(uid)) return;
     if (identical(_translatedFor, fetched)) return;
     final anyMissing = fetched.any((it) => !(truthy(it['action_localized']) || truthy(it['detail_localized'])));
     if (!anyMissing) return;

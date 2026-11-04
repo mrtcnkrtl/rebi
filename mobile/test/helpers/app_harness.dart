@@ -11,6 +11,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:rebi/core/ai_sharing.dart';
+import 'package:rebi/core/demo_user.dart';
 import 'package:rebi/core/api.dart';
 import 'package:rebi/core/consent_recovery.dart';
 import 'package:rebi/core/event_outbox.dart';
@@ -548,7 +550,12 @@ Future<Harness> pumpApp(
   resetConsentRecovery();
   EventOutbox.instance.debugReset();
   SharedPreferences.setMockInitialValues({
-    if (acknowledgeAi) 'rebi-ai-disclaimer-ack-v1': '1',
+    // Yapay zekâ ile veri paylaşım izni: test kullanıcısı, özel kullanıcı ve demo için önceden verilmiş sayılır.
+    if (acknowledgeAi) ...{
+      aiSharingKey(testUserId): '1',
+      aiSharingKey(demoUserId): '1',
+      if (user != null) aiSharingKey(user.id): '1',
+    },
     'rebi-lang': lang,
     ...prefs,
   });

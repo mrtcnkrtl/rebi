@@ -786,13 +786,15 @@
     },
     "privacy": {
       "title": "Privacy permissions",
-      "body": "AI processing for your routine and chat is carried out by A3 Biyoteknoloji; details are in the privacy notice and explicit consent texts. You can change the location and photo permissions at any time.",
+      "body": "For routines, check-in insights and chat, your data is sent to the Google Gemini API; details are in the link below and the KVKK notice. You can change permissions at any time.",
       "location": "Share precise location for weather/UV",
       "photo": "Store skin photos in a private area",
       "save": "Save permissions",
       "saved": "Your privacy preferences were saved.",
       "failed": "Couldn't save privacy preferences.",
-      "loadFailed": "Couldn't load privacy preferences."
+      "loadFailed": "Couldn't load privacy preferences.",
+      "aiSharing": "Data sharing with Google Gemini (required for routines, check-in insights and chat)",
+      "aiSharingDetails": "What is shared?"
     },
     "stats": {
       "intro": "Your streak and consistency update here as you check in daily. Goal: a check-in habit for {{n}} days in a row.",
@@ -1412,5 +1414,19 @@
       "pigment": "Spots"
     },
     "percent": "{{n}}%"
+  },
+  "mobileAiSharing": {
+    "title": "Sharing data with AI",
+    "intro": "To build your routine, interpret your daily check-ins and answer in chat, Rebi sends the information below to a third-party AI service. Nothing is sent until you allow it.",
+    "whatTitle": "Data that is sent",
+    "items": "Profile details: your name, age and gender\nYour skin type, skin concerns and analysis answers\nHealth and lifestyle answers: pregnancy, cycle phase, smoking, alcohol, sleep, stress and water intake\nYour daily check-ins and the products in your routine\nMessages you write in chat\nIf location permission is on, weather and UV information for your area",
+    "whoTitle": "Who receives it",
+    "who": "Google LLC (Gemini API). Data is sent over an encrypted connection and used only to generate responses for you. Under the paid Gemini API terms, Google does not use this data to train its models, and it applies protection at least equal to ours.",
+    "notSent": "Your skin photos, email address and password are never sent to the AI.",
+    "control": "You can withdraw this permission at any time in Account > Privacy permissions. Without it, routine creation, check-in insights and chat won't work; you can keep using the other features.",
+    "privacyLink": "Privacy policy (KVKK Privacy Notice)",
+    "allow": "Allow and continue",
+    "decline": "Not now",
+    "declined": "This feature needs your permission to share data with the AI service."
   }
 }

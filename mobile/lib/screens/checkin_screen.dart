@@ -13,6 +13,7 @@ import '../core/routine_tracking.dart';
 import '../core/today_plan.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/components/modals.dart';
 import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
@@ -205,6 +206,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
   Future<void> _submit() async {
     if (!_canSubmit) return;
     final i18n = I18n.instance;
+    if (!await ensureAiSharing(context)) {
+      if (mounted) setState(() => _submitError = i18n.t('mobileAiSharing.declined'));
+      return;
+    }
+    if (!mounted) return;
     final user = context.read<AuthController>().user;
     setState(() {
       _loading = true;

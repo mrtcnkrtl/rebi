@@ -18,6 +18,7 @@ import '../core/today_plan.dart';
 import '../state/auth_controller.dart';
 import '../state/home_sync_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/components/modals.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/brand/motion.dart';
@@ -293,10 +294,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     if (next != null && uid != null) LocalStore.instance.setJson(_usageKey(uid), next.toJson());
   }
 
+  /// Mesaj Google Gemini'ye gider: izin yoksa önce sorulur, verilmezse gönderilmez (yazı alanı korunur).
+  Future<bool> _aiAllowed() async {
+    if (await ensureAiSharing(context)) return mounted;
+    if (mounted) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(I18n.instance.t('mobileAiSharing.declined'))));
+    }
+    return false;
+  }
+
   /// Öneri çipine dokunulursa [preset] gönderilir (yazı alanına dokunulmaz).
   Future<void> _send([String? preset]) async {
     final msg = (preset ?? _input.text).trim();
     if (msg.isEmpty || _loading || _paywallOpen) return;
+    if (!await _aiAllowed()) return;
     if (preset == null) _input.clear();
     _sentThisSession = true;
     setState(() {
@@ -311,6 +322,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   /// Hata kartındaki "Tekrar dene": son kullanıcı mesajı zaten geçmişte; yeniden gönderilir.
   Future<void> _retry() async {
     if (_loading || _history.isEmpty || _history.last['role'] != 'user') return;
+    if (!await _aiAllowed()) return;
     setState(() {
       _failure = null;
       _failureStatus = null;
