@@ -53,6 +53,8 @@ function AppRoutes() {
         {/* E-posta onay düğmesinin açtığı sayfa: giriş yapmış kullanıcıyı da yönlendirmez, token'ı düğmeyle doğrular. */}
         <Route path="/auth/confirm" element={<ConfirmEmail />} />
         <Route path="/kvkk" element={<Legal />} />
+        {/* Mağaza formlarındaki "gizlilik politikası" adresi (Play Console); aydınlatma metniyle aynı sayfa. */}
+        <Route path="/privacy-policy" element={<Legal />} />
         <Route path="/riza" element={<Legal />} />
         <Route path="/destek" element={<Support />} />
         <Route path="/support" element={<Support />} />
