@@ -1550,7 +1550,7 @@ def _free_chat_meta_assistant_reply() -> str:
 
         lim = free_chat_limit()
     except Exception:
-        lim = 25
+        lim = 6
     return (
         "Sohbette önce elindeki bilimsel metin özetlerine bakarım; yeri gelir soruna yakın birkaç makale başlığı da eklerim — bunlar talimat değil, okuma içindir.\n\n"
         f"Ücretsiz planda günde yaklaşık {lim} mesaj civarı üst sınır var; kalan hakkı sohbet ekranından görürsün."
@@ -2186,7 +2186,7 @@ def _free_chat_soft_context_notes(
     hist = list(history or [])
     n_msgs = sum(1 for x in hist if (str(x.get("content") or "").strip()))
     rem: Optional[int] = None
-    lim = 25
+    lim = 6
     try:
         from free_chat_quota import free_chat_limit, free_chat_remaining
 
