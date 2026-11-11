@@ -92,7 +92,62 @@ class ThemesScreen extends StatelessWidget {
 /// Temanın görünen adı (uygulama dilinde); çeviri yoksa kayıtlı ad.
 String themeLabel(RebiTheme t) => I18n.instance.t('mobileThemes.names.${t.id}', const {}, t.label);
 
-/// Renk örneği kartı: dolu daire, ad ve seçili işareti.
+/// Temanın küçük bir "sahne"si: üstte derin sahne rengi (krem iki satır yazı izi), altta kâğıt zemin ve temanın düğmesi.
+/// Düz bir renk dairesi yerine uygulamanın o temada gerçekte nasıl durduğunu gösterir. Seçiliyken sağ üstte onay işareti.
+class _SceneTile extends StatelessWidget {
+  const _SceneTile({required this.t, required this.active});
+
+  final RebiTheme t;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bar(double w, double h, double alpha) => Container(
+          width: w,
+          height: h,
+          decoration: BoxDecoration(color: Brand.cream.withValues(alpha: alpha), borderRadius: BorderRadius.circular(h / 2)),
+        );
+    return Container(
+      width: 54,
+      height: 54,
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Tw.gray900.withValues(alpha: .08)),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Positioned.fill(child: ColoredBox(color: Tw.background)),
+            Positioned(left: 0, right: 0, top: 0, height: 34, child: ColoredBox(color: t.stage)),
+            Positioned(left: 9, top: 10, child: bar(22, 4, .92)),
+            Positioned(left: 9, top: 18, child: bar(14, 3, .5)),
+            Positioned(
+              left: 8,
+              right: 8,
+              bottom: 7,
+              height: 11,
+              child: DecoratedBox(decoration: BoxDecoration(color: t.primary, borderRadius: BorderRadius.circular(6))),
+            ),
+            if (active)
+              Positioned(
+                right: 5,
+                top: 5,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  child: Icon(LucideIcons.check, size: 11, color: t.primary),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Renk örneği kartı: mini sahne, ad ve seçili işareti.
 class _SwatchCard extends StatelessWidget {
   const _SwatchCard({required this.t, required this.active, required this.locked, required this.onTap});
 
@@ -122,34 +177,12 @@ class _SwatchCard extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(color: t.primary, shape: BoxShape.circle),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(
-                        right: 5,
-                        bottom: 5,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: BoxDecoration(
-                            color: t.primaryLight,
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Tw.surface, width: 2),
-                          ),
-                        ),
-                      ),
-                      if (active) const Icon(LucideIcons.check, size: 18, color: Colors.white),
-                    ],
-                  ),
-                ),
+                _SceneTile(t: t, active: active),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(themeLabel(t), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: 7)),
                       if (t.premium) ...[

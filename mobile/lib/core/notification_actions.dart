@@ -59,18 +59,27 @@ class NotificationPayload {
 /// Bildirimde hızlı düğme olarak sunulabilecek en çok eylem (Android'in sınırı 3'tür).
 const maxNotificationActions = 3;
 
-/// Bir hatırlatıcının bildirim düğmeleri: yalnızca olay kaydeden eylemler. Ekran ya da seçim
-/// sayfası açanlar (check-in, "nasıl temizledin") bildirime dokunmakla zaten açılır.
-List<ReminderAction> notificationQuickActions(String reminderId) => [
+List<ReminderAction> _eventActions(String reminderId) => [
       for (final a in reminderActions(Reminder(id: reminderId, title: '', body: '', start: '', end: '')))
         if (a.type != null) a,
-    ].take(maxNotificationActions).toList();
+    ];
+
+/// Bir hatırlatıcının bildirim düğmeleri: yalnızca olay kaydeden eylemler. Ekran ya da seçim
+/// sayfası açanlar (check-in, "nasıl temizledin") bildirime dokunmakla zaten açılır.
+///
+/// Su hatırlatmasında düğmeler **"İçtim"** (bir bardak, 250 ml) ve **"İçmedim"**dir: kullanıcı bildirimden doğrudan içip içmediğini
+/// işaretler. Uygulama içindeki "+250 / +500 ml" hızlı ekleme düğmeleri orada kalır.
+List<ReminderAction> notificationQuickActions(String reminderId) {
+  if (reminderId == 'water_intake') return const [waterDrankAction, waterNotDrunkAction];
+  return _eventActions(reminderId).take(maxNotificationActions).toList();
+}
 
 String notificationActionId(String reminderId, ReminderAction action) => '$reminderId:${action.labelKey}';
 
-/// Düğme kimliğinden olay eylemini bulur; bilinmiyorsa null.
+/// Düğme kimliğinden olay eylemini bulur; bilinmiyorsa null. Önceki sürümde kurulmuş ve henüz gelmemiş bildirimlerin
+/// düğmeleri (`water_intake:water250`) de çözülür: uygulama güncellenince onlara dokunmak kayıpsız çalışır.
 ReminderAction? resolveNotificationAction(String reminderId, String actionId) {
-  for (final a in notificationQuickActions(reminderId)) {
+  for (final a in [...notificationQuickActions(reminderId), ..._eventActions(reminderId)]) {
     if (notificationActionId(reminderId, a) == actionId) return a;
   }
   return null;

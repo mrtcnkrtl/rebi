@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../../config/env.dart';
 import '../../core/i18n.dart';
 import '../components/language_sheet.dart';
 import '../tw.dart';
+import 'beta_badge.dart';
 import 'brand_mark.dart';
 import 'motion.dart';
 import 'palette.dart';
@@ -60,13 +62,35 @@ class PublicTopBar extends StatelessWidget {
                           ),
                         ),
                       )
-                    : Opacity(
-                        opacity: brandOpacity,
+                    // Dar ekran / büyük yazıda marka + etiket sığmazsa birlikte küçülür (dil seçici yerinde kalır).
+                    : FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            if (onDark) ...[const BrandMark(size: 28), const SizedBox(width: 10)],
-                            Text('Rebi', maxLines: 1, style: Brand.serif(27, weight: 600, color: onDark ? cream : null, ls: -.8)),
+                            Opacity(
+                              opacity: brandOpacity,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (onDark) ...[const BrandMark(size: 28), const SizedBox(width: 10)],
+                                  Text('Rebi', maxLines: 1, style: Brand.serif(27, weight: 600, color: onDark ? cream : null, ls: -.8)),
+                                ],
+                              ),
+                            ),
+                            // Beta etiketi markanın hemen yanında durur. Karşılamanın giriş sekansında marka başka katmanda süzülüp
+                            // yerleşirken (brandOpacity 0) etiket, dil seçiciyle birlikte sonda belirir.
+                            if (Env.betaBuild) ...[
+                              const SizedBox(width: 9),
+                              Opacity(
+                                opacity: trailingOpacity,
+                                child: Padding(
+                                  padding: const EdgeInsets.only(top: 3),
+                                  child: BetaBadge(onDark: onDark, fixedScale: true),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

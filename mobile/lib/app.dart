@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
+import 'core/beta_notice.dart';
 import 'core/i18n.dart';
 import 'core/notification_ports.dart';
 import 'router.dart';
@@ -53,6 +54,8 @@ class _RebiAppState extends State<RebiApp> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // Beta sürüm: "hata çıkabilir" uyarısı bu cihazda daha önce gösterilmediyse kabuktaki kapı açılışta bir kez gösterir.
+    betaNoticePending = shouldShowBetaNotice();
     _notifications.openRoute.addListener(_openFromNotification);
     _openFromNotification();
   }

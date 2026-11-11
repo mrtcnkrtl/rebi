@@ -27,7 +27,8 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.rebiovil.rebi"
+        // Mağaza kimliği iOS ile aynı ve Play'deki mevcut "Rebiovil" uygulamasının paket adı; namespace/Kotlin paketi eski kalır.
+        applicationId = "com.rebiovil.mobile"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         // Sürüm numaraları pubspec.yaml'daki `version: 1.0.0+1` değerinden gelir (+ sonrası versionCode).

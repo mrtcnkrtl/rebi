@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart' show BottomSheet, MaterialLocalizations, Size, TextField;
+import 'package:flutter/material.dart' show BottomSheet, Key, MaterialLocalizations, Size, TextField;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/daily_tracking.dart';
 import 'package:rebi/core/device_location.dart';
@@ -308,11 +308,12 @@ void main() {
         expect(find.text(tr('mobileToday.spfRefreshed', {'n': 1})), findsOneWidget);
       });
 
-      testWidgets('tahmini hava: kaynak ve konum ipucu görünür, başlıktaki hap "tahmini" der', (tester) async {
+      testWidgets('gerçek hava yoksa: kaynak ve konum ipucu görünür, başlıkta uydurma sayı yerine "yer seç" durumu çıkar', (tester) async {
         await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backendWith(decisions(), source: 'default'));
 
         expect(find.text(tr('mobileToday.advice.locationHint')), findsOneWidget);
-        expect(find.textContaining(tr('mobileToday.weatherPillEstimated')), findsOneWidget);
+        expect(find.byKey(const Key('weather-missing')), findsOneWidget);
+        expect(find.textContaining(tr('mobileToday.weatherPillEstimated')), findsNothing, reason: 'artık "tahmini" sayı gösterilmez');
       });
 
       testWidgets('İngilizce arayüzde cümleler İngilizce kurulur', (tester) async {
@@ -377,7 +378,35 @@ void main() {
       expect(find.textContaining(tr('mobileToday.weatherPillEstimated')), findsNothing, reason: 'gerçek hava: "tahmini" etiketi yok');
     });
 
-    testWidgets('hava paneli seviyeleri: UV 9 çok yüksek, nem %80 nemli; tahmini hava "tahmini" der', (tester) async {
+    testWidgets('hava paneli nem değeri İngilizcede yüzde işareti sonda: 38%', (tester) async {
+      final b = FakeBackend();
+      b.todayPlan = {
+        ...b.todayPlan,
+        'weather': {'uv_index': 6, 'humidity': 38, 'temperature': 18},
+        'weather_source': 'live',
+      };
+      await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: b, lang: 'en');
+      Finder inHeader(String text) => find.descendant(of: find.byType(TodayHeader), matching: find.text(text));
+      expect(inHeader('38%'), findsOneWidget);
+      expect(inHeader('%38'), findsNothing);
+    });
+
+    testWidgets('hava paneli seviyeleri: UV 9 çok yüksek, nem %80 nemli (gerçek hava); "tahmini" etiketi yok', (tester) async {
+      final b = FakeBackend();
+      b.todayPlan = {
+        ...b.todayPlan,
+        'weather': {'uv_index': 9, 'humidity': 80, 'temperature': 31},
+        'weather_source': 'live',
+      };
+      await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: b);
+      Finder inHeader(String text) => find.descendant(of: find.byType(TodayHeader), matching: find.text(text));
+      expect(inHeader('31°'), findsOneWidget);
+      expect(inHeader(tr('mobileToday.weatherPanel.uv.veryHigh')), findsOneWidget);
+      expect(inHeader(tr('mobileToday.weatherPanel.hum.humid')), findsOneWidget);
+      expect(find.descendant(of: find.byType(TodayHeader), matching: find.textContaining(tr('mobileToday.weatherPillEstimated'))), findsNothing);
+    });
+
+    testWidgets('varsayılan (gerçek olmayan) hava derece/UV/nem olarak gösterilmez: yerine "yer seç" paneli', (tester) async {
       final b = FakeBackend();
       b.todayPlan = {
         ...b.todayPlan,
@@ -386,10 +415,9 @@ void main() {
       };
       await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: b);
       Finder inHeader(String text) => find.descendant(of: find.byType(TodayHeader), matching: find.text(text));
-      expect(inHeader('31°'), findsOneWidget);
-      expect(inHeader(tr('mobileToday.weatherPanel.uv.veryHigh')), findsOneWidget);
-      expect(inHeader(tr('mobileToday.weatherPanel.hum.humid')), findsOneWidget);
-      expect(find.descendant(of: find.byType(TodayHeader), matching: find.textContaining(tr('mobileToday.weatherPillEstimated'))), findsOneWidget);
+      expect(inHeader('31°'), findsNothing);
+      expect(inHeader(tr('mobileToday.weatherPanel.uv.veryHigh')), findsNothing);
+      expect(inHeader(tr('mobileWeatherPlace.missingTitle')), findsOneWidget);
     });
 
     testWidgets('"Daha fazlası" iki sütunlu karolardır: altı karo, her biri tek dokunuşla ilgili ekranı açar', (tester) async {

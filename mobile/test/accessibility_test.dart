@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart' show Checkbox, Key, Size, TextField, TextFormField, TextInputAction;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rebi/core/beta_notice.dart';
 import 'package:rebi/core/device_location.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/profile_screen.dart' show debugAccountAvailable;
@@ -102,6 +103,38 @@ void main() {
         'consent': {...(b.snapshot['consent'] as Map).cast<String, dynamic>(), 'location_processing_allowed': true},
       };
       await pumpApp(t, location: '/dashboard', prefs: accepted(), backend: b, notifier: FakeReminderNotifier());
+    }),
+    ('Bugün · hava yok: yer seç paneli', (t) async {
+      clockAt(9, 15);
+      setLocationAccess(read: () async => LocationAccess.granted);
+      deviceLocationLookup = () async => null;
+      addTearDown(resetLocationAccess);
+      addTearDown(resetDeviceLocationLookup);
+      final b = populated();
+      b.todayPlan = {...b.todayPlan, 'weather_source': 'default'};
+      b.snapshot = {
+        ...b.snapshot,
+        'consent': {...(b.snapshot['consent'] as Map).cast<String, dynamic>(), 'location_processing_allowed': true},
+      };
+      await pumpApp(t, location: '/dashboard', prefs: accepted(), backend: b);
+    }),
+    ('Bugün · hava yer sayfası', (t) async {
+      clockAt(9, 15);
+      setLocationAccess(read: () async => LocationAccess.granted);
+      deviceLocationLookup = () async => null;
+      addTearDown(resetLocationAccess);
+      addTearDown(resetDeviceLocationLookup);
+      final b = populated();
+      b.todayPlan = {...b.todayPlan, 'weather_source': 'default'};
+      b.snapshot = {
+        ...b.snapshot,
+        'consent': {...(b.snapshot['consent'] as Map).cast<String, dynamic>(), 'location_processing_allowed': true},
+      };
+      await pumpApp(t, location: '/dashboard', prefs: accepted(), backend: b);
+      await tapText(t, tr('mobileWeatherPlace.pick'));
+      await t.enterText(find.byKey(const Key('weather-place-search')), 'Ank');
+      await t.pump(const Duration(milliseconds: 600));
+      await settle(t, 4);
     }),
     ('Bugün · su sayfası', (t) async {
       clockAt(9, 15);
@@ -232,6 +265,12 @@ void main() {
       await tapFinder(t, find.byKey(const Key('auth-submit')).first);
     }),
     ('Açılış', (t) => pumpApp(t, location: '/', loggedIn: false)),
+    ('Beta uyarısı', (t) async {
+      betaNoticePending = true;
+      addTearDown(() => betaNoticePending = false);
+      await pumpApp(t, location: '/dashboard');
+      await t.pump(const Duration(milliseconds: 600));
+    }),
     ('KVKK metni', (t) => pumpApp(t, location: '/kvkk', loggedIn: false)),
   ];
 

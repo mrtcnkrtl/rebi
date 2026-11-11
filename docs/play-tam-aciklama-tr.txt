@@ -1,0 +1,65 @@
+Rebi, cildini tanıyan ve her gün yanında olan cilt bakım asistanıdır. Cilt tipini ve hedeflerini anlatırsın; Rebi sana sabah ve akşam rutinini hazırlar, gününü takip etmene ve doğru zamanda hatırlamana yardım eder.
+
+Cilt bakımında asıl zorluk çoğu zaman ürün seçmek değil, düzenli yapabilmektir. Rebi rutinini, gün içi alışkanlıklarını ve bugünün havasını tek bir yerde toplar: ne yapacağını, neden yapacağını ve ne zaman yapacağını tek bakışta görürsün.
+
+NASIL BAŞLARSIN
+1. Hesap oluştur ve e-postanı doğrula.
+2. Cilt tipini, hassasiyetlerini ve hedeflerini anlat; istersen bir fotoğraf ekle.
+3. Rutinin hazır: Bugün ekranından adım adım ilerle.
+
+KİŞİSEL RUTİN
+• Sabah ve akşam rutinin sana göre hazırlanır; haftanın her günü için ayrı görebilirsin.
+• Her adımda "Neden bu ürün?" diye sorabilirsin: Rebi, ürünün rutinde neden yer aldığını açıklar.
+
+BUGÜN EKRANI
+• Uygulamayı açtığında günün rutini karşında: adımları tek tek işaretle, bitirince "Yaptım" de.
+• Su, makyaj ve temizleme, beslenme ve güneş kremi aynı günlük akışta toplanır.
+• Su içtikçe tek dokunuşla kaydet, günlük hedefini takip et, yanlış girişi kolayca düzelt.
+• Makyaj yaptığın günü ve akşam nasıl temizlediğini işaretle.
+• Gün içinde nasıl beslendiğini kısa bir seçimle kaydet.
+
+HAVAYA GÖRE KARAR
+• UV, sıcaklık ve neme bakarak bugün hangi güneş kremini, nemlendiriciyi ya da dudak balsamını kullanman gerektiğini ve nedenini gösterir.
+• Güneş kremini yenilediğinde kaydet; Rebi gün içinde yeniden hatırlatır.
+• Konum izni isteğe bağlıdır ve yalnızca hava ile UV'ye göre öneri için yaklaşık konum kullanılır. İzin vermezsen uygulama yine çalışır; hava değerleri tahmini olarak gösterilir.
+
+SAAT ARALIKLI HATIRLATICILAR
+• Rutin, su, güneş kremi ve check-in için ayrı hatırlatıcılar ayarla; her biri için kendi saat aralığını seç.
+• Sessiz saatler tanımla: o saatlerde bildirim gelmez.
+• Bildirimden uygulamayı açmadan "+250 ml su" ya da "Yaptım" de.
+• Hatırlatıcılar cihazında planlanır. Bildirimlerin gerçekten ulaşıp ulaşmadığını test bildirimiyle kontrol edebilirsin; bazı telefonlarda pil tasarrufu bildirimleri engelleyebilir, uygulama bunun için ayar ipuçları gösterir.
+
+ÜRÜN BİTTİ VE RAFIM
+• Biten ürünü tek dokunuşla bildir; rutininde "bitti" olarak görünür.
+• Rafım, biten ürünleri yenisini alana kadar tutar. Birkaç gün sonra "Yenisini aldın mı?" diye hatırlatır; aldığında "Aldım" demen yeterli.
+
+REBİ İLE SOHBET
+• Bugünkü rutinini, su kaydını ve hava durumunu bilen yapay zekâ asistanına cilt bakımı sorularını sor.
+• Hazır soru önerileriyle hızlıca başla; örneğin "Bugün UV 6, güneş kremimi ne sıklıkla yenilemeliyim?"
+• Sohbet için hesap gerekir; günlük ücretsiz bir mesaj hakkı vardır.
+
+GÜNLÜK CHECK-IN VE GEÇMİŞ
+• Uyku, stres ve cilt hissini birkaç dokunuşla kaydet.
+• 7, 30 ya da 90 günlük grafiklerle su, uyku, stres ve rutin uyumunu izle.
+• Haftalık özet, son 7 günün bir önceki haftaya göre nasıl değiştiğini gösterir.
+
+HER GÜN KULLANMAYA UYGUN
+• İnternet yokken yaptığın kayıtlar cihazında bekler, bağlantı gelince gönderilir.
+• Açık ve koyu mod, büyük yazı boyutu ve ekran okuyucu desteği vardır.
+• Arayüz Türkçe ve İngilizcedir.
+• Dört vurgu rengi arasından seçim yap: Orman, Adaçayı, Pudra, Lavanta.
+
+GİZLİLİK VE KONTROL
+• Konum ve fotoğraf isteğe bağlıdır.
+• Yapay zekâ özellikleri için açık rızanı sen verirsin.
+• Reklam ve izleme yoktur.
+• Hesabını uygulama içinden kalıcı olarak silebilirsin: Ben → Hesap ve gizlilik.
+
+KİMLER İÇİN
+• Cilt bakımına yeni başlayıp nereden başlayacağını bilmeyenler
+• Rutinini sürdürmekte zorlanıp hatırlatıcıya ihtiyaç duyanlar
+• Güneş kremi ve nemlendirici seçimini havaya göre yapmak isteyenler
+• Ürünlerinin ne zaman bittiğini takip etmek isteyenler
+
+ÖNEMLİ
+Rebi tıbbi tanı koymaz ve tedavi önermez. Öneriler genel cilt bakımı bilgisidir ve uzman görüşünün yerini tutmaz; yapay zekâ yanıtları hata içerebilir. Ciddi, ağrılı ya da uzun süren cilt sorunlarında bir dermatoloğa danış.

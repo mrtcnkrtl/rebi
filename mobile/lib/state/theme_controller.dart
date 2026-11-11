@@ -95,6 +95,11 @@ RebiTheme _theme({
     );
 
 /// Sıra seçici ekranındaki sıradır. Ücretsiz dört vurgu rengi, Plus için üç koyu/derin ton.
+///
+/// **Palet reçetesi.** İlk renk Orman en çok sevilen olduğu için tek ölçüdür; diğer temalar onun "DNA"sıyla, yalnızca tonu (hue)
+/// değiştirilerek kurulur (OKLCH): birincil L≈.51 C≈.09 (beyaz yazı ≥ 5:1), derin sahne L≈.32 C≈.055–.065 (koyu ve sessiz,
+/// krem yazı ≥ 9:1), açık ton L≈.92 C≈.025, vurgu L≈.68 C≈.10. Böylece hiçbir tema "bordo", "çamurlu kahve" ya da neon görünmez;
+/// hepsi aynı olgunlukta durur. `test/design_system_test.dart` bu sınırları korur.
 Map<String, RebiTheme> _buildThemes() => {
   'teal': _theme(
     id: 'teal',
@@ -107,54 +112,54 @@ Map<String, RebiTheme> _buildThemes() => {
   'green': _theme(
     id: 'green',
     label: 'Adaçayı',
-    primary: const Color(0xFF47804E),
-    light: const Color(0xFFDDE9D6),
-    dark: const Color(0xFF22442A),
-    accent: const Color(0xFF5E9A62),
+    primary: const Color(0xFF43774B),
+    light: const Color(0xFFDCE9D9),
+    dark: const Color(0xFF1E3A24),
+    accent: const Color(0xFF6DA974),
   ),
   'pink': _theme(
     id: 'pink',
     label: 'Pudra',
-    primary: const Color(0xFFA94F65),
-    light: const Color(0xFFF1DCE0),
-    dark: const Color(0xFF7A3548),
-    accent: const Color(0xFFCC7387),
+    primary: const Color(0xFF954F69),
+    light: const Color(0xFFF3DEE6),
+    dark: const Color(0xFF4B2435),
+    accent: const Color(0xFFD3829E),
   ),
   'lavender': _theme(
     id: 'lavender',
     label: 'Lavanta',
-    primary: const Color(0xFF6C5AA0),
-    light: const Color(0xFFE4DFEE),
-    dark: const Color(0xFF3B2E58),
-    accent: const Color(0xFF8575B5),
+    primary: const Color(0xFF6B599C),
+    light: const Color(0xFFE6E2F2),
+    dark: const Color(0xFF34284E),
+    accent: const Color(0xFF9686C8),
   ),
   // Rebi Plus — premium
   'sunset': _theme(
     id: 'sunset',
     label: 'Gün Batımı',
     premium: true,
-    primary: const Color(0xFFA9562E),
-    light: const Color(0xFFF4DDCF),
-    dark: const Color(0xFF773E24),
-    accent: const Color(0xFFCF7C54),
+    primary: const Color(0xFFA15236),
+    light: const Color(0xFFF5E0D2),
+    dark: const Color(0xFF4E261A),
+    accent: const Color(0xFFD88761),
   ),
   'ocean': _theme(
     id: 'ocean',
     label: 'Derin Su',
     premium: true,
-    primary: const Color(0xFF2F7686),
-    light: const Color(0xFFD5E7EA),
-    dark: const Color(0xFF174C58),
-    accent: const Color(0xFF3E8A9A),
+    primary: const Color(0xFF296D94),
+    light: const Color(0xFFD8E7F1),
+    dark: const Color(0xFF13334B),
+    accent: const Color(0xFF5EA1CB),
   ),
   'noir': _theme(
     id: 'noir',
     label: 'Gece',
     premium: true,
-    primary: const Color(0xFF3E4C7A),
-    light: const Color(0xFFDDE1EE),
-    dark: const Color(0xFF242E4E),
-    accent: const Color(0xFF7C8BC4),
+    primary: const Color(0xFF3E528C),
+    light: const Color(0xFFDFE4F2),
+    dark: const Color(0xFF1F294A),
+    accent: const Color(0xFF7B8FCD),
   ),
 };
 

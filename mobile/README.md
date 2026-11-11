@@ -227,7 +227,7 @@ sayfası açan eylemler (check-in, "nasıl temizledin", "evet yedim") bildirime 
 
 **Firebase'i açmak** (push için; yerel bildirimler bunsuz da çalışır):
 
-1. Firebase konsolunda Android (`com.rebiovil.rebi`) ve iOS (`com.rebiovil.rebi`) uygulamalarını ekleyin.
+1. Firebase konsolunda Android ve iOS (`com.rebiovil.mobile`) uygulamalarını ekleyin.
 2. `google-services.json` → `android/app/`, `GoogleService-Info.plist` → `ios/Runner/` (Xcode'da Runner hedefine ekleyin).
    Android'de dosya varsa Google Services eklentisi kendiliğinden uygulanır, yoksa atlanır.
 3. iOS (Mac gerekir): Xcode → Runner → Signing & Capabilities → **Push Notifications** ekleyin; Firebase konsoluna
@@ -308,7 +308,7 @@ Renkler `ui/tw.dart` içindeki `Tw` alıcılarından okunur ve açık / koyu mod
 
 ## Uygulama kimliği ve yayın
 
-- Paket kimliği: Android `com.rebiovil.rebi`, iOS `com.rebiovil.mobile`; görünen ad: `Rebi`.
+- Paket kimliği: Android ve iOS `com.rebiovil.mobile`; görünen ad: `Rebi`. Kotlin paketi/namespace `com.rebiovil.rebi` ve derin bağlantı şeması `com.rebiovil.rebi://` aynen kalır (uygulama kimliğinden bağımsızdır).
 - **Logo ve ikonlar tek kaynaktan üretilir:** uygulama içindeki `BrandMark`'ın geometrisi (`BrandGlyph`,
   `lib/ui/brand/brand_mark.dart`). Logoyu değiştirirseniz:
 

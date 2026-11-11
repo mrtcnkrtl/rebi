@@ -175,6 +175,10 @@ class _TrackingTilesState extends State<TrackingTiles> {
                       _sub(i18n.t('mobileToday.waterGoalReached'), color: Tw.emerald700, w: 6)
                     else if (next != null)
                       _sub(i18n.t('mobileToday.water.next', {'time': next}), color: Tw.gray500),
+                    if (!reached && p.waterSkips > 0) ...[
+                      const SizedBox(height: 2),
+                      _sub(i18n.t('mobileToday.water.skipped', {'n': p.waterSkips}), color: Tw.gray500),
+                    ],
                   ],
                 ),
               ),

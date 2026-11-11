@@ -16,6 +16,10 @@ class Env {
   /// `true` verilir; sunucudan push almak için gerekir. Kapalıyken yerel bildirim kullanılır.
   static const firebaseEnabled = bool.fromEnvironment('FIREBASE_ENABLED');
 
+  /// Beta sürüm: girişteki "BETA" etiketi ve ilk açılıştaki "hata çıkabilir" uyarısı. Beta bitince derlemeye
+  /// `--dart-define=REBI_BETA=false` verilir (kod değişmez).
+  static const betaBuild = bool.fromEnvironment('REBI_BETA', defaultValue: true);
+
   static const productionApiUrl = 'https://rebiovil.com/api';
 
   /// Destek e-postası ve sayfası (mağazalardaki destek URL'si de bu sayfadır; web: `pages/Support.jsx`).

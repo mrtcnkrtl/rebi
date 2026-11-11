@@ -15,6 +15,7 @@ import '../core/routine_logic.dart';
 import '../core/routine_tracking.dart';
 import '../core/routine_usage.dart';
 import '../core/today_plan.dart';
+import '../core/weather_location.dart';
 import '../state/auth_controller.dart';
 import '../state/home_sync_controller.dart';
 import '../state/location_prompt_controller.dart';
@@ -24,6 +25,7 @@ import '../state/theme_controller.dart';
 import '../state/today_actions.dart';
 import '../state/today_plan_controller.dart';
 import '../ui/components/location_widgets.dart';
+import '../ui/components/weather_place_sheet.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/stage_overlap.dart';
 import '../ui/widgets/common.dart';
@@ -69,6 +71,9 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   TodayPlanController? _today;
   TodayActions? _actions;
   LocationPromptController? _location;
+
+  /// Gizlilik onayında konum işlemeye izin var mı (hava için yer seçimi buna bağlı).
+  bool _locationAllowed = false;
   StreamSubscription<String>? _recordedSub;
   String? _uid;
 
@@ -151,6 +156,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
       }
       if (mounted && uid == _uid) {
         final locationAllowed = snap?.consent.locationAllowed == true;
+        _locationAllowed = locationAllowed;
         unawaited(today.load(useLocation: locationAllowed));
         // Konum önerisi: gizlilik onayı varsa ve telefon izni henüz sorulmadıysa.
         _location?.dispose();
@@ -331,6 +337,19 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   }
 
   /// "Bugün" planı değişince yeniden çizilir; denetleyici yoksa (demo) plansız çizer.
+  /// Hava için yer seçme sayfası: telefonun konumu ya da bir şehir. Seçilince plan yeni yerle yeniden okunur.
+  void _openWeatherPlace() {
+    final uid = _uid;
+    final today = _today;
+    if (uid == null || today == null) return;
+    showWeatherPlaceSheet(
+      context,
+      userId: uid,
+      consentAllowed: _locationAllowed,
+      onChanged: () => today.load(useLocation: _locationAllowed),
+    );
+  }
+
   Widget _withPlan(Widget Function(TodayPlan? plan) build) {
     final controller = _today;
     if (controller == null) return build(null);
@@ -495,6 +514,10 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
                 plan: plan,
                 theme: theme,
                 trailing: _AccountShortcut(name: userName, theme: theme),
+                placeKnown: _today?.placeKnown ?? false,
+                placeName: _uid == null ? null : weatherPlacePref(_uid!).name,
+                onWeatherPlace: _openWeatherPlace,
+                onWeatherRetry: () => unawaited(_today?.reload() ?? Future.value()),
               )),
           body: Padding(
             padding: EdgeInsets.fromLTRB(16, 0, 16, actions != null ? 132 : 32),

@@ -17,13 +17,15 @@ uygulama sürümü, bildirimlerin yerelden mi sunucudan mı geldiği (Hatırlat�
 | 1.4 | Aynı rutini uygulamada "tamam" işaretle, sonra pencereyi bir 5 dk daha ileri ayarla | Tamamlanan rutin için bildirim **gelmez** |
 | 1.5 | Sessiz saati şu andan 10 dk'lık bir aralığa kur; o aralığa denk gelen bir hatırlatıcı olsun | Aralıkta bildirim gelmez; tek seferlik ise aralık bitince gelir |
 | 1.6 | Telefonu yeniden başlat, uygulamayı **açma**, bir sonraki hatırlatıcıyı bekle | Bildirim yine gelir (yeniden başlatma sonrası kurma) |
+| 1.7 | **Ses:** zil sesi açıkken (sessiz/rahatsız etme kapalı) 1.1'i tekrarla | Telefonun varsayılan sesi değil, Rebi'nin **iki notalı yükselen çınlaması** (~1,7 sn) çalar. Android: Ayarlar → Uygulamalar → Rebi → Bildirimler → *Hatırlatıcılar* → Ses = "rebi_chime"; sistem sesi çalıyorsa Bölüm 3'teki "ses" notuna bak |
 
 ## 2. Bildirim düğmeleri (uygulama kapalıyken ve açıkken)
 
 | # | Adım | Beklenen |
 |---|------|----------|
-| 2.1 | Su bildirimi gelince **+250 ml** düğmesine bas (uygulama kapalı) | Bildirim kapanır; uygulamayı açınca Bugün'de su 250 ml artmış |
-| 2.2 | Su hedefine 250 ml kalana kadar uygulamada su ekle, sonra bildirimden **+250 ml** | Aynı günün **kalan su bildirimleri gelmez** (yarınkiler gelir) |
+| 2.1 | Su bildirimi gelince **İçtim** düğmesine bas (uygulama kapalı) | Bildirim kapanır; uygulamayı açınca Bugün'de su 250 ml artmış |
+| 2.1b | Sonraki su bildiriminde **İçmedim**'e bas (uygulama kapalı) | Bildirim kapanır; uygulamayı açınca su **değişmemiş**, su kutusunda "Bugün 1 kez “içmedim” dedin." yazar. Sonraki hatırlatmalar normal gelir |
+| 2.2 | Su hedefine 250 ml kalana kadar uygulamada su ekle, sonra bildirimden **İçtim** | Aynı günün **kalan su bildirimleri gelmez** (yarınkiler gelir) |
 | 2.3 | Uygulama açıkken bildirimden **Yaptım** (sabah/akşam rutini) | Bugün ekranı hemen güncellenir, o günün aynı bildirimi tekrar gelmez |
 | 2.4 | Uçak modunda düğmeye bas, sonra bağlantıyı aç | Kayıt cihazda bekler, bağlantıyla gönderilir (Bugün'de "bekliyor" → kaybolur) |
 | 2.5 | Makyaj sorusuna bildirimden **Evet** (uygulama kapalı) | Yerel modda temizleme bildirimi uygulama açılana kadar **kurulmaz** (bilinen sınır); uygulamayı açınca kurulur |
@@ -38,6 +40,11 @@ uygulama sürümü, bildirimlerin yerelden mi sunucudan mı geldiği (Hatırlat�
 - Oppo/Realme/Vivo: Pil → Rebi → *Arka planda çalışmaya izin ver*.
 
 Düzelttikten sonra 1.1'i tekrarla ve **hangi ayarın işe yaradığını** not et (rehber metnine eklenecek).
+
+**Ses.** Bildirim sesi Android 8+'ta **kanaldan** gelir ve kanal oluştuktan sonra değiştirilemez; bu yüzden kanal kimliği sürümlüdür
+(`rebi_reminders_v2`, `lib/core/notification_sound.dart`). Uygulama eski sürümden güncellenince eski kanal silinip yenisi kurulur. Hâlâ sistem sesi
+çalıyorsa: uygulama verisini temizle ya da yeniden kur (eski kanal silinmemiş olabilir). iOS'ta ses `rebi_chime.wav` dosyasının uygulama paketinde olmasına
+bağlıdır (Xcode: Runner → Build Phases → Copy Bundle Resources); yoksa iOS varsayılan sesini çalar. Ses, telefon sessizde ya da Rahatsız Etme açıkken de çalmaz (beklenen).
 
 ## 4. Saat dilimi ve yolculuk
 

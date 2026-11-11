@@ -25,6 +25,9 @@ KNOWLEDGE_CATALOG_USER_ID = os.getenv(
     "00000000-0000-4000-8000-000000000001",
 )
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
+# Open-Meteo ücretsiz uç ticari kullanıma kapalıdır. Ücretli plan anahtarı verilirse hava ve şehir araması aynı yanıt biçimiyle
+# `customer-*` uçlarından çekilir; boşsa ücretsiz uç kullanılır (geliştirme, test).
+OPEN_METEO_API_KEY = os.getenv("OPEN_METEO_API_KEY", "").strip()
 
 # Ücretsiz literatür ipuçları (RAG değil): NCBI E-utilities + isteğe bağlı Europe PMC yedeği
 def _env_flag(name: str, default: str = "1") -> bool:

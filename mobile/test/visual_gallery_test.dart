@@ -1,8 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart' show Size, TextField, TextInputAction;
+import 'package:flutter/material.dart' show Key, Size, TextField, TextInputAction;
 import 'package:flutter/painting.dart' show debugDisableShadows;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rebi/core/beta_notice.dart';
 import 'package:rebi/core/device_location.dart';
 import 'package:rebi/screens/profile_screen.dart' show debugAccountAvailable;
 import 'package:rebi/screens/today/today_clock.dart';
@@ -71,6 +72,81 @@ void main() {
             realFonts: true,
           );
           await shoot(tester, '${dark ? 'koyu' : 'acik'}-$name');
+        } finally {
+          debugDisableShadows = true;
+        }
+      }, skip: !screenshotsEnabled);
+    }
+  }
+
+  // Beta uyarısı: ilk açılışta bir kez çıkan kart; karşılamanın üstünde (oturumsuz) ve uygulama içinde, açık + koyu.
+  for (final dark in [false, true]) {
+    for (final (name, path, signedIn) in const [('beta-uyari-karsilama', '/', false), ('beta-uyari-bugun', '/dashboard', true)]) {
+      testWidgets('${dark ? 'koyu' : 'acik'} · $name', (tester) async {
+        Tw.dark = dark;
+        debugDisableShadows = false;
+        betaNoticePending = true;
+        try {
+          await pumpApp(tester, location: path, loggedIn: signedIn, prefs: acceptedPrefs(), backend: populated(), realFonts: true);
+          await tester.pump(const Duration(milliseconds: 600));
+          await shoot(tester, '${dark ? 'koyu' : 'acik'}-$name');
+        } finally {
+          debugDisableShadows = true;
+          betaNoticePending = false;
+        }
+      }, skip: !screenshotsEnabled);
+    }
+  }
+
+  // Hava durumu yoksa (konum yok): uydurma sayı yerine "yer seç" paneli ve yer seçme sayfası (açık + koyu).
+  for (final dark in [false, true]) {
+    for (final sheet in [false, true]) {
+      final name = sheet ? 'hava-yer-sayfasi' : 'hava-yer-sec';
+      testWidgets('${dark ? 'koyu' : 'acik'} · $name', (tester) async {
+        Tw.dark = dark;
+        debugDisableShadows = false;
+        deviceLocationLookup = () async => null;
+        setLocationAccess(read: () async => LocationAccess.granted);
+        try {
+          final b = populated();
+          b.snapshot = {
+            ...b.snapshot,
+            'consent': {...(b.snapshot['consent'] as Map).cast<String, dynamic>(), 'location_processing_allowed': true},
+          };
+          b.todayPlan = {...b.todayPlan, 'weather': {'uv_index': 3, 'humidity': 50, 'temperature': 20}, 'weather_source': 'default'};
+          await pumpApp(tester, location: '/dashboard', loggedIn: true, prefs: acceptedPrefs(), backend: b, realFonts: true);
+          if (sheet) {
+            await tapText(tester, tr('mobileWeatherPlace.pick'));
+            await tester.enterText(find.byKey(const Key('weather-place-search')), 'Ank');
+            await tester.pump(const Duration(milliseconds: 600));
+            await settle(tester, 4);
+          }
+          await shoot(tester, '${dark ? 'koyu' : 'acik'}-$name');
+        } finally {
+          debugDisableShadows = true;
+          resetDeviceLocationLookup();
+          resetLocationAccess();
+        }
+      }, skip: !screenshotsEnabled);
+    }
+  }
+
+  // Her vurgu renginin Bugün sahnesi (açık + koyu): Orman ölçüdür, diğerleri aynı olgunlukta durmalı (Plus temaları için Plus hesabı).
+  for (final dark in [false, true]) {
+    for (final id in const ['teal', 'green', 'pink', 'lavender', 'sunset', 'ocean', 'noir']) {
+      testWidgets('${dark ? 'koyu' : 'acik'} · tema-$id', (tester) async {
+        Tw.dark = dark;
+        debugDisableShadows = false;
+        try {
+          await pumpApp(
+            tester,
+            location: '/dashboard',
+            prefs: {...acceptedPrefs(), 'rebi-theme': id},
+            backend: populated(),
+            realFonts: true,
+            user: fakeUser(appMetadata: const {'rebi_plus': true}),
+          );
+          await shoot(tester, '${dark ? 'koyu' : 'acik'}-tema-$id');
         } finally {
           debugDisableShadows = true;
         }

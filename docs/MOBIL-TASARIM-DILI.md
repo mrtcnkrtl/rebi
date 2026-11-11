@@ -139,8 +139,14 @@ göre üç karar → gün içi kayıtlar → "Daha fazlası"**; altta yüzen "Ya
 - **Hava paneli (sahnenin kahramanı).** "Hava durumuna göre" uygulamanın vaadidir; bu yüzden sahnede selamlamanın altında büyük bir
   panel durur (krem çerçeveli, `_WeatherPanel`): sol blokta büyük Fraunces derece ve simge, sağda **UV** ve **nem** değerleri, sözlü
   seviyeleri (UV: düşük / orta / yüksek / çok yüksek; nem: kuru / dengeli / nemli) ve beş parçalı küçük gösterge (UV ≥ 6'da bal tonu).
-  Hava gerçek bir kaynaktan değilse köşede "tahmini" yazar. 330 dp panel genişliğinin altında ya da %125 üstü yazıda alt alta dizilir;
-  satırlar sığmazsa küçülür (taşma yok). Ekran okuyucu için tek cümlelik özet (`weatherPill`) etikettir.
+  Panelde **yalnızca gerçek hava** gösterilir (canlı, bugünkü kayıt ya da profildeki yer); uydurma varsayılan "20°, UV 3" hiçbir zaman
+  gösterilmez. Hava yoksa panelin yerine `_WeatherMissing` çıkar: yer belli değilse **"Hava için bir yer seç"** + "Yer seç" düğmesi, yer belli
+  ama hava servisi/bağlantı yanıt vermiyorsa **"Hava şu an alınamadı"** + "Yeniden dene". Panelin sağ üstündeki **yer düğmesi**
+  (`_PlaceChip`: seçilen şehir ya da "Konumum") **"Hava için yer" sayfasını** açar (`showWeatherPlaceSheet`): "Telefonun konumu" kartı
+  (izin/servis durumuna göre ayar bağlantısıyla) ve şehir araması (yazdıkça, ~450 ms bekleyerek; bulunamadı / servis yok ayrı mesajlar).
+  Şehir seçmek konum izni gerektirmez; seçilen şehir cihaz konumunu ezer. Gizlilik onayında konum kapalıysa sayfa nedenini söyler ve
+  Hesap > Gizlilik izinleri'ne götürür. 330 dp panel genişliğinin altında ya da %125 üstü yazıda alt alta dizilir; satırlar sığmazsa küçülür
+  (taşma yok). Ekran okuyucu için tek cümlelik özet (`weatherPill`) etikettir. Testler: `test/weather_place_test.dart`, erişilebilirlik ("hava").
 - **Rutin adımları zaman çizelgesidir** (Rutin sekmesiyle aynı dil): işaret dairesi + bir sonraki adıma inen ince çizgi; yapılan adım
   **soluklaşır, üstü çizilmez**. Biten ürünün adımı da aynı çizgide, bal tonlu.
 - **Hava kararları tonlu panellerdir**: güneş kremi bal, nem su, dudak balsamı pudra (gerekmeyen karar nötr), her biri simge diskli;
@@ -277,12 +283,44 @@ Eski sihirbaz dört uzun sayfaydı (60'a yakın soru, renkli kartlar, 10–11 pu
 Tek seferde tek öneri, değerini gösterdiği sırayla: **konum** (ekrandaki hava ve havaya göre kararlar gerçek olur) → **bildirim** (hatırlatmalar). İzin
 penceresi hiçbir zaman uygulama açılırken değil, kullanıcı önerideki düğmeye dokununca açılır; "Şimdi değil" kalıcıdır.
 
+## Beta bilgilendirmesi
+
+Uygulama beta sürümündeyken iki küçük işaret kullanıcıya "hata çıkabilir" der; ikisi de sakin ve dürüst bir tondadır, korkutmaz:
+
+- **"BETA" etiketi** (`BetaBadge`): karşılamadaki marka yazısının yanında; boş, ince çerçeveli hap, aralıklı büyük harf (dolgu ve renk yok).
+  Karşılamanın giriş sekansında marka yerleştikten sonra dil seçiciyle birlikte belirir. Geri düğmeli giriş çubuğunda marka olmadığı için etiket de yoktur.
+- **Açılış uyarısı** (`BetaNoticePanel`, `showBetaNotice`): marka karosu + etiket, Fraunces başlık, iki cümle, "Bir şey ters giderse bize yaz"
+  bağlantısı (`openSupport`) ve tek düğme ("Anladım"). **Cihaz başına bir kez** çıkar (`core/beta_notice.dart`, anahtar sürümlüdür:
+  metin anlamca değişirse `betaNoticeVersion` artırılır). Karşılamanın giriş sekansı sürerken bekler, sekans bitince ~1 sn sonra belirir;
+  Android geri tuşu kapatır. Kabuktaki görünmez `BetaNoticeGate` gösterir; yalnızca gerçek uygulama (`RebiApp`) bayrağı kurar, testler kurmaz.
+- **Beta bitince:** derlemeye `--dart-define=REBI_BETA=false` verilir (`Env.betaBuild`); etiket ve uyarı kod değişmeden kapanır.
+- Testler: `test/beta_notice_test.dart`, `accessibility_test` ("Beta uyarısı"), görsel galeri (`beta-uyari-*`).
+
 ## Vurgu rengi (tema)
 
 Uygulamanın dili tektir; kullanıcı yalnızca **vurgu rengini** seçer (düğme, seçim, vurgu): ücretsiz **Orman · Adaçayı · Pudra · Lavanta**,
 Plus için **Gün Batımı · Derin Su · Gece**. Desen, emoji ve şekil farkı yoktur (web'deki kedi/ayıcık temaları kaldırıldı;
 kayıtlı kimlik artık yoksa `Orman`a dönülür). Düğme dolgusu `theme.primary` (üstüne beyaz yazı, AA), metin/ikon olarak
 kullanılacak vurgu `theme.fg` (koyu modda okunacak kadar açılır).
+
+**Palet reçetesi.** İlk renk **Orman** en çok sevilen olduğu için ölçüdür ve olduğu gibi kalır; diğer altı tema onun "DNA"sıyla, yalnızca
+tonu (hue) değiştirilerek kurulur (OKLCH): birincil L≈.51 C≈.09 (beyaz yazı ≥ 5:1), derin sahne L≈.32 C≈.055–.065 (koyu ve sessiz; krem yazı
+≥ 10:1), açık ton L≈.92 C≈.025, vurgu L≈.68 C≈.10. Böylece hiçbiri "bordo", "çamurlu kahve" ya da neon görünmez, hepsi aynı olgunlukta durur:
+
+| Tema | Ton | Birincil | Derin sahne | Not |
+|------|-----|----------|-------------|-----|
+| Orman | zümrüt-turkuaz | `#0F766E` | `#0B3D38` | ölçü, değişmez |
+| Adaçayı | yeşil | `#43774B` | `#1E3A24` | |
+| Pudra | toz gül | `#954F69` | `#4B2435` | derin sahne erik-gül (bordo/kahveye kaçmaz) |
+| Lavanta | menekşe | `#6B599C` | `#34284E` | |
+| Gün Batımı (Plus) | pişmiş toprak | `#A15236` | `#4E261A` | |
+| Derin Su (Plus) | çelik mavisi | `#296D94` | `#13334B` | Orman'dan ≥ 25° ayrık (eskiden neredeyse aynıydı) |
+| Gece (Plus) | çivit | `#3E528C` | `#1F294A` | |
+
+Sınırlar `test/design_system_test.dart` "palet reçetesi" testiyle korunur: derin sahnenin bağıl parlaklığı Orman bandında, sahnede krem yazı ≥ 10:1,
+açık tonda koyu metin ≥ 9:1, düğmede beyaz yazı ≥ 5:1, kâğıtta vurgu metni ≥ 4.5:1 ve temaların tonları en az 20° ayrık olmalı.
+**Seçici** (`Görünüm`): her tema düz renk dairesi yerine uygulamanın o temada nasıl durduğunu gösteren küçük bir **mini sahne** (`_SceneTile`:
+üstte derin sahne + krem iki satır, altta kâğıt zemin ve temanın düğmesi; seçiliyken onay işareti). Görsel galeri: `tema-<kimlik>` (açık + koyu).
 
 ## Görsel doğrulama
 

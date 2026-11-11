@@ -9,7 +9,7 @@ kişi (ve KVKK danışmanı) okuyup onaylamalıdır. Tıbbi iddia yoktur ("tedav
 
 | Alan | Değer |
 | --- | --- |
-| Paket / bundle | Android `com.rebiovil.rebi`, iOS `com.rebiovil.mobile` |
+| Paket / bundle | Android ve iOS `com.rebiovil.mobile` |
 | Sürüm | 1.0.0 (derleme 1) |
 | Kategori (öneri) | **Play:** Güzellik (Beauty). **App Store:** Yaşam Tarzı (Lifestyle). "Sağlık ve Fitness" seçmek sağlık incelemesini ağırlaştırır; Rebi tanı koymadığı için gerekmez |
 | Fiyat | Ücretsiz. Uygulama içi satın alma **yok** (v1; `MOBIL-YAYIN.md` §6, seçenek A) |
@@ -25,7 +25,8 @@ kişi (ve KVKK danışmanı) okuyup onaylamalıdır. Tıbbi iddia yoktur ("tedav
 - **Kısa açıklama, Play** (≤80): `Yapay zekâ ile kişisel cilt rutini, günlük takip ve zamanında hatırlatmalar.`
 - **Anahtar kelimeler, iOS** (≤100): `cilt bakımı,cilt rutini,yüz bakımı,güneş kremi,SPF,nemlendirici,su takibi,cilt analizi,dermokozmetik`
 - **Tanıtım metni, iOS** (≤170): `Cildini tanıyan bakım asistanı: kişisel rutin, bugünün hava durumuna göre güneş kremi kararı ve zamanında hatırlatmalar.`
-- **Tam açıklama** (≤4000):
+- **Tam açıklama** (≤4000). Play için daha uzun, bölümlü sürüm (~3900 karakter): [`play-tam-aciklama-tr.txt`](play-tam-aciklama-tr.txt).
+  Aşağıdaki kısa sürüm App Store için de kullanılabilir:
 
 ```text
 Rebi, cildini tanıyan ve her gün yanında olan bakım asistanındır.
@@ -34,7 +35,7 @@ Rebi, cildini tanıyan ve her gün yanında olan bakım asistanındır.
 • Bugün ekranı: rutinini adım adım işaretle, "yaptım" de. Su, makyaj ve temizleme, beslenme ve güneş kremi tek bir günlük akışta.
 • Havaya göre karar: UV, sıcaklık ve neme göre bugün hangi güneş kremi, nemlendirici ya da dudak balsamı gerektiğini ve nedenini gösterir.
 • Ürün bitti, Rafım: biten ürünü tek dokunuşla bildir; rutininde "bitti" görünür, birkaç gün sonra "yenisini aldın mı?" diye hatırlatır.
-• Hatırlatıcılar senin saatlerinde: her hatırlatıcı için kendi saat aralığını seç, sessiz saatler tanımla. Bildirimden tek dokunuşla "+250 ml su" ya da "yaptım" de.
+• Hatırlatıcılar senin saatlerinde: her hatırlatıcı için kendi saat aralığını seç, sessiz saatler tanımla. Bildirimden tek dokunuşla "içtim" / "içmedim" ya da "yaptım" de.
 • Günlük check-in: uyku, stres ve cilt hissine göre rutinin güncellenir.
 • Rebi sohbet: bugünkü rutinini, suyunu ve havayı bilen yapay zekâ ile cilt bakımı sorularını sor.
 • Geçmiş: su, uyku, stres ve rutin grafikleri; haftalık özet.
@@ -67,7 +68,7 @@ Rebi is the skincare assistant that knows your skin and stays with you every day
 • Today screen: tick off your routine step by step and mark it done. Water, makeup and cleansing, nutrition and sunscreen live in one daily flow.
 • Weather-based decisions: based on UV, temperature and humidity, Rebi shows which sunscreen, moisturizer or lip balm you need today, and why.
 • Finished a product? Tell Rebi in one tap. It shows as "finished" in your routine, lands on your shelf, and a few days later asks whether you picked up a new one.
-• Reminders on your schedule: set your own time window for each reminder and define quiet hours. Tap "+250 ml water" or "done" right from the notification.
+• Reminders on your schedule: set your own time window for each reminder and define quiet hours. Tap "I drank" / "I didn't" or "done" right from the notification.
 • Daily check-in: your routine adapts to your sleep, stress and how your skin feels.
 • Rebi chat: ask skincare questions to an AI assistant that knows today's routine, your water intake and the weather.
 • History: charts for water, sleep, stress and routine, plus a weekly summary.
@@ -98,7 +99,10 @@ python3 tool/store_frames.py                                       # çerçeveli
 `tool/store_frames.py` içindeki `SHOTS` tablosundadır. Sıra: 01 Bugün · 02 Rutin · 03 Rebi sohbet · 04 Hatırlatıcılar ·
 05 Su · 06 Geçmiş · 07 Rafım · 08 Karanlık mod. Mağaza verisinde son 30 günün düzenli kayıtları vardır. Mağaza görüntülerinde
 örnek gün "dengeli" risk düzeyindedir (vitrinde kırmızı kriz uyarısı görünmesin); İngilizce örnek kişi "Emma".
-Play telefon görüntüleri (`play-telefon/`, 1080×2160) çerçevesizdir.
+Play telefon görüntüleri iki biçimde vardır: ham, çerçevesiz `build/store/<dil>/play-telefon/` (1080×2160) ve başlıklı,
+çerçeveli `build/store/framed/<dil>/play-telefon/` (1080×1920, 9:16, 24 bit PNG, alfasız, 8 görsel, her biri ~300 KB).
+Play Console'a **çerçeveli seti** yükleyin (Play en az 2, en çok 8 telefon görüntüsü ister); sıra yukarıdaki gibidir ve
+yükleme sırası mağazadaki sıradır. Türkçe set varsayılan dil, İngilizce set İngilizce mağaza girişi içindir.
 
 Dikkat:
 
@@ -113,7 +117,10 @@ Dikkat:
 - Ürün sayfası başlığı (3840×1646) ve arama sonucu görseli (3840×2560), iOS 27: `python3 tool/store_creatives.py` →
   `build/store/creatives/<dil>/`. Önemli içerik Apple'ın güvenli alanındadır.
 - Apple Watch görüntüsü yoktur: Rebi'nin watchOS uygulaması yok; App Store yalnızca Watch uygulaması olanlara izin verir.
-- **Play öne çıkan görsel** (1024×500) zorunludur ve burada **üretilmedi**: marka tasarımı gerektirir (logo + slogan).
+- **Play öne çıkan görsel** (özellik grafiği, 1024×500, PNG, ≤ 15 MB): `python3 tool/play_feature_graphic.py` →
+  `build/store/play-feature/<dil>/feature-graphic-1024x500.png`. Sol tarafta ikon + ad + slogan + tek satır özellik,
+  sağda iki telefon (Bugün, Rebi sohbet; süs). Metin sola toplanır, orta üst bölge boştur: Play'e tanıtım videosu eklenirse
+  oynat düğmesi oraya biner. Türkçe sürümü varsayılan dil, İngilizce sürümü İngilizce mağaza girişi içindir.
   **Uygulama ikonları** hazır: Play Console için `mobile/assets/icon/play-store-512.png` (512×512), App Store için
   `mobile/ios/Runner/Assets.xcassets/AppIcon.appiconset/Icon-App-1024x1024@1x.png` (1024×1024, alfasız). İkisi de
   uygulama içindeki logodan üretilir; yeniden üretme: `mobile/README.md`.

@@ -11,6 +11,7 @@ import '../../core/subscription.dart';
 import '../../state/auth_controller.dart';
 import '../../state/notifications_controller.dart';
 import '../../state/theme_controller.dart';
+import '../components/beta_notice.dart';
 import '../components/language_sheet.dart';
 import '../brand/brand_mark.dart';
 import '../brand/palette.dart';
@@ -83,6 +84,7 @@ class _AppShellState extends State<AppShell> {
   /// Android geri tuşu: alt sayfadan sekmesine, sekmeden Bugün'e, Bugün'de uygulamadan çıkış.
   Future<bool> _onBack() async {
     final router = GoRouter.of(context);
+    // Üstte bir pencere (beta uyarısı, alt sayfa) açıkken `canPop` doğrudur: geri tuşu önce onu kapatır.
     if (router.canPop()) return false;
     final path = widget.location.path;
     if (_menuOpen) {
@@ -172,6 +174,8 @@ class _AppShellState extends State<AppShell> {
             // Klavye açıkken (sohbet, check-in notu, arama alanları) alt çubuk gizlenir: yazma alanına yer açılır, çubuk klavyenin üstünde asılı kalmaz.
             bottomNavigationBar: inApp && !focusFlow && !keyboardOpen ? _BottomNav(path: path) : null,
           ),
+          // Görünmez kapı: gerçek uygulama açıldığında beta uyarısını bir kez gösterir (testlerde hiçbir şey yapmaz).
+          const BetaNoticeGate(),
           if (isAiSurface) const Positioned.fill(child: AiSharingModal()),
           if (user != null) const Positioned.fill(child: ConsentRecoveryModal()),
         ],

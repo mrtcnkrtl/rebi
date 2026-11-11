@@ -8,7 +8,7 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 
 | Konu | Durum |
 | --- | --- |
-| Paket kimliği: Android `com.rebiovil.rebi`, iOS `com.rebiovil.mobile` (App Store Connect'teki "Rebiovil Mobile" kaydı); iOS takımı `KJ7932W24A` | hazır |
+| Paket kimliği: Android ve iOS `com.rebiovil.mobile` (Android: Play'deki mevcut "Rebiovil" uygulamasının güncellemesi; iOS: App Store Connect'teki "Rebiovil Mobile" kaydı); iOS takımı `KJ7932W24A` | hazır |
 | Android release imzalama (`android/key.properties`) | **kod hazır, anahtar sizde yok** (bölüm 3) |
 | Android release derlemesi (R8 + kaynak küçültme, bildirim simgesi korunuyor) | derleme geçiyor (AAB 59,8 MB, 3 ABI; Play cihaza özel daha küçük parça verir); cihazda çalıştırılmadı |
 | iOS gizlilik bildirimi (`ios/Runner/PrivacyInfo.xcprivacy`) | hazır, Mac'te derlenmedi (CI derler, bölüm 4) |
@@ -16,6 +16,8 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 | Firebase push + Crashlytics | kod hazır, **`google-services.json` / `GoogleService-Info.plist` bekleniyor** |
 | Rebi Plus satışı | **ödeme altyapısı yok, karar gerekiyor** (bölüm 6) |
 | Mağaza metinleri ve ekran görüntüleri | **hazır** (TR/EN metin, 1320×2868 ve 1080×2160 görüntü): `MOBIL-MAGAZA-VARLIKLARI.md`. Play öne çıkan görseli (1024×500) tasarım gerektirir |
+| Bildirim sesi | **hazır**: özgün, sentezlenmiş "çınlama" (`tool/make_notification_sound.py`; Android `res/raw`, iOS paket, FCM `aps.sound`). Ses değişince Android kanal kimliği sürümlenir; ayrıntı `MOBIL-BILDIRIM-TEST.md` 1.7 |
+| Beta etiketi + açılış uyarısı ("hata çıkabilir") | **açık** (varsayılan derleme beta). Kapatmak için derlemeye `--dart-define=REBI_BETA=false`; ayrıntı `MOBIL-TASARIM-DILI.md` "Beta bilgilendirmesi" |
 | Gerçek cihazda doğrulama | **yapılmadı**: bu geliştirme makinesinde emülatör açılmıyor; hazır kontrol listesi `MOBIL-CIHAZ-TESTI.md` (bölüm 11) |
 
 ## 2. Sürüm numarası

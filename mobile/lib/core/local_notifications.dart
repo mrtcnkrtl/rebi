@@ -10,10 +10,11 @@ import 'i18n.dart';
 import 'local_store.dart';
 import 'notification_actions.dart';
 import 'notification_ports.dart';
+import 'notification_sound.dart';
 import 'reminder_schedule.dart';
 import 'silence_budget.dart';
 
-const _channelId = 'rebi_reminders';
+const _channelId = reminderChannelId;
 
 /// Test bildirimi: gerçek hatırlatıcı kimlikleriyle (1..56) çakışmaz.
 const _testNotificationId = 9001;
@@ -142,14 +143,25 @@ class LocalNotificationsNotifier implements ReminderNotifier {
     }
   }
 
-  /// Android'de kanal bir kez oluşur; sunucu bildirimi yerel bildirimden önce gelirse de bu kanalı kullanır.
+  /// Android'de kanal bir kez oluşur; sunucu bildirimi yerel bildirimden önce gelirse de bu kanalı kullanır. Kanalın sesi
+  /// oluştuktan sonra değiştirilemez: ses değişince kanal kimliği sürümlenir ([reminderChannelId]) ve eski (sessiz/varsayılan sesli)
+  /// kanal silinir (kullanıcının eski kanalda yaptığı sistem ayarı, ör. sesi kapatmak, yeni kanala taşınmaz).
   Future<void> _createChannel() async {
     final i18n = I18n.instance;
+    for (final old in legacyReminderChannelIds) {
+      try {
+        await _android?.deleteNotificationChannel(channelId: old);
+      } catch (_) {
+        /* kanal yoktu */
+      }
+    }
     await _android?.createNotificationChannel(AndroidNotificationChannel(
       _channelId,
       i18n.t('mobileNotifications.channelName'),
       description: i18n.t('mobileNotifications.channelDescription'),
       importance: Importance.defaultImportance,
+      playSound: true,
+      sound: const RawResourceAndroidNotificationSound(reminderSoundResource),
     ));
   }
 
@@ -192,6 +204,9 @@ class LocalNotificationsNotifier implements ReminderNotifier {
         channelDescription: i18n.t('mobileNotifications.channelDescription'),
         importance: Importance.defaultImportance,
         priority: Priority.defaultPriority,
+        // Android 8+ sesi kanaldan alır; 8 öncesi için bildirimde de aynı ses verilir.
+        playSound: true,
+        sound: const RawResourceAndroidNotificationSound(reminderSoundResource),
         styleInformation: BigTextStyleInformation(n.body),
         actions: [
           for (final a in n.actions)
@@ -202,6 +217,7 @@ class LocalNotificationsNotifier implements ReminderNotifier {
         presentAlert: true,
         presentBanner: true,
         presentSound: true,
+        sound: reminderSoundFile,
         categoryIdentifier: n.actions.isEmpty ? null : _iosCategory(n.reminderId),
       ),
     );

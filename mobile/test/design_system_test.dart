@@ -43,6 +43,30 @@ void main() {
       }
     });
 
+    // Orman (ilk renk, en çok sevilen) ölçüdür: diğer temalar onun derinliğinde ve olgunluğunda durmalıdır. Sayılar bilerek geniş değil,
+    // dar bir bantta: yeni bir tema "bordo", "çamurlu kahve" ya da neon gelirse test kırılır (reçete: `theme_controller.dart`).
+    test('palet reçetesi: her temanın sahnesi Orman kadar derin, yazısı okunur, tonları birbirinden ayrışır', () {
+      Tw.dark = false;
+      const cream = Color(0xFFF7F3EC);
+      final hues = <String, double>{};
+      for (final t in rebiThemes.values) {
+        expect(_luminance(t.deep), inInclusiveRange(.02, .04), reason: '${t.id}: derin sahne Orman bandında (koyu, sessiz)');
+        expect(_contrast(cream, t.deep), greaterThanOrEqualTo(10), reason: '${t.id}: sahnedeki krem yazı');
+        expect(_contrast(t.primaryDark, t.primaryLight), greaterThanOrEqualTo(9), reason: '${t.id}: açık ton üstünde koyu metin');
+        expect(_contrast(Colors.white, t.primary), greaterThanOrEqualTo(5), reason: '${t.id}: düğmedeki beyaz yazı');
+        expect(_contrast(t.primary, cream), greaterThanOrEqualTo(4.5), reason: '${t.id}: kâğıt zeminde vurgu metni');
+        expect(_luminance(t.accent), greaterThan(_luminance(t.primary)), reason: '${t.id}: vurgu birincilden açık');
+        hues[t.id] = HSLColor.fromColor(t.primary).hue;
+      }
+      final ids = hues.keys.toList();
+      for (var i = 0; i < ids.length; i++) {
+        for (var j = i + 1; j < ids.length; j++) {
+          final d = (hues[ids[i]]! - hues[ids[j]]!).abs();
+          expect(math.min(d, 360 - d), greaterThanOrEqualTo(20), reason: '${ids[i]} ile ${ids[j]} ton olarak ayrışmalı');
+        }
+      }
+    });
+
     test('tema adları düz metindir (emoji yok)', () {
       final emoji = RegExp('[\u{1F300}-\u{1FAFF}☀-➿]', unicode: true);
       for (final t in rebiThemes.values) {

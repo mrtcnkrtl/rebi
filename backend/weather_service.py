@@ -2,7 +2,7 @@ import threading
 import time
 
 import httpx
-from config import OPENWEATHER_API_KEY, get_logger
+from config import OPEN_METEO_API_KEY, OPENWEATHER_API_KEY, get_logger
 
 log = get_logger("weather")
 
@@ -40,6 +40,57 @@ FALLBACK = {
 }
 
 
+def _open_meteo_url(kind: str) -> str:
+    """Open-Meteo uçları: anahtar varsa ücretli (`customer-*`), yoksa ücretsiz uç. Yanıt biçimi aynıdır."""
+    host = {
+        "forecast": "api.open-meteo.com/v1/forecast",
+        "search": "geocoding-api.open-meteo.com/v1/search",
+    }[kind]
+    if OPEN_METEO_API_KEY:
+        host = "customer-" + host
+    return f"https://{host}"
+
+
+def _keyed(params: dict) -> dict:
+    return {**params, "apikey": OPEN_METEO_API_KEY} if OPEN_METEO_API_KEY else params
+
+
+async def search_places(query: str, language: str = "tr", count: int = 5) -> list[dict] | None:
+    """
+    Şehir/yer adından konum adayları (Open-Meteo geocoding; nüfusa göre sıralı). Koordinatlar ~1 km'ye (iki ondalık)
+    yuvarlanır: hava için bu yeter, sunucuya kesin konum gitmez. Bulunamazsa `[]`; sağlayıcı yanıt vermezse None
+    (çağıran "bulunamadı" ile "servis yok"u ayırabilsin).
+    """
+    q = (query or "").strip()[:80]
+    if len(q) < 2:
+        return []
+    started = time.perf_counter()
+    try:
+        params = _keyed({"name": q, "count": max(1, min(10, count)), "language": language, "format": "json"})
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            resp = await client.get(_open_meteo_url("search"), params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        places: list[dict] = []
+        for r in data.get("results") or []:
+            lat, lon = r.get("latitude"), r.get("longitude")
+            if not isinstance(lat, (int, float)) or not isinstance(lon, (int, float)):
+                continue
+            places.append({
+                "name": str(r.get("name") or "")[:80],
+                "region": (str(r.get("admin1") or "")[:80] or None),
+                "country": (str(r.get("country") or "")[:80] or None),
+                "lat": round(float(lat), 2),
+                "lon": round(float(lon), 2),
+            })
+        _record_call("open-meteo-geocoding", True, started)
+        return [p for p in places if p["name"]]
+    except Exception as e:
+        _record_call("open-meteo-geocoding", False, started)
+        log.warning("Şehir araması hatası: %s", type(e).__name__)
+        return None
+
+
 async def fetch_weather(lat: float, lon: float) -> dict:
     """Hava durumu; hiçbir kaynak yanıt vermezse varsayılan değerler (her zaman dict)."""
     return await fetch_weather_live(lat, lon) or dict(FALLBACK)
@@ -50,11 +101,11 @@ async def fetch_weather_live(lat: float, lon: float) -> dict | None:
     OpenWeatherMap as optional upgrade. Hiçbir kaynak yanıt vermezse None:
     çağıran, varsayılan değeri gerçek hava gibi saklamamalı."""
 
-    # Try Open-Meteo first (completely free, no API key)
+    # Try Open-Meteo first (ücretsiz uç ya da, anahtar verilmişse, ücretli plan)
     started = time.perf_counter()
     try:
-        url = "https://api.open-meteo.com/v1/forecast"
-        params = {
+        url = _open_meteo_url("forecast")
+        params = _keyed({
             "latitude": lat,
             "longitude": lon,
             "current": "temperature_2m,relative_humidity_2m,weather_code",
@@ -62,19 +113,24 @@ async def fetch_weather_live(lat: float, lon: float) -> dict | None:
             "hourly": "uv_index",
             "timezone": "auto",
             "forecast_days": 1,
-        }
+        })
         async with httpx.AsyncClient(timeout=8.0) as client:
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()
 
-        current = data.get("current", {})
-        daily = data.get("daily", {})
+        current = data.get("current") or {}
+        daily = data.get("daily") or {}
+        uv_max = (daily.get("uv_index_max") or [None])[0]
+        # Eksik alan varsayılanla doldurulmaz: "20°, nem %50" gibi uydurma bir değer gerçek hava diye sunulmasın.
+        # Yanıt eksikse bu bir başarısızlıktır (yedek kaynağa / bayat değere / varsayılana düşülür).
+        if current.get("temperature_2m") is None or current.get("relative_humidity_2m") is None or uv_max is None:
+            raise ValueError("Open-Meteo yanıtında sıcaklık, nem ya da UV yok")
 
         result = {
-            "humidity": current.get("relative_humidity_2m", 50),
-            "uv_index": round(daily.get("uv_index_max", [3])[0]),
-            "temperature": round(current.get("temperature_2m", 20)),
+            "humidity": current["relative_humidity_2m"],
+            "uv_index": round(uv_max),
+            "temperature": round(current["temperature_2m"]),
             "description": _weather_code_to_text(current.get("weather_code", 0)),
         }
         # Saatlik UV (günün yüksek UV aralığı ve şu anki değer): kaynak vermezse alanlar hiç eklenmez.

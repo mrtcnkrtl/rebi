@@ -36,6 +36,8 @@
       "removed": "Temizledim",
       "water250": "+250 ml",
       "water500": "+500 ml",
+      "waterYes": "İçtim",
+      "waterNo": "İçmedim",
       "junkYes": "Evet, yedim",
       "junkNo": "Hayır",
       "open": "Check-in'e git",
@@ -118,7 +120,8 @@
       "notes": "Bugünün notları"
     },
     "water": {
-      "next": "Sonraki hatırlatma {{time}}"
+      "next": "Sonraki hatırlatma {{time}}",
+      "skipped": "Bugün {{n}} kez “içmedim” dedin."
     },
     "makeup": {
       "title": "Makyaj",
@@ -1428,5 +1431,51 @@
     "allow": "İzin ver ve devam et",
     "decline": "Şimdi değil",
     "declined": "Bu özellik için yapay zekâ ile veri paylaşımına izin vermen gerekiyor."
+  },
+  "mobileBeta": {
+    "badge": "Beta",
+    "badgeLabel": "Beta sürüm",
+    "title": "Rebi şimdilik beta sürümünde",
+    "body": "Uygulamayı senin için hâlâ geliştiriyoruz. Bu yüzden zaman zaman hatalarla ya da beklenmedik davranışlarla karşılaşabilirsin.",
+    "report": "Bir şey ters giderse bize yaz",
+    "ok": "Anladım"
+  },
+  "mobileWeatherPlace": {
+    "title": "Hava için yer",
+    "missingTitle": "Hava için bir yer seç",
+    "missingBody": "Konumunu ya da şehrini seçersen güneş kremi, nemlendirici ve balm önerileri bugünün gerçek havasına göre gelir.",
+    "pick": "Yer seç",
+    "unavailableTitle": "Hava şu an alınamadı",
+    "unavailableBody": "Bağlantı ya da hava servisi geçici olarak yanıt vermiyor. Biraz sonra kendiliğinden yenilenir.",
+    "retry": "Yeniden dene",
+    "chipDevice": "Konumum",
+    "change": "Hava için yer: {{place}}. Değiştirmek için dokun",
+    "current": "Şu an: {{place}}",
+    "or": "ya da",
+    "cityTitle": "Şehrini seç",
+    "searchHint": "Şehir ara (örn. Ankara)",
+    "noResults": "Bu adla bir yer bulamadık. Yazımı kontrol et.",
+    "searchFailed": "Şehir araması şu an yapılamıyor. Biraz sonra tekrar dene.",
+    "saveFailed": "Konum kaydedilemedi. Tekrar dene.",
+    "offline": "Bağlantı yok. İnternetini kontrol edip tekrar dene.",
+    "device": {
+      "title": "Telefonun konumu",
+      "body": "Telefonunun konumuna göre. Konum yaklaşık 1 km'ye yuvarlanır.",
+      "bodyBlocked": "Konum izni kapalı. Telefon ayarlarından açabilirsin.",
+      "bodyOff": "Telefonunun konum servisi kapalı.",
+      "cta": "Konumumu kullan",
+      "openSettings": "Ayarları aç",
+      "fail": {
+        "timeout": "Konum şu an alınamadı. Açık alanda tekrar dene ya da şehrini seç.",
+        "denied": "Konum izni verilmedi. İstersen şehrini seçebilirsin.",
+        "blocked": "Konum izni kapalı. Telefon ayarlarından açabilir ya da şehrini seçebilirsin.",
+        "serviceOff": "Telefonunun konum servisi kapalı. Açabilir ya da şehrini seçebilirsin."
+      }
+    },
+    "consent": {
+      "title": "Konum izni kapalı",
+      "body": "Hava durumunu göstermek için konum bilgisinin işlenmesine izin vermen gerekiyor. Hesap > Gizlilik izinleri bölümünden açabilirsin.",
+      "cta": "Gizlilik izinlerine git"
+    }
   }
 }

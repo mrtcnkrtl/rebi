@@ -68,7 +68,8 @@ void main() {
 
       unawaited(controller.load(useLocation: true));
       await _settle(tester);
-      expect(seen.single.queryParameters['lat'], '41.01');
+      final plans = seen.where((u) => u.path.endsWith('/today/plan')).toList();
+      expect(plans.single.queryParameters['lat'], '41.01');
       expect(controller.plan, isNotNull);
       controller.dispose();
     });

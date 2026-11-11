@@ -171,7 +171,7 @@ void main() {
       );
       final water = items.single;
       expect(water.userId, 'u1');
-      expect([for (final a in water.actions) a.id], ['water_intake:water250', 'water_intake:water500']);
+      expect([for (final a in water.actions) a.id], ['water_intake:waterYes', 'water_intake:waterNo']);
       expect(water.payload.reminderId, 'water_intake');
       expect(water.payload.userId, 'u1');
       expect(water.payload.route, '/dashboard');

@@ -2,7 +2,7 @@
 <!--
   Kaynak küçültme (shrinkResources) yalnızca koddan başvurulan kaynakları tutar. Bildirim simgesi
   çalışma anında ismiyle ('@drawable/ic_stat_rebi') istendiği için silinmesin; aksi halde bildirimler
-  release'te sessizce hiç görünmeyebilir.
+  release'te sessizce hiç görünmeyebilir. Bildirim sesi de (`rebi_chime`) kanal ve bildirim ayarlarında adıyla istenir.
 -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/ic_stat_rebi,@mipmap/ic_launcher" />
+    tools:keep="@drawable/ic_stat_rebi,@mipmap/ic_launcher,@raw/rebi_chime" />

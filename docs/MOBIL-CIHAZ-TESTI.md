@@ -77,7 +77,7 @@ Her satırı **GEÇTİ / KALDI / —** ile işaretle. KALDI olanlar için: adım
 | 4.1 | Ben → Hatırlatıcılar → izin ver → **Test bildirimi gönder**, uygulamayı kapat | Bildirim gelir, dokununca Bugün açılır |
 | 4.2 | Bir kategorinin saat aralığını 5 dk sonrasına ayarla | Ayarlanan dakikada gelir |
 | 4.3 | Sessiz saat kur | Aralıkta bildirim gelmez |
-| 4.4 | Bildirimden **+250 ml** (uygulama kapalı) | Uygulamayı açınca su artmış |
+| 4.4 | Su bildiriminden **İçtim** (uygulama kapalı); bir sonrakinden **İçmedim** | Uygulamayı açınca su 250 ml artmış; "içmedim" suyu değiştirmemiş, su kutusunda sayısı yazıyor |
 | 4.5 | Telefonu yeniden başlat | Bildirimler yine gelir |
 | 4.6 | Gelmezse: üreticiye göre pil ayarı (`MOBIL-BILDIRIM-TEST.md` §3) | İşe yarayan ayarı not et |
 
@@ -110,9 +110,9 @@ Bunlar **ölçü**: sayıyı sonuç tablosuna yaz. Eşikler başlangıç öneris
 
 | # | Ölçü | Nasıl | Öneri eşiği |
 | --- | --- | --- | --- |
-| 7.1 | Soğuk açılış (oturum açıkken) | Uygulamayı son uygulamalardan kapat; `adb shell am start -W -n com.rebiovil.rebi/.MainActivity` → `TotalTime` | < 2000 ms |
+| 7.1 | Soğuk açılış (oturum açıkken) | Uygulamayı son uygulamalardan kapat; `adb shell am start -W -n com.rebiovil.mobile/com.rebiovil.rebi.MainActivity` → `TotalTime` | < 2000 ms |
 | 7.2 | Bugün'ün dolması | Açılıştan "Sabah rutini" kartı görünene kadar (kronometre) | Veri ağdan gelir; < 3 sn (iyi ağ) |
-| 7.3 | Kaydırma | Bugün ve Rutin'i hızlı kaydır; takılma, yırtılma var mı | Gözle: takılma yok. Sayı için: `adb shell dumpsys gfxinfo com.rebiovil.rebi reset`, kaydır, `adb shell dumpsys gfxinfo com.rebiovil.rebi` → "Janky frames" < %5 |
+| 7.3 | Kaydırma | Bugün ve Rutin'i hızlı kaydır; takılma, yırtılma var mı | Gözle: takılma yok. Sayı için: `adb shell dumpsys gfxinfo com.rebiovil.mobile reset`, kaydır, `adb shell dumpsys gfxinfo com.rebiovil.mobile` → "Janky frames" < %5 |
 | 7.4 | Yavaş ağ | Zayıf çekimde (bodrum / asansör) ya da hotspot'u 2G'ye düşürerek Bugün'ü aç | Eldeki plan ekranda kalır; ilk açılışta en geç 20 sn sonra "alınamadı" ve **Tekrar dene**, sonsuz dönme yok |
 | 7.5 | GPS soğuk | Konum izni açık, telefonu yeni başlat, hemen uygulamayı aç | Bugün en geç ~3 sn sonra konumsuz planla açılır (konum sonra gelir) |
 | 7.6 | Paket boyutu | Mobile CI özetinde "Android paketi (AAB)" satırı | Bilgi amaçlı; Play'in gösterdiği indirme boyutu daha küçüktür |

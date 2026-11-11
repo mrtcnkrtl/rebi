@@ -36,8 +36,22 @@ denenir; hangisinin kullanıldığı `weather_source` alanındadır
 (`live` | `tracking` | `profile` | `default`).
 
 Varsayılan değerlerde UV 3 kabul edilir ve güneş kremi tazeleme hatırlatıcısı
-oluşmaz. Hava durumuna bağlı hatırlatıcıların çalışması için uygulama ya `lat`/`lon`
-göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
+oluşmaz; mobil `weather_source: "default"` iken bu değerleri **hava gibi göstermez**
+(yerine "yer seç" paneli çıkar). Hava durumuna bağlı hatırlatıcıların çalışması için
+konum sunucuda bilinmelidir: uygulama `lat`/`lon` gönderir ve bulduğu cihaz konumunu
+`PATCH /me/profile` ile kaydeder (aşağıda), ya da kullanıcı bir şehir seçer.
+
+Hava sağlayıcısı (Open-Meteo) geçici olarak yanıt vermezse aynı bölgenin **son gerçek
+ölçümü 3 saate kadar** kullanılır (sunucu günlüğünde `weather_stale`); sağlayıcı yanıtı
+sıcaklık, nem ya da UV içermiyorsa bu bir başarısızlık sayılır, eksik alan varsayılanla
+doldurulmaz.
+
+### `GET /weather/search?user_id=...&q=...&lang=tr|en`
+
+Hava için şehir araması: yazılan ad → `{ "places": [{ "name", "region", "country", "lat", "lon" }] }`
+(koordinatlar ~1 km'ye yuvarlı; bulunamazsa `places: []`; sağlayıcı yoksa 502). Yazılan ad üçüncü tarafa
+gittiği için **konum işleme izni** gerekir (yoksa 403). Sonuçlar 24 saat önbelleklenir; dakikada 30 istek.
+Kullanıcı bir adayı seçince koordinat `PATCH /me/profile` ile kaydedilir.
 
 ```json
 {
@@ -74,8 +88,8 @@ göndermeli ya da gün içinde bir `location` olayı kaydetmelidir.
       "log_event": "water_intake",
       "category": "rebi_water_intake",
       "actions": [
-        { "id": "water250", "label": "+250 ml", "log_event": "water_intake", "payload": { "ml": 250 } },
-        { "id": "water500", "label": "+500 ml", "log_event": "water_intake", "payload": { "ml": 500 } }
+        { "id": "waterYes", "label": "İçtim", "log_event": "water_intake", "payload": { "ml": 250 } },
+        { "id": "waterNo", "label": "İçmedim", "log_event": "water_skipped", "payload": {} }
       ],
       "open_path": "/dashboard"
     }
@@ -208,6 +222,7 @@ Olay tipleri ve yükleri:
 | type | payload | not |
 | --- | --- | --- |
 | `water_intake` | `{ "ml": 250 }` | gün toplamına eklenir. Negatif değer (`-250`) yanlış girişi düzeltir; toplam 0'ın altına inmez, tek kayıt en çok ±5000 ml |
+| `water_skipped` | `{}` | su bildirimindeki **"İçmedim"** cevabı: su toplamını değiştirmez, yalnızca gün özetindeki `water_skips` sayısını artırır (Bugün'de "Bugün N kez “içmedim” dedin" satırı). "İçtim" ise bir bardak (`water_intake`, 250 ml) yazar |
 | `nutrition` | `{ "junk_food": true, "snacks": true, "sweets": false, "fried_food": false, "dairy": false, "balanced": false }` | alanlar gün içinde birleştirilir, her alan için son değer geçerlidir. `junk_food` bütün abur cubur seçeneklerinin özetidir |
 | `makeup` | `{ "used": true }` / `{ "removed": true, "method": "double" }` | `method`: `double`, `cleanser`, `water`, `wipe`, `none` |
 | `product_finished` | `{ "product": "SPF 50", "step_order": 40 }` | "ürün bitti" butonu; günde en fazla 20 kayıt; ürün Rafım'a girer |
@@ -237,7 +252,11 @@ Akşam check-in'i; rutini risk skoruna göre uyarlar. Yapay zekâ izni gerekir.
 - `GET /me/profile?user_id=...` — profil.
 - `PATCH /me/profile` — `{ "user_id": "…", "skin_type": "dry" }`; yalnızca gönderilen
   alanlar değişir. `skin_type`: `normal`, `dry`, `oily`, `combination`, `sensitive`.
-  `age` 13–100 arasına sabitlenir.
+  `age` 13–100 arasına sabitlenir. **Hava için konum:** `location_lat` + `location_lon` birlikte gelir (enlem −90…90,
+  boylam −180…180; ~1 km'ye yuvarlanır) ve **konum işleme izni** ister (yoksa 403); yanıttaki `location_saved: true` koordinatın
+  yazıldığını söyler. Koordinat gelmeden `city` yazılırsa ve izin varsa sunucu şehri bir kez koordinata çözer (`weather/search`
+  ile aynı sağlayıcı); çözülemezse şehir yine metin olarak kaydedilir (`location_saved: false`). Kaydedilen koordinatı
+  `GET /today/plan` (konum gelmeyen istekler) ve sunucu tarafı bildirimler kullanır.
 - `GET /me/history?user_id=...&days=30` — en fazla 90 gün; her gün için takip özeti
   (`tracking`), o günün check-in'i (`checkin`) ve son değerlendirmeler. `water_target_ml`: kullanıcının günlük su hedefi
   (`/me/reminder-settings` ile aynı; yoksa 2000). Geçmiş ekranı grafik referansını ve "hedefi tutturulan gün" sayısını bununla
@@ -362,7 +381,7 @@ Bildirim verisi (`data`, tüm değerler metin):
 | `log_date` | `2026-10-28` | kullanıcının **yerel** günü |
 | `slot` | `13:00` | pencere içindeki gönderim saati |
 | `open_path` | `/dashboard` | dokununca açılacak ekran (web yolu) |
-| `actions` | `[{"id":"water250","label":"+250 ml"}]` | JSON metni; buton yoksa `[]` |
+| `actions` | `[{"id":"waterYes","label":"İçtim"},{"id":"waterNo","label":"İçmedim"}]` | JSON metni; buton yoksa `[]`. Önceki sürümlerin `water250` / `water500` düğmeleri `POST /push/respond`ta hâlâ geçerlidir (eski sürümle kurulmuş bildirimler) |
 | `title`, `body` | | yalnızca Android `actions_supported` cihazlarda |
 
 `actions_supported` iOS cihazlarda `aps.category` = `rebi_<reminder_id>` olarak gelir
@@ -382,7 +401,7 @@ kategoriden çizer. Açılışta `GET /push/actions` çağırın ve her kategori
 {
   "categories": [
     { "id": "water_intake", "category": "rebi_water_intake", "open_path": "/dashboard",
-      "actions": [ { "id": "water250", "label": "+250 ml" }, { "id": "water500", "label": "+500 ml" } ] },
+      "actions": [ { "id": "waterYes", "label": "İçtim" }, { "id": "waterNo", "label": "İçmedim" } ] },
     { "id": "nutrition_log", "category": "rebi_nutrition_log", "open_path": "/dashboard",
       "actions": [ { "id": "junkNo", "label": "Hayır" } ] }
   ]

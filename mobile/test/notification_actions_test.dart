@@ -56,7 +56,7 @@ void main() {
       expect(labels('routine_morning'), ['done']);
       expect(labels('routine_evening'), ['done']);
       expect(labels('makeup_log'), ['yes', 'no']);
-      expect(labels('water_intake'), ['water250', 'water500']);
+      expect(labels('water_intake'), ['waterYes', 'waterNo'], reason: 'su bildirimi: "İçtim" ve "İçmedim"');
       expect(labels('spf_refresh'), ['done']);
       expect(labels('nutrition_log'), ['junkNo'], reason: '"yedim" ne yendiğini sorar, bildirimden yanıtlanmaz');
     });
@@ -77,7 +77,26 @@ void main() {
           expect(found?.payload, a.payload);
         }
       }
-      expect(notificationActionId('water_intake', notificationQuickActions('water_intake').first), 'water_intake:water250');
+      expect(notificationActionId('water_intake', notificationQuickActions('water_intake').first), 'water_intake:waterYes');
+    });
+
+    test('"İçtim" bir bardak (250 ml) su yazar; "İçmedim" su toplamını değiştirmeyen ayrı bir olaydır', () {
+      final yes = resolveNotificationAction('water_intake', 'water_intake:waterYes')!;
+      expect(yes.type, 'water_intake');
+      expect(yes.payload, {'ml': 250});
+      final no = resolveNotificationAction('water_intake', 'water_intake:waterNo')!;
+      expect(no.type, 'water_skipped');
+      expect(no.payload, isEmpty);
+    });
+
+    test('önceki sürümde kurulmuş "+250 / +500 ml" düğmeleri güncellemeden sonra da çözülür', () {
+      expect(resolveNotificationAction('water_intake', 'water_intake:water250')?.payload, {'ml': 250});
+      expect(resolveNotificationAction('water_intake', 'water_intake:water500')?.payload, {'ml': 500});
+    });
+
+    test('uygulama içindeki su kutusunun hızlı ekleme eylemleri değişmedi (+250 / +500 ml)', () {
+      final inApp = [for (final a in reminderActions(const Reminder(id: 'water_intake', title: '', body: '', start: '', end: ''))) a.labelKey];
+      expect(inApp, ['water250', 'water500']);
     });
 
     test('başka hatırlatıcıya ait ya da uydurma kimlik çözülmez', () {
@@ -103,6 +122,27 @@ void main() {
       expect(pending.at, isNotNull);
       final stored = LocalStore.instance.getJson('rebi_event_outbox_v1_$testUserId') as List;
       expect(stored, hasLength(1), reason: 'cihaza kalıcı yazıldı');
+    });
+
+    test('"İçtim" su olarak, "İçmedim" ayrı bir olay olarak kuyruğa girer', () async {
+      expect(
+        await queueNotificationAction(
+          const NotificationActionTap(reminderId: 'water_intake', actionId: 'water_intake:waterYes', userId: testUserId),
+        ),
+        isTrue,
+      );
+      expect(
+        await queueNotificationAction(
+          const NotificationActionTap(reminderId: 'water_intake', actionId: 'water_intake:waterNo', userId: testUserId),
+        ),
+        isTrue,
+      );
+
+      final pending = EventOutbox.instance.pending(testUserId).toList();
+      expect([for (final e in pending) e.type], ['water_intake', 'water_skipped']);
+      expect(pending.first.payload, {'ml': 250});
+      expect(pending.last.payload, isEmpty);
+      expect(pending.first.id, isNot(pending.last.id), reason: 'her dokunuş ayrı bir kayıt');
     });
 
     test('bilinmeyen eylem, kullanıcısız yük ve demo kullanıcı kuyruğa girmez', () async {
@@ -196,11 +236,34 @@ void main() {
       final water = notifier.scheduled.firstWhere((n) => n.reminderId == 'water_intake' && n.at.day == 10);
       expect(water.userId, testUserId);
       expect([for (final a in water.actions) (a.id, a.label)], [
-        ('water_intake:water250', '+250 ml'),
-        ('water_intake:water500', '+500 ml'),
+        ('water_intake:waterYes', 'İçtim'),
+        ('water_intake:waterNo', 'İçmedim'),
       ]);
       final checkin = notifier.scheduled.firstWhere((n) => n.reminderId == 'daily_checkin');
       expect(checkin.actions, isEmpty, reason: 'check-in bildirimden yanıtlanmaz, ekranı açar');
+    });
+
+    test('İngilizcede su bildirimi "I drank" / "I didn\'t"', () async {
+      loadTestI18n('en');
+      final c = make();
+      await c.enable();
+      c.syncReminders(plan([rem('water_intake', 'Time for water', '17:00', '17:00')]));
+      await flush();
+      final water = notifier.scheduled.firstWhere((n) => n.reminderId == 'water_intake' && n.at.day == 10);
+      expect([for (final a in water.actions) a.label], ['I drank', "I didn't"]);
+    });
+
+    test('uygulama açıkken "İçmedim"e dokunulunca water_skipped olayı gönderilir', () async {
+      make();
+      notifier.tapAction(
+        const NotificationActionTap(reminderId: 'water_intake', actionId: 'water_intake:waterNo', userId: testUserId),
+      );
+      await flush();
+
+      final body = backend.bodyOf('/daily_tracking/ingest');
+      expect(body['type'], 'water_skipped');
+      expect(body['user_id'], testUserId);
+      expect(body['client_event_id'], isNotEmpty);
     });
 
     test('İngilizcede düğme etiketleri İngilizce', () async {

@@ -24,6 +24,7 @@ from tests.test_push import (
 from today_plan import REMINDER_ACTIONS, build_reminders
 
 _MOBILE_PLAN = Path(__file__).resolve().parents[2] / "mobile" / "lib" / "core" / "today_plan.dart"
+_MOBILE_NOTIFICATION_ACTIONS = Path(__file__).resolve().parents[2] / "mobile" / "lib" / "core" / "notification_actions.dart"
 
 
 @pytest.fixture(autouse=True)
@@ -50,7 +51,7 @@ def test_every_action_writes_a_known_event_type():
 
 @pytest.mark.skipif(not _MOBILE_PLAN.exists(), reason="mobil kaynak yok")
 def test_actions_match_the_mobile_app():
-    """Sunucu listesi uygulamanın olay yazan düğmeleriyle aynı kalmalı."""
+    """Sunucu listesi uygulamanın bildirimdeki olay yazan düğmeleriyle aynı kalmalı."""
     source = _MOBILE_PLAN.read_text(encoding="utf-8")
     block = source[source.index("List<ReminderAction> reminderActions"):]
     block = block[: block.index("_ => const [],")]
@@ -59,6 +60,16 @@ def test_actions_match_the_mobile_app():
         quick = re.findall(r"ReminderAction\('(\w+)', type: '(\w+)'", body)
         if quick:
             mobile[reminder_id] = quick
+
+    # Su bildirimi: uygulamadaki "+250 / +500 ml" yerine "İçtim" ve "İçmedim" (`notificationQuickActions`).
+    notification = _MOBILE_NOTIFICATION_ACTIONS.read_text(encoding="utf-8")
+    pair = re.search(r"if \(reminderId == 'water_intake'\) return const \[(\w+), (\w+)\];", notification)
+    assert pair, "notificationQuickActions içindeki su düğmeleri bulunamadı"
+    consts = {
+        name: (action_id, event)
+        for name, action_id, event in re.findall(r"const (\w+) = ReminderAction\('(\w+)', type: '(\w+)'", source)
+    }
+    mobile["water_intake"] = [consts[pair.group(1)], consts[pair.group(2)]]
 
     server = {
         reminder_id: [(a["id"], a["log_event"]) for a in actions]
@@ -72,7 +83,7 @@ def test_reminders_carry_actions_category_and_open_path():
 
     water = plan["water_intake"]
     assert water["category"] == "rebi_water_intake"
-    assert [a["id"] for a in water["actions"]] == ["water250", "water500"]
+    assert [a["id"] for a in water["actions"]] == ["waterYes", "waterNo"]
     assert plan["daily_checkin"]["actions"] == []
     assert plan["daily_checkin"]["category"] is None
     assert plan["daily_checkin"]["open_path"] == "/dashboard/checkin"
@@ -91,7 +102,10 @@ def test_actions_catalog_lists_categories(client):
     by_id = {c["id"]: c for c in body["categories"]}
 
     assert by_id["water_intake"]["category"] == "rebi_water_intake"
-    assert by_id["water_intake"]["actions"][0] == {"id": "water250", "label": "+250 ml"}
+    assert by_id["water_intake"]["actions"] == [
+        {"id": "waterYes", "label": "İçtim"},
+        {"id": "waterNo", "label": "İçmedim"},
+    ]
     assert "makeup_removal" not in by_id
     # Yük istemciye gitmez; cevabı sunucu çözer.
     assert "payload" not in by_id["water_intake"]["actions"][0]
@@ -123,6 +137,68 @@ def test_respond_writes_server_defined_event(monkeypatch, client, headers):
     assert ledger["action_id"] == "water500"
     assert ledger["slot"] == "13:00"
     assert ledger["responded_at"]
+
+
+def test_drank_button_adds_one_glass(monkeypatch, client, headers):
+    db = _db(monkeypatch, daily_events=[], push_sends=[])
+
+    r = _respond(client, headers, reminder_id="water_intake", action_id="water_intake:waterYes", slot="09:00")
+
+    assert r.status_code == 200, r.text
+    assert r.json()["log_event"] == "water_intake"
+    assert r.json()["aggregated"]["water_ml_total"] == 250
+    assert r.json()["aggregated"]["water_skips"] == 0
+    assert db.tables["daily_events"].rows[0]["payload"] == {"ml": 250}
+
+
+def test_not_drunk_button_records_a_skip_and_leaves_the_total_alone(monkeypatch, client, headers):
+    db = _db(monkeypatch, daily_events=[], push_sends=[])
+    _respond(client, headers, reminder_id="water_intake", action_id="waterYes", slot="09:00")
+
+    r = _respond(client, headers, reminder_id="water_intake", action_id="water_intake:waterNo", slot="11:00")
+
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["log_event"] == "water_skipped"
+    assert body["aggregated"]["water_ml_total"] == 250, "içmedim su toplamını değiştirmez"
+    assert body["aggregated"]["water_skips"] == 1
+    skipped = [e for e in db.tables["daily_events"].rows if e["type"] == "water_skipped"]
+    assert len(skipped) == 1 and skipped[0]["source"] == "push"
+
+
+def test_not_drunk_tapped_twice_on_the_same_notification_counts_once(monkeypatch, client, headers):
+    _db(monkeypatch, daily_events=[], push_sends=[])
+
+    for _ in range(2):
+        r = _respond(client, headers, reminder_id="water_intake", action_id="waterNo", log_date=_today(), slot="11:00")
+
+    assert r.json()["aggregated"]["water_skips"] == 1
+
+
+def test_buttons_of_older_app_versions_still_work(monkeypatch, client, headers):
+    """Önceki sürümle kurulmuş, henüz gelmemiş bildirimlerdeki "+250 / +500 ml" düğmeleri kayıpsız çalışır."""
+    _db(monkeypatch, daily_events=[], push_sends=[])
+
+    r250 = _respond(client, headers, reminder_id="water_intake", action_id="water_intake:water250", slot="09:00")
+    r500 = _respond(client, headers, reminder_id="water_intake", action_id="water500", slot="11:00")
+
+    assert (r250.status_code, r500.status_code) == (200, 200)
+    assert r500.json()["aggregated"]["water_ml_total"] == 750
+
+
+def test_the_app_can_also_write_a_skip_through_the_daily_tracking_endpoint(monkeypatch, client, headers):
+    """Bildirim düğmesi çevrimdışı kuyruğa alınır; bağlantıyla `/daily_tracking/ingest` bu olay tipini kabul etmeli."""
+    _db(monkeypatch, daily_events=[])
+
+    r = client.post(
+        "/daily_tracking/ingest",
+        json={"user_id": USER_ID, "type": "water_skipped", "payload": {}, "client_event_id": "evt-skip-1"},
+        headers=headers,
+    )
+
+    assert r.status_code == 200, r.text
+    assert r.json()["aggregated"]["water_skips"] == 1
+    assert r.json()["aggregated"]["water_ml_total"] == 0
 
 
 def test_second_tap_on_same_notification_is_not_counted(monkeypatch, client, headers):
@@ -234,8 +310,8 @@ def test_dispatch_sends_actions_and_data_only_for_capable_android(monkeypatch, c
     assert call["data"]["slot"] == "09:00"
     assert call["data"]["open_path"] == "/dashboard"
     assert json.loads(call["data"]["actions"]) == [
-        {"id": "water250", "label": "+250 ml"},
-        {"id": "water500", "label": "+500 ml"},
+        {"id": "waterYes", "label": "İçtim"},
+        {"id": "waterNo", "label": "İçmedim"},
     ]
 
 
@@ -258,12 +334,18 @@ def test_build_message_shapes(data_only):
     )["message"]
 
     assert message["apns"]["payload"]["aps"]["category"] == "rebi_water_intake"
+    assert message["apns"]["payload"]["aps"]["sound"] == push_service.IOS_SOUND, "iOS'ta Rebi çınlaması çalar"
     if data_only:
         assert "notification" not in message
+        assert "notification" not in message["android"], "veri mesajı: bildirimi uygulama kendi kanalında kurar"
         assert message["data"]["title"] == "Başlık"
         assert message["data"]["body"] == "Gövde"
     else:
         assert message["notification"] == {"title": "Başlık", "body": "Gövde"}
+        assert message["android"]["notification"] == {
+            "channel_id": push_service.ANDROID_CHANNEL_ID,
+            "sound": push_service.ANDROID_SOUND,
+        }
         assert "title" not in message["data"]
 
 
@@ -304,5 +386,7 @@ def test_category_is_left_out_for_devices_without_action_support(monkeypatch):
     ))
 
     by_token = {m["token"]: m for m in sent}
-    assert "payload" not in by_token["old-ios"]["apns"]
+    old_aps = by_token["old-ios"]["apns"]["payload"]["aps"]
+    assert "category" not in old_aps, "eylem desteği olmayan cihaza kategori gitmez"
+    assert old_aps["sound"] == push_service.IOS_SOUND, "ama ses her cihaza gider"
     assert by_token["new-ios"]["apns"]["payload"]["aps"]["category"] == "rebi_water_intake"

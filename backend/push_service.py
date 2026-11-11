@@ -26,6 +26,12 @@ _FCM_TIMEOUT = 10.0
 # SENDER_ID_MISMATCH); kayıt silinir.
 _INVALID_TOKEN_STATUSES = frozenset({403, 404})
 
+# Rebi bildirim sesi ve Android kanalı. Mobildeki `lib/core/notification_sound.dart` ile aynı olmalıdır
+# (`tests/test_push_sound_contract.py` karşılaştırır). Kanalın sesi oluştuktan sonra değiştirilemediği için kimlik sürümlüdür.
+ANDROID_CHANNEL_ID = "rebi_reminders_v2"
+ANDROID_SOUND = "rebi_chime"
+IOS_SOUND = "rebi_chime.wav"
+
 _credentials_lock = threading.Lock()
 _credentials = None
 
@@ -81,24 +87,26 @@ def build_message(
     iOS butonları `aps.category` ile uygulamanın kayıtlı kategorisinden çizer.
     Android'de sistemin gösterdiği bildirim buton taşıyamaz; bu yüzden butonları
     destekleyen uygulamalara (`data_only`) başlık ve gövde veri içinde gider ve
-    bildirimi uygulama kendisi kurar.
+    bildirimi uygulama kendisi kurar (kanal ve ses uygulamanın kendi kanalındadır).
+
+    Ses: iOS'ta `aps.sound` uygulama paketindeki Rebi çınlamasını çalar (dosya yoksa, eski sürümlerde, iOS varsayılan sesi);
+    Android sistem bildirimlerinde aynı kanal ve ses adıyla (kanal yoksa FCM yedek kanalına düşer).
     """
     payload = {k: str(v) for k, v in (data or {}).items()}
-    aps: dict = {}
+    aps: dict = {"sound": IOS_SOUND}
     if category:
         aps["category"] = category
     message: dict = {
         "token": token,
         "data": payload,
         "android": {"priority": "high"},
-        "apns": {"headers": {"apns-priority": "10"}},
+        "apns": {"headers": {"apns-priority": "10"}, "payload": {"aps": aps}},
     }
-    if aps:
-        message["apns"]["payload"] = {"aps": aps}
     if data_only:
         message["data"] = {**payload, "title": title, "body": body}
     else:
         message["notification"] = {"title": title, "body": body}
+        message["android"]["notification"] = {"channel_id": ANDROID_CHANNEL_ID, "sound": ANDROID_SOUND}
     return {"message": message}
 
 

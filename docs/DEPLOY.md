@@ -41,6 +41,8 @@ Tek sunucu için hazır `docker-compose.yml` ve adım adım Türkçe rehber: **[
 - [ ] **Hava sağlayıcısı hacmi:** her sağlayıcı çağrısı `weather_call provider=… ok=… ms=…` satırı yazar
       (`docker compose logs api | grep -c weather_call`). Open-Meteo ücretsiz API ticari kullanıma kapalıdır; Standard plan ayda 1 milyon çağrıdır.
       Veri CC BY 4.0 lisanslıdır: uygulamada ve web panelinde "Hava verisi: Open-Meteo.com" atfı gösterilir.
+      **Ücretli plan anahtarı** `OPEN_METEO_API_KEY` ile verilir: hava ve şehir araması aynı yanıt biçimiyle `customer-*` uçlarından
+      çekilir (kod değişmez; boşsa ücretsiz uç). Ticari yayından önce anahtarı tanımlayın.
 - [ ] **Gemini günlük bütçe kesicisi:** `GEMINI_DAILY_BUDGET_USD` tanımlıysa tahmini günlük harcama bu değere ulaşınca yeni
       Gemini çağrıları durur ve sohbet bilgi tabanı özetine düşer (`gemini_budget` günlük satırları: %80 uyarısı ve "DOLDU").
 - [ ] **Yük testi:** `docs/YUK-TESTI.md`.

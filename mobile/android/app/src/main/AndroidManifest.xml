@@ -55,10 +55,11 @@
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
             </intent-filter>
         </receiver>
-        <!-- Sunucudan (FCM) gelen bildirimler de aynı "Hatırlatıcılar" kanalını kullanır. -->
+        <!-- Sunucudan (FCM) gelen bildirimler de aynı "Hatırlatıcılar" kanalını (Rebi çınlaması sesiyle) kullanır.
+             Kanalın sesi oluştuktan sonra değiştirilemediği için kimlik sürümlüdür: `lib/core/notification_sound.dart`. -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="rebi_reminders" />
+            android:value="rebi_reminders_v2" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_stat_rebi" />

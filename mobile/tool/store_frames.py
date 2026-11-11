@@ -6,7 +6,7 @@
     python3 tool/store_frames.py                                       # çıktı: build/store/framed/<dil>/<biçim>/*.png
 
 Gereken: Pillow (`pip install pillow`). Yazı tipleri uygulamanınkiyle aynı (assets/fonts: Fraunces + Inter).
-Boyutlar: iPhone 6,9" ve 6,3", iPhone Duo dış/iç ekran ve iPad 13" (FORMATS). Başlıklar aşağıdaki SHOTS tablosundadır; görsel yalnızca uygulamada gerçekten
+Boyutlar: iPhone 6,9" ve 6,3", iPhone Duo dış/iç ekran, iPad 13" ve Google Play telefon 1080×1920 (FORMATS). Başlıklar aşağıdaki SHOTS tablosundadır; görsel yalnızca uygulamada gerçekten
 olan ekranı gösterir, başlık o ekranı anlatır.
 """
 from __future__ import annotations
@@ -52,7 +52,7 @@ SHOTS = [
     ("07-su", False, {
         "tr": ("Suyunu tek\ndokunuşla kaydet", "Günlük hedefini takip et, yanlış girişi kolayca düzelt."),
         "en": ("Log water\nin one tap", "Track your daily goal and fix a wrong entry easily."),
-    }, {"apple-6.9", "apple-6.3", "apple-duo-dis", "apple-duo-ic"}),
+    }, {"apple-6.9", "apple-6.3", "apple-duo-dis", "apple-duo-ic", "play-telefon"}),
     ("04-gecmis", False, {
         "tr": ("İlerlemeni\ntakip et", "Su, uyku, stres ve rutin grafikleri tek bakışta."),
         "en": ("Track your\nprogress", "Water, sleep, stress and routine charts at a glance."),
@@ -178,6 +178,7 @@ FORMATS = {
     "apple-duo-dis": ((1398, 2034), False, False),  # iPhone Duo dış ekran
     "apple-duo-ic": ((2007, 2853), False, True),  # iPhone Duo iç ekran
     "apple-ipad-13": ((2064, 2752), True, True),  # iPad 13"
+    "play-telefon": ((1080, 1920), False, False),  # Google Play telefon (9:16, 8 görselin hepsi; ham görüntü 1080×2160)
 }
 
 

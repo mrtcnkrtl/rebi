@@ -236,15 +236,26 @@ REMINDER_ACTIONS: dict[str, list[dict]] = {
         _action("yes", "Evet, yaptım", "makeup", {"used": True}),
         _action("no", "Hayır", "makeup", {"used": False}),
     ],
+    # Su bildirimi: kullanıcı doğrudan içip içmediğini işaretler. "İçtim" bir bardak (250 ml) yazar; "İçmedim" su toplamını
+    # değiştirmez, gün içindeki sayısı tutulur (`water_skipped` → `water_skips`).
     "water_intake": [
-        _action("water250", "+250 ml", "water_intake", {"ml": 250}),
-        _action("water500", "+500 ml", "water_intake", {"ml": 500}),
+        _action("waterYes", "İçtim", "water_intake", {"ml": 250}),
+        _action("waterNo", "İçmedim", "water_skipped", {}),
     ],
     "spf_refresh": [
         _action("done", "Yaptım", "spf_refresh", {}),
     ],
     "nutrition_log": [
         _action("junkNo", "Hayır", "nutrition", {"junk_food": False}),
+    ],
+}
+
+# Önceki sürümlerin bildirim düğmeleri: o sürümlerle kurulmuş ve henüz gelmemiş bildirimlere dokunulunca da cevap geçerli sayılır.
+# Yeni bildirimlerde gösterilmez (`REMINDER_ACTIONS`te yoktur).
+_LEGACY_REMINDER_ACTIONS: dict[str, list[dict]] = {
+    "water_intake": [
+        _action("water250", "+250 ml", "water_intake", {"ml": 250}),
+        _action("water500", "+500 ml", "water_intake", {"ml": 500}),
     ],
 }
 
@@ -262,7 +273,7 @@ def resolve_reminder_action(reminder_id: str, action_id: str) -> dict | None:
     prefix = f"{reminder_id}:"
     if action_id.startswith(prefix):
         action_id = action_id[len(prefix):]
-    for action in REMINDER_ACTIONS.get(reminder_id, []):
+    for action in [*REMINDER_ACTIONS.get(reminder_id, []), *_LEGACY_REMINDER_ACTIONS.get(reminder_id, [])]:
         if action["id"] == action_id:
             return dict(action, payload=dict(action["payload"]))
     return None

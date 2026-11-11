@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../core/beta_notice.dart' show startupSequencePlaying;
 import '../core/i18n.dart';
 import '../state/auth_controller.dart';
 import '../ui/brand/brand_button.dart';
@@ -75,10 +76,15 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
     }
     _showHero = false;
     _showContent = false;
+    // Sekans sürerken ekran uyarıları (beta bilgilendirmesi) bekler; marka kurulumunun üstüne binmesinler.
+    startupSequencePlaying.value = true;
     _intro = AnimationController(vsync: this, duration: _introDuration)
       ..addListener(_onTick)
       ..addStatusListener((s) {
-        if (s == AnimationStatus.completed && mounted) setState(() {});
+        if (s == AnimationStatus.completed) {
+          startupSequencePlaying.value = false;
+          if (mounted) setState(() {});
+        }
       })
       ..forward();
   }
@@ -103,6 +109,7 @@ class _LandingScreenState extends State<LandingScreen> with SingleTickerProvider
 
   @override
   void dispose() {
+    if (_intro != null) startupSequencePlaying.value = false;
     _intro?.dispose();
     super.dispose();
   }

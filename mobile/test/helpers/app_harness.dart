@@ -171,6 +171,17 @@ class FakeBackend {
     'updated_at': '2026-10-01T10:00:00Z',
   };
 
+  /// `GET /weather/search` yanıtındaki şehir adayları; [placesStatus] doluysa o durum koduyla düşer.
+  List<Map<String, dynamic>> placeResults = [
+    {'name': 'Ankara', 'region': 'Ankara', 'country': 'Türkiye', 'lat': 39.92, 'lon': 32.85},
+    {'name': 'Ankara', 'region': null, 'country': 'Türkiye', 'lat': 40.0, 'lon': 33.0},
+  ];
+  int? placesStatus;
+
+  /// true: konum içeren bir `PATCH /me/profile` sonrası plan, profildeki yerden gelen gerçek havayla döner
+  /// (sunucunun `weather_source: "profile"` davranışı).
+  bool locationMakesWeatherLive = false;
+
   /// Profil yanıtlarındaki `synced` (false: kullanıcı verisi sunucuda tutulmuyor).
   bool profileSynced = true;
 
@@ -221,6 +232,7 @@ class FakeBackend {
     var nutrition = <String, dynamic>{...?(base['nutrition'] as Map?)?.cast<String, dynamic>()};
     var nutritionLogged = base['nutrition_logged'] == true;
     var spf = (base['spf_refreshes'] as num?)?.toInt() ?? 0;
+    var waterSkips = (base['water_skips'] as num?)?.toInt() ?? 0;
     final makeup = <String, dynamic>{...?(base['makeup'] as Map?)?.cast<String, dynamic>()};
     final finished = <Map<String, dynamic>>[...?(base['products_finished'] as List?)?.cast<Map<String, dynamic>>()];
     for (final e in storedEvents) {
@@ -237,6 +249,8 @@ class FakeBackend {
           if (p.containsKey('evening')) out['routine_evening_done'] = p['evening'] == true;
         case 'spf_refresh':
           spf++;
+        case 'water_skipped':
+          waterSkips++;
         case 'nutrition':
           nutritionLogged = true;
           nutrition = {...nutrition, ...p};
@@ -265,6 +279,7 @@ class FakeBackend {
       'nutrition': nutrition,
       'nutrition_logged': nutritionLogged,
       'spf_refreshes': spf,
+      'water_skips': waterSkips,
       if (makeup.isNotEmpty) 'makeup': makeup,
       'products_finished': finished,
     };
@@ -295,7 +310,13 @@ class FakeBackend {
             }
             final patch = (jsonDecode(req.body) as Map).cast<String, dynamic>()..remove('user_id');
             profile = {...profile, ...patch};
-            return ok({'user_id': testUserId, ...profile, 'synced': profileSynced});
+            if (locationMakesWeatherLive && patch.containsKey('location_lat')) {
+              todayPlan = {...todayPlan, 'weather_source': 'profile', 'weather': {'uv_index': 6, 'humidity': 38, 'temperature': 18}};
+            }
+            return ok({'user_id': testUserId, ...profile, 'synced': profileSynced, 'location_saved': patch.containsKey('location_lat')});
+          case 'GET /weather/search':
+            if (placesStatus != null) return http.Response('{"detail":"hata"}', placesStatus!);
+            return ok({'places': placeResults});
           case 'GET /me/reminder-settings':
             if (reminderSettingsFails) return http.Response('{"detail":"hata"}', 502);
             return ok({'user_id': testUserId, 'settings': reminderSettings, 'synced': true});

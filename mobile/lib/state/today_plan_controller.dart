@@ -7,6 +7,7 @@ import '../core/device_location.dart';
 import '../core/event_outbox.dart';
 import '../core/shelf.dart';
 import '../core/today_plan.dart';
+import '../core/weather_location.dart';
 
 /// Bir gün içi kaydın sonucu.
 enum LogOutcome {
@@ -56,6 +57,18 @@ class TodayPlanController extends ChangeNotifier {
   int _seenDeliveries = 0;
   bool _disposed = false;
 
+  /// Hava için bir yer belli mi: telefonun konumu bulundu ya da kullanıcı bir şehir seçti. Belliyken hava yine de
+  /// gelmediyse sorun yer değil, bağlantı/servistir ("yeniden dene"); belli değilken yer seçmesi istenir.
+  bool placeKnown = false;
+
+  /// En son bulunan cihaz konumu; konum aramasında zaman aşımı olursa (soğuk GPS) bununla devam edilir.
+  Coordinates? _located;
+
+  /// Zaman aşımından sonra konum aramasını bekleyen bir dinleyici var mı / bu yükleme için geç gelen konum zaten kullanıldı mı.
+  bool _awaitingLate = false;
+  bool _lateUsed = false;
+  bool _savingLocation = false;
+
   /// Gönderilmeyi bekleyen kayıt sayısı.
   int get pendingCount => _outbox.pendingCount(userId);
 
@@ -79,6 +92,7 @@ class TodayPlanController extends ChangeNotifier {
   /// [useLocation]: konum izni varsa canlı hava için cihaz konumu gönderilir.
   Future<void> load({required bool useLocation}) {
     _useLocation = useLocation;
+    _lateUsed = false;
     return _fetch(showSpinner: _base == null);
   }
 
@@ -102,7 +116,7 @@ class TodayPlanController extends ChangeNotifier {
     }
     TodayPlan? next;
     try {
-      final at = _useLocation ? await lookupDeviceLocation().timeout(locationWaitBudget, onTimeout: () => null) : null;
+      final at = await _locate();
       next = await fetchTodayPlan(userId, lat: at?.lat, lon: at?.lon);
     } catch (_) {
       /* ağ yok: eldeki plan gösterilmeye devam eder */
@@ -118,6 +132,54 @@ class TodayPlanController extends ChangeNotifier {
       failed = _base == null;
     }
     _notify();
+  }
+
+  /// Plan isteği için cihaz konumu. Kullanıcı bir şehir seçtiyse hiç sorulmaz (sunucu seçilen şehri profilden kullanır).
+  /// Konum [locationWaitBudget] içinde gelmezse plan yine istenir ve konum aramasına bir dinleyici bırakılır: konum
+  /// sonradan bulunursa plan **bir kez** konumla yenilenir (kullanıcı konum gelsin diye uygulamayı yeniden açmasın).
+  /// Bulunan konum sunucuya (profile) kaydedilir: konum bir gün alınamasa da hava son bilinen yerden gelsin.
+  Future<Coordinates?> _locate() async {
+    placeKnown = false;
+    if (!_useLocation) return null;
+    if (weatherPlacePref(userId).manual) {
+      placeKnown = true;
+      return null;
+    }
+    final lookup = lookupDeviceLocation();
+    var at = await lookup.timeout(locationWaitBudget, onTimeout: () => null);
+    if (at != null) {
+      _located = at;
+      unawaited(_saveDeviceLocation(at));
+    } else {
+      if (!_awaitingLate) {
+        _awaitingLate = true;
+        unawaited(lookup.then(_onLateLocation, onError: (_) => _awaitingLate = false));
+      }
+      at = _located;
+    }
+    placeKnown = at != null;
+    return at;
+  }
+
+  void _onLateLocation(Coordinates? at) {
+    _awaitingLate = false;
+    if (at == null || _disposed) return;
+    _located = at;
+    unawaited(_saveDeviceLocation(at));
+    if (_lateUsed) return;
+    _lateUsed = true;
+    unawaited(reload());
+  }
+
+  Future<void> _saveDeviceLocation(Coordinates at) async {
+    if (_savingLocation || !shouldSaveDeviceLocation(userId, at)) return;
+    _savingLocation = true;
+    try {
+      final result = await saveWeatherLocation(userId, lat: at.lat, lon: at.lon);
+      if (result.saved) await markDeviceLocationSaved(userId, at);
+    } finally {
+      _savingLocation = false;
+    }
   }
 
   /// Gün içi olayı kaydeder. Sunucuya yazıldıysa planı tazeler; ulaşılamadıysa kuyruğa alınır

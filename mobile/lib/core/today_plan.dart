@@ -19,6 +19,7 @@ class DayProgress {
     this.eveningDone = false,
     this.stepsDone = const {},
     this.spfRefreshes = 0,
+    this.waterSkips = 0,
     this.makeupLogged = false,
     this.makeupUsed = false,
     this.makeupRemoved = false,
@@ -42,6 +43,7 @@ class DayProgress {
           if (steps[block] is List) block: {for (final v in steps[block] as List) if (v is num) v.toInt()},
       },
       spfRefreshes: _int(j['spf_refreshes']),
+      waterSkips: _int(j['water_skips']),
       makeupLogged: makeup['logged'] == true,
       makeupUsed: makeup['used'] == true,
       makeupRemoved: makeup['removed'] == true,
@@ -64,6 +66,9 @@ class DayProgress {
   /// İşaretli rutin adımları: blok (`morning` / `evening`) → `step_order` değerleri.
   final Map<String, Set<int>> stepsDone;
   final int spfRefreshes;
+
+  /// Bugün su hatırlatmasına kaç kez "içmedim" denildi.
+  final int waterSkips;
   final bool makeupLogged;
   final bool makeupUsed;
   final bool makeupRemoved;
@@ -91,6 +96,7 @@ class DayProgress {
     bool? eveningDone,
     Map<String, Set<int>>? stepsDone,
     int? spfRefreshes,
+    int? waterSkips,
     bool? makeupLogged,
     bool? makeupUsed,
     bool? makeupRemoved,
@@ -105,6 +111,7 @@ class DayProgress {
         eveningDone: eveningDone ?? this.eveningDone,
         stepsDone: stepsDone ?? this.stepsDone,
         spfRefreshes: spfRefreshes ?? this.spfRefreshes,
+        waterSkips: waterSkips ?? this.waterSkips,
         makeupLogged: makeupLogged ?? this.makeupLogged,
         makeupUsed: makeupUsed ?? this.makeupUsed,
         makeupRemoved: makeupRemoved ?? this.makeupRemoved,
@@ -119,6 +126,8 @@ class DayProgress {
       case 'water_intake':
         final ml = _int(payload['ml']).clamp(-maxWaterEntryMl, maxWaterEntryMl);
         return copyWith(waterMl: (waterMl + ml).clamp(0, 1 << 30));
+      case 'water_skipped':
+        return copyWith(waterSkips: waterSkips + 1);
       case 'routine_completed_block':
         // Son olay geçerlidir: `false` bloğu yeniden açar.
         return copyWith(
@@ -258,6 +267,13 @@ class ReminderAction {
   /// Bir seçim ekranı açar (ör. makyaj nasıl temizlendi); kayıt oradan gönderilir.
   final DaySheet? sheet;
 }
+
+/// "İçtim" (bildirimde): bir bardak = 250 ml su kaydı. Uygulama içindeki "+250 ml" ile aynı olayı yazar.
+const waterDrankAction = ReminderAction('waterYes', type: 'water_intake', payload: {'ml': 250});
+
+/// "İçmedim" (bildirimde): su hatırlatmasına verilen olumsuz cevap. Su toplamını değiştirmez; gün içinde kaç kez "içmedim"
+/// denildiği kaydedilir (`water_skipped` olayı → `water_skips`) ve Bugün'deki su kutusunda görünür. Hatırlatmalar normal akışında devam eder.
+const waterNotDrunkAction = ReminderAction('waterNo', type: 'water_skipped');
 
 /// Hatırlatıcı kimliğine göre sunulan eylemler (`docs/MOBIL-API.md` olay tipleri).
 /// Eylemi olmayan hatırlatıcılar (ör. dudak balsamı) yalnızca bilgi verir.

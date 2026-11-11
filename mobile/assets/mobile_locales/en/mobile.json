@@ -36,6 +36,8 @@
       "removed": "Removed it",
       "water250": "+250 ml",
       "water500": "+500 ml",
+      "waterYes": "I drank",
+      "waterNo": "I didn't",
       "junkYes": "Yes, I ate some",
       "junkNo": "No",
       "open": "Go to check-in",
@@ -118,7 +120,8 @@
       "notes": "Notes for today"
     },
     "water": {
-      "next": "Next reminder {{time}}"
+      "next": "Next reminder {{time}}",
+      "skipped": "You said “I didn't” {{n}} time(s) today."
     },
     "makeup": {
       "title": "Makeup",
@@ -1428,5 +1431,51 @@
     "allow": "Allow and continue",
     "decline": "Not now",
     "declined": "This feature needs your permission to share data with the AI service."
+  },
+  "mobileBeta": {
+    "badge": "Beta",
+    "badgeLabel": "Beta version",
+    "title": "Rebi is in beta for now",
+    "body": "We're still building the app for you, so you may occasionally run into bugs or unexpected behavior.",
+    "report": "If something goes wrong, write to us",
+    "ok": "Got it"
+  },
+  "mobileWeatherPlace": {
+    "title": "Place for weather",
+    "missingTitle": "Pick a place for the weather",
+    "missingBody": "Choose your location or your city and the sunscreen, moisturizer and lip balm advice follows today's real weather.",
+    "pick": "Pick a place",
+    "unavailableTitle": "Weather isn't available right now",
+    "unavailableBody": "Your connection or the weather service isn't responding for the moment. It will refresh by itself shortly.",
+    "retry": "Try again",
+    "chipDevice": "My location",
+    "change": "Weather place: {{place}}. Tap to change",
+    "current": "Now: {{place}}",
+    "or": "or",
+    "cityTitle": "Choose your city",
+    "searchHint": "Search a city (e.g. London)",
+    "noResults": "We couldn't find a place with that name. Check the spelling.",
+    "searchFailed": "City search isn't available right now. Try again in a moment.",
+    "saveFailed": "Couldn't save the location. Try again.",
+    "offline": "You're offline. Check your connection and try again.",
+    "device": {
+      "title": "Your phone's location",
+      "body": "Based on your phone's location, rounded to about 1 km.",
+      "bodyBlocked": "Location permission is off. You can turn it on in your phone's settings.",
+      "bodyOff": "Your phone's location service is off.",
+      "cta": "Use my location",
+      "openSettings": "Open settings",
+      "fail": {
+        "timeout": "Couldn't get your location right now. Try again outdoors or choose your city.",
+        "denied": "Location permission wasn't granted. You can choose your city instead.",
+        "blocked": "Location permission is off. Turn it on in your phone's settings or choose your city.",
+        "serviceOff": "Your phone's location service is off. Turn it on or choose your city."
+      }
+    },
+    "consent": {
+      "title": "Location permission is off",
+      "body": "To show the weather we need your permission to process location data. You can turn it on under Account > Privacy permissions.",
+      "cta": "Go to privacy permissions"
+    }
   }
 }

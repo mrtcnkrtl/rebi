@@ -24,7 +24,7 @@ from datetime import date, datetime, timedelta, timezone
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
 from supabase_client import get_shared_client
 from async_bridge import configure_threadpool, run_async, run_sync
-from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather_live
+from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather_live, search_places
 from today_plan import (
     CATEGORY_NAMES,
     DEFAULT_REMINDER_SETTINGS,
@@ -119,6 +119,7 @@ from rate_limit import (
     LIMIT_CHAT_HISTORY_IMPORT,
     LIMIT_USER_DATA,
     LIMIT_USER_PROFILE_WRITE,
+    LIMIT_WEATHER_SEARCH,
     LIMIT_DEVICE_REGISTER,
     LIMIT_PUSH_DISPATCH,
     LIMIT_PUSH_RESPOND,
@@ -382,6 +383,7 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
     routine_evening_done = False
     routine_steps: dict[str, set[int]] = {block: set() for block in _ROUTINE_BLOCKS}
     spf_refreshes = 0
+    water_skips = 0
     last_photo_meta = None
     checkin_feedback_events = 0
     makeup_logged = False
@@ -442,6 +444,9 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
                 routine_evening_done = bool(payload.get("evening"))
                 if routine_evening_done:
                     routine_steps_done += 1
+        elif t == "water_skipped":
+            # Su hatırlatmasına "içmedim" denildi: toplam su değişmez, yalnızca sayısı tutulur.
+            water_skips += 1
         elif t == "spf_refresh":
             spf_refreshes += 1
         elif t == "photo_meta":
@@ -488,6 +493,7 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         "routine_evening_done": routine_evening_done,
         "routine_steps": {block: sorted(steps) for block, steps in routine_steps.items()},
         "spf_refreshes": spf_refreshes,
+        "water_skips": water_skips,
         "last_photo_meta": last_photo_meta,
         "checkin_feedback_events": checkin_feedback_events,
         "makeup": {
@@ -701,25 +707,60 @@ def _privacy_permission_granted(supabase, user_id: str, permission: str) -> bool
 # Aynı bölge için hava durumu kısa süre saklanır; dağıtıcı ve ana ekran yüzlerce kullanıcı için
 # sağlayıcıyı tekrar tekrar çağırmaz. Başarısız çekim çok kısa saklanır ve ASLA varsayılan
 # değerle doldurulmaz: kullanıcı sahte değeri "canlı hava" diye görmesin.
-_WEATHER_CACHE: dict[tuple, tuple[float, Optional[dict]]] = {}
+# Girdi: (geçerlilik sonu, gösterilecek değer, son gerçek ölçüm). Sağlayıcı geçici olarak yanıt vermezse aynı bölgenin son
+# GERÇEK ölçümü kısa süre daha kullanılır (`_WEATHER_STALE_MAX_SECONDS`): sıcaklık ve UV birkaç saatte çok değişmez, "hava yok"
+# göstermekten iyidir. Uydurma varsayılan değer son ölçüm olarak hiç tutulmaz; süre dolunca None'a düşülür.
+_WEATHER_CACHE: dict[tuple, tuple[float, Optional[dict], Optional[tuple[float, dict]]]] = {}
 _WEATHER_CACHE_MAX = 500
 _WEATHER_TTL_SECONDS = 30 * 60
 _WEATHER_FAILURE_TTL_SECONDS = 2 * 60
+_WEATHER_STALE_MAX_SECONDS = 3 * 3600
 
 
 async def _weather_for_coords(lat: float, lon: float) -> Optional[dict]:
-    """Önbellekli canlı hava; hiçbir kaynak yanıt vermiyorsa None."""
+    """Önbellekli canlı hava; hiçbir kaynak yanıt vermiyorsa son gerçek ölçüm (≤3 sa), o da yoksa None."""
     key = (round(float(lat), 1), round(float(lon), 1))
     now = time.monotonic()
     cached = _WEATHER_CACHE.get(key)
     if cached is not None and cached[0] > now:
         return dict(cached[1]) if cached[1] else None
+    last_good = cached[2] if cached is not None else None
     data = await fetch_weather_live(lat, lon)
+    ttl = _WEATHER_TTL_SECONDS
+    if data:
+        last_good = (now, data)
+    else:
+        ttl = _WEATHER_FAILURE_TTL_SECONDS
+        if last_good is not None and now - last_good[0] <= _WEATHER_STALE_MAX_SECONDS:
+            data = last_good[1]
+            log.warning("weather_stale bölge=%s yaş_dk=%d", key, int((now - last_good[0]) / 60))
     if len(_WEATHER_CACHE) >= _WEATHER_CACHE_MAX:
         _WEATHER_CACHE.clear()
-    ttl = _WEATHER_TTL_SECONDS if data else _WEATHER_FAILURE_TTL_SECONDS
-    _WEATHER_CACHE[key] = (now + ttl, data)
+    _WEATHER_CACHE[key] = (now + ttl, data, last_good)
     return dict(data) if data else None
+
+
+# Şehir araması (yazılan ad → konum adayları) uzun süre değişmez: aynı sorgu için sağlayıcı bir kez çağrılır.
+# Başarısız arama saklanmaz (servis düzelince kullanıcı hemen yeniden deneyebilsin).
+_PLACES_CACHE: dict[tuple, tuple[float, list]] = {}
+_PLACES_CACHE_MAX = 500
+_PLACES_TTL_SECONDS = 24 * 3600
+
+
+async def _places_cached(query: str, lang: str) -> Optional[list]:
+    """Önbellekli şehir araması; sağlayıcı yanıt vermezse None, bulunamazsa []."""
+    key = ((query or "").strip().casefold(), lang)
+    now = time.monotonic()
+    cached = _PLACES_CACHE.get(key)
+    if cached is not None and cached[0] > now:
+        return [dict(p) for p in cached[1]]
+    places = await search_places(query, language=lang)
+    if places is None:
+        return None
+    if len(_PLACES_CACHE) >= _PLACES_CACHE_MAX:
+        _PLACES_CACHE.clear()
+    _PLACES_CACHE[key] = (now + _PLACES_TTL_SECONDS, places)
+    return [dict(p) for p in places]
 
 
 async def _weather_cached(lat: float, lon: float) -> dict:
@@ -1299,6 +1340,7 @@ class DailyCheckinResponse(BaseModel):
 
 DailyTrackingClientEventType = Literal[
     "water_intake",
+    "water_skipped",
     "nutrition",
     "stress",
     "sleep",
@@ -1370,6 +1412,8 @@ class UserProfileResponse(BaseModel):
     city: Optional[str] = None
     updated_at: Optional[str] = None
     synced: bool
+    # Bu istekte hava için konum (koordinat) kaydedildi mi: şehir adı koordinata çözülürse ya da koordinat gelirse true.
+    location_saved: bool = False
 
 
 class UserProfileUpdateRequest(BaseModel):
@@ -1379,6 +1423,10 @@ class UserProfileUpdateRequest(BaseModel):
     age: Optional[int] = None
     gender: Optional[Literal["female", "male", "other"]] = None
     city: Optional[str] = None
+    # Hava durumu için kullanıcının konumu (cihaz konumu ya da seçtiği şehir). İkisi birlikte gelir; ~1 km'ye yuvarlanır.
+    # Konum işleme izni gerekir. `/today/plan` konum gelmediğinde bunu kullanır; sunucu tarafı bildirimler de.
+    location_lat: Optional[float] = None
+    location_lon: Optional[float] = None
 
     @model_validator(mode="after")
     def _normalize_profile(self):
@@ -1388,6 +1436,13 @@ class UserProfileUpdateRequest(BaseModel):
             self.city = self.city.strip()[:80]
         if self.age is not None:
             self.age = max(13, min(100, int(self.age)))
+        if (self.location_lat is None) != (self.location_lon is None):
+            raise ValueError("Konum için enlem ve boylam birlikte gönderilmeli.")
+        if self.location_lat is not None:
+            la, lo = float(self.location_lat), float(self.location_lon)
+            if not (-90 <= la <= 90 and -180 <= lo <= 180):
+                raise ValueError("Konum geçersiz.")
+            self.location_lat, self.location_lon = round(la, 2), round(lo, 2)
         return self
 
 
@@ -1980,6 +2035,15 @@ def me_profile_update(request: Request, req: UserProfileUpdateRequest):
     if not should_use_supabase_db(supabase, req.user_id):
         return UserProfileResponse(user_id=req.user_id, synced=False, **fields)
 
+    # Konum (koordinat) yalnızca konum işleme izni varken saklanır. Şehir adı yazılıp koordinat gelmediyse, izin varsa şehir
+    # burada bir kez koordinata çözülür: profildeki "Şehir" alanı havayı da belirler (yazılan ad üçüncü tarafa yalnızca izinle gider).
+    if "location_lat" in fields:
+        _require_privacy_permission(req.user_id, "location")
+    elif fields.get("city") and _privacy_permission_granted(supabase, req.user_id, "location"):
+        places = run_async(_places_cached, fields["city"], "tr")
+        if places:
+            fields["location_lat"], fields["location_lon"] = places[0]["lat"], places[0]["lon"]
+
     try:
         supabase.table("profiles").upsert({
             "id": req.user_id,
@@ -2000,7 +2064,45 @@ def me_profile_update(request: Request, req: UserProfileUpdateRequest):
         city=row.get("city"),
         updated_at=(str(row["updated_at"]) if row.get("updated_at") else None),
         synced=True,
+        location_saved="location_lat" in fields,
     )
+
+
+class PlaceOut(BaseModel):
+    name: str
+    region: Optional[str] = None
+    country: Optional[str] = None
+    lat: float
+    lon: float
+
+
+class PlaceSearchResponse(BaseModel):
+    places: list[PlaceOut]
+
+
+@app.get(
+    "/weather/search",
+    response_model=PlaceSearchResponse,
+    tags=["routine"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_WEATHER_SEARCH))],
+)
+def weather_search(
+    request: Request,
+    user_id: str = Query(..., min_length=1),
+    q: str = Query(..., min_length=2, max_length=80),
+    lang: Literal["tr", "en"] = "tr",
+):
+    """
+    Hava durumu için şehir araması: yazılan ad → konum adayları (ad, bölge, ülke, ~1 km'ye yuvarlı koordinat). Kullanıcı
+    adayı seçince koordinat `PATCH /me/profile` ile kaydedilir. Yazılan ad üçüncü tarafa (Open-Meteo) gittiği için
+    konum işleme izni gerekir.
+    """
+    enforce_supabase_user(request, user_id)
+    _require_privacy_permission(user_id, "location")
+    places = run_async(_places_cached, q, lang)
+    if places is None:
+        raise HTTPException(status_code=502, detail="Şehir araması şu an yapılamıyor. Biraz sonra tekrar dene.")
+    return PlaceSearchResponse(places=[PlaceOut(**p) for p in places])
 
 
 def _water_target_for(supabase, user_id: str) -> int:

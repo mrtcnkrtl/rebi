@@ -14,8 +14,8 @@ import '../widgets/common.dart';
 import 'legal_consent_fields.dart';
 
 /// Tam ekran karartma + alttan (telefon) / ortadan (tablet) kart.
-class _ModalFrame extends StatelessWidget {
-  const _ModalFrame({required this.child, this.maxWidth = 384, this.scroll = false});
+class ModalFrame extends StatelessWidget {
+  const ModalFrame({super.key, required this.child, this.maxWidth = 384, this.scroll = false});
 
   final Widget child;
   final double maxWidth;
@@ -138,7 +138,7 @@ Future<bool> showAiSharingDialog(BuildContext context) async {
     context: context,
     barrierDismissible: false,
     barrierColor: Colors.transparent,
-    pageBuilder: (ctx, _, _) => _ModalFrame(
+    pageBuilder: (ctx, _, _) => ModalFrame(
       maxWidth: 448,
       scroll: true,
       child: AiSharingPanel(
@@ -192,7 +192,7 @@ class _AiSharingModalState extends State<AiSharingModal> {
   Widget build(BuildContext context) {
     final uid = context.watch<AuthController>().user?.id ?? demoUserId;
     if (_dismissed || hasAiSharingConsent(uid)) return const SizedBox.shrink();
-    return _ModalFrame(
+    return ModalFrame(
       maxWidth: 448,
       scroll: true,
       child: AiSharingPanel(
@@ -262,7 +262,7 @@ class _ConsentRecoveryModalState extends State<ConsentRecoveryModal> {
     final user = context.watch<AuthController>().user;
     if (!_open || user == null) return const SizedBox.shrink();
     final i18n = context.i18n;
-    return _ModalFrame(
+    return ModalFrame(
       maxWidth: 448,
       scroll: true,
       child: Column(
