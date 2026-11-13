@@ -18,7 +18,12 @@ class LegalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final i18n = context.i18n;
     final sections = legalSections(kind, i18n.lang);
-    final title = kind == 'riza' ? i18n.t('legal.rizaTitle') : i18n.t('legal.kvkkTitle');
+    final title = switch (kind) {
+      'riza' => i18n.t('legal.rizaTitle'),
+      'onbilgi' => i18n.t('legal.preInfoTitle'),
+      'mesafeli' => i18n.t('legal.distanceTitle'),
+      _ => i18n.t('legal.kvkkTitle'),
+    };
 
     void back() {
       if (context.canPop()) {

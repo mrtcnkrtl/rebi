@@ -24,7 +24,10 @@ final _shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
 /// `?next=` yalnızca uygulama içi bir yola izin verir (açık yönlendirme olmasın).
 String safeNext(String? next) {
-  if (next == null || next.isEmpty || !next.startsWith('/') || next.startsWith('//')) return '/dashboard';
+  if (next == null || next.isEmpty || !next.startsWith('/') || next.startsWith('//') || next.startsWith('/\\')) {
+    return '/dashboard';
+  }
+  if (next.contains('\\') || next.contains('://')) return '/dashboard';
   return next;
 }
 
@@ -93,6 +96,16 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
         path: '/riza',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const LegalScreen(kind: 'riza'),
+      ),
+      GoRoute(
+        path: '/on-bilgilendirme',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const LegalScreen(kind: 'onbilgi'),
+      ),
+      GoRoute(
+        path: '/mesafeli-satis',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const LegalScreen(kind: 'mesafeli'),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,

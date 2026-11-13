@@ -9,6 +9,7 @@ import '../core/api.dart';
 import '../core/checkin_prefill.dart';
 import '../core/checkin_stats.dart';
 import '../core/daily_tracking.dart';
+import '../core/device_location.dart';
 import '../core/demo_user.dart';
 import '../core/i18n.dart';
 import '../core/routine_logic.dart';
@@ -83,6 +84,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
   double _sleepHours = 7;
   int _stressToday = 3;
   String _skinFeeling = '';
+  String _daySetting = '';
+  bool _locationMissing = false;
   bool _appliedRoutine = true;
   final _notes = TextEditingController();
   bool _ctxLoading = true;
@@ -116,6 +119,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
     super.initState();
     _waterMl.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      lookupDeviceLocation().then((loc) {
+        if (mounted) setState(() => _locationMissing = loc == null);
+      });
       final id = _uid;
       if (id != null && !isRoutineTrackingAccepted(id)) {
         context.go('/dashboard', extra: const {'flashNeedAccept': true});
@@ -259,6 +265,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
         'notes': _notes.text.isEmpty ? null : _notes.text,
         'utc_offset_minutes': DateTime.now().timeZoneOffset.inMinutes,
       };
+      final loc = await lookupDeviceLocation();
+      if (mounted) setState(() => _locationMissing = loc == null);
+      if (loc != null) {
+        payload['location_lat'] = loc.lat;
+        payload['location_lon'] = loc.lon;
+      }
+      if (_daySetting == 'indoor' || _daySetting == 'outdoor') {
+        payload['day_setting'] = _daySetting;
+      }
       final w = parseWaterMlInput(_waterMl.text);
       if (w != null && w > 0) payload['water_ml_today'] = w;
       if (_makeupUsedToday != null) {
@@ -736,6 +751,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ],
           ),
         ),
+        if (_locationMissing) ...[
+          gap,
+          RCard(
+            child: Text(
+              'Konum olmadığı için hava durumuna göre değişim ve öneri verilemiyor.',
+              style: tx(12, c: Tw.amber800, h: relaxed),
+            ),
+          ),
+        ],
         gap,
         // S3: Cilt hissi
         RCard(
@@ -764,6 +788,47 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         ),
                       ),
                       if (_skinFeeling == id) Icon(LucideIcons.circleCheckBig, size: 20, color: theme.primary),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ),
+        ),
+        gap,
+        RCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Bugün cildin daha çok nerede?', style: tx(14, w: 7, c: Tw.gray800)),
+              const SizedBox(height: 4),
+              Text(
+                'UV ve sıcaklık evin içi ile dışarısı arasında değişir. Bu cevap güneş koruyucu numarasına girer.',
+                style: tx(11, c: Tw.gray500, h: relaxed),
+              ),
+              const SizedBox(height: 12),
+              for (final (id, label, desc) in const [
+                ('indoor', 'Evin içi', 'Dışarı UV ve sıcaklık rutine yazılmaz'),
+                ('outdoor', 'Dışarıda', 'UV ve sıcaklık güneş koruyucu numarasına girer'),
+              ]) ...[
+                _selectable(
+                  selected: _daySetting == id,
+                  theme: theme,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  onTap: () => setState(() => _daySetting = id),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(label, style: tx(14, w: 5, c: Tw.gray800)),
+                            Text(desc, style: tx(11, c: Tw.gray500)),
+                          ],
+                        ),
+                      ),
+                      if (_daySetting == id) Icon(LucideIcons.circleCheckBig, size: 20, color: theme.primary),
                     ],
                   ),
                 ),
@@ -1163,6 +1228,21 @@ class _CheckInScreenState extends State<CheckInScreen> {
               description: '30 dk+ açık güneş veya yoğun UV günü.'),
           _extraTristate('Yüz için güneş koruyucu uyguladın mı?', 'spf_applied_today',
               description: 'Rutindeki SPF adımını tamamladıysan Evet.'),
+          if (_concern == 'pigmentation') ...[
+            _extraTristate('Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?', 'high_glycemic_intake_today',
+                description: 'Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez.'),
+            _extraTristate('Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?', 'heavy_dairy_today',
+                description: 'Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez.'),
+          ],
+        ];
+      case 'oiliness':
+        return [
+          const SizedBox(height: 16),
+          _extraHeader(LucideIcons.droplets, Tw.sky500, 'Yağlılığa özel'),
+          _extraTristate('Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?', 'high_glycemic_intake_today',
+              description: 'Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez.'),
+          _extraTristate('Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?', 'heavy_dairy_today',
+              description: 'Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez.'),
         ];
       case 'dryness':
         return [

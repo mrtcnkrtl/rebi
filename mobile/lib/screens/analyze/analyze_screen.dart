@@ -49,7 +49,7 @@ const strongActiveFamilyIds = [
   'urea',
 ];
 
-const _concernIds = ['general', 'oiliness', 'pores', 'acne', 'aging', 'dryness', 'pigmentation', 'sensitivity'];
+const _concernIds = ['general', 'oiliness', 'pores', 'acne', 'aging', 'dryness', 'pigmentation', 'sensitivity', 'undereye'];
 
 const _zoneIds = ['forehead', 'nose', 'cheeks', 'chin', 'undereye', 'lips', 'temples'];
 
@@ -138,6 +138,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
   // Adım 3 — kullanım soruları (şiddet → tetikleyici → tedavi → beklenti)
   int _step3Section = 0;
   final Map<String, int> _severityScoresByConcern = {};
+  final Map<String, Map<String, int>> _severityPicksByConcern = {};
   String _duration = '';
   final List<String> _triggers = [];
   final List<String> _pastTreatments = [];
@@ -351,6 +352,9 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
         'makeup_frequency': _makeupFreq,
         'makeup_removal': _makeupFreq > 0 ? _makeupRemoval : 'cleanser',
         'special_flags': anyFlag ? _specialFlags : null,
+        'undereye_look': _concerns.contains('undereye')
+            ? undereyeLookFromPicks(_severityPicksByConcern['undereye'])
+            : null,
       };
       final res = await apiPost('/generate_routine', body, timeout: apiLongTimeout);
       if (!res.ok) {
@@ -1157,6 +1161,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> {
               key: ValueKey('sev-$c'),
               concern: c,
               onScoreChange: (score) => setState(() => _severityScoresByConcern[c] = score),
+              onPicks: (picks) => setState(() => _severityPicksByConcern[c] = picks),
             ),
           RCard(
             child: Column(

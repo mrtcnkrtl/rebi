@@ -1,0 +1,232 @@
+[
+  {
+    "title": "Adet öncesi, akne — madde bekler",
+    "steps": [
+      {
+        "time": "Sabah",
+        "action": "Temizleme: Dengeli pH (5.5) jel temizleyici",
+        "detail": ""
+      },
+      {
+        "time": "Sabah",
+        "action": "SPF 30+ (hafif SPF) — kimyasal filtre (INCI: Bemotrizinol, Bisoctrizole, Avobenzone vb.)",
+        "detail": "Sabah rutininde SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli. Tek geniş spektrumlu güneş koruyucu. Filtre tipi cilt verine göre seçildi."
+      },
+      {
+        "time": "Akşam",
+        "action": "Nazik temizleyici (tek adım, sülfat-free)",
+        "detail": ""
+      },
+      {
+        "time": "Akşam",
+        "action": "Bu dönem bitince: Benzoil peroksit %2.5 kısa temas",
+        "detail": "Adet öncesi günler içindesin ve sorun adet döngüsüne bağlı. Bu pencere bitince başlanacak dermokozmetik: Benzoil peroksit %2.5 kısa temas. Bugün temizlik, nemlendirici ve güneş koruyucu yeterli. Menopoz ve gebelik bu beklemeye girmez."
+      }
+    ]
+  },
+  {
+    "title": "Adet penceresi geçti — madde başlar",
+    "steps": [
+      {
+        "time": "Sabah",
+        "action": "Temizleme: Dengeli pH (5.5) jel temizleyici",
+        "detail": ""
+      },
+      {
+        "time": "Sabah",
+        "action": "SPF 30+ (hafif SPF) — kimyasal filtre (INCI: Bemotrizinol, Bisoctrizole, Avobenzone vb.)",
+        "detail": "Sabah rutininde SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli. Tek geniş spektrumlu güneş koruyucu. Filtre tipi cilt verine göre seçildi."
+      },
+      {
+        "time": "Akşam",
+        "action": "Nazik temizleyici (tek adım, sülfat-free)",
+        "detail": ""
+      },
+      {
+        "time": "Akşam",
+        "action": "Benzoil peroksit %2.5 kısa temas (INCI: Benzoyl Peroxide)",
+        "detail": "Akşam rutininde benzoil peroksit: bakteri yükü için; sivilce, gözenek ve yağ dengesi yoğun akne tablolarında. Sabah kullanımı genelde önerilmez.",
+        "choices": [
+          {
+            "id": "benzoyl",
+            "action": "Benzoil peroksit %2.5 kısa temas (INCI: Benzoyl Peroxide)"
+          },
+          {
+            "id": "sulfur",
+            "action": "Sülfür (kükürt) %3-5 krem/maske (INCI: Sulfur)"
+          }
+        ],
+        "default_choice_id": "benzoyl"
+      }
+    ]
+  },
+  {
+    "title": "Leke, karma cilt",
+    "steps": [
+      {
+        "time": "Sabah",
+        "action": "Temizleme: Dengeli pH (5.5) jel temizleyici",
+        "detail": ""
+      },
+      {
+        "time": "Sabah",
+        "action": "SPF 50 (hafif SPF) — renkli mineral filtre (demir oksitli; INCI: Zinc Oxide + Iron Oxides)",
+        "detail": "Sabah rutininde SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli. Tek geniş spektrumlu güneş koruyucu. Filtre tipi cilt verine göre seçildi."
+      },
+      {
+        "time": "Akşam",
+        "action": "Nazik temizleyici (tek adım, sülfat-free)",
+        "detail": ""
+      },
+      {
+        "time": "Akşam",
+        "action": "Niasinamid %10 (INCI: Niacinamide) + traneksamik asit (INCI: Tranexamic Acid; topikal TXA)",
+        "detail": "Akşam rutininde niasinamid + traneksamik asit: bu ciltte leke için seçilen tek akşam ürünü. Orta düzey bir tablo gösterdiğin için."
+      }
+    ]
+  },
+  {
+    "title": "Leke, hassas cilt",
+    "steps": [
+      {
+        "time": "Sabah",
+        "action": "Temizleme: Süt bazlı nazik temizleyici (sülfat-free)",
+        "detail": ""
+      },
+      {
+        "time": "Sabah",
+        "action": "Nemlendirici: Dimetikon %0.5-2 nefes alan film",
+        "detail": "Sabah rutininde dimetikon: kuruluk verisine göre seçilen tek nemlendirici. Tek nemlendirici."
+      },
+      {
+        "time": "Sabah",
+        "action": "SPF 50 (parfümsüz, hassas cilt uyumlu SPF) — renkli mineral filtre (demir oksitli; INCI: Zinc Oxide + Iron Oxides)",
+        "detail": "Sabah rutininde SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli. Tek geniş spektrumlu güneş koruyucu. Filtre tipi cilt verine göre seçildi."
+      },
+      {
+        "time": "Akşam",
+        "action": "Nazik temizleyici (tek adım, sülfat-free)",
+        "detail": ""
+      },
+      {
+        "time": "Akşam",
+        "action": "Meyan kökü ekstresi (glabridin %0.03-0.1) serum (INCI: Glycyrrhiza Glabra Root Extract)",
+        "detail": "Akşam rutininde meyan kökü: leke ve kızarıklığa nazik destek; leke ve ton eşitsizliği ile uyumlu."
+      },
+      {
+        "time": "Akşam",
+        "action": "Gece: gama linolenik asit (GLA) %0.05-0.5 saf GLA eşdeğeri; hodan / çuha çiçeği yağı",
+        "detail": "Akşam rutininde GLA: kuru veya hassas bariyer için seçilen tek gece nemlendiricisi. Tek nemlendirici."
+      }
+    ]
+  },
+  {
+    "title": "Akne, yağlı cilt",
+    "steps": [
+      {
+        "time": "Sabah",
+        "action": "Temizleme: Yüzey aktif (SLES-free) köpük temizleyici",
+        "detail": ""
+      },
+      {
+        "time": "Sabah",
+        "action": "SPF 50 (mat bitişli, yağsız SPF) — kimyasal filtre (INCI: Bemotrizinol, Bisoctrizole, Avobenzone vb.)",
+        "detail": "Sabah rutininde SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli. Tek geniş spektrumlu güneş koruyucu. Filtre tipi cilt verine göre seçildi."
+      },
+      {
+        "time": "Akşam",
+        "action": "Nazik temizleyici (tek adım, sülfat-free)",
+        "detail": ""
+      },
+      {
+        "time": "Akşam",
+        "action": "Benzoil peroksit %2.5 kısa temas (INCI: Benzoyl Peroxide)",
+        "detail": "Akşam rutininde benzoil peroksit: bakteri yükü için; sivilce, gözenek ve yağ dengesi yoğun akne tablolarında. Sabah kullanımı genelde önerilmez.",
+        "default_choice_id": "benzoyl",
+        "choices": [
+          {
+            "id": "benzoyl",
+            "label": "Benzoil peroksit",
+            "diff": "güçlü ama kurutur",
+            "action": "Benzoil peroksit %2.5 kısa temas (INCI: Benzoyl Peroxide)",
+            "default": true
+          },
+          {
+            "id": "sulfur",
+            "label": "Sülfür",
+            "diff": "nazik, kokusu belirgin",
+            "action": "Sülfür (kükürt) %5-10 nokta tedavi (INCI: Sulfur)",
+            "default": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Yağlılık, yüksek parlama",
+    "steps": [
+      {
+        "time": "Sabah",
+        "action": "Temizleme: Yüzey aktif (SLES-free) köpük temizleyici",
+        "detail": ""
+      },
+      {
+        "time": "Sabah",
+        "action": "SPF 50 (mat bitişli, yağsız SPF) — kimyasal filtre (INCI: Bemotrizinol, Bisoctrizole, Avobenzone vb.)",
+        "detail": "Sabah rutininde SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli. Tek geniş spektrumlu güneş koruyucu. Filtre tipi cilt verine göre seçildi."
+      },
+      {
+        "time": "Akşam",
+        "action": "Nazik temizleyici (tek adım, sülfat-free)",
+        "detail": ""
+      },
+      {
+        "time": "Akşam",
+        "action": "Niasinamid %5 (INCI: Niacinamide, B3) + çinko destekli serum",
+        "detail": "Akşam rutininde niasinamid: bariyer, sebum ve ton için çok yönlü B3. sebum dengesi ve parlama ile örtüşür; Daha yoğun bir bakım ihtiyacı olduğu için ile doz/sıklık ayarlı.",
+        "default_choice_id": "niacin_zinc",
+        "choices": [
+          {
+            "id": "niacin_zinc",
+            "label": "Niasinamid + çinko",
+            "diff": "sebum ve parlama",
+            "action": "Niasinamid %5 (INCI: Niacinamide, B3) + çinko destekli serum",
+            "default": true
+          },
+          {
+            "id": "bha",
+            "label": "Salisilik asit",
+            "diff": "gözenekteki yağı çözer",
+            "action": "Salisilik asit %1 tonik (BHA, INCI: Salicylic Acid)",
+            "default": false
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "title": "Göz altı, kahverengi",
+    "steps": [
+      {
+        "time": "Sabah",
+        "action": "Temizleme: Dengeli pH (5.5) jel temizleyici",
+        "detail": ""
+      },
+      {
+        "time": "Sabah",
+        "action": "Göz çevresi: C vitamini türevi %5 göz kremi (askorbil glukozit / SAP; saf L-askorbik değil)",
+        "detail": "Sabah rutininde göz çevresi için nazik etken; göz altı koyuluğu ve göz çevresi hedefinde, ince deriye uygun güç."
+      },
+      {
+        "time": "Sabah",
+        "action": "SPF 50 (hafif SPF) — mineral filtre (INCI: Zinc Oxide / Titanium Dioxide)",
+        "detail": "Sabah rutininde SPF: her hedefte sabahın kritik koruması; leke ve yaşlanma yönetiminin temeli. Tek geniş spektrumlu güneş koruyucu. Filtre tipi cilt verine göre seçildi."
+      },
+      {
+        "time": "Akşam",
+        "action": "Nazik temizleyici (tek adım, sülfat-free)",
+        "detail": ""
+      }
+    ]
+  }
+]

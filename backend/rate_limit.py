@@ -111,6 +111,8 @@ LIMIT_PUSH_DISPATCH = _make_limiter(30, 60.0, "push_dispatch")
 LIMIT_PUSH_RESPOND = _make_limiter(60, 60.0, "push_respond")
 LIMIT_UPLOAD_PHOTO = _make_limiter(40, 3600.0, "upload_photo")
 LIMIT_ACCOUNT_DELETE = _make_limiter(3, 3600.0, "account_delete")
+LIMIT_SALES_CONSENT = _make_limiter(20, 3600.0, "sales_consent")
+LIMIT_PRIVACY_INCIDENT = _make_limiter(20, 3600.0, "privacy_incident")
 LIMIT_INTRO_SEEN = _make_limiter(60, 60.0, "intro_seen")
 
 

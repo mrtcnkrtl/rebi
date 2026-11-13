@@ -5,6 +5,8 @@ export function friendlyRoutineTitle(action, fallbackTitle = "This step") {
     .replace(/^⏸️\s*/u, "")
     .replace(/\s*—\s*ARA VER\s*$/iu, "")
     .replace(/\s*—\s*şimdilik kullanma\s*$/iu, "")
+    .replace(/\s*\([^)]*(?:INCI|inci:|—|–)[^)]*\)\s*/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
   const parts = s.split(/\s*[—–]\s*/).map((p) => p.trim()).filter(Boolean);
   if (parts.length >= 2) {

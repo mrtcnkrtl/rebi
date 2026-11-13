@@ -681,6 +681,10 @@
     "activeBody": "Hesabında Rebi Plus görünüyor. Teşekkürler.",
     "included": "Neler dahil?",
     "open": "Plus’ı aç",
+    "contractsHint": "Ödeme sayfası, iki onay da kayda geçmeden açılmaz. Fiyat ve dönem, tahsilattan önce ödeme sayfasında gösterilir.",
+    "preInfo": "Ön bilgilendirme formunu okudum.",
+    "distance": "Mesafeli satış sözleşmesini okudum ve dijital hizmetin ödeme onayından hemen sonra başlamasını istiyorum.",
+    "payError": "Onay kaydedilemedi. Ödeme sayfası açılmadı.",
     "backToChat": "Sohbete dön",
     "benefits": {
       "chat": {
@@ -750,7 +754,7 @@
   "mobileRoutine": {
     "askRebi": "Rebi'ye sor",
     "askPrompt": "Rutinimdeki \"{{item}}\" adımını neden kullanıyorum ve nasıl uygulamalıyım? Cildime uygun alternatifleri de söyler misin?",
-    "comboHint": "Tek üründe hepsi şart değil: bu satırı hedef içerik örneği gibi düşün; hepsini tek üründe bulamazsan benzerlerinden birini seçebilirsin.",
+    "comboHint": "Tek nemlendirici yeter. Etiketinde bu içerikler birlikte olsun.",
     "stepCount": "{{n}} adım",
     "humidity": "nem %{{value}}",
     "weeklyDays": "Bu maddeyi şu günlerde uygula: {{days}}",

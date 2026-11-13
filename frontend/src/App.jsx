@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider, ThemePremiumGate } from "./context/ThemeContext";
@@ -16,6 +17,11 @@ import Themes from "./pages/Themes";
 import Subscribe from "./pages/Subscribe";
 import Profile from "./pages/Profile";
 import Legal from "./pages/Legal";
+import { safeNext } from "./lib/safeNext";
+
+const RoutineChoicePreview = import.meta.env.DEV
+  ? lazy(() => import("./pages/RoutineChoicePreview.jsx"))
+  : null;
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -40,7 +46,7 @@ function AppRoutes() {
   const isDashboard = location.pathname.startsWith("/dashboard");
   const isAiSurface = isDashboard || location.pathname.startsWith("/rebi");
   const nextParam = new URLSearchParams(location.search || "").get("next");
-  const next = nextParam ? String(nextParam) : "/dashboard";
+  const next = safeNext(nextParam);
 
   return (
     <>
@@ -50,7 +56,19 @@ function AppRoutes() {
         <Route path="/auth" element={user ? <Navigate to={next} replace /> : <Auth />} />
         <Route path="/kvkk" element={<Legal />} />
         <Route path="/riza" element={<Legal />} />
+        <Route path="/on-bilgilendirme" element={<Legal />} />
+        <Route path="/mesafeli-satis" element={<Legal />} />
         <Route path="/rebi" element={<Chat />} />
+        {RoutineChoicePreview && (
+          <Route
+            path="/dev/rutin-secim"
+            element={
+              <Suspense fallback={null}>
+                <RoutineChoicePreview />
+              </Suspense>
+            }
+          />
+        )}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />
         <Route path="/dashboard/checkin" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />

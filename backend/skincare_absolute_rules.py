@@ -215,7 +215,7 @@ def _families_for_combo(it: dict) -> set[str]:
         s.add("retinoid")
     if "bakuchiol" in t:
         s.add("retinoid")
-    if "glikolik" in t or "glycolic" in t or "laktik asit" in t or "lactic acid" in t or "mandelik" in t:
+    if "glikolik" in t or "glycolic" in t or "laktik asit" in t or "lactic acid" in t or "mandelik" in t or "glukonolakton" in t:
         s.add("aha")
     if "salisilik" in t or "salicylic" in t or re.search(r"\bbha\b", t):
         s.add("bha")

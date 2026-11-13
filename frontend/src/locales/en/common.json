@@ -149,8 +149,11 @@
   "legal": {
     "kvkkTitle": "KVKK Privacy Notice",
     "rizaTitle": "Explicit Consent Notice",
+    "preInfoTitle": "Pre-contract Information",
+    "distanceTitle": "Distance Sales Contract",
     "updated": "Last updated: {{date}}",
-    "backToAuth": "Back to sign in"
+    "backToAuth": "Back to sign in",
+    "back": "Back"
   },
   "lang": {
     "label": "Language",

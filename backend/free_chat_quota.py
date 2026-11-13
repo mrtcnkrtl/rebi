@@ -12,9 +12,9 @@ from typing import Optional, Protocol
 
 def _limit() -> int:
     try:
-        return max(1, int(os.getenv("FREE_CHAT_DAILY_LIMIT", "25")))
+        return max(1, int(os.getenv("FREE_CHAT_DAILY_LIMIT", "6")))
     except ValueError:
-        return 25
+        return 6
 
 
 class _DailyQuotaBackend(Protocol):

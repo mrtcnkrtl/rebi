@@ -20,6 +20,7 @@ import uuid
 from datetime import date, datetime, timedelta, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
+from privacy_incident import parse_discovered_at, record_privacy_incident
 from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather, fetch_weather_live
 from today_plan import (
     CATEGORY_NAMES,
@@ -51,6 +52,7 @@ from shelf import SHELF_EVENT_TYPES, SHELF_LOOKBACK_DAYS, derive_products_out
 from flow_engine import (
     run_flow,
     adapt_existing_routine,
+    routine_materially_changed,
     CONCERN_KNOWLEDGE_MAP,
     get_routine_care_guide,
     sanitize_routine_items_details,
@@ -121,6 +123,8 @@ from rate_limit import (
     LIMIT_PUSH_RESPOND,
     LIMIT_UPLOAD_PHOTO,
     LIMIT_ACCOUNT_DELETE,
+    LIMIT_SALES_CONSENT,
+    LIMIT_PRIVACY_INCIDENT,
     LIMIT_INTRO_SEEN,
     get_client_ip,
 )
@@ -876,6 +880,7 @@ class AssessmentRequest(BaseModel):
     makeup_removal: str = "cleanser"  # none | water | cleanser | double
     # UI: karışıklığı azaltan netleştirici işaretler (şimdilik opsiyonel)
     special_flags: Optional[dict] = None
+    undereye_look: Optional[dict] = None  # {color: unsure|brown|purple|both, puffiness: none|sometimes|often|all_day}
     triggers: Optional[list] = None
     past_treatments: Optional[list] = None
     expectations: Optional[list] = None
@@ -941,11 +946,84 @@ class RoutineResponse(BaseModel):
     ai_polish_note: Optional[str] = None
 
 
+_CHAT_MESSAGE_MAX = 4000
+_CHAT_HISTORY_MAX = 16
+_CHAT_TURN_MAX = 2000
+_PROFILE_TEXT_KEYS = (
+    "name", "gender", "skin_type", "stress_level", "smoking", "alcohol",
+    "nutrition", "makeup", "severity_duration", "triggers", "past_treatments", "expectations",
+)
+_PROFILE_NUM_KEYS = ("age", "stress_score", "water_intake", "sleep_hours")
+
+
+def _bound_chat_message(text: str) -> str:
+    cleaned = str(text or "").replace("\x00", "")
+    if len(cleaned) > _CHAT_MESSAGE_MAX:
+        raise ValueError(f"Mesaj en fazla {_CHAT_MESSAGE_MAX} karakter olabilir.")
+    if not cleaned.strip():
+        raise ValueError("Mesaj boş olamaz.")
+    return cleaned
+
+
+def _bound_chat_history(history) -> Optional[list[dict]]:
+    if not isinstance(history, list):
+        return None
+    out = []
+    for item in history[:_CHAT_HISTORY_MAX]:
+        if not isinstance(item, dict):
+            continue
+        role = "assistant" if str(item.get("role") or "").strip().lower() == "assistant" else "user"
+        content = str(item.get("content") or "").replace("\x00", "")[:_CHAT_TURN_MAX]
+        if content.strip():
+            out.append({"role": role, "content": content})
+    return out or None
+
+
+def _clip_user_profile(raw) -> Optional[dict]:
+    if not isinstance(raw, dict):
+        return None
+    out: dict = {}
+    if raw.get("mode") == "free_chat":
+        out["mode"] = "free_chat"
+    for key in _PROFILE_TEXT_KEYS:
+        if raw.get(key) is None:
+            continue
+        text = str(raw.get(key)).replace("\x00", "")[:160]
+        if text.strip():
+            out[key] = text.strip()
+    for key in _PROFILE_NUM_KEYS:
+        if raw.get(key) is None:
+            continue
+        text = str(raw.get(key)).replace("\x00", "")[:16].strip()
+        if text:
+            out[key] = text
+    for key in ("concerns", "zones"):
+        items = raw.get(key)
+        if not isinstance(items, list):
+            continue
+        kept = []
+        for item in items[:8]:
+            text = str(item or "").replace("\x00", "")[:40].strip()
+            if text:
+                kept.append(text)
+        if kept:
+            out[key] = kept
+    return out or None
+
+
 class ChatRequest(BaseModel):
     user_id: str
     message: str
     concern: Optional[str] = "acne"
     history: Optional[list[dict]] = None
+
+    @model_validator(mode="after")
+    def _bound_payload(self):
+        self.message = _bound_chat_message(self.message)
+        if self.concern:
+            self.concern = str(self.concern).replace("\x00", "")[:80]
+        self.history = _bound_chat_history(self.history)
+        return self
 
 
 class ChatResponse(BaseModel):
@@ -958,6 +1036,13 @@ class AssessmentChatRequest(BaseModel):
     message: str
     history: Optional[list] = None
     user_profile: Optional[dict] = None
+
+    @model_validator(mode="after")
+    def _bound_payload(self):
+        self.message = _bound_chat_message(self.message)
+        self.history = _bound_chat_history(self.history)
+        self.user_profile = _clip_user_profile(self.user_profile)
+        return self
 
 
 class AssessmentChatResponse(BaseModel):
@@ -979,6 +1064,12 @@ class ChatGeneralRequest(BaseModel):
     history: Optional[list] = None
     # İstemcinin UTC farkı (dakika): sohbetin bildiği "bugün" kullanıcının yerel günüdür.
     utc_offset_minutes: Optional[int] = Field(default=None, ge=-840, le=840)
+
+    @model_validator(mode="after")
+    def _bound_payload(self):
+        self.message = _bound_chat_message(self.message)
+        self.history = _bound_chat_history(self.history)
+        return self
 
 
 class ChatGeneralResponse(BaseModel):
@@ -1059,6 +1150,25 @@ class TranslateRoutineItemsRequest(BaseModel):
     user_id: str
     routine_items: list[dict] = Field(default_factory=list)
 
+    @model_validator(mode="after")
+    def _clip_items(self):
+        clipped = []
+        for it in (self.routine_items or [])[:24]:
+            if not isinstance(it, dict):
+                continue
+            item = {}
+            for index, (key, value) in enumerate(it.items()):
+                if index >= 20:
+                    break
+                name = str(key).replace("\x00", "")[:40]
+                if isinstance(value, str):
+                    item[name] = value.replace("\x00", "")[:800]
+                elif isinstance(value, (int, float, bool)) or value is None:
+                    item[name] = value
+            clipped.append(item)
+        self.routine_items = clipped
+        return self
+
 
 class DailyCheckinRequest(BaseModel):
     user_id: str
@@ -1071,6 +1181,8 @@ class DailyCheckinRequest(BaseModel):
     notes: Optional[str] = None
     location_lat: Optional[float] = None
     location_lon: Optional[float] = None
+    # UV ve sıcaklık evin içi ile dışarısı arasında değişir. None ise bu ikisi uygulanmaz.
+    day_setting: Optional[str] = None
     # Koşullu check-in: riskte kullanılır; None ise profil/takip aynen
     water_ml_today: Optional[int] = None
     makeup_used_today: Optional[bool] = None
@@ -1100,6 +1212,9 @@ class DailyCheckinRequest(BaseModel):
         allowed_skin = {"iyi", "kuru", "yagli", "kirik", "irritasyon"}
         sf = (self.skin_feeling or "iyi").strip().lower()
         self.skin_feeling = sf if sf in allowed_skin else "iyi"
+        if self.day_setting is not None:
+            ds = str(self.day_setting).strip().lower()
+            self.day_setting = ds if ds in ("indoor", "outdoor") else None
         if self.water_ml_today is not None:
             self.water_ml_today = int(max(0, min(8000, int(self.water_ml_today))))
         if self.notes:
@@ -2191,6 +2306,19 @@ async def device_register(request: Request, req: DeviceRegisterRequest):
     if not should_use_supabase_db(supabase, req.user_id):
         return DeviceRegisterResponse(push_configured=push_configured(), synced=False, dispatch_alive=_dispatch_alive())
     try:
+        existing = (
+            supabase.table("device_tokens")
+            .select("user_id")
+            .eq("token", req.token)
+            .limit(1)
+            .execute()
+        )
+        owner = str((existing.data or [{}])[0].get("user_id") or "") if existing.data else ""
+        if owner and owner != str(req.user_id):
+            log.info("Cihaz anahtarı başka hesaba bağlı; devralınmadı")
+            return DeviceRegisterResponse(
+                push_configured=push_configured(), synced=False, dispatch_alive=_dispatch_alive()
+            )
         supabase.table("device_tokens").upsert({
             "user_id": req.user_id,
             "token": req.token,
@@ -2530,6 +2658,7 @@ async def generate_routine(request: Request, req: AssessmentRequest):
         makeup_frequency=req.makeup_frequency,
         makeup_removal=req.makeup_removal or "cleanser",
         special_flags=req.special_flags,
+        undereye_look=req.undereye_look,
         concerns=req.concerns,
         triggers=req.triggers,
         past_treatments=req.past_treatments,
@@ -3347,8 +3476,6 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
     """
     enforce_supabase_user(request, req.user_id)
     _require_privacy_permission(req.user_id, "ai")
-    if req.location_lat is not None or req.location_lon is not None:
-        _require_privacy_permission(req.user_id, "location")
     log.info("Daily checkin isteği alındı")
 
     supabase = get_supabase()
@@ -3380,10 +3507,17 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
         except Exception as e:
             log.error("Check-in mükerrer kontrolü hatası: %s", e)
 
-    # 1. Hava durumu
-    weather_data = {"humidity": 50, "uv_index": 3, "temperature": 20}
+    # 1. Hava durumu. Konum yoksa varsayılan nem/UV/sıcaklık rutine yazılmaz.
+    weather_data = None
     if req.location_lat and req.location_lon:
-        weather_data = await fetch_weather(req.location_lat, req.location_lon)
+        try:
+            _require_privacy_permission(req.user_id, "location")
+        except HTTPException as e:
+            if e.status_code not in (403, 503):
+                raise
+            weather_data = None
+        else:
+            weather_data = await fetch_weather_live(req.location_lat, req.location_lon)
 
     # 2. Mevcut aktif rutini Supabase'den çek
     current_routine = []
@@ -3516,7 +3650,7 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
     risk_info = compute_risk_score(
         stress=stress_mapped,
         water_intake=water_intake,
-        humidity=weather_data.get("humidity", 50),
+        humidity=weather_data.get("humidity") if weather_data else None,
         sleep_hours=effective_sleep,
         makeup_frequency=makeup_frequency,
         makeup_removal=makeup_removal,
@@ -3552,6 +3686,15 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
         "applied_routine": req.applied_routine,
         "notes": req.notes or "",
         "tracking_today": tracking_today or {},
+        "concern": concern_for_carry,
+        "high_glycemic_intake_today": req.high_glycemic_intake_today,
+        "heavy_dairy_today": req.heavy_dairy_today,
+        "past_logs": past_logs,
+        "weather_available": bool(weather_data),
+        "humidity": weather_data.get("humidity") if weather_data else None,
+        "temperature": weather_data.get("temperature") if weather_data else None,
+        "uv_index": weather_data.get("uv_index") if weather_data else None,
+        "day_setting": req.day_setting,
     }
 
     adaptation = adapt_existing_routine(
@@ -3647,6 +3790,9 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
             ai_note = _generate_fallback_note(risk_info["level"], req.skin_feeling)
     else:
         ai_note = _generate_fallback_note(risk_info["level"], req.skin_feeling)
+    weather_note = (adaptation.get("weather_note") or "").strip()
+    if weather_note:
+        ai_note = f"{weather_note} {ai_note}".strip()
 
     # 6. Supabase: daily_logs'a kaydet + routine güncelle
     if should_use_supabase_db(supabase, req.user_id):
@@ -3659,7 +3805,7 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
                 "skin_feeling": req.skin_feeling,
                 "applied_routine": req.applied_routine,
                 "notes": req.notes,
-                "weather_data": weather_data,
+                "weather_data": weather_data or {"unavailable": True},
                 "risk_score": risk_info["score"],
                 "adaptation": {
                     "type": adaptation["adaptation_type"],
@@ -3681,6 +3827,7 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
                         "fragrance_new_product_today": req.fragrance_new_product_today,
                         "symptom_tags": req.symptom_tags or [],
                         "active_reaction_severity": req.active_reaction_severity,
+                        "day_setting": req.day_setting,
                         "recommendation_helpful": req.recommendation_helpful,
                         "recommendation_feedback_note": req.recommendation_feedback_note,
                     },
@@ -3703,7 +3850,9 @@ async def daily_checkin(request: Request, req: DailyCheckinRequest):
                 except Exception as e:
                     log.error("checkin_feedback daily_events (ignored): %s", e)
 
-            if adaptation["changes"]:
+            if adaptation["changes"] or routine_materially_changed(
+                current_routine, adaptation["adapted_items"]
+            ):
                 supabase.table("routines").update({
                     "active_routine": adaptation["adapted_items"],
                 }).eq("user_id", req.user_id).eq("is_active", True).execute()
@@ -3750,6 +3899,7 @@ def _generate_fallback_note(risk_level: str, skin_feeling: str) -> str:
 _MAX_PHOTO_BYTES = 8 * 1024 * 1024
 _ALLOWED_PHOTO_EXT = frozenset({"jpg", "jpeg", "png", "webp", "heic", "heif"})
 _LEGAL_CONSENT_VERSION = "v2"
+_SALES_CONSENT_VERSION = "v1"
 
 
 def _photo_content_matches_extension(contents: bytes, ext: str) -> bool:
@@ -3864,6 +4014,7 @@ def _delete_user_application_data(supabase, user_id: str) -> None:
     targets = (
         ("privacy_preferences", "user_id"),
         ("legal_consents", "user_id"),
+        ("sales_consents", "user_id"),
         ("device_tokens", "user_id"),
         ("push_sends", "user_id"),
         ("reminder_settings", "user_id"),
@@ -3998,6 +4149,108 @@ async def accept_legal_consent(request: Request, req: LegalConsentAcceptRequest)
         "document_version": req.document_version,
         "accepted_at": accepted_at,
         "already_recorded": already_recorded,
+    }
+
+
+class SalesConsentAcceptRequest(BaseModel):
+    user_id: str
+    document_version: str
+    pre_info_accepted: bool
+    distance_contract_accepted: bool
+
+
+@app.post(
+    "/sales-consent/accept",
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_SALES_CONSENT))],
+)
+async def accept_sales_consent(request: Request, req: SalesConsentAcceptRequest):
+    """Ödeme sayfası açılmadan önce ön bilgilendirme ve mesafeli satış onayı."""
+    enforce_supabase_user(request, req.user_id)
+    if (
+        req.document_version != _SALES_CONSENT_VERSION
+        or not req.pre_info_accepted
+        or not req.distance_contract_accepted
+    ):
+        raise HTTPException(status_code=400, detail="Ön bilgilendirme ve mesafeli satış onayı gerekli.")
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    accepted_at = datetime.now(timezone.utc).isoformat()
+    try:
+        existing = (
+            supabase.table("sales_consents")
+            .select("accepted_at")
+            .eq("user_id", req.user_id)
+            .eq("document_version", req.document_version)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            return {
+                "ok": True,
+                "document_version": req.document_version,
+                "accepted_at": existing.data[0].get("accepted_at"),
+                "already_recorded": True,
+            }
+        supabase.table("sales_consents").insert({
+            "user_id": req.user_id,
+            "document_version": req.document_version,
+            "pre_info_accepted": True,
+            "distance_contract_accepted": True,
+            "accepted_at": accepted_at,
+        }).execute()
+    except Exception as e:
+        log.error("Satış onayı yazılamadı: error=%s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Satış onayı kaydedilemedi.")
+    return {
+        "ok": True,
+        "document_version": req.document_version,
+        "accepted_at": accepted_at,
+        "already_recorded": False,
+    }
+
+
+class PrivacyIncidentRequest(BaseModel):
+    summary: str = Field(min_length=8, max_length=2000)
+    discovered_at: Optional[str] = None
+
+
+def _require_privacy_incident_secret(request: Request) -> None:
+    """İhlal kaydı yalnız sunucu anahtarıyla açılır. Anahtar yoksa uç kapalıdır."""
+    secret = (os.getenv("PRIVACY_INCIDENT_SECRET") or "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail="Veri ihlali kaydı yapılandırılmamış.")
+    provided = (request.headers.get("x-privacy-incident-token") or "").strip()
+    if not provided or not secrets.compare_digest(provided, secret):
+        raise HTTPException(status_code=401, detail="Geçersiz kayıt anahtarı.")
+
+
+@app.post(
+    "/privacy/incidents",
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_PRIVACY_INCIDENT))],
+)
+async def create_privacy_incident(request: Request, req: PrivacyIncidentRequest):
+    """Öğrenme anını ve 72 saatlik Kurul bildirim sonunu kaydeder. Bildirimi kendisi göndermez."""
+    _require_privacy_incident_secret(request)
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    try:
+        discovered = parse_discovered_at(req.discovered_at)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="discovered_at tarihi okunamadı.")
+    try:
+        saved = record_privacy_incident(supabase, req.summary, discovered)
+    except Exception as e:
+        log.error("Veri ihlali kaydı yazılamadı: error=%s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Veri ihlali kaydı yazılamadı.")
+    return {
+        "ok": True,
+        "id": saved.get("id"),
+        "discovered_at": saved.get("discovered_at"),
+        "notify_kurul_by": saved.get("notify_kurul_by"),
     }
 
 

@@ -7,11 +7,32 @@ import '../widgets/common.dart';
 
 /// Sorun özelinde klinik şiddet anketi (metinler `severityTests.json`).
 /// Web: `components/SeverityTest.jsx`.
+const undereyeColorKeys = ['unsure', 'brown', 'purple', 'both'];
+const undereyePuffKeys = ['none', 'sometimes', 'often', 'all_day'];
+
+/// Şiddet testindeki seçenek sırası → motorun beklediği göz altı görünümü.
+Map<String, String>? undereyeLookFromPicks(Map<String, int>? picks) {
+  if (picks == null || (!picks.containsKey('color') && !picks.containsKey('puffiness'))) return null;
+  final colorIndex = picks['color'];
+  final puffIndex = picks['puffiness'];
+  return {
+    'color': (colorIndex != null && colorIndex >= 0 && colorIndex < undereyeColorKeys.length)
+        ? undereyeColorKeys[colorIndex]
+        : 'unsure',
+    'puffiness': (puffIndex != null && puffIndex >= 0 && puffIndex < undereyePuffKeys.length)
+        ? undereyePuffKeys[puffIndex]
+        : 'none',
+  };
+}
+
 class SeverityTest extends StatefulWidget {
-  const SeverityTest({super.key, required this.concern, required this.onScoreChange});
+  const SeverityTest({super.key, required this.concern, required this.onScoreChange, this.onPicks});
 
   final String concern;
   final ValueChanged<int> onScoreChange;
+
+  /// Soru kimliği → seçilen seçeneğin sırası. Skoru aynı olan cevapları ayırmak için.
+  final ValueChanged<Map<String, int>>? onPicks;
 
   @override
   State<SeverityTest> createState() => _SeverityTestState();
@@ -25,6 +46,7 @@ int calculateSeverityScore(Map<String, num> answers, num maxPossible) {
 
 class _SeverityTestState extends State<SeverityTest> {
   final Map<String, num> _answers = {};
+  final Map<String, int> _picks = {};
 
   @override
   Widget build(BuildContext context) {
@@ -55,9 +77,15 @@ class _SeverityTestState extends State<SeverityTest> {
       }
     }
 
-    void select(String qId, num optScore) {
-      setState(() => _answers[qId] = optScore);
-      if (_answers.length == total) widget.onScoreChange(calculateSeverityScore(_answers, maxPossible));
+    void select(String qId, int index, num optScore) {
+      setState(() {
+        _answers[qId] = optScore;
+        _picks[qId] = index;
+      });
+      if (_answers.length == total) {
+        widget.onScoreChange(calculateSeverityScore(_answers, maxPossible));
+        widget.onPicks?.call(Map<String, int>.from(_picks));
+      }
     }
 
     return RCard(
@@ -92,15 +120,20 @@ class _SeverityTestState extends State<SeverityTest> {
             const SizedBox(height: 20),
             Text((q['text'] ?? '').toString(), style: tx(14, w: 5, c: Tw.gray700)),
             const SizedBox(height: 8),
-            for (final opt in (q['options'] as List? ?? const []).whereType<Map>()) ...[
-              _OptionButton(
-                label: (opt['label'] ?? '').toString(),
-                selected: _answers.containsKey(q['id']) && _answers[q['id']] == opt['score'],
-                questionAnswered: _answers.containsKey(q['id']),
-                onTap: () => select(q['id'].toString(), (opt['score'] as num?) ?? 0),
-              ),
-              const SizedBox(height: 6),
-            ],
+            for (var oi = 0; oi < ((q['options'] as List?) ?? const []).length; oi++)
+              if ((q['options'] as List)[oi] is Map) ...[
+                _OptionButton(
+                  label: (((q['options'] as List)[oi] as Map)['label'] ?? '').toString(),
+                  selected: _picks[q['id']] == oi,
+                  questionAnswered: _answers.containsKey(q['id']),
+                  onTap: () => select(
+                    q['id'].toString(),
+                    oi,
+                    (((q['options'] as List)[oi] as Map)['score'] as num?) ?? 0,
+                  ),
+                ),
+                const SizedBox(height: 6),
+              ],
           ],
           const SizedBox(height: 14),
           if (complete && severity != null)

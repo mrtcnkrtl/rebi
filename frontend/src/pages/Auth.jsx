@@ -5,6 +5,7 @@ import { Leaf, Mail, Lock, User, Eye, EyeOff, ArrowRight, AlertCircle, Info } fr
 import { useTranslation } from "react-i18next";
 import LegalConsentFields from "../components/LegalConsentFields";
 import { recordLegalConsent } from "../lib/legalConsent";
+import { safeNext } from "../lib/safeNext";
 
 export default function Auth() {
   const { t } = useTranslation();
@@ -23,7 +24,7 @@ export default function Auth() {
   const { signIn, signUp, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const next = new URLSearchParams(location.search || "").get("next") || "/dashboard";
+  const next = safeNext(new URLSearchParams(location.search || "").get("next"));
 
   const handleSubmit = async (e) => {
     e.preventDefault();

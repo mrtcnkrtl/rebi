@@ -28,6 +28,45 @@ import { useTranslation } from "react-i18next";
 
 const API = API_URL;
 
+const DAY_SETTINGS = [
+  { id: "indoor", label: "Evin içi", desc: "Dışarı UV ve sıcaklık rutine yazılmaz" },
+  { id: "outdoor", label: "Dışarıda", desc: "UV ve sıcaklık güneş koruyucu numarasına girer" },
+];
+
+function roundCoord(n) {
+  return Math.round(Number(n) * 100) / 100;
+}
+
+function readCheckinLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const timer = setTimeout(() => finish(null), 4500);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        clearTimeout(timer);
+        finish({
+          location_lat: roundCoord(pos.coords.latitude),
+          location_lon: roundCoord(pos.coords.longitude),
+        });
+      },
+      () => {
+        clearTimeout(timer);
+        finish(null);
+      },
+      { enableHighAccuracy: false, timeout: 4000, maximumAge: 10 * 60 * 1000 }
+    );
+  });
+}
+
 const SKIN_FEELINGS = [
   { id: "iyi", label: "İyi", icon: "😊", desc: "Normal hissediyorum" },
   { id: "kuru", label: "Kuru", icon: "🏜️", desc: "Sıkışma, gerginlik" },
@@ -306,6 +345,8 @@ export default function CheckIn() {
   const [sleepHours, setSleepHours] = useState(7);
   const [stressToday, setStressToday] = useState(3);
   const [skinFeeling, setSkinFeeling] = useState("");
+  const [daySetting, setDaySetting] = useState("");
+  const [locationMissing, setLocationMissing] = useState(false);
   const [appliedRoutine, setAppliedRoutine] = useState(true);
   const [notes, setNotes] = useState("");
   /** Son assessment bağlamı: hangi ek soruları göstereceğiz */
@@ -394,6 +435,14 @@ export default function CheckIn() {
     return () => { cancelled = true; };
   }, [user?.id]);
 
+  useEffect(() => {
+    let cancelled = false;
+    readCheckinLocation().then((loc) => {
+      if (!cancelled) setLocationMissing(!loc);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const handleSubmit = async () => {
     if (!canSubmit) return;
     setLoading(true);
@@ -408,6 +457,15 @@ export default function CheckIn() {
         applied_routine: appliedRoutine,
         notes: notes || null,
       };
+      const loc = await readCheckinLocation();
+      setLocationMissing(!loc);
+      if (loc) {
+        payload.location_lat = loc.location_lat;
+        payload.location_lon = loc.location_lon;
+      }
+      if (daySetting === "indoor" || daySetting === "outdoor") {
+        payload.day_setting = daySetting;
+      }
       const wParsed = parseWaterMlInput(waterMlToday);
       if (wParsed != null && wParsed > 0) {
         payload.water_ml_today = wParsed;
@@ -645,6 +703,11 @@ export default function CheckIn() {
           <p className="text-[11px] text-gray-400 mt-2 max-w-sm mx-auto leading-relaxed">
             Uyku ve stres cevapların, geçmiş check-in kayıtlarınla kısa süreli harmanlanarak risk özetine girer.
           </p>
+          {locationMissing && (
+            <p className="text-[12px] text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-3 text-left leading-relaxed">
+              Konum olmadığı için hava durumuna göre değişim ve öneri verilemiyor.
+            </p>
+          )}
         </div>
 
         {submitError && (
@@ -734,6 +797,29 @@ export default function CheckIn() {
                 {skinFeeling === f.id && (
                   <CheckCircle2 className="w-5 h-5 ml-auto shrink-0" style={{ color: theme.primary }} />
                 )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="card mb-4">
+          <h3 className="text-sm font-bold text-gray-800 mb-1">Bugün cildin daha çok nerede?</h3>
+          <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+            UV ve sıcaklık evin içi ile dışarısı arasında değişir. Bu cevap güneş koruyucu numarasına girer.
+          </p>
+          <div className="space-y-2">
+            {DAY_SETTINGS.map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setDaySetting(opt.id)}
+                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                  daySetting === opt.id ? "ring-2 shadow-md" : "bg-gray-50 hover:bg-gray-100"
+                }`}
+                style={daySetting === opt.id ? { backgroundColor: theme.primaryLight } : {}}
+              >
+                <p className="text-sm font-medium text-gray-800">{opt.label}</p>
+                <p className="text-[11px] text-gray-500">{opt.desc}</p>
               </button>
             ))}
           </div>
@@ -940,6 +1026,40 @@ export default function CheckIn() {
               description="Rutindeki SPF adımını tamamladıysan Evet."
               value={concernExtra.spf_applied_today}
               onChange={(v) => setExtraField("spf_applied_today", v)}
+            />
+            {assessmentCtx.concern === "pigmentation" && (
+              <>
+                <ExtraTristate
+                  title="Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?"
+                  description="Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez."
+                  value={concernExtra.high_glycemic_intake_today}
+                  onChange={(v) => setExtraField("high_glycemic_intake_today", v)}
+                />
+                <ExtraTristate
+                  title="Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?"
+                  description="Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez."
+                  value={concernExtra.heavy_dairy_today}
+                  onChange={(v) => setExtraField("heavy_dairy_today", v)}
+                />
+              </>
+            )}
+          </div>
+        )}
+
+        {assessmentCtx.concern === "oiliness" && (
+          <div className="mb-4">
+            <p className="text-xs font-bold text-gray-800 mb-2">Yağlılığa özel</p>
+            <ExtraTristate
+              title="Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?"
+              description="Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez."
+              value={concernExtra.high_glycemic_intake_today}
+              onChange={(v) => setExtraField("high_glycemic_intake_today", v)}
+            />
+            <ExtraTristate
+              title="Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?"
+              description="Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez."
+              value={concernExtra.heavy_dairy_today}
+              onChange={(v) => setExtraField("heavy_dairy_today", v)}
             />
           </div>
         )}

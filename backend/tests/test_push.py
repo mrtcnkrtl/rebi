@@ -156,6 +156,27 @@ def test_device_registration_clamps_offset_and_rejects_empty_token(monkeypatch, 
     assert wrong_platform.status_code == 422
 
 
+def test_device_registration_does_not_take_another_users_token(monkeypatch, client, headers):
+    db = _db(monkeypatch, device_tokens=[
+        {"user_id": OTHER_USER_ID, "token": "fcm-token-1", "platform": "android"},
+    ])
+
+    r = client.post(
+        "/devices/register",
+        json={
+            "user_id": USER_ID,
+            "token": "fcm-token-1",
+            "platform": "ios",
+        },
+        headers=headers,
+    )
+
+    assert r.status_code == 200, r.text
+    assert r.json()["synced"] is False
+    assert db.tables["device_tokens"].rows[0]["user_id"] == OTHER_USER_ID
+    assert db.tables["device_tokens"].upserted == []
+
+
 def test_unregister_removes_only_own_device(monkeypatch, client, headers):
     db = _db(monkeypatch, device_tokens=[
         {"user_id": USER_ID, "token": "mine", "platform": "ios"},

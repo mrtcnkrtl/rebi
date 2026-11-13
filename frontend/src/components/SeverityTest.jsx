@@ -17,10 +17,22 @@ function getSeverityLabel(score, ui) {
   return { text: ui.severe, color: "text-red-600", bg: "bg-red-100" };
 }
 
+export const UNDEREYE_COLOR_KEYS = ["unsure", "brown", "purple", "both"];
+export const UNDEREYE_PUFF_KEYS = ["none", "sometimes", "often", "all_day"];
+
+/** Şiddet testindeki seçenek sırası → motorun beklediği göz altı görünümü. */
+export function undereyeLookFromPicks(picks) {
+  if (!picks || (picks.color == null && picks.puffiness == null)) return null;
+  const color = UNDEREYE_COLOR_KEYS[picks.color] || "unsure";
+  const puffiness = UNDEREYE_PUFF_KEYS[picks.puffiness] || "none";
+  return { color, puffiness };
+}
+
 export default function SeverityTest({ concern, onScoreChange }) {
   const pack = useSeverityTestsPack();
   const ui = pack.ui || {};
   const [answers, setAnswers] = useState({});
+  const [picks, setPicks] = useState({});
   const test = pack[concern];
 
   const maxPossible = useMemo(() => {
@@ -39,13 +51,15 @@ export default function SeverityTest({ concern, onScoreChange }) {
   const score = isComplete ? calculateScore(answers, maxPossible) : null;
   const severity = score != null ? getSeverityLabel(score, ui) : null;
 
-  const handleSelect = (qId, optScore) => {
+  const handleSelect = (qId, optIndex, optScore) => {
     const newAnswers = { ...answers, [qId]: optScore };
+    const newPicks = { ...picks, [qId]: optIndex };
     setAnswers(newAnswers);
+    setPicks(newPicks);
 
     if (Object.keys(newAnswers).length === totalCount) {
       const s = calculateScore(newAnswers, maxPossible);
-      onScoreChange(s);
+      onScoreChange(s, newPicks);
     }
   };
 
@@ -71,13 +85,13 @@ export default function SeverityTest({ concern, onScoreChange }) {
           <p className="text-sm font-medium text-gray-700">{q.text}</p>
           <div className="grid grid-cols-1 gap-1.5">
             {q.options.map((opt, oi) => {
-              const isSelected = answers[q.id] === opt.score && answers[q.id] !== undefined;
+              const isSelected = picks[q.id] === oi;
               const isQuestionAnswered = q.id in answers;
               return (
                 <button
                   key={oi}
                   type="button"
-                  onClick={() => handleSelect(q.id, opt.score)}
+                  onClick={() => handleSelect(q.id, oi, opt.score)}
                   className={`text-left px-3 py-2.5 rounded-xl text-sm transition-all border ${
                     isSelected
                       ? "border-teal-500 bg-teal-50 text-teal-800 font-medium"

@@ -149,8 +149,11 @@
   "legal": {
     "kvkkTitle": "KVKK Aydınlatma Metni",
     "rizaTitle": "Açık Rıza Metni",
+    "preInfoTitle": "Ön Bilgilendirme Formu",
+    "distanceTitle": "Mesafeli Satış Sözleşmesi",
     "updated": "Son güncelleme: {{date}}",
-    "backToAuth": "Girişe dön"
+    "backToAuth": "Girişe dön",
+    "back": "Geri"
   },
   "lang": {
     "label": "Dil",

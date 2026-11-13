@@ -29,12 +29,6 @@ def _today_extra_delta(concern: str, req: Any) -> Tuple[int, List[str]]:
         if getattr(req, "picked_skin_today", None) is True:
             delta += 1
             notes.append("sivilce/komedon kurcalama")
-        if getattr(req, "high_glycemic_intake_today", None) is True:
-            delta += 1
-            notes.append("yüksek glisemik öğün")
-        if getattr(req, "heavy_dairy_today", None) is True:
-            delta += 1
-            notes.append("belirgin süt ürünü")
 
     if c in ("aging", "pigmentation"):
         sun = getattr(req, "long_sun_exposure_today", None) is True
@@ -82,12 +76,6 @@ def _carryover_extra_delta(concern: str, past_logs: list, req: Any) -> Tuple[int
         return sum(1 for e in exs if e.get(key) is False)
 
     if c == "acne":
-        if getattr(req, "high_glycemic_intake_today", None) is None and _count_true("high_glycemic_intake_today") >= 2:
-            delta += 1
-            notes.append("son günlerde sık yüksek glisemik kaydı")
-        if getattr(req, "heavy_dairy_today", None) is None and _count_true("heavy_dairy_today") >= 2:
-            delta += 1
-            notes.append("son günlerde sık süt ürünü kaydı")
         if getattr(req, "picked_skin_today", None) is None and _count_true("picked_skin_today") >= 2:
             delta += 1
             notes.append("son günlerde tekrarlayan kurcalama kaydı")
@@ -119,13 +107,62 @@ def _carryover_extra_delta(concern: str, past_logs: list, req: Any) -> Tuple[int
     return delta, notes
 
 
+_DIET_CONCERNS = frozenset({"acne", "oiliness", "pigmentation"})
+
+
+def diet_window_counts(req: Any, past_logs: list) -> tuple[int, int]:
+    """Bugün + son kayıtlar. Tek gün ve tekrar aynı pencerede sayılır."""
+    exs = [get_checkin_extras_from_log_row(r) for r in (past_logs or [])[:7]]
+
+    def _count(key: str) -> int:
+        n = sum(1 for e in exs if e.get(key) is True)
+        if getattr(req, key, None) is True:
+            n += 1
+        return n
+
+    return _count("high_glycemic_intake_today"), _count("heavy_dairy_today")
+
+
+def diet_window_status(concern: str, req: Any, past_logs: list) -> dict:
+    """En az iki kayıt aynı yükü gösterirse beslenme süreci açıktır."""
+    if (concern or "").lower().strip() not in _DIET_CONCERNS:
+        return {"active": False, "bits": [], "glycemic": 0, "dairy": 0}
+    glycemic, dairy = diet_window_counts(req, past_logs)
+    bits: List[str] = []
+    if glycemic >= 2:
+        bits.append("sık şeker")
+    if dairy >= 2:
+        bits.append("sık süt ürünü")
+    return {"active": bool(bits), "bits": bits, "glycemic": glycemic, "dairy": dairy}
+
+
+def _diet_risk_delta(concern: str, req: Any, past_logs: list) -> Tuple[int, List[str]]:
+    status = diet_window_status(concern, req, past_logs)
+    if (concern or "").lower().strip() not in _DIET_CONCERNS:
+        return 0, []
+    delta = 0
+    notes: List[str] = []
+    if status["glycemic"] >= 1:
+        delta += 1
+        notes.append("yüksek glisemik öğün" if status["glycemic"] == 1 else "süreçte tekrarlayan şeker")
+    if status["glycemic"] >= 2:
+        delta += 1
+    if status["dairy"] >= 1:
+        delta += 1
+        notes.append("belirgin süt ürünü" if status["dairy"] == 1 else "süreçte tekrarlayan süt")
+    if status["dairy"] >= 2:
+        delta += 1
+    return min(4, delta), notes
+
+
 def apply_concern_extra_risk(concern: str, req: Any, past_logs: list, risk_info: dict) -> dict:
     """risk_info kopyası; puan ve seviye güncellenir."""
     out = dict(risk_info)
     d1, n1 = _today_extra_delta(concern, req)
     d2, n2 = _carryover_extra_delta(concern, past_logs, req)
-    delta = d1 + d2
-    all_notes = [x for x in n1 + n2 if x]
+    d3, n3 = _diet_risk_delta(concern, req, past_logs)
+    delta = d1 + d2 + d3
+    all_notes = [x for x in n1 + n2 + n3 if x]
     if delta <= 0 and not all_notes:
         return out
 

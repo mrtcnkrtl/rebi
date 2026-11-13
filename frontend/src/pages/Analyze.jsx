@@ -13,7 +13,7 @@ import { analyzeSkinPhotoQuality } from "../lib/imageQuality";
 import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import LoadingScreen from "../components/LoadingScreen";
 import SkinTypeVisual from "../components/SkinTypeVisual";
-import SeverityTest from "../components/SeverityTest";
+import SeverityTest, { undereyeLookFromPicks } from "../components/SeverityTest";
 import WebcamCapture from "../components/WebcamCapture";
 import AiDisclaimer from "../components/AiDisclaimer";
 import { useTranslation } from "react-i18next";
@@ -51,6 +51,7 @@ const CONCERN_RANK_TIE = [
   "pores",
   "oiliness",
   "sensitivity",
+  "undereye",
   "general",
 ];
 
@@ -83,6 +84,7 @@ const CONCERN_DEFS = [
   { id: "dryness", icon: "🏜️" },
   { id: "pigmentation", icon: "🎯" },
   { id: "sensitivity", icon: "🌸" },
+  { id: "undereye", icon: "👁️" },
 ];
 
 function calcCyclePhase(lastPeriodDate, cycleLength) {
@@ -437,6 +439,7 @@ export default function Analyze() {
   // Step 3 - Kullanım soruları (tek tek: şiddet → tetikleyici → tedavi → beklenti)
   const [step3Section, setStep3Section] = useState(0);
   const [severityScoresByConcern, setSeverityScoresByConcern] = useState({});
+  const [severityPicksByConcern, setSeverityPicksByConcern] = useState({});
   /** Sorun başı: { [id]: { duration, frequency, note } } */
   const [concernTimeline, setConcernTimeline] = useState({});
   const [triggers, setTriggers] = useState([]);
@@ -732,6 +735,9 @@ export default function Analyze() {
         makeup_frequency: makeupFreq,
         makeup_removal: makeupFreq > 0 ? makeupRemoval : "cleanser",
         special_flags: Object.values(specialFlags).some(Boolean) ? specialFlags : null,
+        undereye_look: concerns.includes("undereye")
+          ? undereyeLookFromPicks(severityPicksByConcern.undereye)
+          : null,
       };
       const auth = await apiAuthHeaders();
       const response = await fetch(`${API_URL}/generate_routine`, {
@@ -1188,7 +1194,10 @@ export default function Analyze() {
               <SeverityTest
                 key={concernId}
                 concern={concernId}
-                onScoreChange={(score) => setSeverityScoresByConcern((prev) => ({ ...prev, [concernId]: score }))}
+                onScoreChange={(score, picks) => {
+                  setSeverityScoresByConcern((prev) => ({ ...prev, [concernId]: score }));
+                  if (picks) setSeverityPicksByConcern((prev) => ({ ...prev, [concernId]: picks }));
+                }}
               />
             ))}
             <div className="flex gap-3">

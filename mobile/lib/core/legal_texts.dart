@@ -3,7 +3,7 @@
 /// `test/legal_texts_sync_test.dart` farkı yakalar.
 library;
 
-const legalUpdated = '20.09.2026';
+const legalUpdated = '04.11.2026';
 
 class LegalSection {
   const LegalSection(this.title, this.body);
@@ -112,8 +112,102 @@ const _enRiza = [
   ),
 ];
 
+const _trPre = [
+  LegalSection(
+    '1. Satıcı ve hizmet',
+    'Rebi Plus, Rebi’yi işleten A3 Biyoteknoloji’nin sunduğu dijital aboneliktir. Kapsam: sınırsız sohbet, premium temalar ve Plus hesabına bağlı özellikler. Satıcıyla iletişim uygulama içi Profil ekranı ve hesap e-postası üzerinden kurulur.',
+  ),
+  LegalSection(
+    '2. Bedel ve süre',
+    'Fiyat, para birimi, vergi ve yenileme dönemi ödeme sayfasında, tahsilattan önce gösterilir. Bu form tutarı sabitlemez. Ödeme sayfası, aşağıdaki onaylar kayda geçmeden açılmaz.',
+  ),
+  LegalSection(
+    '3. İfa',
+    'Hizmet elektronik ortamda sunulur ve ödemenin onayından sonra hesaba tanımlanır.',
+  ),
+  LegalSection(
+    '4. Cayma',
+    'Tüketici, mesafeli dijital hizmetlerde mevzuattaki süre içinde cayma hakkını kullanabilir. Hizmetin derhal başlamasını ayrıca ister ve ifa başlarsa cayma hakkı ilgili istisna kapsamında sınırlanabilir.',
+  ),
+  LegalSection(
+    '5. Başvuru',
+    'Şikâyet ve talepler Profil üzerinden veya hesap e-postasıyla iletilir. Uyuşmazlıklarda tüketici hakem heyetleri ve tüketici mahkemeleri yetkilidir.',
+  ),
+];
+
+const _enPre = [
+  LegalSection(
+    '1. Seller and service',
+    'Rebi Plus is a digital subscription from A3 Biyoteknoloji, which operates Rebi. It covers unlimited chat, premium themes and features tied to a Plus account. Contact is through the in-app Profile screen and the account email.',
+  ),
+  LegalSection(
+    '2. Price and term',
+    'Price, currency, tax and renewal period are shown on the payment page before any charge. This form does not fix the amount. The payment page does not open until the approvals below are recorded.',
+  ),
+  LegalSection(
+    '3. Performance',
+    'The service is provided electronically and is applied to the account after payment is confirmed.',
+  ),
+  LegalSection(
+    '4. Withdrawal',
+    'A consumer may withdraw from a distance contract for a digital service within the statutory period. If you separately ask the service to start immediately and performance begins, withdrawal may be limited under the applicable exception.',
+  ),
+  LegalSection(
+    '5. Complaints',
+    'Requests go through Profile or the account email. Consumer arbitration committees and consumer courts have jurisdiction over disputes.',
+  ),
+];
+
+const _trDistance = [
+  LegalSection(
+    '1. Taraflar',
+    'Alıcı, Rebi hesabının sahibidir. Satıcı, Rebi’yi işleten A3 Biyoteknoloji’dir. İletişim: uygulama içi Profil ve hesap e-postası.',
+  ),
+  LegalSection(
+    '2. Konu',
+    'Konu, Rebi Plus dijital aboneliğinin satışı ve elektronik ortamda ifasıdır. Özellikler ön bilgilendirme formunda sayılır.',
+  ),
+  LegalSection(
+    '3. Bedel',
+    'Bedel, ödeme sayfasında tahsilattan önce açıklanan tutardır. Onaylar kayda geçmeden o sayfa açılmaz.',
+  ),
+  LegalSection(
+    '4. Derhal başlama',
+    'Alıcı, bu sözleşmeyi ön bilgilendirmeden ayrı onaylar ve dijital hizmetin ödeme onayından hemen sonra başlamasını talep eder. İfa başladığında cayma hakkı mevzuattaki istisnayla sınırlanabilir; aksi halde yasal cayma süresi geçerlidir.',
+  ),
+  LegalSection(
+    '5. Kayıt',
+    'Onay, ödeme sayfasına geçmeden önce satıcının kaydına yazılır. Hesap silindiğinde bu kayıt, diğer kişisel verilerle birlikte silinir.',
+  ),
+];
+
+const _enDistance = [
+  LegalSection(
+    '1. Parties',
+    'The buyer is the holder of the Rebi account. The seller is A3 Biyoteknoloji, which operates Rebi. Contact is the in-app Profile screen and the account email.',
+  ),
+  LegalSection(
+    '2. Subject',
+    'The subject is the sale and electronic performance of the Rebi Plus digital subscription. Features are listed in the pre-contract information form.',
+  ),
+  LegalSection(
+    '3. Price',
+    'The price is the amount shown on the payment page before the charge. That page does not open until the approvals are recorded.',
+  ),
+  LegalSection(
+    '4. Immediate start',
+    'The buyer accepts this contract separately from the pre-contract information and asks the digital service to start as soon as payment is confirmed. Once performance begins, withdrawal may be limited by the statutory exception; otherwise the statutory withdrawal period applies.',
+  ),
+  LegalSection(
+    '5. Record',
+    'The approval is written to the seller’s record before the payment page opens. When the account is deleted, this record is deleted with the other personal data.',
+  ),
+];
+
 List<LegalSection> legalSections(String kind, String lang) {
   final en = lang.toLowerCase().startsWith('en');
   if (kind == 'riza') return en ? _enRiza : _trRiza;
+  if (kind == 'onbilgi') return en ? _enPre : _trPre;
+  if (kind == 'mesafeli') return en ? _enDistance : _trDistance;
   return en ? _enKvkk : _trKvkk;
 }

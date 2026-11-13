@@ -1,4 +1,4 @@
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Shield } from "lucide-react";
 import { LEGAL_UPDATED, legalSections } from "../lib/legalTexts";
@@ -6,21 +6,45 @@ import { LEGAL_UPDATED, legalSections } from "../lib/legalTexts";
 export default function Legal() {
   const { t, i18n } = useTranslation();
   const location = useLocation();
-  const kind = location.pathname.startsWith("/riza") ? "riza" : "kvkk";
+  const navigate = useNavigate();
+  const path = location.pathname;
+  const kind = path.startsWith("/riza")
+    ? "riza"
+    : path.startsWith("/on-bilgilendirme")
+      ? "onbilgi"
+      : path.startsWith("/mesafeli")
+        ? "mesafeli"
+        : "kvkk";
   const lang = (i18n.resolvedLanguage || i18n.language || "tr").split("-")[0];
   const sections = legalSections(kind, lang);
-  const title = kind === "riza" ? t("legal.rizaTitle") : t("legal.kvkkTitle");
+  const title =
+    kind === "riza"
+      ? t("legal.rizaTitle")
+      : kind === "onbilgi"
+        ? t("legal.preInfoTitle")
+        : kind === "mesafeli"
+          ? t("legal.distanceTitle")
+          : t("legal.kvkkTitle");
+  const saleDoc = kind === "onbilgi" || kind === "mesafeli";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-teal-50 to-white px-4 py-10">
       <article className="max-w-2xl mx-auto">
-        <Link
-          to="/auth"
+        <button
+          type="button"
+          onClick={() => {
+            const idx = window.history.state?.idx;
+            if (typeof idx === "number" && idx > 0) {
+              navigate(-1);
+              return;
+            }
+            navigate(saleDoc ? "/" : "/auth");
+          }}
           className="inline-flex items-center gap-1.5 text-sm text-teal-700 hover:text-teal-800 font-medium mb-6"
         >
           <ArrowLeft className="w-4 h-4" />
-          {t("legal.backToAuth")}
-        </Link>
+          {saleDoc ? t("legal.back") : t("legal.backToAuth")}
+        </button>
         <div className="flex items-start gap-3 mb-6">
           <div className="w-11 h-11 rounded-2xl bg-teal-600 text-white flex items-center justify-center shrink-0">
             <Shield className="w-5 h-5" />

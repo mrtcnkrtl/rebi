@@ -387,6 +387,7 @@ CONCERN_SLUG_TO_CANONICAL: dict[str, list[str]] = {
     "sensitivity": ["rosacea", "atopic_dermatitis"],
     "pores": ["enlarged_pores"],
     "oiliness": ["oily_skin_seborrhea"],
+    "undereye": ["dark_circles_periorbital_hyperpigmentation"],
     # No specific complaint → barrier maintenance, not a treatment serum stack.
     "general": ["dry_skin_xerosis"],
 }
@@ -643,9 +644,18 @@ ACTIVE_KEY_TO_CANONICAL: dict[str, list[str]] = {
     "adapalene": ["retinol"],
     "vitamin_c_l_ascorbic_acid": ["vitamin_c"],
     "vitamin_c_derivatives": ["vitamin_c"],
-    "glycolic_or_lactic_acid": ["glycolic_acid", "lactic_acid", "malic_acid", "tartaric_acid", "pha"],
+    "glycolic_or_lactic_acid": [
+        "glycolic_acid", "lactic_acid", "malic_acid", "tartaric_acid", "pha", "mandelic_acid",
+    ],
+    "mandelic_acid": ["mandelic_acid"],
+    "pha": ["pha"],
     "tranexamic_acid": ["traneksamik_asit"],
     "alpha_arbutin": ["alfa_arbutin"],
+    "hexylresorcinol": ["hexylresorcinol"],
+    "licorice": ["licorice_extract"],
+    "green_tea": ["green_tea"],
+    "n_acetyl_glucosamine": ["n_acetyl_glucosamine"],
+    "caffeine": ["caffeine"],
     "urea": ["urea"],
     "sulfur": ["sulfur"],
     "zinc_pca": ["zinc_oxide"],
@@ -692,10 +702,17 @@ def _short_fold_label(link: dict) -> str:
 
 
 def _append_fold(item: dict, label: str, iid: str, note: str) -> None:
-    action = item.get("action") or ""
-    if not (_norm(label) and _norm(label) in _norm(action)):
+    def _with_label(action: str) -> str:
+        if _norm(label) and _norm(label) in _norm(action):
+            return action
         sep = " + " if action and not action.endswith("+") else ""
-        item["action"] = f"{action}{sep}{label}".strip()
+        return f"{action}{sep}{label}".strip()
+
+    item["action"] = _with_label(item.get("action") or "")
+    # Seçilebilir adımda her seçenek aynı katkıyı taşır (varsayılan = action).
+    for ch in item.get("choices") or []:
+        if isinstance(ch, dict) and isinstance(ch.get("action"), str):
+            ch["action"] = _with_label(ch["action"])
     detail = (item.get("detail") or "").rstrip()
     snippet = (note or "").strip()
     if snippet:
