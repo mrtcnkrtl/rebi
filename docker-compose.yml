@@ -1,8 +1,17 @@
 # rebiovil.com — tek sunucu: nginx (80) + FastAPI (iç ağ)
 # Kullanım: repo kökünde .env dosyası (deploy/env.docker.example kopyası) + deploy/.env.api
 
+# Docker'ın varsayılan json-file günlüğü sınırsız büyür; yoğun trafikte disk dolar ve sunucu durur.
+# Her servis en fazla 5 x 20 MB günlük tutar.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
 services:
   api:
+    logging: *default-logging
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -12,6 +21,12 @@ services:
       # Hız sınırı ve sohbet kotası sayaçları Redis'te tutulur (yeniden başlatma/deploy sayaçları sıfırlamaz).
       # Redis kapanırsa API çalışmaya devam eder, sayaçlar o süre süreç içine düşer. Redis'siz çalışmak için bu satırı silin.
       REDIS_URL: redis://redis:6379/0
+      # API işçi sayısı (Dockerfile). 2 çekirdek / 2-4 GB sunucu için 2; 4 çekirdek / 8 GB için 4. Repo kökündeki
+      # .env'de WEB_CONCURRENCY=4 yazarak değiştirilir. Postgres bağlantı bütçesi (POSTGRES_MAX_CONCURRENT, varsayılan 16)
+      # işçilere bölünür; Supabase sınırı proje başınadır.
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-2}
+    # Deploy sırasında süren istekler (sohbet dahil) bitsin: uvicorn 25 sn bekler, Docker 30 sn sonra zorla kapatır.
+    stop_grace_period: 30s
     volumes:
       - ./supabase/migrations:/supabase/migrations:ro
     expose:
@@ -29,6 +44,7 @@ services:
   # Hatırlatıcı bildirimlerini 5 dakikada bir dağıtır (backend/push_cron.py).
   # PUSH_DISPATCH_SECRET deploy/.env.api'de tanımlı değilse kapalı bekler, hata vermez.
   push-cron:
+    logging: *default-logging
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -54,6 +70,7 @@ services:
   # Hız sınırı ve sohbet kotası sayaçları (backend/redis_client.py). Yalnızca iç ağdan erişilir, dışarı port açılmaz.
   # AOF açık: yeniden başlatmada sayaçlar korunur. Sayaçların hepsi süreli anahtardır; 128 MB çok fazlasıyla yeter.
   redis:
+    logging: *default-logging
     image: redis:7-alpine
     command:
       - redis-server
@@ -73,6 +90,7 @@ services:
       retries: 3
 
   web:
+    logging: *default-logging
     build:
       context: .
       dockerfile: deploy/Dockerfile.web

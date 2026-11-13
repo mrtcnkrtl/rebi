@@ -35,6 +35,9 @@ jobs:
         working-directory: backend
         run: python -m pytest -q -m "not slow"
 
+      - name: nginx ayarı (canlı imajla nginx -t)
+        run: bash scripts/check_nginx.sh
+
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
@@ -116,3 +119,8 @@ jobs:
               "${compose[@]}" logs --no-color --tail=200 api
               exit 1
             fi
+            # nginx ayarı konteynere dosya olarak bağlı: web imajı değişmediyse konteyner yeniden başlamaz ve yeni ayar
+            # devreye girmez. Önce doğrula, sonra kesintisiz yeniden yükle; doğrulama başarısızsa eski ayar çalışmaya
+            # devam eder ve deploy kırmızı biter.
+            "${compose[@]}" exec -T web nginx -t
+            "${compose[@]}" exec -T web nginx -s reload

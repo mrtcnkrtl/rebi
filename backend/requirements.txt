@@ -14,4 +14,4 @@ openpyxl
 PyJWT[crypto]>=2.8.0
 redis>=5.0.0
 pytest>=8.0.0
-psycopg[binary]>=3.2.0
+psycopg[binary,pool]>=3.2.0

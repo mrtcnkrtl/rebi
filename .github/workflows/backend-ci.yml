@@ -12,12 +12,18 @@ on:
       - 'backend/**'
       - 'contract/**'
       - 'scripts/smoke_mobile_api.py'
+      - 'scripts/check_nginx.sh'
+      - 'deploy/nginx/**'
+      - 'docker-compose*.yml'
       - '.github/workflows/backend-ci.yml'
   pull_request:
     paths:
       - 'backend/**'
       - 'contract/**'
       - 'scripts/smoke_mobile_api.py'
+      - 'scripts/check_nginx.sh'
+      - 'deploy/nginx/**'
+      - 'docker-compose*.yml'
       - '.github/workflows/backend-ci.yml'
   workflow_dispatch:
 
@@ -46,3 +52,10 @@ jobs:
       - name: Testler
         working-directory: backend
         run: python -m pytest -q -m "not slow"
+
+      # Canlıdaki nginx imajıyla ayar doğrulaması + compose dosyalarının birleşik hâli geçerli mi.
+      - name: nginx ve compose ayarları
+        run: |
+          bash scripts/check_nginx.sh
+          mkdir -p deploy && touch deploy/.env.api
+          docker compose -f docker-compose.yml -f docker-compose.https.yml config --quiet

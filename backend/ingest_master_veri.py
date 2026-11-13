@@ -142,7 +142,7 @@ def _write_records(records: list[dict], *, user_id: str, embed: bool, embed_mode
     embedded = 0
     failed = 0
 
-    with psycopg.connect(dsn, autocommit=True, prepare_threshold=0) as conn:
+    with psycopg.connect(dsn, autocommit=True, prepare_threshold=None) as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """

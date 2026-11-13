@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import hashlib
+import time
 from typing import Literal
 from pathlib import Path
 from urllib.parse import quote_plus
@@ -129,6 +130,24 @@ def _split_sql_statements(sql: str) -> list[str]:
     return parts
 
 
+# Rastgele ama sabit bir anahtar: yalnızca migration uygulayıcıları bu kilidi kullanır.
+MIGRATION_LOCK_KEY = 7_311_204_118
+MIGRATION_LOCK_WAIT_SECONDS = 90
+
+
+def _acquire_migration_lock(cur, wait_seconds: float = MIGRATION_LOCK_WAIT_SECONDS, sleep=time.sleep) -> bool:
+    """Oturum düzeyinde danışma kilidi; en fazla `wait_seconds` bekler (bloklayan kilit sonsuza dek bekleyebilir)."""
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        cur.execute("select pg_try_advisory_lock(%s)", (MIGRATION_LOCK_KEY,))
+        row = cur.fetchone()
+        if row and row[0]:
+            return True
+        if time.monotonic() >= deadline:
+            return False
+        sleep(1.0)
+
+
 def ensure_daily_events_schema() -> Literal["skipped", "ok", "error"]:
     """
     supabase/migrations/*.sql dosyalarını ada göre sırayla uygular (CREATE IF NOT EXISTS, RLS vb.).
@@ -164,8 +183,17 @@ def ensure_daily_events_schema() -> Literal["skipped", "ok", "error"]:
         return "error"
 
     try:
-        with psycopg.connect(dsn, autocommit=True) as conn:
+        with psycopg.connect(dsn, autocommit=True, connect_timeout=20) as conn:
             with conn.cursor() as cur:
+                # API birden fazla işçiyle açılır; hepsi bu fonksiyonu aynı anda çağırır. Kilidi alan uygular,
+                # diğerleri bekler ve ardından her şeyi "zaten uygulanmış" bulur. Oturum kilidi bağlantı
+                # kapanınca kendiliğinden düşer (çöken işçi kilidi tutamaz).
+                if not _acquire_migration_lock(cur):
+                    log.warning(
+                        "Migration kilidi %d sn içinde alınamadı (başka bir süreç uyguluyor olabilir); atlandı.",
+                        MIGRATION_LOCK_WAIT_SECONDS,
+                    )
+                    return "skipped"
                 cur.execute(
                     """
                     create table if not exists public.rebi_schema_migrations (

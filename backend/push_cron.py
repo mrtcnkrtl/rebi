@@ -61,6 +61,8 @@ def dispatch_once(url: str, secret: str, opener=urllib.request.urlopen) -> dict 
 def describe(result: dict, max_users_hint: int = 20000) -> str:
     if not result.get("push_configured", True):
         return "sunucuda FCM yapılandırılmamış (FCM_SERVICE_ACCOUNT_JSON); gönderim yok"
+    if result.get("already_running"):
+        return "önceki tur hâlâ sürüyor; bu tur atlandı"
     text = (
         f"kullanıcı={result.get('users_considered', 0)} "
         f"hatırlatıcı={result.get('reminders_sent', 0)} "

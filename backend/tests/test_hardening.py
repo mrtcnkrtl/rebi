@@ -244,6 +244,7 @@ class _FakeConn:
 def test_postgres_connections_are_capped_and_always_released(monkeypatch):
     import psycopg
 
+    monkeypatch.setenv("POSTGRES_POOL", "0")  # havuzsuz yol (betikler ve havuz kapalıyken)
     monkeypatch.setattr(psycopg, "connect", lambda *a, **k: _FakeConn())
     monkeypatch.setattr(pgdb, "postgres_dsn", lambda: "postgresql://x")
     monkeypatch.setattr(pgdb, "_conn_slots", threading.BoundedSemaphore(1))
@@ -264,6 +265,101 @@ def test_postgres_connections_are_capped_and_always_released(monkeypatch):
             raise ValueError("boom")
     with pgdb.pg_conn():
         pass
+
+
+def test_direct_connections_never_use_prepared_statements(monkeypatch):
+    import psycopg
+
+    seen = {}
+
+    def connect(*a, **k):
+        seen.update(k)
+        return _FakeConn()
+
+    monkeypatch.setenv("POSTGRES_POOL", "0")
+    monkeypatch.setattr(psycopg, "connect", connect)
+    monkeypatch.setattr(pgdb, "postgres_dsn", lambda: "postgresql://x")
+    with pgdb.pg_conn():
+        pass
+    # 0 "her sorguyu hazırla" demektir; kapatmak için None gerekir (işlem kipindeki pooler'da hata verir).
+    assert "prepare_threshold" in seen and seen["prepare_threshold"] is None
+
+
+def test_pool_budget_is_split_across_workers(monkeypatch):
+    monkeypatch.setenv("POSTGRES_MAX_CONCURRENT", "16")
+    monkeypatch.delenv("WEB_CONCURRENCY", raising=False)
+    assert pgdb.pool_max_size() == 16
+    monkeypatch.setenv("WEB_CONCURRENCY", "2")
+    assert pgdb.pool_max_size() == 8
+    monkeypatch.setenv("WEB_CONCURRENCY", "3")
+    assert pgdb.pool_max_size() == 6
+    monkeypatch.setenv("WEB_CONCURRENCY", "40")
+    assert pgdb.pool_max_size() == 2, "işçi başına en az 2"
+
+
+class _FakePool:
+    def __init__(self, timeout=False):
+        self.borrowed = 0
+        self.returned = 0
+        self.timeout = timeout
+
+    def connection(self):
+        pool = self
+        from contextlib import contextmanager
+
+        @contextmanager
+        def cm():
+            if pool.timeout:
+                from psycopg_pool import PoolTimeout
+
+                raise PoolTimeout("dolu")
+            pool.borrowed += 1
+            try:
+                yield _FakeConn()
+            finally:
+                pool.returned += 1
+
+        return cm()
+
+
+def test_request_path_reuses_pooled_connections(monkeypatch):
+    import psycopg
+
+    def no_direct(*a, **k):
+        raise AssertionError("havuz açıkken autocommit sorguları yeni bağlantı açmamalı")
+
+    fake = _FakePool()
+    monkeypatch.delenv("POSTGRES_POOL", raising=False)
+    monkeypatch.setattr(psycopg, "connect", no_direct)
+    monkeypatch.setattr(pgdb, "_get_pool", lambda: fake)
+    for _ in range(3):
+        with pgdb.pg_conn():
+            pass
+    with pytest.raises(ValueError):
+        with pgdb.pg_conn():
+            raise ValueError("boom")
+    assert fake.borrowed == 4 and fake.returned == 4, "hata olsa da bağlantı havuza döner"
+
+
+def test_pool_exhaustion_is_reported_like_the_old_queue(monkeypatch):
+    monkeypatch.delenv("POSTGRES_POOL", raising=False)
+    monkeypatch.setattr(pgdb, "_get_pool", lambda: _FakePool(timeout=True))
+    with pytest.raises(RuntimeError, match="sırası dolu"):
+        with pgdb.pg_conn():
+            pass
+
+
+def test_transactions_bypass_the_pool(monkeypatch):
+    import psycopg
+
+    opened = []
+    monkeypatch.delenv("POSTGRES_POOL", raising=False)
+    monkeypatch.setattr(psycopg, "connect", lambda *a, **k: opened.append(k) or _FakeConn())
+    monkeypatch.setattr(pgdb, "postgres_dsn", lambda: "postgresql://x")
+    monkeypatch.setattr(pgdb, "_get_pool", lambda: (_ for _ in ()).throw(AssertionError("havuz kullanılmamalı")))
+    with pgdb.pg_conn(autocommit=False):
+        pass
+    assert opened and opened[0]["autocommit"] is False
 
 
 # ── Token kullanım günlüğü ───────────────────────────────────────────────────────────────────────

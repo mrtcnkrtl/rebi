@@ -95,6 +95,7 @@ from plus_chat_quota import (
 )
 from chat_quota import reserve_chat_turn
 from redis_client import redis_status
+import shared_state
 from db_integrity import get_integrity, refresh_in_background as _refresh_db_integrity, summary_nowait
 from demo_users import (
     demo_checkin_already_today,
@@ -212,6 +213,17 @@ _DB_SCHEMA_STATUS = "unknown"
 @app.on_event("startup")
 async def _configure_threadpool() -> None:
     await configure_threadpool()
+
+
+@app.on_event("shutdown")
+def _close_postgres_pool() -> None:
+    """Deploy/yeniden başlatmada havuzdaki bağlantılar düzgün kapansın (Supavisor'da yarım oturum kalmasın)."""
+    try:
+        from knowledge.db import close_pool
+
+        close_pool()
+    except Exception as e:
+        log.warning("Postgres havuzu kapatılamadı (yok sayılıyor): %s", e)
 
 
 @app.on_event("startup")
@@ -1550,20 +1562,26 @@ class PushDispatchResponse(BaseModel):
     users_skipped: int = 0
     # Süre bütçesi ya da `max_users` yüzünden tur bitmedi; kalan kullanıcılar sonraki turda devam eder.
     truncated: bool = False
+    # Başka bir tur (başka işçide) hâlâ sürüyordu; bu çağrı hiçbir şey göndermeden döndü.
+    already_running: bool = False
 
 
-# Son dağıtım turunun özeti (bellekte): /health izleyicisi dağıtımın çalışıp çalışmadığını görsün.
+# Son dağıtım turunun özeti: /health izleyicisi dağıtımın çalışıp çalışmadığını görsün. API çok işçiyle
+# çalıştığı için özet Redis'te tutulur (shared_state); bu sözlük Redis yokken/erişilemezken süreç içi yedektir.
 _PUSH_LAST_RUN: dict = {}
 
-# Dağıtıcı 5 dakikada bir çalışır; bu süreden eski son tur "çalışmıyor" sayılır. Özet bellekte tutulur
-# (API tek süreç: uvicorn varsayılanı); çok işçili çalıştırılırsa Redis'e taşınmalı.
+# Dağıtıcı 5 dakikada bir çalışır; bu süreden eski son tur "çalışmıyor" sayılır.
 _PUSH_DISPATCH_ALIVE_MINUTES = 20
 
 
+def _push_last_run() -> dict:
+    return shared_state.get_json("push_last_run", _PUSH_LAST_RUN)
+
+
 def _dispatch_alive() -> bool:
-    """Push dağıtıcısı yakın zamanda tur attı mı? (Süreç yeniden başlayınca ilk turdan sonra yeniden doğru olur.)"""
+    """Push dağıtıcısı yakın zamanda tur attı mı? (Hangi işçide çalıştığından bağımsız.)"""
     try:
-        at = datetime.fromisoformat(str(_PUSH_LAST_RUN.get("at")))
+        at = datetime.fromisoformat(str(_push_last_run().get("at")))
     except (TypeError, ValueError):
         return False
     if at.tzinfo is None:
@@ -1736,7 +1754,7 @@ async def health():
         # Canlı DB öz-denetimi (eksik indeks/fonksiyon, retention cron'u). Önbellekten döner, DB'yi beklemez.
         "db_integrity": summary_nowait(),
         "push": "configured" if push_configured() else "off",
-        "push_dispatch": _PUSH_LAST_RUN or None,
+        "push_dispatch": (await run_sync(_push_last_run)) or None,
         "db_schema": _DB_SCHEMA_STATUS,
     }
     if not auth_valid:
@@ -2534,7 +2552,7 @@ def device_unregister(
 _PUSH_PAGE_USERS = 100
 _PUSH_SEND_CONCURRENCY = 10
 _PUSH_WEATHER_CONCURRENCY = 8
-# Bütçe aşılmış turun kaldığı yer (bellekte; tek süreç). None: sıradaki tur baştan başlar.
+# Bütçe aşılmış turun kaldığı yer (Redis'te, işçiler arası; bu sözlük süreç içi yedek). None: sıradaki tur baştan başlar.
 _PUSH_CURSOR: dict = {"after": None}
 
 
@@ -2914,10 +2932,27 @@ def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=50000))
     if not supabase:
         raise HTTPException(status_code=503, detail="Supabase bağlantısı yok")
 
+    # Aynı anda tek tur: iki işçi aynı imleçten başlayıp aynı sayfaları eşzamanlı işlemesin. Çöken bir turun
+    # kilidi süre bütçesi + pay kadar sonra kendiliğinden düşer.
+    with shared_state.single_run("push_dispatch", int(_push_budget_seconds()) + 120) as acquired:
+        if not acquired:
+            log.warning("Push dağıtımı atlandı: önceki tur hâlâ sürüyor.")
+            return PushDispatchResponse(
+                users_considered=0,
+                reminders_sent=0,
+                notifications_sent=0,
+                invalid_tokens_removed=0,
+                push_configured=True,
+                already_running=True,
+            )
+        return _push_dispatch_round(supabase, max_users)
+
+
+def _push_dispatch_round(supabase, max_users: int) -> PushDispatchResponse:
     started = _push_clock()
     budget = _push_budget_seconds()
     totals = {"considered": 0, "skipped": 0, "reminders": 0, "notifications": 0, "invalid": 0, "failed": 0}
-    after = _PUSH_CURSOR.get("after")
+    after = shared_state.get_json("push_cursor", _PUSH_CURSOR).get("after")
     truncated = False
     first_page = True
     while True:
@@ -2942,7 +2977,7 @@ def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=50000))
         after = last_uid
 
     # Tur tamamlandıysa baştan, yarım kaldıysa kaldığı kullanıcıdan devam.
-    _PUSH_CURSOR["after"] = after if truncated else None
+    shared_state.set_json("push_cursor", {"after": after if truncated else None}, _PUSH_CURSOR, ttl_seconds=6 * 3600)
 
     summary = PushDispatchResponse(
         users_considered=totals["considered"],
@@ -2954,8 +2989,7 @@ def push_dispatch(request: Request, max_users: int = Query(200, ge=1, le=50000))
         users_skipped=totals["skipped"],
         truncated=truncated,
     )
-    # clear() kullanılmaz: /health başka iş parçacığında okurken sözlük bir an boş görünmesin (anahtarlar her turda aynı).
-    _PUSH_LAST_RUN.update(summary.model_dump(), at=_utc_now_iso())
+    shared_state.set_json("push_last_run", {**summary.model_dump(), "at": _utc_now_iso()}, _PUSH_LAST_RUN, ttl_seconds=7 * 86400)
     log.info(
         "Push dağıtımı: kullanıcı=%d hatırlatıcı=%d bildirim=%d geçersiz_token=%d başarısız=%d atlanan=%d süre=%.1fsn",
         summary.users_considered, summary.reminders_sent, summary.notifications_sent,
