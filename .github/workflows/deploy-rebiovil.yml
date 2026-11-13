@@ -33,7 +33,7 @@ jobs:
 
       - name: Backend testleri
         working-directory: backend
-        run: python -m pytest -q -m "not slow"
+        run: bash ../scripts/run_backend_tests.sh
 
       - name: nginx ayarı (canlı imajla nginx -t)
         run: bash scripts/check_nginx.sh

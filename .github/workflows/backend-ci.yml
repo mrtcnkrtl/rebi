@@ -51,7 +51,7 @@ jobs:
 
       - name: Testler
         working-directory: backend
-        run: python -m pytest -q -m "not slow"
+        run: bash ../scripts/run_backend_tests.sh
 
       # Canlıdaki nginx imajıyla ayar doğrulaması + compose dosyalarının birleşik hâli geçerli mi.
       - name: nginx ve compose ayarları
