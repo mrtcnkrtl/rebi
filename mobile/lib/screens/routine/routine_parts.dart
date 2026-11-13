@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/i18n.dart';
 import '../../core/routine_logic.dart';
@@ -9,8 +13,55 @@ import '../../state/theme_controller.dart';
 import '../../ui/brand/glyphs.dart';
 import '../../ui/brand/palette.dart';
 import '../../ui/tw.dart';
+import '../../state/auth_controller.dart';
 import '../../ui/widgets/common.dart';
 import '../today/today_widgets.dart';
+
+/// Eski kayıtlarda `diff` yoksa seçenek kimliğinden gelen üç kelime.
+const _choiceDiff = {
+  'alfa_arbutin': 'yaygın, iyi tolere',
+  'hexylresorcinol': 'düşük dozda güçlü',
+  'licorice': 'en nazik seçenek',
+  'niacinamide_txa': 'melazmaya güçlü destek',
+  'nag_niacinamide': 'nazik ton eşitleme',
+  'glycolic': 'hızlı, biraz tahriş',
+  'mandelic': 'yavaş, az tahriş',
+  'pha': 'en nazik asit',
+  'benzoyl': 'güçlü ama kurutur',
+  'sulfur': 'nazik, kokusu belirgin',
+  'azelaic': 'akne ve kızarıklık',
+  'vitamin_c': 'en güçlü antioksidan',
+  'green_tea': 'nazik sebum desteği',
+  'toco_ferulic': 'hafif sabah antioksidanı',
+  'niacinamide': 'sebum ve bariyer',
+  'undereye_vitc': 'kahverengi koyuluğa iyi',
+  'caffeine': 'morluk ve şişlik',
+  'undereye_niacinamide': 'ince ciltte nazik',
+  'undereye_licorice': 'nazik pigment açıcı',
+  'undereye_arbutin': 'pigment kaynaklı koyuluk',
+  'undereye_nag': 'düşük dozda nazik',
+  'mineral': 'hassas ciltte güvenli',
+  'chemical': 'hafif, yağlı cilt',
+  'hybrid': 'ince dengeli koruma',
+  'tinted': 'lekeye renkli koruma',
+  'single': 'aynı üründe ikisi',
+  'sequence': 'iki adım sırayla',
+};
+
+List<Map<String, dynamic>> stepChoices(RoutineItem item) {
+  final raw = item['choices'];
+  if (raw is! List) return const [];
+  return [
+    for (final c in raw)
+      if (c is Map && str(c['id']).isNotEmpty) Map<String, dynamic>.from(c),
+  ];
+}
+
+String choiceDiffText(Map choice) {
+  final fromItem = str(choice['diff']).trim();
+  if (fromItem.isNotEmpty) return fromItem;
+  return _choiceDiff[str(choice['id'])] ?? '';
+}
 
 /// Rutin ekranı parçalarının ortak bağlamı.
 class RoutineCtx {
@@ -90,6 +141,111 @@ class RoutineStepTile extends StatefulWidget {
 
 class _RoutineStepTileState extends State<RoutineStepTile> {
   bool _open = false;
+  String? _picked;
+
+  List<Map<String, dynamic>> get _choices => stepChoices(widget.item);
+
+  @override
+  void initState() {
+    super.initState();
+    final preset = str(widget.item['chosen_option_id']);
+    if (preset.isNotEmpty) _picked = preset;
+    if (_choices.length >= 2) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _loadPick();
+      });
+    }
+  }
+
+  String get _storeKey {
+    final uid = context.read<AuthController>().user?.id ?? 'anon';
+    return 'rebi_step_choices_$uid';
+  }
+
+  String get _choiceKey {
+    final key = str(widget.item['choice_key']);
+    if (key.isNotEmpty) return key;
+    final ids = _choices.map((c) => str(c['id'])).join('|');
+    return '${str(widget.item['time'])}|${str(widget.item['step_order'])}|$ids';
+  }
+
+  Future<void> _loadPick() async {
+    final storeKey = _storeKey;
+    final choiceKey = _choiceKey;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(storeKey);
+      if (!mounted || raw == null || raw.isEmpty) return;
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return;
+      final saved = str(decoded[choiceKey]);
+      if (saved.isEmpty || !_choices.any((c) => str(c['id']) == saved)) return;
+      setState(() => _picked = saved);
+    } catch (_) {}
+  }
+
+  Future<void> _savePick(String? id) async {
+    final storeKey = _storeKey;
+    final choiceKey = _choiceKey;
+    setState(() => _picked = id);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(storeKey);
+      final store = <String, dynamic>{};
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) store.addAll(decoded.map((k, v) => MapEntry(k.toString(), v)));
+      }
+      if (id == null || id.isEmpty) {
+        store.remove(choiceKey);
+      } else {
+        store[choiceKey] = id;
+      }
+      await prefs.setString(storeKey, jsonEncode(store));
+    } catch (_) {}
+  }
+
+  String _title() {
+    final hit = _choices.where((c) => str(c['id']) == _picked);
+    if (hit.isNotEmpty) {
+      final action = str(hit.first['action']);
+      if (action.isNotEmpty) return action;
+    }
+    return pickAction(widget.item, localized: widget.ctx.localized);
+  }
+
+  Widget _choiceChip(Map<String, dynamic> choice, RebiTheme theme) {
+    final id = str(choice['id']);
+    final on = id == _picked;
+    final diff = choiceDiffText(choice);
+    final label = str(choice['label']).isNotEmpty ? str(choice['label']) : str(choice['action']);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => _savePick(on ? null : id),
+        child: Container(
+          constraints: const BoxConstraints(minWidth: 132, maxWidth: 220),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: on ? theme.primary.withValues(alpha: .1) : Tw.surface,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: on ? theme.primary : Tw.gray200, width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label, style: tx(12.5, w: 6, c: on ? theme.fg : Tw.gray900, h: snug)),
+              if (diff.isNotEmpty) ...[
+                const SizedBox(height: 2),
+                Text(diff, style: tx(11, w: 5, c: Tw.gray500, h: snug)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +257,7 @@ class _RoutineStepTileState extends State<RoutineStepTile> {
     final usage = routineStepUsage(item, i18n);
     final detail = pickDetail(item, localized: c.localized);
     final hasMore = detail.isNotEmpty || usage.isNotEmpty;
-    final action = str(item['action']);
+    final action = _title();
     final actionLower = action.toLowerCase();
     // "Nemlendirici: seramid + skualan" gibi satırlar bir hedef içerik örneğidir; tek üründe hepsi aranmaz.
     final comboHint = skincare &&
@@ -158,6 +314,18 @@ class _RoutineStepTileState extends State<RoutineStepTile> {
                     padding: const EdgeInsets.only(top: 4),
                     child: Text(pickAction(item, localized: c.localized), style: tx(16, w: 6, c: Tw.gray900, h: 1.3)),
                   ),
+                  if (_choices.length >= 2) ...[
+                    const SizedBox(height: 8),
+                    Text(i18n.t('dashboard.stepChoicesTitle'), style: tx(11, w: 5, c: Tw.gray500)),
+                    const SizedBox(height: 6),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final ch in _choices) _choiceChip(ch, theme),
+                      ],
+                    ),
+                  ],
                   StructuredBadges(item: item),
                   if (comboHint) ...[
                     const SizedBox(height: 6),

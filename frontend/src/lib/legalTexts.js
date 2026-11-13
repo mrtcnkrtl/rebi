@@ -110,8 +110,102 @@ const EN_RIZA = [
   },
 ];
 
+const TR_PRE = [
+  {
+    title: "1. Satıcı ve hizmet",
+    body: "Rebi Plus, Rebi’yi işleten A3 Biyoteknoloji’nin sunduğu dijital aboneliktir. Kapsam: sınırsız sohbet, premium temalar ve Plus hesabına bağlı özellikler. Satıcıyla iletişim uygulama içi Profil ekranı ve hesap e-postası üzerinden kurulur.",
+  },
+  {
+    title: "2. Bedel ve süre",
+    body: "Fiyat, para birimi, vergi ve yenileme dönemi ödeme sayfasında, tahsilattan önce gösterilir. Bu form tutarı sabitlemez. Ödeme sayfası, aşağıdaki onaylar kayda geçmeden açılmaz.",
+  },
+  {
+    title: "3. İfa",
+    body: "Hizmet elektronik ortamda sunulur ve ödemenin onayından sonra hesaba tanımlanır.",
+  },
+  {
+    title: "4. Cayma",
+    body: "Tüketici, mesafeli dijital hizmetlerde mevzuattaki süre içinde cayma hakkını kullanabilir. Hizmetin derhal başlamasını ayrıca ister ve ifa başlarsa cayma hakkı ilgili istisna kapsamında sınırlanabilir.",
+  },
+  {
+    title: "5. Başvuru",
+    body: "Şikâyet ve talepler Profil üzerinden veya hesap e-postasıyla iletilir. Uyuşmazlıklarda tüketici hakem heyetleri ve tüketici mahkemeleri yetkilidir.",
+  },
+];
+
+const EN_PRE = [
+  {
+    title: "1. Seller and service",
+    body: "Rebi Plus is a digital subscription from A3 Biyoteknoloji, which operates Rebi. It covers unlimited chat, premium themes and features tied to a Plus account. Contact is through the in-app Profile screen and the account email.",
+  },
+  {
+    title: "2. Price and term",
+    body: "Price, currency, tax and renewal period are shown on the payment page before any charge. This form does not fix the amount. The payment page does not open until the approvals below are recorded.",
+  },
+  {
+    title: "3. Performance",
+    body: "The service is provided electronically and is applied to the account after payment is confirmed.",
+  },
+  {
+    title: "4. Withdrawal",
+    body: "A consumer may withdraw from a distance contract for a digital service within the statutory period. If you separately ask the service to start immediately and performance begins, withdrawal may be limited under the applicable exception.",
+  },
+  {
+    title: "5. Complaints",
+    body: "Requests go through Profile or the account email. Consumer arbitration committees and consumer courts have jurisdiction over disputes.",
+  },
+];
+
+const TR_DISTANCE = [
+  {
+    title: "1. Taraflar",
+    body: "Alıcı, Rebi hesabının sahibidir. Satıcı, Rebi’yi işleten A3 Biyoteknoloji’dir. İletişim: uygulama içi Profil ve hesap e-postası.",
+  },
+  {
+    title: "2. Konu",
+    body: "Konu, Rebi Plus dijital aboneliğinin satışı ve elektronik ortamda ifasıdır. Özellikler ön bilgilendirme formunda sayılır.",
+  },
+  {
+    title: "3. Bedel",
+    body: "Bedel, ödeme sayfasında tahsilattan önce açıklanan tutardır. Onaylar kayda geçmeden o sayfa açılmaz.",
+  },
+  {
+    title: "4. Derhal başlama",
+    body: "Alıcı, bu sözleşmeyi ön bilgilendirmeden ayrı onaylar ve dijital hizmetin ödeme onayından hemen sonra başlamasını talep eder. İfa başladığında cayma hakkı mevzuattaki istisnayla sınırlanabilir; aksi halde yasal cayma süresi geçerlidir.",
+  },
+  {
+    title: "5. Kayıt",
+    body: "Onay, ödeme sayfasına geçmeden önce satıcının kaydına yazılır. Hesap silindiğinde bu kayıt, diğer kişisel verilerle birlikte silinir.",
+  },
+];
+
+const EN_DISTANCE = [
+  {
+    title: "1. Parties",
+    body: "The buyer is the holder of the Rebi account. The seller is A3 Biyoteknoloji, which operates Rebi. Contact is the in-app Profile screen and the account email.",
+  },
+  {
+    title: "2. Subject",
+    body: "The subject is the sale and electronic performance of the Rebi Plus digital subscription. Features are listed in the pre-contract information form.",
+  },
+  {
+    title: "3. Price",
+    body: "The price is the amount shown on the payment page before the charge. That page does not open until the approvals are recorded.",
+  },
+  {
+    title: "4. Immediate start",
+    body: "The buyer accepts this contract separately from the pre-contract information and asks the digital service to start as soon as payment is confirmed. Once performance begins, withdrawal may be limited by the statutory exception; otherwise the statutory withdrawal period applies.",
+  },
+  {
+    title: "5. Record",
+    body: "The approval is written to the seller’s record before the payment page opens. When the account is deleted, this record is deleted with the other personal data.",
+  },
+];
+
 export function legalSections(kind, lang) {
   const en = String(lang || "").toLowerCase().startsWith("en");
   if (kind === "riza") return en ? EN_RIZA : TR_RIZA;
+  if (kind === "onbilgi") return en ? EN_PRE : TR_PRE;
+  if (kind === "mesafeli") return en ? EN_DISTANCE : TR_DISTANCE;
   return en ? EN_KVKK : TR_KVKK;
 }

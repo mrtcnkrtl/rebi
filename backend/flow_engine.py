@@ -81,6 +81,7 @@ Mimari:
     └───────────────┘
 """
 
+import contextvars
 import re
 from typing import Optional
 
@@ -138,6 +139,14 @@ def _apply_niacinamide_pct_to_routine_items(items: list, pct: str) -> None:
                 continue
             v2 = re.sub(r"(?i)\bNiacinamide\s*%5\b", f"Niacinamide %{pct}", v)
             it[k] = re.sub(r"(?i)\bNiasinamid\s*%5\b", f"Niasinamid %{pct}", v2)
+        _map_choice_actions(
+            it,
+            lambda a: re.sub(
+                r"(?i)\bNiasinamid\s*%5\b",
+                f"Niasinamid %{pct}",
+                re.sub(r"(?i)\bNiacinamide\s*%5\b", f"Niacinamide %{pct}", a),
+            ),
+        )
 
 
 def _apply_niacinamide_pct_to_skin_profile(skin_type: dict, pct: str) -> None:
@@ -216,16 +225,22 @@ def _apply_active_strength_ramp(items: list, stage: str) -> None:
                 _aha_repl,
                 out,
             )
+        # Mandelik, PHA, sülfür ve diğer yeni etkenler burada yeniden yazılmaz.
+        # Tek kademe iniş, rutin kurulurken `_emitted_tier` ile yapılır.
         return out
 
     for it in items or []:
         if it.get("category") != "Bakım":
             continue
         families = _strong_actives_families_for_item(it)
+        for ch in it.get("choices") or []:
+            if isinstance(ch, dict):
+                families = families | _strong_actives_families_for_item({"action": ch.get("action")})
         if not families:
             continue
         for k in ("action", "detail"):
             it[k] = _ramp_text(it.get(k), families)
+        _map_choice_actions(it, lambda a, f=families: _ramp_text(a, f))
         it.setdefault("ramp_stage", stage)
 
 
@@ -297,6 +312,14 @@ CONCERN_KNOWLEDGE_MAP = {
         "treatment_kategori": "Tedavi Ajanı",
         "treatment_alt_kategoriler": ["Uzman Görüşü"],
         "flow_nodes": [],
+    },
+    "undereye": {
+        "label_tr": "Göz Altı Koyuluğu",
+        "primary_kategori": "Tedavi Ajanı",
+        "primary_alt_kategoriler": ["Mekanizma", "Klinik Etkinlik"],
+        "treatment_kategori": "Tedavi Ajanı",
+        "treatment_alt_kategoriler": ["Kanıt Seviyesi"],
+        "flow_nodes": ["Göz altı", "Mor halka", "Kafein"],
     },
 }
 
@@ -377,48 +400,48 @@ def classify_age_group(age: int) -> dict:
 SKIN_TYPE_PROFILES = {
     "oily": {
         "label_tr": "Yağlı",
-        "moisturizer_type": "Niasinamid %5 + Hyaluronik asit (hafif jel)",
+        "moisturizer_type": "Dimetikon %0.5-2 nefes alan film",
         "cleanser_type": "Yüzey aktif (SLES-free) köpük temizleyici",
         "avoid_ingredients": ["ağır yağlar", "vazelin", "mineral yağ"],
         "prefer_ingredients": ["niasinamid", "salisilik asit", "çay ağacı"],
         "spf_type": "mat bitişli, yağsız SPF",
-        "night_cream": "Niasinamid %5 + HA (hafif jel, gece)",
+        "night_cream": "Linoleik asit %1-2.5",
     },
     "dry": {
         "label_tr": "Kuru",
-        "moisturizer_type": "Seramid %2-5 + Squalane + Kolesterol (bariyer kremi)",
+        "moisturizer_type": "Dimetikon %1-5 nefes alan film",
         "cleanser_type": "Krem bazlı nazik temizleyici (sülfat-free)",
         "avoid_ingredients": ["alkol bazlı tonikler", "sodyum lauril sülfat"],
         "prefer_ingredients": ["hyaluronik asit", "seramid", "squalane", "shea yağı"],
         "spf_type": "nemlendirici özellikli SPF",
-        "night_cream": "Seramid %2-5 + Kolesterol + Yağ asidi (3:1:1 oran, gece onarım)",
+        "night_cream": "gama linolenik asit (GLA) %0.1-1 saf GLA eşdeğeri; hodan / çuha çiçeği yağı",
     },
     "combination": {
         "label_tr": "Karma",
-        "moisturizer_type": "Niasinamid %5 + Hyaluronik asit (hafif losiyon/jel-krem)",
+        "moisturizer_type": "Dimetikon %0.5-2 nefes alan film",
         "cleanser_type": "Dengeli pH (5.5) jel temizleyici",
         "avoid_ingredients": ["çok ağır kremler"],
         "prefer_ingredients": ["niasinamid", "hyaluronik asit"],
         "spf_type": "hafif SPF",
-        "night_cream": "Seramid %1-2 + HA (orta yoğunluk, gece)",
+        "night_cream": "gama linolenik asit (GLA) %0.05-0.5 saf GLA eşdeğeri; hodan / çuha çiçeği yağı",
     },
     "normal": {
         "label_tr": "Normal",
-        "moisturizer_type": "Peptid (Matrixyl/Argireline) + Hyaluronik asit",
+        "moisturizer_type": "Dimetikon %0.5-2 nefes alan film",
         "cleanser_type": "Nazik jel temizleyici (sülfat-free)",
         "avoid_ingredients": [],
         "prefer_ingredients": ["antioksidanlar", "peptidler"],
         "spf_type": "geniş spektrumlu SPF",
-        "night_cream": "Peptid kompleks + Seramid %1-2 (gece)",
+        "night_cream": "gama linolenik asit (GLA) %0.05-0.5 saf GLA eşdeğeri; hodan / çuha çiçeği yağı",
     },
     "sensitive": {
         "label_tr": "Hassas",
-        "moisturizer_type": "Centella (Cica) %1 + Seramid %2 + Panthenol %5 (bariyer)",
-        "cleanser_type": "Misel su veya süt bazlı temizleyici",
+        "moisturizer_type": "Dimetikon %0.5-2 nefes alan film",
+        "cleanser_type": "Süt bazlı nazik temizleyici (sülfat-free)",
         "avoid_ingredients": ["parfüm", "alkol", "esansiyel yağlar", "retinol (yüksek doz)"],
         "prefer_ingredients": ["centella", "allantoin", "panthenol", "bisabolol"],
         "spf_type": "Mineral SPF (çinko oksit)",
-        "night_cream": "Centella (Cica) + Seramid %2-5 + Bisabolol (onarım)",
+        "night_cream": "gama linolenik asit (GLA) %0.05-0.5 saf GLA eşdeğeri; hodan / çuha çiçeği yağı",
     },
 }
 
@@ -478,7 +501,13 @@ def _strong_actives_families_for_item(item: dict) -> set:
         out.add("retinol")
     if any(k in t for k in ("salisilik", "salicylic", "bha")):
         out.add("bha")
-    if any(k in t for k in ("glikolik", "glycolic", "laktik asit", "lactic acid", " aha", "aha %")):
+    if any(
+        k in t
+        for k in (
+            "glikolik", "glycolic", "laktik asit", "lactic acid", " aha", "aha %",
+            "mandelik", "mandelic", "glukonolakton", "gluconolactone", "polihidroksi",
+        )
+    ):
         out.add("aha")
     if "benzoil" in t or "benzoyl" in t:
         out.add("benzoyl")
@@ -488,8 +517,10 @@ def _strong_actives_families_for_item(item: dict) -> set:
         out.add("vitamin_c")
     if "bakuchiol" in t:
         out.add("bakuchiol")
-    if any(k in t for k in ("arbutin", "traneksamik", "tranexamic")):
+    if any(k in t for k in ("arbutin", "traneksamik", "tranexamic", "heksilrezorsinol", "hexylresorcinol")):
         out.add("pigment")
+    if any(k in t for k in ("sülfür", "sulfur", "kükürt")):
+        out.add("sulfur")
     if "niasinamid" in t or "niacinamide" in t:
         out.add("niacinamide")
     return out
@@ -532,136 +563,8 @@ def _extract_strength_pct_from_text(text: str) -> Optional[str]:
     return m.group(1).replace(" ", "")
 
 
-_CHOICE_CANONICAL_KEEP = (
-    "3:1:1",
-    "cef",
-    "ferulik",
-    "tokoferol",
-)
-_CHOICE_VEYA_SKIP = (
-    "göre",
-    "sonra",
-    "daha",
-    "haftada",
-    "gerekirse",
-    "hekim",
-    "eczane",
-    "check-in",
-    "sırayla",
-    "tek formül",
-    "tek formul",
-)
-
-
-def _strip_trailing_paren(text: str) -> str:
-    return re.sub(r"\s*\([^)]*\)\s*$", "", text or "").strip()
-
-
-def _short_choice_label(part: str) -> str:
-    cleaned = re.sub(r"\s*\([^)]*\)", "", part or "").strip()
-    return cleaned or (part or "").strip()
-
-
-def _split_plus_parts(text: str) -> list:
-    body = _strip_trailing_paren(text)
-    return [p.strip() for p in re.split(r"\s*\+\s*", body) if p.strip()]
-
-
-def _choice_pair(id_a, label_a, hint_a, action_a, id_b, label_b, hint_b, action_b) -> list:
-    return [
-        {"id": id_a, "label": label_a, "hint": hint_a, "action": action_a},
-        {"id": id_b, "label": label_b, "hint": hint_b, "action": action_b},
-    ]
-
-
 def choices_for_routine_item(it: dict) -> Optional[list]:
-    """
-    Kullanıcının gerçekten seçebileceği 2 yol varsa kart üretir.
-    CEF / 3:1:1 / 3+ içerikli bariyer formülleri tek ürün olarak kalır.
-    """
-    if not isinstance(it, dict):
-        return None
-    existing = it.get("choices")
-    if isinstance(existing, list) and len(existing) >= 2:
-        return None
-    if it.get("category") not in ("Bakım", "Koruma"):
-        return None
-    action = (it.get("action") or "").strip()
-    if not action:
-        return None
-    al = action.lower()
-
-    if "sırayla veya tek formül" in al or "sirayla veya tek formul" in al:
-        cleaned = re.sub(
-            r"\s*\((?:sırayla veya tek formül|sirayla veya tek formul)\)\s*",
-            "",
-            action,
-            flags=re.I,
-        ).strip()
-        parts = _split_plus_parts(cleaned)
-        if len(parts) >= 2:
-            a_lbl = _short_choice_label(parts[0])
-            b_lbl = _short_choice_label(parts[1])
-            return _choice_pair(
-                "single",
-                "Tek formül",
-                "İkisini aynı üründe ara.",
-                cleaned,
-                "sequence",
-                "Sırayla iki adım",
-                f"Önce {a_lbl}, kuruyunca {b_lbl}.",
-                f"{parts[0]} → sonra {parts[1]}",
-            )
-
-    if any(m in al for m in _CHOICE_CANONICAL_KEEP):
-        return None
-
-    prefix = ""
-    body = action
-    if ":" in action:
-        prefix = action.split(":", 1)[0].strip() + ": "
-        body = action.split(":", 1)[1].strip()
-
-    is_moist = (
-        it.get("step_order") in (30, 35)
-        or al.startswith("nemlendirici")
-        or al.startswith("gece:")
-        or al.startswith("gece (")
-    )
-    if is_moist and "+" in body:
-        parts = _split_plus_parts(body)
-        if len(parts) == 2:
-            a_lbl = _short_choice_label(parts[0])
-            b_lbl = _short_choice_label(parts[1])
-            return _choice_pair(
-                "opt_a",
-                a_lbl,
-                "Bu içeriği öne alan bir nemlendirici seç.",
-                prefix + parts[0],
-                "opt_b",
-                b_lbl,
-                "Bu içeriği öne alan bir nemlendirici seç.",
-                prefix + parts[1],
-            )
-
-    is_cleanser = it.get("step_order") == 10 or "temizleme" in al or "temizleyici" in al
-    if is_cleanser and " veya " in body.lower():
-        if any(tok in body.lower() for tok in _CHOICE_VEYA_SKIP):
-            return None
-        parts = [p.strip() for p in re.split(r"\s+veya\s+", body, maxsplit=1, flags=re.I) if p.strip()]
-        if len(parts) == 2:
-            a_lbl = _short_choice_label(parts[0])
-            b_lbl = _short_choice_label(parts[1])
-            return _choice_pair(
-                "opt_a",
-                a_lbl,
-                "Bu temizleyiciyi kullan.",
-                prefix + parts[0],
-                "opt_b",
-                b_lbl,
-                "Bu temizleyiciyi kullan.",
-                prefix + parts[1],
-            )
+    """Aynı işi gören maddeler menü olmaz. Satırın metni zaten bu kullanıcı için seçilmiş formüldür."""
     return None
 
 
@@ -691,7 +594,7 @@ def attach_structured_fields_to_routine_items(items: list) -> None:
     - active_families: ["bha","retinol",...]
     - strength_pct: "10-15" / "0.25-0.3" / "1"
     - frequency_per_week: weekly_days sayısı
-    - choices: gerçek 2 yollu adımlarda seçilebilir kartlar
+    - choices: yazılmaz; aynı işi gören madde menüsü yok
     """
     for it in items or []:
         cat = it.get("category")
@@ -717,6 +620,19 @@ def _remove_routine_items_by_avoided_families(items: list, avoid: set) -> list:
     out = []
     for it in items:
         if it.get("category") != "Bakım":
+            out.append(it)
+            continue
+        if it.get("choice_group"):
+            it = filter_item_choices(
+                it,
+                lambda c: not (_strong_actives_families_for_item({"action": c.get("action")}) & avoid),
+            )
+            if it is None:
+                continue
+            if not it.get("choice_group"):
+                fam = _strong_actives_families_for_item({"action": it.get("action")})
+                if fam & avoid:
+                    continue
             out.append(it)
             continue
         fam = _strong_actives_families_for_item(it)
@@ -1029,12 +945,12 @@ def _get_preferred_agents(concern: str, level: str, age_group: dict) -> dict:
             avoid = ["Yüksek konsantrasyon retinol (bariyer hassas)"]
 
     elif concern == "pigmentation":
-        prefer = [_fmt("alfa_arbutin", "pigmentation_hafif"), _fmt("traneksamik_asit", "melasma_first_line"), _fmt("niacinamid", "pigmentation_destek")]
-        avoid = []
-        if age_group["retinol_ok"] and level != "hafif":
-            prefer.append(_fmt("retinol", "aging_30_39"))
-        if level in ("orta", "şiddetli"):
-            prefer.append(f"AHA %{min(age_group['aha_max_pct'], 10)}")
+        # Tek leke ürünü: standartta niasinamid+TXA, şiddetlide retinol. Arbutin ve AHA ayrıca yazılmaz.
+        if level == "şiddetli" and age_group.get("retinol_ok"):
+            prefer = [_fmt("retinol", "aging_30_39")]
+        else:
+            prefer = [_fmt("traneksamik_asit", "melasma_first_line"), _fmt("niacinamid", "pigmentation_destek")]
+        avoid = ["Aynı akşamda ikinci leke serumu"]
         if age_group["group"] != "adolescent":
             prefer.insert(0, _fmt("vitamin_c", "pigmentation_genel"))
 
@@ -1068,6 +984,15 @@ def _get_preferred_agents(concern: str, level: str, age_group: dict) -> dict:
         avoid = ["Ağır yağlar", "Aşırı oklüzif katmanlar", "Benzoil peroksit (kurutmasın)"]
         if level == "şiddetli":
             prefer.append(_fmt("salisilik_asit", "acne_hafif"))
+
+    elif concern == "undereye":
+        prefer = [
+            f"C vitamini türevi {_dose('undereye_vitc', 'hassas')}",
+            f"Niasinamid {_dose('undereye_niacinamide', 'hassas')}",
+            f"Kafein {_dose('caffeine_eye')}",
+            f"Meyan kökü ({_dose('licorice', 'hassas')})",
+        ]
+        avoid = ["Göz çevresine güçlü asit", "Yüksek doz retinoid", "Ovalama"]
 
     else:
         prefer = [_fmt("niacinamid", "acne_genel"), _fmt("hyaluronik_asit", "genel")]
@@ -1157,6 +1082,622 @@ def _skin_toco_ferulic() -> str:
     return "Tokoferol (E vitamini) + ferulik asit antioksidan serum"
 
 
+# ══════════════════════════════════════════════════════════════════════
+# 6a. YENİ ETKENLER — ONAYLI DOZ KADEMELERİ (tek kaynak)
+# ══════════════════════════════════════════════════════════════════════
+# Yeni eklenen her etkenin yüzdesi / sıklığı YALNIZCA burada; helper'lar ve testler
+# buradan okur. Kademeler (`dose_tier`):
+#   "hassas"   → hassas cilt, ilk kez aktif (deneyim yok), hassasiyet/rozasea sorunu, göz çevresi
+#   "standart" → diğer durumlar
+#   "yogun"    → şiddet ≥7 + düzenli aktif deneyimi + hassas olmayan cilt + hamile değil
+# Bir etkende kademe tanımlı değilse "standart" kullanılır. `info` satırları doz değildir
+# (hayvan/klinik çalışma rakamları); yalnızca kanıt notu olarak gösterilebilir.
+# `source`: "user" = ürün sahibinin onayladığı değer; "agent" = henüz onaylanmamış geçici değer.
+# Yüksek yaşam riski, deneyimsizlik veya düşük tolerans (`starter`) yeni etkeni de bir kademe
+# düşürür: yogun→standart, standart→hassas, leke→standart. Onaylı bant metni değişmez;
+# alt bant yoksa (hassas taban) yüzde aynı kalır. Madde, etkili olduğu sorunda durur.
+NEW_ACTIVE_DOSES: dict = {
+    "licorice": {
+        "tiers": {
+            "hassas": {"pct": "glabridin %0.03-0.1", "freq": "günde 1 kez, düşük dozla başla"},
+            "standart": {"pct": "glabridin %0.1-0.5", "freq": "günde 1-2 kez"},
+            "yogun": {
+                "pct": "glabridin %0.5-2",
+                "freq": "günde 1 kez",
+                "warning": "Dirençli leke / melazma desteği: tahriş riski artabilir; dermatolog önerisiyle kullan.",
+            },
+        },
+        "info": "Saf glabridin %0.5 hayvan çalışmasında denendi; insan etkinliğini doğrudan göstermez.",
+        "source": "user",
+    },
+    "green_tea": {
+        "tiers": {
+            "hassas": {"pct": "%1 EGCG veya %2 yeşil çay ekstresi", "freq": "günde 1 kez"},
+            "standart": {"pct": "%1-3 EGCG veya %2-5 ekstre", "freq": "günde 1 kez (sabah)"},
+            "yogun": {
+                "pct": "%3-5 EGCG",
+                "freq": "günde 1 kez (sabah)",
+                "warning": "Yüksek EGCG'de tahriş ve kuruluk riski; kızarırsa standart güce dön.",
+            },
+        },
+        "info": "%3 yeşil çay ekstresi 8 haftada sebumda belirgin azalma gösterdi.",
+        "source": "user",
+    },
+    "hexylresorcinol": {
+        # Kullanıcı aralıkları: hassas %0.3-0.5, standart %0.5-1, profesyonel %1-1.1.
+        # AB sınırı: bırakılan (leave-on) ürünlerde en fazla %0.5, durulananlarda %1'e kadar.
+        # Rutin serumu leave-on olduğu için tüm kademeler %0.5 ile sınırlandı.
+        "tiers": {
+            "hassas": {"pct": "%0.3-0.5", "freq": "günde 1 kez"},
+            "standart": {"pct": "%0.5", "freq": "günde 1-2 kez"},
+            "yogun": {"pct": "%0.5", "freq": "günde 1-2 kez"},
+        },
+        "leave_on_cap": "%0.5",
+        "user_ranges": {"hassas": "%0.3-0.5", "standart": "%0.5-1", "yogun": "%1-1.1"},
+        "rinse_off_note": (
+            "Bırakılan serumda AB sınırı %0.5; %1'e kadar olan dozlar yalnızca durulanan ürünlerde, "
+            "%1-1.1 profesyonel karışımlarda kullanılır."
+        ),
+        "source": "user",
+    },
+    "mandelic": {
+        "tiers": {
+            "hassas": {"pct": "%2-5", "freq": "haftada 2-3 gece; tolere edince kademeli artır"},
+            "standart": {"pct": "%5-10", "freq": "başta haftada 2-3 gece; tolere ediliyorsa her gece"},
+            "leke": {"pct": "%8-10", "freq": "haftada 2-3 gece ile başla; sonucu en az 8-12 haftada değerlendir"},
+        },
+        "pregnancy_tier": "hassas",
+        "source": "user",
+    },
+    "pha": {
+        "tiers": {
+            "ilk": {"pct": "%3-5", "freq": "haftada 2-3 akşam"},
+            "hassas": {"pct": "%5-8", "freq": "başta gün aşırı akşam; tolere ediliyorsa her akşam"},
+            "standart": {"pct": "%8-10", "freq": "akşam; sonucu 6-12 haftada değerlendir"},
+            "yagli_hassas": {"pct": "%5-10", "freq": "salisilik asit ile dönüşümlü akşamlarda"},
+        },
+        "lactobionic_alt": "%2-8",
+        "info": "%14 glukonolakton bir akne çalışmasında denendi; rutine genellenemez.",
+        "source": "user",
+    },
+    "sulfur": {
+        "tiers": {
+            "hassas": {"pct": "%2-3", "freq": "haftada 2-3 kez veya günde 1"},
+            "standart": {"pct": "%3-5", "freq": "günde 1-2 kez; tolere ediliyorsa artır"},
+            "yogun": {"pct": "%5-10", "freq": "yalnızca aktif sivilceye nokta tedavi"},
+        },
+        # %5 sülfür + %10 sodyum sülfasetamid (rozasea/seboreik) çoğunlukla reçetelidir: rutine yazılmaz.
+        "sulfacetamide_note": "Rozasea/seboreik eğilimde sülfür + sodyum sülfasetamid kombinasyonu için dermatoloğa danış.",
+        "source": "user",
+    },
+    "nag": {
+        "tiers": {
+            "hassas": {"pct": "%1-2", "freq": "günde 1-2 kez"},
+            "standart": {"pct": "%2-4", "freq": "günde 2 kez, en az 8 hafta"},
+        },
+        "synergy": {"nag": "%2", "niacinamide": "%4", "freq": "sabah SPF ile, akşam nemlendirici ile"},
+        "source": "user",
+    },
+    "caffeine_eye": {
+        # Göz altı için ayrı satırlar: şişlikte %3 (sabah), yoğun/deneyimli %5 (günde 2).
+        "tiers": {
+            "hassas": {"pct": "%3", "freq": "sabah temiz cilde; gerekirse akşam"},
+            "standart": {"pct": "%3", "freq": "sabah temiz cilde; gerekirse akşam"},
+            "yogun": {"pct": "%5", "freq": "günde 2 kez; yalnızca göz çevresi için formüle ürün"},
+        },
+        # Yüz (rutine yazılmıyor): hassas %0.2-1 günde 1; rozasea desteği %0.5-1.
+        "face_not_emitted": {"hassas": "%0.2-1", "rosacea": "%0.5-1"},
+        "source": "user",
+    },
+    # Sütun sırası kullanıcı onaylı (2026-11-04): kuru/atopik | yağlı/akneye eğilimli | hassas.
+    "barrier": {
+        "columns": ("kuru", "yagli", "hassas"),
+        "dimethicone": {"kuru": "%1-5", "yagli": "%0.5-2", "hassas": "%0.5-2"},
+        "gla": {"kuru": "%0.1-1", "yagli": "%0.05-0.5", "hassas": "%0.05-0.5"},
+        "linoleic": {"kuru": "%0.5-2", "yagli": "%1-2.5", "hassas": "%0.5-1"},
+        "info": "Hodan yağı %20-26 GLA içerir (%2-5 hodan ≈ %0.4-1.3 GLA). Akne çalışmasında %2.5 linoleik asit 1 ayda mikrokomedonu ~%25 azalttı.",
+        "source": "user",
+    },
+    "spf_filter": {
+        "options": {
+            "mineral": {
+                "text": "mineral filtre (INCI: Zinc Oxide / Titanium Dioxide)",
+                "info": "Hassas ciltte daha az tahriş; beyaz iz bırakabilir.",
+            },
+            "chemical": {
+                "text": "kimyasal filtre (INCI: Bemotrizinol, Bisoctrizole, Avobenzone vb.)",
+                "info": "Hafif doku, yağlı ciltte rahat; hassas ciltte tahriş veya göz yanması olabilir.",
+            },
+            "hybrid": {
+                "text": "hibrit filtre (çinko oksit + kimyasal filtre)",
+                "info": "İkisinin dengesi: daha az beyaz iz, mineral kadar olmasa da iyi tolerans.",
+            },
+            "tinted": {
+                "text": "renkli mineral filtre (demir oksitli; INCI: Zinc Oxide + Iron Oxides)",
+                "info": "Demir oksit görünür ışığa karşı da korur; melazma ve lekede önemli.",
+            },
+        },
+        "source": "user",
+    },
+    # Göz altı C vitamini türevi ve niasinamid: kullanıcı onayladı (2026-11-04).
+    "undereye_vitc": {"tiers": {"hassas": {"pct": "%5", "freq": "sabah"}}, "form": "askorbil glukozit / SAP", "source": "user"},
+    "undereye_niacinamide": {"tiers": {"hassas": {"pct": "%2-5", "freq": "akşam"}}, "source": "user"},
+}
+
+
+# run_flow, rutin yazılmadan hemen önce bunu açar. Seçilen madde değişmez; yalnızca yüzde iner.
+_DROP_NEW_ACTIVE_TIER: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "rebi_drop_new_active_tier", default=False
+)
+
+# Bir alt bant. PHA'da "yagli_hassas" standarttan ayrı bir yol; iniş hassas banda gider.
+_TIER_STEP_DOWN = {
+    "yogun": "standart",
+    "leke": "standart",
+    "standart": "hassas",
+    "yagli_hassas": "hassas",
+    "hassas": "ilk",
+}
+
+
+def _emitted_tier(key: str, tier: str) -> str:
+    """Starter dönemde onaylı bir alt banda in. Alt bant yoksa aynı bant kalır."""
+    if not _DROP_NEW_ACTIVE_TIER.get():
+        return tier
+    tiers = (NEW_ACTIVE_DOSES.get(key) or {}).get("tiers") or {}
+    nxt = _TIER_STEP_DOWN.get(tier, tier)
+    if nxt != tier and nxt in tiers:
+        return nxt
+    return tier
+
+
+def dose_entry(key: str, tier: str = "standart") -> dict:
+    tier = _emitted_tier(key, tier)
+    tiers = NEW_ACTIVE_DOSES[key]["tiers"]
+    entry = dict(tiers.get(tier) or tiers.get("standart") or next(iter(tiers.values())))
+    entry["_tier"] = tier
+    return entry
+
+
+def _dose(key: str, tier: str = "standart") -> str:
+    return str(dose_entry(key, tier)["pct"])
+
+
+def dose_tier(g: Optional[dict], *, score: Optional[int] = None, eye: bool = False) -> str:
+    """Kullanıcı verisinden doz kademesi (bkz. NEW_ACTIVE_DOSES başlığı)."""
+    ctx = (g or {}).get("_tier_ctx") or {}
+    if eye or ctx.get("skin") == "sensitive" or ctx.get("exp") == "none" or ctx.get("sensitivity"):
+        return "hassas"
+    sc = int(score if score is not None else ctx.get("score") or 0)
+    if sc >= 7 and ctx.get("exp") == "regular" and not ctx.get("pregnant"):
+        return "yogun"
+    return "standart"
+
+
+_WEEKLY_FREQ_RE = re.compile(r"haftada\s*(\d+)(?:\s*[-–]\s*\d+)?", re.IGNORECASE)
+
+
+def _weekly_days_from_freq(freq: str) -> Optional[list]:
+    f = (freq or "").lower()
+    m = _WEEKLY_FREQ_RE.search(f)
+    if m:
+        return _spread_n_days_across_week(int(m.group(1)))
+    if "gün aşırı" in f:
+        return _spread_n_days_across_week(4)
+    return None
+
+
+def _opt_meta(key: str, tier: str, note: str = "") -> dict:
+    """Seçenek/satır doz meta'sı: kademe, sıklık, uyarı (+ ek not)."""
+    e = dose_entry(key, tier)
+    tier = str(e.get("_tier") or tier)
+    warn = " ".join(x for x in (e.get("warning") or "", note) if x)
+    meta = {"dose_key": key, "dose_tier": tier}
+    if e.get("freq"):
+        meta["frequency_note"] = e["freq"]
+    if warn:
+        meta["dose_warning"] = warn
+    return meta
+
+
+def _dose_note_text(meta: dict) -> str:
+    bits = []
+    if meta.get("frequency_note"):
+        bits.append(f"Sıklık: {meta['frequency_note']}.")
+    if meta.get("dose_warning"):
+        bits.append(meta["dose_warning"])
+    return " ".join(bits)
+
+
+def _apply_dose_meta(item: dict, meta: Optional[dict]) -> dict:
+    """Sıklık/uyarıyı `usage` + `frequency_note`a yazar; akşam 'haftada N' ise günleri atar."""
+    if not meta:
+        return item
+    out = dict(item)
+    note = _dose_note_text(meta)
+    if note:
+        out["usage"] = (f"{out.get('usage', '')} {note}").strip()
+    for k in ("dose_key", "dose_tier", "frequency_note", "dose_warning"):
+        if meta.get(k):
+            out[k] = meta[k]
+    wd = _weekly_days_from_freq(meta.get("frequency_note") or "")
+    if wd and out.get("time") == "Akşam":
+        out.setdefault("weekly_days", wd)
+    return out
+
+
+def _skin_licorice(tier: str = "standart") -> str:
+    return (
+        f"Meyan kökü ekstresi ({_dose('licorice', tier)}) serum "
+        "(INCI: Glycyrrhiza Glabra Root Extract)"
+    )
+
+
+def _skin_green_tea(tier: str = "standart") -> str:
+    return (
+        f"Yeşil çay (EGCG) {_dose('green_tea', tier)} antioksidan serum/tonik "
+        "(INCI: Camellia Sinensis Leaf Extract)"
+    )
+
+
+def _skin_hexylresorcinol(tier: str = "standart") -> str:
+    return f"Heksilrezorsinol {_dose('hexylresorcinol', tier)} serum (INCI: Hexylresorcinol; tirozinaz baskılayıcı)"
+
+
+def _mandelic_tier_for(g: Optional[dict], *, pigment: bool = False, score: Optional[int] = None) -> str:
+    g = g or {}
+    if g.get("_pregnant"):
+        return NEW_ACTIVE_DOSES["mandelic"]["pregnancy_tier"]
+    tier = dose_tier(g, score=score)
+    if tier == "hassas" or g.get("force_starter"):
+        return "hassas"
+    return "leke" if pigment else "standart"
+
+
+def _skin_mandelic(tier: str = "standart") -> str:
+    # "AHA" kısaltması bilerek yazılmaz: hamilelik filtresi glikolik/AHA kelimesini yakalar.
+    return (
+        f"Mandelik asit {_dose('mandelic', tier)} "
+        "(alfa hidroksi asit, INCI: Mandelic Acid; büyük molekül, yavaş nüfuz)"
+    )
+
+
+def _pha_tier_for(g: Optional[dict], skin_key: str = "", score: Optional[int] = None) -> str:
+    ctx = (g or {}).get("_tier_ctx") or {}
+    if ctx.get("exp") == "none" or (g or {}).get("force_starter"):
+        return "ilk"
+    if dose_tier(g, score=score) == "hassas":
+        return "yagli_hassas" if skin_key in ("oily", "combination") else "hassas"
+    return "standart"
+
+
+def _skin_pha(tier: str = "standart") -> str:
+    return (
+        f"PHA — glukonolakton {_dose('pha', tier)} (INCI: Gluconolactone; polihidroksi asit, nazik yenileme; "
+        f"alternatif laktobiyonik asit {NEW_ACTIVE_DOSES['pha']['lactobionic_alt']})"
+    )
+
+
+def _skin_sulfur(tier: str = "standart") -> str:
+    emitted = _emitted_tier("sulfur", tier)
+    form = "nokta tedavi" if emitted == "yogun" else "krem/maske"
+    return f"Sülfür (kükürt) {_dose('sulfur', tier)} {form} (INCI: Sulfur)"
+
+
+def _skin_nag(tier: str = "standart") -> str:
+    return f"N-asetil glukozamin {_dose('nag', tier)} (INCI: Acetyl Glucosamine)"
+
+
+def _skin_nag_niacinamide() -> str:
+    syn = NEW_ACTIVE_DOSES["nag"]["synergy"]
+    return (
+        f"N-asetil glukozamin {syn['nag']} (INCI: Acetyl Glucosamine) + "
+        f"Niasinamid {syn['niacinamide']} (INCI: Niacinamide)"
+    )
+
+
+_UNDEREYE_COLORS = frozenset({"unsure", "brown", "purple", "both"})
+_UNDEREYE_PUFF = frozenset({"none", "sometimes", "often", "all_day"})
+
+
+def normalize_undereye_look(raw: Optional[dict]) -> dict:
+    """Şiddet testindeki renk ve şişlik cevabı. Bilinmeyen değer emin değil / yok sayılır."""
+    if not isinstance(raw, dict):
+        return {"color": "unsure", "puffiness": "none"}
+    color = str(raw.get("color") or "").strip().lower()
+    puff = str(raw.get("puffiness") or "").strip().lower()
+    return {
+        "color": color if color in _UNDEREYE_COLORS else "unsure",
+        "puffiness": puff if puff in _UNDEREYE_PUFF else "none",
+    }
+
+
+def undereye_morning_is_caffeine(look: Optional[dict]) -> bool:
+    """Morluk varsa kafein. Kahverengi koyulukta C vitamini. Emin değilse belirgin şişlik kafeine gider."""
+    look = normalize_undereye_look(look)
+    if look["color"] in ("purple", "both"):
+        return True
+    if look["color"] == "brown":
+        return False
+    return look["puffiness"] in ("often", "all_day")
+
+
+def _skin_caffeine_eye(tier: str = "standart") -> str:
+    return f"Göz çevresi: Kafein {_dose('caffeine_eye', tier)} göz serumu/jeli (INCI: Caffeine)"
+
+
+def _skin_undereye_vitc() -> str:
+    return (
+        f"Göz çevresi: C vitamini türevi {_dose('undereye_vitc', 'hassas')} göz kremi "
+        f"({NEW_ACTIVE_DOSES['undereye_vitc']['form']}; saf L-askorbik değil)"
+    )
+
+
+def _skin_undereye_niacinamide() -> str:
+    return f"Göz çevresi: Niasinamid {_dose('undereye_niacinamide', 'hassas')} göz kremi (INCI: Niacinamide)"
+
+
+def _skin_undereye_licorice() -> str:
+    return (
+        f"Göz çevresi: Meyan kökü ekstresi ({_dose('licorice', 'hassas')}) göz kremi "
+        "(INCI: Glycyrrhiza Glabra Root Extract)"
+    )
+
+
+def _skin_undereye_nag() -> str:
+    return f"Göz çevresi: N-asetil glukozamin {_dose('nag', 'hassas')} göz kremi (INCI: Acetyl Glucosamine)"
+
+
+UNDEREYE_PM_EXTRA: dict = {
+    "undereye_niacinamide": _opt_meta("undereye_niacinamide", "hassas"),
+    "undereye_licorice": _opt_meta("licorice", "hassas"),
+    "undereye_nag": _opt_meta("nag", "hassas"),
+}
+
+
+def _skin_undereye_arbutin() -> str:
+    return "Göz çevresi: Alfa-arbutin (%2) göz kremi (INCI: Alpha-Arbutin)"
+
+
+def barrier_column(skin_key: str) -> str:
+    """Nem-bariyer sütunu: kuru → kuru/atopik, yağlı → yağlı/akne, hassas → hassas; normal/karma → hassas."""
+    return {"dry": "kuru", "oily": "yagli"}.get(skin_key or "", "hassas")
+
+
+def _skin_dimethicone(column: str) -> str:
+    return f"Dimetikon {NEW_ACTIVE_DOSES['barrier']['dimethicone'][column]} nefes alan film"
+
+
+def _skin_linoleic(column: str) -> str:
+    return f"Linoleik asit {NEW_ACTIVE_DOSES['barrier']['linoleic'][column]}"
+
+
+def _skin_gla(column: str) -> str:
+    return (
+        f"gama linolenik asit (GLA) {NEW_ACTIVE_DOSES['barrier']['gla'][column]} "
+        "saf GLA eşdeğeri; hodan / çuha çiçeği yağı"
+    )
+
+
+def _spf_filter_text(kind: str) -> str:
+    return NEW_ACTIVE_DOSES["spf_filter"]["options"][kind]["text"]
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 6b. EŞDEĞER ETKEN GRUPLARI → tek adım, motor seçer
+# ══════════════════════════════════════════════════════════════════════
+# Aynı sorunu benzer kanıtla çözen etkenler menü olmaz. Grup sırasındaki ilk seçenek
+# (veya `default`) bu kullanıcı için yazılır. Hamilelikte `exclude` ile düşenler atlanır.
+EQUIVALENCE_GROUPS: dict = {
+    "pigment_tyrosinase": {
+        "label_tr": "Leke baskılayıcı (tirozinaz)",
+        "options": ("alfa_arbutin", "hexylresorcinol", "licorice"),
+        "basis": "melazma: üçü de DB öncelik 2",
+    },
+    "pigment_niacinamide_partner": {
+        "label_tr": "Niasinamid eşlikçisi",
+        "options": ("niacinamide_txa", "nag_niacinamide"),
+        "basis": "niasinamid p1 + TXA p2 / NAG p3",
+    },
+    "renewal_standard": {
+        "label_tr": "Yüzey yenileme asidi",
+        "options": ("glycolic", "mandelic"),
+        "basis": "normal/yağlı/karma cilt: glikolik (yaşlanma p2) varsayılan, mandelik (melazma p3) eşdeğer",
+    },
+    "renewal_gentle": {
+        "label_tr": "Nazik yüzey yenileme",
+        "options": ("mandelic", "pha"),
+        "basis": "kuru cilt: mandelik (melazma p3) varsayılan, PHA (kuruluk p3)",
+    },
+    "acne_antibacterial": {
+        "label_tr": "Akne antibakteriyel",
+        "options": ("benzoyl", "sulfur"),
+        "basis": "akne: BPO p1 varsayılan, sülfür p3 daha nazik",
+    },
+    "acne_gentle_antibacterial": {
+        "label_tr": "BPO'suz akne tedavisi",
+        "options": ("azelaic", "sulfur"),
+        "basis": "BPO kaçınılırken: azelaik p2 varsayılan, sülfür p3",
+    },
+    "redness_soothing": {
+        "label_tr": "Kızarıklık yatıştırıcı",
+        "options": ("azelaic", "licorice"),
+        "basis": "rozasea: azelaik p1 varsayılan, meyan kökü p2",
+    },
+    "am_antioxidant": {
+        "label_tr": "Sabah antioksidan",
+        "options": ("vitamin_c", "green_tea"),
+        "basis": "fotoyaşlanma: C vitamini p1 varsayılan, yeşil çay p2",
+    },
+    "am_antioxidant_teen": {
+        "label_tr": "Sabah hafif antioksidan",
+        "options": ("toco_ferulic", "green_tea"),
+        "basis": "genç yaş: E vitamini p2 = yeşil çay p2; rutindeki varsayılan",
+    },
+    "am_sebum": {
+        "label_tr": "Sabah sebum dengesi",
+        "options": ("niacinamide", "green_tea"),
+        "basis": "yağlı cilt: niasinamid p1 varsayılan, yeşil çay p3",
+    },
+    "oiliness_treatment": {
+        "label_tr": "Yağlılık tedavisi",
+        "options": ("niacin_zinc", "bha"),
+        "basis": "sebum için niasinamid+çinko; yüksek parlamada BHA de uyar ama ikinci adım olmaz",
+    },
+    "undereye_am": {
+        "label_tr": "Göz altı (sabah)",
+        "options": ("undereye_vitc", "caffeine"),
+        "basis": "artık seçim değil: morluk/şişlik → kafein, kahverengi → C vitamini",
+    },
+    "undereye_pm": {
+        "label_tr": "Göz altı (akşam)",
+        "options": ("undereye_niacinamide", "undereye_licorice", "undereye_arbutin", "undereye_nag"),
+        "basis": "göz altı: niasinamid p1 varsayılan, meyan kökü p3, alfa-arbutin p3, NAG (onaylı göz altı dozu)",
+    },
+    "spf_filter": {
+        "label_tr": "Güneş filtresi tipi",
+        "options": ("mineral", "chemical", "hybrid", "tinted"),
+        "basis": (
+            "varsayılan kullanıcı verisinden (spf_default_option): hassas/rozasea/hamilelik/göz altı/çok genç → "
+            "mineral; leke/melazma → renkli demir oksitli; yağlı/akne → kimyasal; diğer → hibrit. "
+            "Renkli seçenek yalnızca leke/melazmada."
+        ),
+    },
+}
+
+# Seçenek kimliği → kart etiketi, ipucu, kanonik madde kimliği, üç kelimelik fark.
+CHOICE_OPTION_META: dict = {
+    "alfa_arbutin": ("Alfa-arbutin", "En yaygın, iyi tolere edilen leke aktifi.", "alfa_arbutin", "yaygın, iyi tolere"),
+    "hexylresorcinol": ("Heksilrezorsinol", "Arbutine yakın etki; düşük yüzdede çalışır.", "hexylresorcinol", "düşük dozda güçlü"),
+    "licorice": ("Meyan kökü", "Leke + kızarıklık; en nazik seçenek.", "licorice_extract", "en nazik seçenek"),
+    "niacinamide_txa": ("Niasinamid + TXA", "Traneksamik asitle melazma desteği.", "traneksamik_asit", "melazmaya güçlü destek"),
+    "nag_niacinamide": ("NAG + niasinamid", "N-asetil glukozamin niasinamidle birlikte etkili.", "n_acetyl_glucosamine", "nazik ton eşitleme"),
+    "glycolic": ("Glikolik asit", "Daha hızlı yenileme; tahriş riski biraz daha yüksek.", "glycolic_acid", "hızlı, biraz tahriş"),
+    "mandelic": ("Mandelik asit", "Yavaş nüfuz eder; tahrişe bağlı leke riski düşük.", "mandelic_acid", "yavaş, az tahriş"),
+    "pha": ("PHA", "En nazik asit; nem de çeker.", "pha", "en nazik asit"),
+    "benzoyl": ("Benzoil peroksit", "En güçlü antibakteriyel; kurutabilir.", "benzoil_peroksit", "güçlü ama kurutur"),
+    "sulfur": ("Sülfür", "Daha nazik; kokusu belirgin olabilir.", "sulfur", "nazik, kokusu belirgin"),
+    "azelaic": ("Azelaik asit", "Akne, kızarıklık ve leke izine birlikte etki.", "azelaik_asit", "akne ve kızarıklık"),
+    "vitamin_c": ("C vitamini", "En güçlü kanıtlı sabah antioksidanı.", "vitamin_c", "en güçlü antioksidan"),
+    "green_tea": ("Yeşil çay (EGCG)", "Daha nazik antioksidan; sebuma da yardımcı.", "green_tea", "nazik sebum desteği"),
+    "toco_ferulic": ("E vitamini + ferulik", "Hafif antioksidan.", "vitamin_e", "hafif sabah antioksidanı"),
+    "niacinamide": ("Niasinamid", "Sebum ve bariyer için çok yönlü.", "niacinamid", "sebum ve bariyer"),
+    "niacin_zinc": ("Niasinamid + çinko", "Sebum ve parlama için çekirdek ikili.", "niacinamid", "sebum ve parlama"),
+    "bha": ("Salisilik asit", "Gözenek içindeki yağa yönelir.", "salisilik_asit", "gözenekteki yağı çözer"),
+    "undereye_vitc": ("C vitamini türevi", "Kahverengimsi (pigment) koyulukta.", "vitamin_c", "kahverengi koyuluğa iyi"),
+    "caffeine": ("Kafein", "Mor-mavimsi koyuluk ve sabah şişliğinde.", "caffeine", "morluk ve şişlik"),
+    "undereye_niacinamide": ("Niasinamid", "İnce göz çevresinde iyi tolere edilir.", "niacinamid", "ince ciltte nazik"),
+    "undereye_licorice": ("Meyan kökü", "Nazik pigment açıcı.", "licorice_extract", "nazik pigment açıcı"),
+    "undereye_arbutin": ("Alfa-arbutin", "Pigment kaynaklı koyulukta.", "alfa_arbutin", "pigment kaynaklı koyuluk"),
+    "undereye_nag": ("N-asetil glukozamin", "Nazik ton eşitleyici; düşük dozda.", "n_acetyl_glucosamine", "düşük dozda nazik"),
+    "mineral": ("Mineral", NEW_ACTIVE_DOSES["spf_filter"]["options"]["mineral"]["info"], "mineral_spf", "hassas ciltte güvenli"),
+    "chemical": ("Kimyasal/organik", NEW_ACTIVE_DOSES["spf_filter"]["options"]["chemical"]["info"], "chemical_spf", "hafif, yağlı cilt"),
+    "hybrid": ("Hibrit", NEW_ACTIVE_DOSES["spf_filter"]["options"]["hybrid"]["info"], "chemical_spf", "ince dengeli koruma"),
+    "tinted": ("Renkli (demir oksitli)", NEW_ACTIVE_DOSES["spf_filter"]["options"]["tinted"]["info"], "iron_oxides", "lekeye renkli koruma"),
+}
+
+# Hamilelikte seçenek listesinden düşen yollar (temkinli: güvenlik verisi yetersiz/olumsuz).
+PREGNANCY_EXCLUDED_OPTIONS = frozenset(
+    {"hexylresorcinol", "niacinamide_txa", "glycolic", "benzoyl"}
+)
+
+
+def _choice_key_for(item: dict, group_id: str) -> str:
+    return "|".join(
+        [str(item.get("time") or ""), str(item.get("step_order") or ""), f"eq:{group_id}"]
+    )
+
+
+def make_equivalence_item(
+    base: dict,
+    group_id: str,
+    actions: dict,
+    *,
+    default: Optional[str] = None,
+    exclude=(),
+    option_extra: Optional[dict] = None,
+) -> Optional[dict]:
+    """
+    Aynı soruna uyan etkenler tek rutin adımıdır. Koşul tek madde bırakırsa düz adım;
+    birden fazla kalırsa ayrı adım açılmaz, bu adımın seçenekleri olur. İlki önerilen.
+    """
+    group = EQUIVALENCE_GROUPS[group_id]
+    order = [k for k in group["options"] if k in actions and k not in set(exclude)]
+    if default in order:
+        order.remove(default)
+        order.insert(0, default)
+    if not order:
+        return None
+    extra = option_extra or {}
+    item = dict(base)
+    item["action"] = actions[order[0]]
+    item = _apply_dose_meta(item, extra.get(order[0]))
+    if len(order) == 1:
+        return item
+    choices = []
+    for i, key in enumerate(order):
+        label, hint, iid, diff = CHOICE_OPTION_META[key]
+        meta = extra.get(key) or {}
+        note = _dose_note_text(meta)
+        choices.append(
+            {
+                "id": key,
+                "label": label,
+                "diff": diff,
+                "hint": f"{hint} {note}".strip(),
+                "action": actions[key],
+                "ingredient_id": iid,
+                "default": i == 0,
+                **meta,
+            }
+        )
+    item["choices"] = choices
+    item["choice_group"] = group_id
+    item["default_choice_id"] = order[0]
+    item["choice_key"] = _choice_key_for(item, group_id)
+    return item
+
+
+def filter_item_choices(item: dict, keep) -> Optional[dict]:
+    """
+    Seçenekleri `keep(option)` ile süz. Varsayılan düştüyse sıradaki varsayılan olur;
+    tek seçenek kalırsa satır düz adıma döner; hiç kalmazsa None.
+    """
+    choices = item.get("choices")
+    if not (isinstance(choices, list) and item.get("choice_group")):
+        return item
+    kept = [dict(c) for c in choices if keep(c)]
+    if not kept:
+        return None
+    new = dict(item)
+    if len(kept) == 1:
+        for k in ("choices", "choice_group", "default_choice_id", "choice_key"):
+            new.pop(k, None)
+        new["action"] = kept[0]["action"]
+        return new
+    if not any(c.get("default") for c in kept):
+        kept[0]["default"] = True
+    default = next(c for c in kept if c.get("default"))
+    new["choices"] = kept
+    new["default_choice_id"] = default["id"]
+    new["action"] = default["action"]
+    return new
+
+
+def _map_choice_actions(item: dict, fn) -> None:
+    for ch in item.get("choices") or []:
+        if isinstance(ch, dict) and isinstance(ch.get("action"), str):
+            ch["action"] = fn(ch["action"])
+
+
+def _compose_formula(base: str, extra: str) -> str:
+    """'A + B (not)' tabanına içerik ekle; sondaki açıklama parantezini korur."""
+    m = re.match(r"^(.*?)(\s*\([^()]*\))\s*$", base or "")
+    if m:
+        return f"{m.group(1)} + {extra}{m.group(2)}"
+    return f"{base} + {extra}"
+
+
 def build_evening_moisturizer_item(
     concern: str,
     severity: dict,
@@ -1218,7 +1759,7 @@ def build_evening_moisturizer_item(
         "time": "Akşam", "category": "Bakım", "icon": "🌙",
         "action": f"Gece: {base}",
         "detail": f"Bariyer onarımı.{sfx}",
-        "usage": "Aktif tedaviden sonra. Tüm yüze ince katman, gece bırak.",
+        "usage": "Dermokozmetik adımdan sonra. Tüm yüze ince katman, gece bırak.",
         "priority": 3,
         "step_order": 30,
     }
@@ -1253,10 +1794,22 @@ def get_base_skincare_routine(
     })
 
     # ── SABAH AKTİF SERUM (minimal; güçlü aktifler çoğunlukla akşam) ──
-    _add_morning_actives(items, concern, severity, age_group, skin_type, personalization)
+    _add_morning_actives(
+        items, concern, severity, age_group, skin_type, personalization,
+        guards=guards, concern_score=concern_score,
+    )
 
-    # ── SABAH NEMLENDİRİCİ (tek kaynak: build_morning_moisturizer_item) ──
-    items.append(build_morning_moisturizer_item(concern, severity, skin_type, personalization))
+    # Sabah nemlendiricisi yalnızca kişi verisi gerektirirse. Madde de o veriden seçilir.
+    morning_cream = (guards or {}).get("_morning_moisturizer")
+    if morning_cream:
+        skin_type["moisturizer_type"] = morning_cream
+        items.append({
+            "time": "Sabah", "category": "Bakım", "icon": "🧊",
+            "action": f"Nemlendirici: {morning_cream}",
+            "detail": "Bu kişinin verisi sabah nemlendiricisi gerektiriyor.",
+            "usage": "Temiz cilde ince katman, ardından SPF.",
+            "priority": 3, "step_order": 30,
+        })
 
     # ── AKŞAM TEMİZLİK ──
     # Kullanıcı makyaj yapmıyorsa misel/double-cleanse önermeyelim.
@@ -1286,8 +1839,16 @@ def get_base_skincare_routine(
         guards=guards, concern_score=concern_score,
     )
 
-    # ── AKŞAM NEMLENDİRİCİ (tek kaynak: build_evening_moisturizer_item) ──
-    items.append(build_evening_moisturizer_item(concern, severity, skin_type, personalization))
+    night_cream = (guards or {}).get("_night_cream")
+    if night_cream:
+        skin_type["night_cream"] = night_cream
+        items.append({
+            "time": "Akşam", "category": "Bakım", "icon": "🌙",
+            "action": f"Gece: {night_cream}",
+            "detail": "Bu kişinin verisi gece kremi gerektiriyor.",
+            "usage": "Dermokozmetik adımdan sonra. Tüm yüze ince katman, gece bırak.",
+            "priority": 3, "step_order": 30,
+        })
 
     return items
 
@@ -1299,24 +1860,30 @@ def _add_morning_actives(
     age_group,
     skin_type,
     personalization: Optional[dict] = None,
+    guards: Optional[dict] = None,
+    concern_score: Optional[int] = None,
 ):
     """
     Sabah: yalnızca güneş/SPF ile uyumlu ve hafif katmanlar.
     Asit, yüksek % niasinamid, BP, arbutin vb. akşama taşınır.
     """
+    g = guards or {}
+    tier = dose_tier(g, score=concern_score)
 
     if concern == "acne":
         # Sabahda güçlü aktif yok; BHA/niasinamid/BP akşam rutininde
         pass
 
     elif concern == "oiliness":
-        # Yağlılık: sabah minimal, SPF ile uyumlu sebum dengeleme
-        items.append({
-            "time": "Sabah", "category": "Bakım", "icon": "💧",
-            "action": _skin_niacinamide("%5"),
-            "detail": "Sebumu dengelemeye yardımcı, sabah SPF altında hafif katman.",
-            "priority": 2, "step_order": 20,
-        })
+        # Hassas bantta sebum ürünü yeşil çaydır ve sabah yazılır. Akşam ikinci adım açılmaz.
+        if tier == "hassas":
+            items.append(_apply_dose_meta({
+                "time": "Sabah", "category": "Bakım", "icon": "🍵",
+                "action": _skin_green_tea(tier),
+                "detail": "Hassas veya yeni başlayan ciltte yağlılık için tek ürün yeşil çay.",
+                "usage": "Temiz cilde ince katman. Ardından nemlendirici varsa o, sonra SPF.",
+                "priority": 2, "step_order": 20,
+            }, _opt_meta("green_tea", tier)))
 
     elif concern == "pores":
         # Gözenek: BHA akşam çekirdek; sabah ekstra niasinamid yok (yağlılıktan ayrılır)
@@ -1327,81 +1894,103 @@ def _add_morning_actives(
         pass
 
     elif concern == "aging":
-        if age_group["group"] == "adolescent":
-            items.append({
-                "time": "Sabah", "category": "Bakım", "icon": "🛡️",
-                "action": _skin_toco_ferulic(),
-                "detail": "Genç yaşta agresif anti-aging gereksiz. Antioksidan koruma yeterli.",
-                "priority": 2, "step_order": 20,
-            })
-        elif age_group["group"] == "young_adult":
-            items.append({
-                "time": "Sabah", "category": "Bakım", "icon": "✨",
-                "action": _skin_vitc_laa("%10-15"),
-                "detail": (
-                    "Temiz cilde ince katman; tam emilince nemlendirici ve SPF. "
-                    "Hassasiyet olursa daha seyrek başla ve toleransa göre artır."
-                ),
-                "priority": 2, "step_order": 20,
-            })
-        elif age_group["group"] == "adult":
-            items.append({
-                "time": "Sabah", "category": "Bakım", "icon": "✨",
-                "action": _skin_vitc_laa("%15-20"),
-                "detail": (
-                    "İnce katman, göz çevresinden kaçın; kuruyunca nemlendirici ve SPF. "
-                    "Hassasiyet olursa daha düşük konsantrasyon veya daha seyrek kullanım tercih et."
-                ),
-                "priority": 2, "step_order": 20,
-            })
-        elif age_group["group"] == "mature":
-            items.append({
-                "time": "Sabah", "category": "Bakım", "icon": "✨",
-                "action": _skin_vitc_cef(),
-                "detail": (
-                    "Kuru veya hafif nemli cilde uygula; kuruyunca nemlendirici ve SPF. "
-                    "Tahriş olursa daha seyrek başla veya daha düşük güçte C vitamini seç."
-                ),
-                "priority": 2, "step_order": 20,
-            })
-        else:
-            items.append({
-                "time": "Sabah", "category": "Bakım", "icon": "💧",
-                "action": _skin_ha("hafif"),
-                "detail": "Sabah sadece hafif nem tabakası; peptid ve güçlü onarım akşam rutininde.",
-                "priority": 2, "step_order": 20,
-            })
+        # Yaşlanma tedavisi akşamda tek madde. Sabah ikinci antioksidan adımı açılmaz.
+        pass
+
+    elif concern == "undereye":
+        if severity.get("level") != "hafif":
+            look = normalize_undereye_look((g or {}).get("_undereye_look"))
+            caffeine = undereye_morning_is_caffeine(look)
+            if caffeine:
+                morning_detail = "Morluk veya belirgin sabah şişliği için tek sabah adımı kafein."
+            elif look["color"] == "brown":
+                morning_detail = "Kahverengimsi koyuluk için tek sabah adımı C vitamini türevi."
+            else:
+                morning_detail = "Koyuluğun rengi net değil; tek sabah adımı C vitamini türevi."
+            items.append(_apply_dose_meta({
+                "time": "Sabah", "category": "Bakım", "icon": "👁️",
+                "action": _skin_caffeine_eye(tier) if caffeine else _skin_undereye_vitc(),
+                "detail": morning_detail,
+                "usage": "Yüzük parmağıyla hafifçe tapla, ovalama; kirpik dibine yaklaşma. Ardından nemlendirici ve SPF.",
+                "priority": 2, "step_order": 25, "concern_role": "primary_undereye",
+            }, _opt_meta("caffeine_eye", tier) if caffeine else _opt_meta("undereye_vitc", "hassas")))
 
     elif concern == "pigmentation":
-        if age_group["group"] == "adolescent":
-            items.append({
-                "time": "Sabah", "category": "Bakım", "icon": "💧",
-                "action": _skin_ha("hafif"),
-                "detail": "Sabah minimal; alfa arbutin ve leke tedavisi akşamda.",
-                "priority": 2, "step_order": 20,
-            })
-        else:
-            items.append({
-                "time": "Sabah", "category": "Bakım", "icon": "💎",
-                "action": _skin_vitc_laa("%12-15"),
-                "detail": (
-                    "İnce katman; SPF öncesi tam kurumasını bekle. Leke hedefli arbutin ve yüzey yenileme akşam rutininde."
-                ),
-                "priority": 2, "step_order": 20,
-            })
+        # Leke maddesi akşamda tek adım. Sabah ikinci leke serumu (C vitamini / yeşil çay) yazılmaz.
+        pass
 
     elif concern == "dryness":
-        if not _personalization_compress_evening(personalization):
-            items.append({
-                "time": "Sabah", "category": "Bakım", "icon": "💧",
-                "action": _skin_ha("multi"),
-                "detail": "Düşük + yüksek mol. ağırlık HA birlikte: yüzeyde ve derinde nemlendirme. Nemli cilde uygula.",
-                "priority": 2, "step_order": 20,
-            })
+        # Kuruluk ürünü gece nemlendiricisi. Sabah ikinci nem serumu yazılmaz.
+        pass
 
     elif concern == "sensitivity":
         # Sabah ek panthenol serumu ekleme: nemlendiricide zaten yatıştırıcı/bariyer katmanı var (çift ürün önlenir).
         pass
+
+
+def _best_pigment_item(skin_type: dict, g: dict, severity: dict, age_group: dict, score: int) -> dict:
+    """
+    Leke için tek akşam ürünü. Glikolik, arbutin ve niasinamid+TXA aynı sorunu gördüğü için
+    yan yana yazılmaz; cilt verisi hangisinin uygun olduğunu belirler.
+    """
+    key = (skin_type or {}).get("key") or ""
+    tier = dose_tier(g, score=score)
+    gentle = (
+        key in ("sensitive", "dry")
+        or bool(g.get("stings_with_products"))
+        or bool(g.get("avoid_aha"))
+        or tier == "hassas"
+    )
+    base = {"time": "Akşam", "category": "Bakım", "icon": "💎", "priority": 2, "step_order": 20}
+    if g.get("_pregnant"):
+        return _apply_dose_meta(
+            dict(
+                base,
+                action=_skin_nag_niacinamide(),
+                detail=(
+                    "Hamilelikte leke için en uygun katman: NAG + niasinamid. "
+                    "Güçlü asit ve traneksamik asit bu planda yok."
+                ),
+            ),
+            {"frequency_note": NEW_ACTIVE_DOSES["nag"]["synergy"]["freq"]},
+        )
+    if (
+        severity.get("level") == "şiddetli"
+        and age_group.get("retinol_ok")
+        and not g.get("avoid_retinol")
+        and not gentle
+    ):
+        cap = str(g.get("max_retinol") or "0.3")
+        r_pct = "%0.3" if "0.3" in cap or cap >= "0.3" else f"%{cap}"
+        return dict(
+            base,
+            icon="🔬",
+            action=_skin_retinol(r_pct),
+            detail=(
+                "Şiddetli lekede en uygun gece aktifi retinol. "
+                "Aynı rutinde asit ve ikinci bir leke serumu yok. Haftada 2 gece ile başla."
+            ),
+        )
+    if gentle:
+        return _apply_dose_meta(
+            dict(
+                base,
+                action=_skin_licorice("hassas"),
+                detail=(
+                    "Hassas, kuru veya yeni başlayan ciltte leke için en uygun: meyan kökü. "
+                    "Asit ve ikinci leke serumu yok."
+                ),
+            ),
+            _opt_meta("licorice", "hassas"),
+        )
+    return dict(
+        base,
+        action=_skin_niacin_tranexamic(),
+        detail=(
+            "Leke için en uygun katman: niasinamid + traneksamik asit. "
+            "Aynı akşam glikolik, arbutin veya ikinci bir leke serumu yok."
+        ),
+    )
 
 
 def _add_evening_actives(
@@ -1427,98 +2016,116 @@ def _add_evening_actives(
         avoid_bpo = bool(g.get("avoid_bpo"))
         prefer_azelaic = bool(g.get("prefer_azelaic"))
         if severity["level"] == "hafif" or score <= 3:
-            pct, n = bha_for_acne(score, g)
-            if compress:
-                items.append({
+            key = (skin_type or {}).get("key") or ""
+            tier = dose_tier(g, score=score)
+            gentle = (
+                key in ("sensitive", "dry")
+                or bool(g.get("stings_with_products"))
+                or bool(g.get("avoid_aha"))
+                or tier == "hassas"
+            )
+            oily_sensitive = (
+                key in ("oily", "combination")
+                and bool((g.get("_tier_ctx") or {}).get("sensitivity"))
+                and not g.get("stings_with_products")
+            )
+            if gentle and oily_sensitive:
+                pha_t = _pha_tier_for(g, key, score)
+                items.append(_apply_dose_meta({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": f"{_skin_salicylic_toner(pct)} → ardından {_skin_niacin_zinc()}",
+                    "action": _skin_pha(pha_t),
                     "detail": (
-                        f"Hafif inflamatuvar akne (şiddet {score}/10): BHA %{pct:g} + çinko, aynı akşam sırayla. "
-                        f"Haftada {n} gece. Gözenek/yağ protokolü değil — tıkanıklık + lezyon."
+                        f"Hafif akne (şiddet {score}/10), yağlı ve hassas cilt: tek ürün PHA. "
+                        "İkinci bir akne asidi yazılmaz."
                     ),
                     "priority": 2, "step_order": 20,
-                })
+                }, _opt_meta("pha", pha_t)))
+            elif gentle:
+                man_t = _mandelic_tier_for(g, score=score)
+                items.append(_apply_dose_meta({
+                    "time": "Akşam", "category": "Bakım", "icon": "🎯",
+                    "action": _skin_mandelic(man_t),
+                    "detail": (
+                        f"Hafif akne (şiddet {score}/10), hassas veya yeni başlayan cilt: tek ürün mandelik asit. "
+                        "Daha güçlü asit yazılmaz."
+                    ),
+                    "priority": 2, "step_order": 20,
+                }, _opt_meta("mandelic", man_t)))
             else:
+                pct, n = bha_for_acne(score, g)
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
                     "action": _skin_salicylic_toner(pct),
                     "detail": (
-                        f"Hafif akne (şiddet {score}/10): BHA %{pct:g}. Pamukla sür, göz çevresinden kaçın. "
-                        f"Haftada {n} gece ile başla."
+                        f"Hafif akne (şiddet {score}/10): bu tablo için BHA %{pct:g}. "
+                        f"Pamukla sür, göz çevresinden kaçın. Haftada {n} gece."
                     ),
                     "priority": 2, "step_order": 20,
-                })
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "🍯",
-                    "action": _skin_niacin_zinc(),
-                    "detail": "BHA sonrası veya BHA olmayan gecelerde. Çinko sebumu dengeler; lezyon gecelerinde asit artırılmaz.",
-                    "priority": 2, "step_order": 25,
                 })
         elif severity["level"] == "orta" or score <= 6:
             az = "%10-15" if score <= 5 else "%15-20"
-            nia = "%5" if score <= 4 else "%10"
-            if compress:
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": f"{_skin_niacinamide(nia)} + {_skin_azelaic(az)} (sırayla veya tek formül)",
-                    "detail": (
-                        f"Orta akne (şiddet {score}/10): azelaik (lezyon+PIH), BHA yığılmaz. "
-                        "Haftada 3 gece azelaik ile başla."
-                    ),
-                    "priority": 2, "step_order": 20,
-                })
-            else:
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": _skin_niacinamide(nia),
-                    "detail": f"Orta akne (şiddet {score}/10): sebum/bariyer; sabahda yüksek % niasinamid yok.",
-                    "priority": 2, "step_order": 20,
-                })
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": _skin_azelaic(az),
-                    "detail": "Niasinamidden sonra ince katman. Haftada 3 gece başla. BPO yok — orta şiddette azelaik yeter.",
-                    "priority": 2, "step_order": 25,
-                })
+            items.append({
+                "time": "Akşam", "category": "Bakım", "icon": "🎯",
+                "action": _skin_azelaic(az),
+                "detail": (
+                    f"Orta akne (şiddet {score}/10): bu tablo için azelaik asit {az}. "
+                    "Haftada 3 gece. İkinci bir akne serumu yazılmaz."
+                ),
+                "priority": 2, "step_order": 20,
+            })
         else:
             bpo_pct = 2.5 if score <= 8 else 5.0
             az = "%15-20"
+            sulfur_t = dose_tier(g, score=score)
+            sulfur_meta = _opt_meta(
+                "sulfur", sulfur_t,
+                NEW_ACTIVE_DOSES["sulfur"]["sulfacetamide_note"] if g.get("_tier_ctx", {}).get("sensitivity") else "",
+            )
             if avoid_bpo or prefer_azelaic:
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": _skin_azelaic(az),
-                    "detail": (
-                        f"Şiddetli akne (şiddet {score}/10): BPO diğer sorunu (hassasiyet/kuruluk) kötüleştirir; "
-                        "azelaik tam yüz. Haftada 3 gece."
-                    ),
-                    "priority": 2, "step_order": 20,
-                })
+                items.append(make_equivalence_item(
+                    {
+                        "time": "Akşam", "category": "Bakım", "icon": "🎯",
+                        "detail": (
+                            f"Şiddetli akne (şiddet {score}/10): BPO diğer sorunu (hassasiyet/kuruluk) kötüleştirir; "
+                            "tam yüz nazik tedavi. Haftada 3 gece."
+                        ),
+                        "priority": 2, "step_order": 20,
+                    },
+                    "acne_gentle_antibacterial",
+                    {"azelaic": _skin_azelaic(az), "sulfur": _skin_sulfur(sulfur_t)},
+                    option_extra={"sulfur": sulfur_meta},
+                ))
             elif compress:
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "⚡",
-                    "action": f"{_skin_benzoyl(bpo_pct)} → ardından/alternatif geceler {_skin_azelaic(az)}",
-                    "detail": (
-                        f"Şiddetli akne (şiddet {score}/10): BP %{bpo_pct:g} kısa temas (5-10 dk, yıka); "
-                        "aynı gece azelaik yoksa alternatif geceler. Sabahda BP yok."
-                    ),
-                    "priority": 2, "step_order": 20,
-                })
+                # Sade planda da seçim kullanıcıda kalır: tek adım, iki seçenek.
+                items.append(make_equivalence_item(
+                    {
+                        "time": "Akşam", "category": "Bakım", "icon": "⚡",
+                        "detail": (
+                            f"Şiddetli akne (şiddet {score}/10): tek akşam antibakteriyel, kısa temas "
+                            f"(5-10 dk, yıka). Sabah kullanılmaz."
+                        ),
+                        "priority": 2, "step_order": 20,
+                    },
+                    "acne_antibacterial",
+                    {"benzoyl": _skin_benzoyl(bpo_pct), "sulfur": _skin_sulfur(sulfur_t)},
+                    exclude=("benzoyl",) if g.get("_pregnant") else (),
+                    option_extra={"sulfur": sulfur_meta},
+                ))
             else:
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "⚡",
-                    "action": _skin_benzoyl(bpo_pct),
-                    "detail": (
-                        f"Şiddetli akne (şiddet {score}/10): BP %{bpo_pct:g} akşam kısa temas. "
-                        "Yüze sür, 5-10 dk bekle, yıka. Sabahda BP yok."
-                    ),
-                    "priority": 2, "step_order": 20,
-                })
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                    "action": _skin_azelaic(az),
-                    "detail": "BP sonrası veya alternatif gecelerde. Haftada 2-3 gece başla.",
-                    "priority": 3, "step_order": 25,
-                })
+                items.append(make_equivalence_item(
+                    {
+                        "time": "Akşam", "category": "Bakım", "icon": "⚡",
+                        "detail": (
+                            f"Şiddetli akne (şiddet {score}/10): akşam kısa temas antibakteriyel. "
+                            "Yüze sür, 5-10 dk bekle, yıka. Sabah kullanılmaz."
+                        ),
+                        "priority": 2, "step_order": 20,
+                    },
+                    "acne_antibacterial",
+                    {"benzoyl": _skin_benzoyl(bpo_pct), "sulfur": _skin_sulfur(sulfur_t)},
+                    exclude=("benzoyl",) if g.get("_pregnant") else (),
+                    option_extra={"sulfur": sulfur_meta},
+                ))
 
     elif concern == "aging":
         avoid_retinol = bool(g.get("avoid_retinol")) or not age_group.get("retinol_ok")
@@ -1579,127 +2186,64 @@ def _add_evening_actives(
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "💎",
                     "action": _skin_peptide_ha(),
-                    "detail": "Akşam yoğun onarım; sabahda sadece hafif HA kullanıldı.",
+                    "detail": "Bu yaş ve tablo için gece ürünü peptid. İkinci bir yaşlanma serumu yazılmaz.",
                     "priority": 2, "step_order": 20,
-                })
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "🌿",
-                    "action": _skin_bakuchiol(),
-                    "detail": "Peptid tabanından sonra. Retinol etkisine yakın, daha nazik.",
-                    "priority": 2, "step_order": 22,
-                })
-                items.append({
-                    "time": "Akşam", "category": "Bakım", "icon": "🧬",
-                    "action": "Seramid NP/AP/EOP + kolesterol + yağ asitleri (3:1:1 bariyer onarım, INCI: Ceramide NP vb.)",
-                    "detail": "Yaşla azalan bariyer lipidlerini geri kazandır. 3:1:1 oranı bilimsel altın standarttır.",
-                    "priority": 2, "step_order": 25,
                 })
 
     elif concern == "pigmentation":
-        aha_pct = min(age_group["aha_max_pct"], 10)
-        has_peel_or_retinoid = False
-        # Retinol ile AHA aynı rutinde netlik: şiddette retinol; orta/üstte AHA; hafifte ikisi yok
-        if (
-            severity["level"] == "şiddetli"
-            and age_group["retinol_ok"]
-            and not g.get("avoid_retinol")
-        ):
-            has_peel_or_retinoid = True
-            cap = str(g.get("max_retinol") or "0.3")
-            r_pct = "%0.3" if "0.3" in cap or cap >= "0.3" else f"%{cap}"
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🔬",
-                "action": _skin_retinol(r_pct),
-                "detail": "Gece leke aktifi; yalnızca haftalık plandaki akşamlarda. Aynı rutinde AHA yok. Haftada 2 gece ile başla.",
-                "priority": 2, "step_order": 20,
-            })
-        elif severity["level"] != "hafif" and not g.get("avoid_aha"):
-            has_peel_or_retinoid = True
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🔬",
-                "action": _skin_glycolic(float(aha_pct)),
-                "detail": (
-                    f"Yüzey yenileme; yalnızca haftalık plandaki akşamlarda. Haftada 2-3 gece; günler atanır. "
-                    f"Yaşın için %{aha_pct} uygun. Bu rutinde retinol yok."
-                ),
-                "priority": 2, "step_order": 20,
-            })
-        ab_label = "(%2)" if age_group["group"] == "adolescent" else "(%2-3)"
-        ab_step = 22 if has_peel_or_retinoid else 20
-        if compress:
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "💎",
-                "action": f"Leke kompleksi: {_skin_arbutin(ab_label)} + {_skin_niacin_tranexamic()}",
-                "detail": (
-                    "Kişisel puan: arbutin ve niasinamid+TXA ayrı satır yerine tek blok; güçlü asit/retinol gecelerinde "
-                    "önce onlar, sonra bu leke katmanı. Tek serum veya sıralı ince katmanlar."
-                    if has_peel_or_retinoid else
-                    "Kişisel puan: iki leke adımı tek blokta; arbutin sonra niasinamid+TXA ince katman."
-                ),
-                "priority": 2, "step_order": ab_step,
-            })
-        else:
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "💎",
-                "action": _skin_arbutin(ab_label),
-                "detail": "Leke hedefleme; sabah C ile çiftlenmez (C sabah, arbutin akşam). Güçlü asit/retinol gecelerinde sıra: önce onlar, sonra bu.",
-                "priority": 2, "step_order": ab_step,
-            })
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "✨",
-                "action": _skin_niacin_tranexamic(),
-                "detail": (
-                    "Leke baskılama; güçlü gece adımı ve arbutinden sonra, gece nemlendiricisinden önce."
-                    if has_peel_or_retinoid else
-                    "Leke baskılama; arbutinden sonra, gece nemlendiricisinden önce."
-                ),
-                "priority": 2, "step_order": 25 if has_peel_or_retinoid else 22,
-            })
+        items.append(_best_pigment_item(skin_type, g, severity, age_group, score))
 
     elif concern == "dryness":
-        if not compress:
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🧴",
-                "action": "Seramid NP/AP/EOP + squalane onarım serumu (INCI: Ceramide NP vb. + skualan)",
-                "detail": "Cilt bariyerinin %50'si seramiddir. Gece boyu bariyer onarımı sağlar.",
-                "priority": 2, "step_order": 20,
-            })
-        if severity["level"] == "şiddetli" and not pers.get("merge_barrier_layers"):
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "💦",
-                "action": "Gece: Hyaluronik asit + Seramid (uyku maskesi formülü)",
-                "detail": "Serumdan sonra, standart gece nemlendiricisinden önce veya son katman olarak uygula.",
-                "priority": 2, "step_order": 35,
-            })
+        # Kuruluk ürünü gece nemlendiricisi. Seramid serumu, maske ve PHA ayrıca adım olmaz.
+        pass
 
     elif concern == "sensitivity":
-        # Akşam ayrı centella/panthenol serumu yok; şiddetli dahil gece tek katman → build_evening_moisturizer_item
+        # Gece bariyer katmanı tek → build_evening_moisturizer_item.
+        # Orta şiddette tek yatıştırıcı tedavi adımı (rozasea: azelaik p1 / meyan kökü p2).
+        if 4 <= score <= 7 and not compress:
+            items.append(make_equivalence_item(
+                {
+                    "time": "Akşam", "category": "Bakım", "icon": "🌿",
+                    "detail": "Kızarıklık ve reaktiviteyi yatıştırmaya yönelik tek tedavi katmanı; bariyer kreminden önce ince katman.",
+                    "priority": 2, "step_order": 20,
+                },
+                "redness_soothing",
+                {"azelaic": _skin_azelaic("%10-15"), "licorice": _skin_licorice("hassas")},
+                exclude=("azelaic",) if g.get("stings_with_products") else (),
+                option_extra={"licorice": _opt_meta("licorice", "hassas")},
+            ))
+
+    elif concern == "undereye":
+        # Sabah adımı test cevabından tek madde. Akşam ikinci göz serumu yazılmaz.
         pass
 
     elif concern == "oiliness":
         from multi_concern import bha_for_oiliness
 
-        # Çekirdek: sebum (niasinamid+çinko). BHA yalnızca yüksek parlamada, asla BPO.
-        items.append({
-            "time": "Akşam", "category": "Bakım", "icon": "🍯",
-            "action": _skin_niacin_zinc(),
-            "detail": (
-                f"Yağlılık (şiddet {score}/10): parlama/sebum için çinko + niasinamid. "
-                "İnflamatuvar akne veya komedon protokolü değil."
-            ),
-            "priority": 2, "step_order": 20,
-        })
-        bha_pct, n = bha_for_oiliness(score, g)
-        if bha_pct is not None:
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🎯",
-                "action": _skin_salicylic_toner(bha_pct),
-                "detail": (
-                    f"Yüksek parlama (şiddet {score}/10): ek BHA %{bha_pct:g}, haftada {n} gece. "
-                    "Çinko geceleriyle aynı gece değil."
-                ),
-                "priority": 2, "step_order": 22,
-            })
+        if dose_tier(g, score=score) == "hassas":
+            # Sabah yeşil çay bu sorunun tek ürünü.
+            pass
+        else:
+            bha_pct, n = bha_for_oiliness(score, g)
+            actions = {"niacin_zinc": _skin_niacin_zinc()}
+            if bha_pct is not None:
+                actions["bha"] = _skin_salicylic_toner(bha_pct)
+            items.append(make_equivalence_item(
+                {
+                    "time": "Akşam", "category": "Bakım", "icon": "🍯",
+                    "detail": (
+                        f"Yağlılık (şiddet {score}/10): sebum için tek akşam adımı."
+                        + (
+                            f" Yüksek parlamada salisilik asit %{bha_pct:g} de uyar; ayrı adım değil, bu adımın seçeneği. Haftada {n} gece."
+                            if bha_pct is not None
+                            else " Ek asit adımı yok."
+                        )
+                    ),
+                    "priority": 2, "step_order": 20,
+                },
+                "oiliness_treatment",
+                actions,
+            ))
 
     elif concern == "pores":
         from multi_concern import bha_for_pores
@@ -1709,18 +2253,11 @@ def _add_evening_actives(
             "time": "Akşam", "category": "Bakım", "icon": "🕳️",
             "action": _skin_salicylic_toner(pct),
             "detail": (
-                f"Gözenek/siyah nokta (şiddet {score}/10): komedon tıkacı BHA %{pct:g}. "
-                f"Haftada {n} gece. BPO yok — bu inflamatuvar akne protokolü değil."
+                f"Gözenek/siyah nokta (şiddet {score}/10): bu tablo için BHA %{pct:g}. "
+                f"Haftada {n} gece. İkinci bir gözenek serumu yazılmaz."
             ),
             "priority": 2, "step_order": 20,
         })
-        if score >= 7 and not compress:
-            items.append({
-                "time": "Akşam", "category": "Bakım", "icon": "🍯",
-                "action": _skin_niacin_zinc(),
-                "detail": "Yüksek gözenek skorunda BHA olmayan gecelerde sebum desteği; asit artırılmaz.",
-                "priority": 2, "step_order": 25,
-            })
 
     elif concern == "general":
         # Genel bakım: gece güçlü aktif şart değil; bariyer odaklı kal
@@ -2238,19 +2775,80 @@ def _get_supplement_plan(concern: str, age: int, severity_level: str, smoking: b
 # 9. ENVIRONMENT MODIFIERS - Çevresel dallar
 # ══════════════════════════════════════════════════════════════════════
 
+SPF_MINERAL_CONCERNS = frozenset({"sensitivity", "undereye"})
+SPF_LIGHT_CONCERNS = frozenset({"acne", "oiliness", "pores"})
+SPF_MINERAL_MAX_AGE = 18
+
+
+def spf_option_ids(concern_ids) -> tuple:
+    """SPF seçenekleri; renkli (demir oksitli) yalnızca leke/melazmada."""
+    base = ("mineral", "chemical", "hybrid")
+    return base + ("tinted",) if "pigmentation" in set(concern_ids or ()) else base
+
+
+def spf_default_option(
+    *,
+    concern_ids,
+    skin_key: str = "",
+    pregnant: bool = False,
+    age: Optional[int] = None,
+    stings: bool = False,
+) -> str:
+    """
+    Kullanıcı verisinden SPF varsayılanı:
+    leke/melazma → renkli demir oksitli (mineral bazlı; hassas/hamilede de uygun);
+    hassas cilt, rozasea/hassasiyet, hamilelik, göz altı, batma, 18 yaş altı → mineral;
+    yağlı cilt / akne / gözenek → kimyasal (hafif doku); diğerleri → hibrit.
+    """
+    ids = set(concern_ids or ())
+    if "pigmentation" in ids:
+        return "tinted"
+    if (
+        pregnant
+        or stings
+        or skin_key == "sensitive"
+        or ids & SPF_MINERAL_CONCERNS
+        or (age is not None and int(age) < SPF_MINERAL_MAX_AGE)
+    ):
+        return "mineral"
+    if skin_key == "oily" or ids & SPF_LIGHT_CONCERNS:
+        return "chemical"
+    return "hybrid"
+
+
+def spf_filter_item(spf_item: dict, spf_type: str, *, default: str, concern_ids=()) -> dict:
+    """SPF satırı: tek adım. Filtre tipi cilt verisinden seçilir, menü yok."""
+    action = spf_item.get("action") or ""
+    if "mineral" in (spf_type or "").lower():
+        action = action.replace(spf_type, "parfümsüz, hassas cilt uyumlu SPF")
+    opts = spf_option_ids(concern_ids)
+    chosen = default if default in opts else "mineral"
+    return make_equivalence_item(
+        dict(spf_item, action=action),
+        "spf_filter",
+        {chosen: f"{action} — {_spf_filter_text(chosen)}"},
+        default=chosen,
+        option_extra={chosen: {"info": NEW_ACTIVE_DOSES["spf_filter"]["options"][chosen]["info"]}},
+    )
+
+
 def compute_environment_branches(
     uv_index: float,
     humidity: float,
     temperature: float,
     skin_type: dict,
     min_spf: int = 30,
+    *,
+    spf_default: Optional[str] = None,
+    concern_ids=(),
 ) -> list:
-    """Hava durumu + cilt tipine göre çevresel öneriler."""
+    """Hava durumu + cilt tipine göre çevresel öneriler. `spf_default` verilirse SPF seçenekli olur."""
     items = []
 
     # ── UV Dalı (SPF = sabah rutininin SON adımı) ──
     spf_type = skin_type.get("spf_type", "geniş spektrumlu SPF")
     force_50 = int(min_spf or 30) >= 50
+    start = len(items)
     if uv_index >= 8:
         items.append({
             "time": "Sabah", "category": "Koruma", "icon": "🛡️",
@@ -2283,6 +2881,9 @@ def compute_environment_branches(
             "detail": "Bulutlu havada bile %80 UV geçer. Her gün kullan.",
             "priority": 3, "step_order": 40,
         })
+    if spf_default:
+        spf_item = items.pop(start)
+        items.insert(start, spf_filter_item(spf_item, spf_type, default=spf_default, concern_ids=concern_ids))
 
     # ── Nem Dalı ──
     if humidity < 25:
@@ -2329,6 +2930,9 @@ def compute_environment_branches(
             "priority": 2,
         })
 
+    for it in items:
+        if it.get("step_order") != 40:
+            it.setdefault("concern_role", "environment")
     return items
 
 
@@ -2336,12 +2940,28 @@ def compute_environment_branches(
 # 10. HAMİLELİK GÜVENLİK FİLTRESİ
 # ══════════════════════════════════════════════════════════════════════
 
+# Özgülden genele: "glikolik asit" genel "aha"dan önce gelir, yoksa glikolik→mandelik
+# değişimi hiç çalışmaz. Eşleşme kelime sınırlıdır ("daha" içindeki "aha" sayılmaz).
 PREGNANCY_UNSAFE_KEYWORDS = [
     "retinol", "retinoid", "tretinoin", "adapalen", "isotretinoin",
-    "salisilik asit", "bha", "benzoil peroksit",
-    "aha", "glikolik asit", "laktik asit",
+    "salisilik asit", "benzoil peroksit", "bha",
+    "glikolik asit", "laktik asit", "aha",
     "hidroquinon", "formaldehit",
 ]
+
+_PREGNANCY_KEYWORD_RES = [
+    (kw, re.compile(rf"(?<!\w){re.escape(kw)}(?!\w)", re.IGNORECASE))
+    for kw in PREGNANCY_UNSAFE_KEYWORDS
+]
+
+
+def _pregnancy_unsafe_keyword(action: str) -> Optional[str]:
+    """Rutin satırının `action`'ındaki ilk güvensiz etken (detail 'retinol yok' gibi notlar sayılmaz)."""
+    text = action or ""
+    for kw, rx in _PREGNANCY_KEYWORD_RES:
+        if rx.search(text):
+            return kw
+    return None
 
 PREGNANCY_SAFE_REPLACEMENTS = {
     "retinol": ("Bakuchiol", "Hamilelikte retinol yasak. Bakuchiol doğal ve güvenli bir alternatif."),
@@ -2351,23 +2971,41 @@ PREGNANCY_SAFE_REPLACEMENTS = {
     "salisilik asit": ("Glikolsüz Enzim Peeling", "Salisilik asit hamilelikte sınırlı. Enzim peeling daha güvenli."),
     "benzoil peroksit": ("Azelaik Asit %10", "BP hamilelikte güvenlik verisi yetersiz. Azelaik asit güvenli."),
     "aha": ("Laktik Asit %5 (düşük doz)", "Yüksek doz AHA'lardan kaçın. Düşük doz laktik asit güvenli sayılır."),
-    "glikolik asit": ("Mandel Asit %5", "Yüksek konsantrasyon glikolik asitten kaçın."),
+    "glikolik asit": (
+        f"Mandelik Asit {_dose('mandelic', NEW_ACTIVE_DOSES['mandelic']['pregnancy_tier'])}",
+        "Yüksek konsantrasyon glikolik asitten kaçın.",
+    ),
 }
+
+
+def _pregnancy_option_ok(option: dict) -> bool:
+    if option.get("id") in PREGNANCY_EXCLUDED_OPTIONS:
+        return False
+    return _pregnancy_unsafe_keyword(option.get("action") or "") is None
+
 
 def apply_pregnancy_safety(routine_items: list) -> list:
     """Hamilelikte güvensiz maddeleri güvenli alternatiflerle değiştirir."""
     safe_items = []
     for item in routine_items:
-        action_lower = item.get("action", "").lower()
-        detail_lower = item.get("detail", "").lower()
-        combined = action_lower + " " + detail_lower
+        if item.get("choice_group"):
+            filtered = filter_item_choices(item, _pregnancy_option_ok)
+            if filtered is not None:
+                safe_items.append(filtered)
+                continue
 
         replaced = False
-        for keyword in PREGNANCY_UNSAFE_KEYWORDS:
-            if keyword in combined:
+        hit = _pregnancy_unsafe_keyword(item.get("action", ""))
+        if hit:
+            # İlk eşleşmenin değişimi yoksa (ör. 'laktik asit') sıradaki eşleşmelere bak.
+            for keyword, rx in _PREGNANCY_KEYWORD_RES:
+                if not rx.search(item.get("action", "")):
+                    continue
                 replacement = PREGNANCY_SAFE_REPLACEMENTS.get(keyword)
                 if replacement:
                     new_item = dict(item)
+                    for k in ("choices", "choice_group", "default_choice_id", "choice_key"):
+                        new_item.pop(k, None)
                     new_item["action"] = f"🤰 {replacement[0]} (Hamilelik Güvenli)"
                     new_item["detail"] = replacement[1]
                     new_item["icon"] = "🤰"
@@ -2639,7 +3277,9 @@ def compute_acne_zone_recommendations(acne_zones: list, acne_severity_level: str
                 and "salisilik" in (rec.get("action") or "").lower()
             ):
                 continue
-            items.append(dict(rec))
+            rec2 = dict(rec)
+            rec2.setdefault("concern_role", f"zone_{zone_id}")
+            items.append(rec2)
     return items
 
 
@@ -2749,7 +3389,9 @@ def _sync_morning_c_with_strong_evening_days(routine_items: list) -> None:
         if not isinstance(wd, list) or len(wd) == 0 or len(wd) >= 7:
             continue
         act = (it.get("action") or "").lower()
-        is_acid = "glikolik" in act or "glycolic" in act or " aha" in act or "laktik asit" in act
+        is_acid = any(
+            k in act for k in ("glikolik", "glycolic", " aha", "laktik asit", "mandelik", "glukonolakton")
+        )
         is_retinoid = "retinol" in act or "retinal" in act
         if is_acid or is_retinoid:
             strong_days.update(wd)
@@ -3137,7 +3779,9 @@ def _deduplicate_and_limit(items: list) -> list:
     seen_actions = set()
     unique = []
     for item in items:
-        action_key = item.get("action", "").lower()[:30]
+        # Seçenekli adımın varsayılanı tek başına duran bir adımla aynı metne sahip olabilir
+        # (ör. "Benzoil peroksit %5…"); ilk 30 karakterle kırpmak seçenekli adımı düşürüyordu.
+        action_key = (item.get("choice_group") or item.get("action", "")).lower()
         if action_key not in seen_actions:
             seen_actions.add(action_key)
             unique.append(item)
@@ -3175,13 +3819,43 @@ def _deduplicate_and_limit(items: list) -> list:
             else:
                 item["step_order"] = 20
 
-    skincare_morning.sort(key=lambda x: (x.get("step_order", 50), x.get("priority", 5)))
-    skincare_evening.sort(key=lambda x: (x.get("step_order", 50), x.get("priority", 5)))
+    skincare_morning = _keep_by_slot_rank(skincare_morning, MORNING_CARE_CAP)
+    skincare_evening = _keep_by_slot_rank(skincare_evening, EVENING_CARE_CAP)
     lifestyle.sort(key=lambda x: x.get("priority", 5))
 
     # Akşam: temizlik + birincil aktif(ler) + ikincil katman + nemlendirici
-    result = skincare_morning[:5] + skincare_evening[:6] + lifestyle[:5] + other[:2]
+    result = skincare_morning + skincare_evening + lifestyle[:5] + other[:2]
     return result
+
+
+MORNING_CARE_CAP = 5
+EVENING_CARE_CAP = 6
+
+
+def _care_slot_rank(it: dict) -> int:
+    """
+    Sınır aşılırsa kim kalır: 0 temel iskelet (temizlik, nem, SPF) → 1 birincil sorun →
+    2 ikincil sorun → 3 bölge/çevre ekleri. Birincil (en şiddetli) sorun slotları önce alır.
+    """
+    so = it.get("step_order")
+    role = str(it.get("concern_role") or "")
+    if so in (10, 30, 40) and not role.startswith(("support_", "zone", "environment")):
+        return 0
+    if role.startswith("support_"):
+        return 2
+    if role.startswith(("zone", "environment")):
+        return 3
+    return 1
+
+
+def _keep_by_slot_rank(items: list, cap: int) -> list:
+    ranked = sorted(
+        enumerate(items),
+        key=lambda p: (_care_slot_rank(p[1]), p[1].get("priority", 5), p[0]),
+    )
+    kept = [it for _, it in ranked[:cap]]
+    kept.sort(key=lambda x: (x.get("step_order", 50), x.get("priority", 5)))
+    return kept
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -3404,6 +4078,88 @@ def _special_flags_context_tr(flags: dict) -> str:
 # 15. MASTER ORCHESTRATOR - Tüm dalları birleştirir
 # ══════════════════════════════════════════════════════════════════════
 
+def choose_moisturizers(
+    ranked: list,
+    skin_key: str,
+    risk_level: str,
+    water_intake: float,
+    humidity: float,
+    stings: bool,
+) -> tuple:
+    """Sabah nemlendiricisi ve gece kremi yalnızca veriyle gerekliyse. İkisi de tek madde."""
+    by = {e["id"]: int(e.get("score") or 0) for e in (ranked or []) if e.get("id")}
+    dry_score = by.get("dryness", 0)
+    sens_score = by.get("sensitivity", 0)
+    dry = skin_key == "dry" or dry_score > 0
+    sensitive = skin_key == "sensitive" or sens_score > 0 or bool(stings)
+    try:
+        water = float(water_intake or 0)
+    except (TypeError, ValueError):
+        water = 0.0
+    try:
+        hum = float(100 if humidity is None else humidity)
+    except (TypeError, ValueError):
+        hum = 100.0
+    stressed = risk_level in ("high", "crisis") or water < 1.5 or hum < 40
+    if not (dry or sensitive or stressed):
+        return None, None
+
+    acne_oil = any(e.get("id") in ("acne", "oiliness", "pores") for e in (ranked or []))
+
+    def _pair(column: str) -> tuple:
+        night_col = "hassas" if column == "hassas" else "yagli"
+        night = _skin_linoleic(night_col) if acne_oil else _skin_gla(column)
+        return _skin_dimethicone(column), night
+
+    if sensitive and sens_score >= dry_score and skin_key != "dry":
+        morning_product, night_product = _pair("hassas")
+        dryness_leads = False
+    elif dry:
+        if sensitive:
+            column = "hassas"
+        elif skin_key == "oily" and dry_score < 7:
+            column = "yagli"
+        else:
+            column = "kuru"
+        morning_product, night_product = _pair(column)
+        dryness_leads = True
+    elif acne_oil:
+        morning_product, night_product = _pair("yagli")
+        dryness_leads = False
+    else:
+        morning_product, night_product = _pair("hassas")
+        dryness_leads = False
+
+    strong = dry_score >= 5 or sens_score >= 5 or stressed or skin_key in ("dry", "sensitive")
+    morning = morning_product if strong or sensitive else None
+    night = night_product if strong or dryness_leads else None
+    if morning is None and night is None:
+        night = night_product
+    return morning, night
+
+
+def _compose_moisturizers_for_barrier(skin_type: dict, concern_ids: set) -> None:
+    """Krem kararı choose_moisturizers'ta. Şablon burada üzerine yazılmaz."""
+    _ = (skin_type, concern_ids)
+
+
+def build_undereye_lifestyle_item() -> dict:
+    return {
+        "time": "Günlük", "category": "Yaşam", "icon": "😴",
+        "action": "Göz altı: uyku, tuz ve ovalama",
+        "detail": (
+            "Göz altı koyuluğu çoğu zaman uyku düzeni, sıvı birikimi, alerji/ovalama ve güneşle belirginleşir. "
+            "Tek taraflı, aniden başlayan veya hızla koyulaşan değişimde hekime görün."
+        ),
+        "usage": (
+            "7-9 saat uyu; akşam tuzu ve alkolü azalt; başını hafif yüksek yastıkla yat. "
+            "Gözleri ovalama; alerji/burun tıkanıklığı varsa tedavi ettir. Sabah SPF ve güneş gözlüğü göz çevresini de korusun."
+        ),
+        "priority": 2,
+        "concern_role": "undereye_lifestyle",
+    }
+
+
 def run_flow(
     concern: str,
     severity_score: int,
@@ -3431,6 +4187,7 @@ def run_flow(
     makeup_frequency: int = 0,
     makeup_removal: str = "cleanser",
     special_flags: Optional[dict] = None,
+    undereye_look: Optional[dict] = None,
     concerns: Optional[list] = None,
     triggers: Optional[list] = None,
     past_treatments: Optional[list] = None,
@@ -3488,11 +4245,14 @@ def run_flow(
         stings_with_products=bool(special_flags_norm.get("stings_with_products")),
         skin_type_key=skin_type_key,
     )
+    guards["_undereye_look"] = normalize_undereye_look(undereye_look)
     from concern_history import (
         apply_history_to_guards,
         build_history_routine_items,
         cap_weekly_days_from_timeline,
+        defer_treatment_until_window_passes,
         normalize_history_lists,
+        passing_cycle_window,
     )
 
     history = normalize_history_lists(
@@ -3511,6 +4271,16 @@ def run_flow(
 
     # 3. Skin type (kopya — niasinamid % düzeltmesi global şablonu kirletmesin)
     skin_type = dict(SKIN_TYPE_PROFILES.get(skin_type_key, SKIN_TYPE_PROFILES["normal"]))
+    skin_type["key"] = skin_type_key if skin_type_key in SKIN_TYPE_PROFILES else "normal"
+    _compose_moisturizers_for_barrier(skin_type, {e["id"] for e in ranked})
+    guards["_pregnant"] = bool(is_pregnant and gender == "female")
+    guards["_tier_ctx"] = {
+        "skin": skin_type["key"],
+        "exp": _normalize_actives_experience(actives_experience),
+        "sensitivity": "sensitivity" in {e["id"] for e in ranked},
+        "pregnant": guards["_pregnant"],
+        "score": severity_score,
+    }
 
     # 4. Severity classify (age-aware)
     severity = classify_severity(severity_score, concern, age_group)
@@ -3570,21 +4340,36 @@ def run_flow(
     if guards.get("force_starter"):
         _strength_stage = "starter"
     _apply_niacinamide_pct_to_skin_profile(skin_type, _na_pct)
+    _am_cream, _pm_cream = choose_moisturizers(
+        ranked,
+        skin_type.get("key") or "",
+        risk_level,
+        water_intake,
+        humidity,
+        bool(special_flags_norm.get("stings_with_products")),
+    )
+    guards["_morning_moisturizer"] = _am_cream
+    guards["_night_cream"] = _pm_cream
     personalization = compute_personalization_profile(
         risk_info, severity_score, skin_type_key, merged_actives_tol, concern
     )
 
     # 6. Base skincare routine (concern + severity + age + skin_type + kişisel puan)
-    routine_items = get_base_skincare_routine(
-        concern, severity, age_group, skin_type,
-        actives_experience=actives_experience,
-        personalization=personalization,
-        makeup_frequency=makeup_frequency,
-        makeup_removal=makeup_removal,
-        guards=guards,
-        concern_score=severity_score,
-    )
-    add_secondary_actives(routine_items, ranked[1:], guards, age_group)
+    # Yeni etkenler de aynı starter koşulunda bir alt onaylı banda iner. Madde değişmez.
+    _drop_token = _DROP_NEW_ACTIVE_TIER.set(_strength_stage == "starter")
+    try:
+        routine_items = get_base_skincare_routine(
+            concern, severity, age_group, skin_type,
+            actives_experience=actives_experience,
+            personalization=personalization,
+            makeup_frequency=makeup_frequency,
+            makeup_removal=makeup_removal,
+            guards=guards,
+            concern_score=severity_score,
+        )
+        add_secondary_actives(routine_items, ranked[1:], guards, age_group)
+    finally:
+        _DROP_NEW_ACTIVE_TIER.reset(_drop_token)
 
     # Ingredient-level plan (no product recommendations)
     try:
@@ -3634,8 +4419,18 @@ def run_flow(
     env_items = compute_environment_branches(
         uv_index, humidity, temperature, skin_type,
         min_spf=int(guards.get("min_spf") or 30),
+        spf_default=spf_default_option(
+            concern_ids=[e["id"] for e in ranked],
+            skin_key=skin_type.get("key") or "",
+            pregnant=bool(guards.get("_pregnant")),
+            age=age,
+            stings=bool(special_flags_norm.get("stings_with_products")),
+        ),
+        concern_ids=[e["id"] for e in ranked],
     )
     routine_items.extend(env_items)
+    if any(e["id"] == "undereye" for e in ranked):
+        routine_items.append(build_undereye_lifestyle_item())
 
     # 10. Hormonal modifiers (kadınlar için)
     hormonal_info = {}
@@ -3687,6 +4482,18 @@ def run_flow(
     # 13. Pregnancy safety filter (MUST be last - overrides unsafe ingredients)
     if is_pregnant and gender == "female":
         routine_items = apply_pregnancy_safety(routine_items)
+
+    # Adet kaynaklı sorunda luteal/adet penceresi bitene kadar tedavi maddesi bekler.
+    # Menopoz ve gebelik bu beklemeye girmez.
+    _wait_phase = passing_cycle_window(
+        gender=gender,
+        cycle_phase=cycle_phase,
+        triggers=history.get("triggers") or [],
+        is_pregnant=bool(is_pregnant and gender == "female"),
+    )
+    if _wait_phase:
+        routine_items = defer_treatment_until_window_passes(routine_items, _wait_phase)
+        guards["defer_treatment"] = _wait_phase
 
     # 14. Aynı etken tekrarını azalt, sonra DEDUPLICATE + LIMIT
     routine_items = _dedupe_duplicate_azelaik_bakim(routine_items)
@@ -3878,6 +4685,29 @@ def run_flow(
     if hist_bits:
         multi_ctx += " Zaman çizelgesi: " + "; ".join(hist_bits) + "."
 
+    multi_ctx = ""
+    if len(ranked) > 1:
+        bits = []
+        for e in ranked:
+            lab = CONCERN_KNOWLEDGE_MAP.get(e["id"], {}).get("label_tr", e["id"])
+            bits.append(f"{lab} {e['score']}/10")
+        multi_ctx = (
+            f" Çoklu sorun (şiddete göre sıra): {', '.join(bits)}. "
+            "Birincil en yüksek skor; ikinciller birbirini kötüleştirmeyecek katman. "
+        )
+        if guards.get("notes"):
+            multi_ctx += "Kısıt: " + "; ".join(guards["notes"]) + "."
+    hist_bits = []
+    for e in ranked:
+        if e.get("duration") or e.get("frequency") or e.get("note"):
+            hist_bits.append(
+                f"{e['id']} süre={e.get('duration') or '-'} sıklık={e.get('frequency') or '-'}"
+            )
+    if history.get("triggers"):
+        hist_bits.append("tetik=" + ",".join(history["triggers"]))
+    if hist_bits:
+        multi_ctx += " Zaman çizelgesi: " + "; ".join(hist_bits) + "."
+
     context_summary = (
         f"Kullanıcı: {age} yaşında ({age_group['label_tr']}), {gender}, "
         f"cilt tipi: {skin_type['label_tr']}, "
@@ -3933,7 +4763,7 @@ def run_flow(
         "multi_concern": {
             "ranked": ranked,
             "primary": concern,
-            "guards": {k: v for k, v in guards.items() if k != "by_id"},
+            "guards": {k: v for k, v in guards.items() if k != "by_id" and not k.startswith("_")},
         },
     }
 
@@ -3950,6 +4780,7 @@ CONCERN_FOCUS_USER_TR = {
     "sensitivity": "hassasiyet ve sakinleşme",
     "pores": "siyah nokta, tıkanıklık ve gözenek görünümü",
     "oiliness": "sebum dengesi ve parlama",
+    "undereye": "göz altı koyuluğu ve göz çevresi",
 }
 
 SEVERITY_CONTEXT_USER_TR = {
@@ -3972,8 +4803,10 @@ def _ingredient_key_for_risk_adjustment(ingredient_key: str) -> str:
     """ingredient_db risk tablosu anahtarına eşle."""
     if ingredient_key == "bakuchiol":
         return "retinol"
-    if ingredient_key == "glycolic_aha":
+    if ingredient_key in ("glycolic_aha", "mandelic_aha", "pha", "sulfur"):
         return "salisilik_asit"
+    if ingredient_key in ("hexylresorcinol", "nag"):
+        return "niacinamid"
     if ingredient_key == "leke_kompleksi":
         return "niacinamid"
     if ingredient_key in ("peptides", "toco_ferulic"):
@@ -4004,9 +4837,12 @@ def _why_this_step_for_user(
         "salisilik_asit": f"{slot} BHA: gözenek içi yağ/tıkanıklığa yönelir; {focus} akne bandında sık kullanılır. {ctx} ile sıklık kısıtlandı.",
         "benzoil_peroksit": f"{slot} benzoil peroksit: bakteri yükü için; {focus} yoğun akne tablolarında. Sabah kullanımı genelde önerilmez.",
         "hyaluronik_asit": f"{slot} hyaluronik asit: nem tutulumu ve dolgunluk hissi. {focus} hedefinde nem katmanı için.",
-        "seramidler": f"{slot} seramid/lipid: bariyer onarımı; kuruluk ve hassasiyette öncelik. {focus} ile uyumlu.",
+        "seramidler": f"{slot} seramid: bu veride bariyer için seçilen tek nemlendirici. {focus} ile uyumlu.",
+        "dimethicone": f"{slot} dimetikon: kuruluk verisine göre seçilen tek nemlendirici.",
+        "gla": f"{slot} GLA: kuru veya hassas bariyer için seçilen tek gece nemlendiricisi.",
+        "linoleic": f"{slot} linoleik asit: bu ciltte tek gece nemlendiricisi. Sebum dengesini destekler.",
         "azelaik_asit": f"{slot} azelaik asit: akne ve kızarıklık/leke dengesinde orta güçlü seçenek. {focus} ve {ctx}.",
-        "traneksamik_asit": f"{slot} traneksamik asit: leke/ton desteği; akşamda, güçlü asitlerden ayrı sırada.",
+        "traneksamik_asit": f"{slot} niasinamid + traneksamik asit: bu ciltte leke için seçilen tek akşam ürünü. {ctx}.",
         "kojik_asit": f"{slot} kojik asit: leke baskılama seçeneklerinden; {focus} ve {ctx} sırasına göre.",
         "alfa_arbutin": f"{slot} alfa-arbutin: leke hedefli; genelde akşam bloğunda C vitamini ile gündüz-akşam ayrımı.",
         "leke_kompleksi": f"{slot} leke odaklı kombinasyon tek blokta: fazla gece katmanını azaltır, {focus} hedefini korur.",
@@ -4018,6 +4854,16 @@ def _why_this_step_for_user(
         "glycolic_aha": f"{slot} glikolik AHA: yüzey yenileme; {focus} leke/parlaklıkta akşam sıklığı. {ctx} tahriş eşiği ile.",
         "peptides": f"{slot} peptid: nazik anti-aging sinyali; {focus} yaşlanmada retinol öncesi basamak olabilir.",
         "toco_ferulic": f"{slot} E+ferulik: hafif antioksidan; hassas veya C öncesi sabah desteği.",
+        "chemical_spf": f"{slot} SPF (kimyasal/hibrit filtre): şeffaf, hafif; leke ve yaşlanma yönetiminin temeli.",
+        "mandelic_aha": f"{slot} mandelik asit: büyük molekül, yavaş nüfuz; {focus} için nazik yüzey yenileme. {ctx} gözetildi.",
+        "pha": f"{slot} PHA: en nazik yenileme asidi, nem de çeker; hassas/kuru ciltte {focus} için.",
+        "sulfur": f"{slot} sülfür: keratolitik ve antibakteriyel; daha nazik akne/kızarıklık seçeneği. {ctx}.",
+        "hexylresorcinol": f"{slot} heksilrezorsinol: tirozinazı baskılayan leke aktifi; {focus} hedefinde.",
+        "licorice": f"{slot} meyan kökü: leke ve kızarıklığa nazik destek; {focus} ile uyumlu.",
+        "green_tea": f"{slot} yeşil çay (EGCG): antioksidan ve sebum desteği; {focus} için nazik seçenek.",
+        "nag": f"{slot} N-asetil glukozamin + niasinamid: birlikte leke üzerinde etkisi artan nazik ikili.",
+        "caffeine": f"{slot} kafein: göz altında damar görünümü ve şişliği geçici azaltır.",
+        "undereye": f"{slot} göz çevresi için nazik etken; {focus} hedefinde, ince deriye uygun güç.",
     }
 
     return templates.get(ingredient_key, "").strip()
@@ -4091,7 +4937,17 @@ def _detect_ingredient_key(action_lower: str) -> str:
     """Özgün eşleşmeler önce (birleşik satırlar, bakuchiol / arbutin önceliği)."""
     al = (action_lower or "").lower()
     ordered = (
+        ("göz çevresi: kafein", "caffeine"),
+        ("göz çevresi:", "undereye"),
         ("leke kompleksi", "leke_kompleksi"),
+        ("kimyasal/hibrit filtre", "chemical_spf"),
+        ("mandelik", "mandelic_aha"),
+        ("glukonolakton", "pha"),
+        ("sülfür", "sulfur"),
+        ("heksilrezorsinol", "hexylresorcinol"),
+        ("meyan kökü", "licorice"),
+        ("yeşil çay", "green_tea"),
+        ("asetil glukozamin", "nag"),
         ("bakuchiol", "bakuchiol"),
         ("alfa-arbutin", "alfa_arbutin"),
         ("tretinoin", "retinol"),
@@ -4115,6 +4971,9 @@ def _detect_ingredient_key(action_lower: str) -> str:
         ("kojik", "kojik_asit"),
         ("niasinamid", "niacinamid"),
         ("niacinamid", "niacinamid"),
+        ("dimetikon", "dimethicone"),
+        ("linolenik", "gla"),
+        ("linoleik", "linoleic"),
         ("hyaluronik", "hyaluronik_asit"),
         ("seramid", "seramidler"),
         ("üre", "urea"),
@@ -4197,6 +5056,12 @@ def finalize_user_routine_item_details(
             continue
 
         orig = dict(item)
+        if orig.get("concern_role") == "deferred_cycle":
+            orig["detail"] = sanitize_routine_detail_system_voice((orig.get("detail") or "").strip())
+            if orig.get("usage"):
+                orig["usage"] = sanitize_routine_detail_system_voice(str(orig.get("usage")).strip())
+            out.append(orig)
+            continue
         ik = _detect_ingredient_key(orig.get("action", "").lower())
         motor_detail = (orig.get("detail") or "").strip()
         motor_usage = (orig.get("usage") or "").strip()
@@ -4233,14 +5098,13 @@ def finalize_user_routine_item_details(
                 risk_usage_addon = _risk_condition_sentence(risk_level, mult, note, paused=False)
 
         if _is_spf_routine_row(orig):
-            budget = (
-                "Tek geniş spektrumlu güneş koruyucu yeter; istersen nem + SPF’yi tek üründe birleştirebilirsin."
-            )
+            budget = "Tek geniş spektrumlu güneş koruyucu. Filtre tipi cilt verine göre seçildi."
             detail_parts = [p for p in [why, budget] if p]
         elif _is_moisturizer_or_barrier_row(orig):
             budget = (
-                "Aynı işi gören birkaç ayrı ürün almak zorunda değilsin: mümkünse tek nemlendiricide bu hedef içerikleri topla; "
-                "olmazsa bu adımdaki içeriklerden birini seçerek rutine devam et."
+                "Tek nemlendirici."
+                if " + " not in (orig.get("action") or "")
+                else "Tek nemlendirici. Etiketinde bu içerikler birlikte olsun."
             )
             detail_parts = [p for p in [why, budget] if p]
         else:
@@ -4347,6 +5211,440 @@ def adjust_routine_for_risk(items: list, risk_level: str) -> list:
 # 17. ADAPTIVE ROUTINE — Günlük check-in sonrası mevcut rutini adapte et
 # ══════════════════════════════════════════════════════════════════════
 
+_DIET_USAGE_MARK = "Check-in süreci: beslenme"
+
+
+def _strip_diet_usage(usage: str) -> str:
+    parts = [p.strip() for p in (usage or "").split(".")]
+    kept = [p for p in parts if p and not p.startswith(_DIET_USAGE_MARK)]
+    if not kept:
+        return ""
+    return ". ".join(kept) + "."
+
+
+def _apply_checkin_diet_process(items: list, daily_data: dict, changes: list) -> list:
+    """Tekrarlayan şeker veya süt, asit sıklığını düşürür. Süreç sakinleşince eski güne döner."""
+    from concern_checkin_extras import diet_window_status
+    from knowledge.routine_identity import BEHAVIOR
+
+    class _Req:
+        def __init__(self, data: dict):
+            self.high_glycemic_intake_today = data.get("high_glycemic_intake_today")
+            self.heavy_dairy_today = data.get("heavy_dairy_today")
+
+    concern = str((daily_data or {}).get("concern") or "")
+    status = diet_window_status(concern, _Req(daily_data or {}), (daily_data or {}).get("past_logs") or [])
+    out = [dict(it) for it in (items or [])]
+    active = bool(status.get("active"))
+    bits = status.get("bits") or []
+    note = (
+        f"{_DIET_USAGE_MARK}; son check-in'lerde {', '.join(bits)}. "
+        "Asit ve güçlü aktif sıklığı bu süre boyunca düşürüldü"
+    )
+    touched = {str(c.get("item") or "") for c in changes}
+
+    for it in out:
+        if it.get("category") not in ("Bakım", "Koruma"):
+            continue
+        if it.get("concern_role") == "checkin_diet":
+            continue
+        ids = [str(x) for x in (it.get("canonical_ingredient_ids") or [])]
+        behaviors = [BEHAVIOR.get(i, "maintain") for i in ids]
+        strong = "pause" in behaviors or "reduce" in behaviors
+        if active and strong:
+            if not it.get("checkin_diet_hold") and it.get("action") not in touched:
+                it["checkin_diet_hold"] = True
+                changes.append({
+                    "item": it.get("action", ""),
+                    "old": "standart sıklık",
+                    "new": "beslenme sürecinde sıklık düşürüldü",
+                    "reason": note,
+                })
+            prior = _strip_diet_usage(it.get("usage") or "")
+            it["usage"] = sanitize_routine_detail_system_voice(
+                f"{note}. {prior}".strip() if prior else f"{note}."
+            )
+        elif it.get("checkin_diet_hold"):
+            it.pop("checkin_diet_hold", None)
+            it["usage"] = sanitize_routine_detail_system_voice(_strip_diet_usage(it.get("usage") or ""))
+            changes.append({
+                "item": it.get("action", ""),
+                "old": "beslenme sürecinde seyrek",
+                "new": "beslenme süreci sakin, eski sıklık",
+                "reason": "Son check-in'lerde şeker ve süt yükü tekrarlamıyor.",
+            })
+
+    kept = [it for it in out if it.get("concern_role") != "checkin_diet"]
+    if active:
+        kept.append({
+            "time": "Günlük",
+            "category": "Yaşam",
+            "icon": "🥗",
+            "action": "Beslenme süreci",
+            "detail": (
+                f"Son check-in'ler: {', '.join(bits)}. "
+                "Bu yük sürdükçe asit yüzdesi ve sıklığı iner. Sakinleşince adım adım eski değere döner."
+            ),
+            "usage": "Şekerli öğün ve bol süt ürünü seyrekleşince sıklık eski haline döner.",
+            "priority": 0,
+            "step_order": 2,
+            "concern_role": "checkin_diet",
+        })
+    elif any(it.get("concern_role") == "checkin_diet" for it in out):
+        changes.append({
+            "item": "Beslenme süreci",
+            "old": "açık",
+            "new": "kapandı",
+            "reason": "Son check-in'lerde şeker ve süt yükü tekrarlamıyor.",
+        })
+    return kept
+
+
+_ACID_LADDERS = (
+    ("salisilik", ["%0.5", "%1", "%2"]),
+    ("glikolik", ["%5", "%8", "%10"]),
+    ("azelaik", ["%10-15", "%15-20"]),
+    ("mandelik", ["%2-5", "%5-10", "%8-10"]),
+    ("glukonolakton", ["%3-5", "%5-8", "%5-10", "%8-10"]),
+    ("retinol", ["%0.1-0.3", "%0.25-0.3", "%0.3", "%0.5", "%0.5-1"]),
+    ("benzoil", ["%2.5", "%5"]),
+    ("askorbik", ["%10-15", "%12-15", "%15-20", "%20"]),
+)
+
+
+def _acid_ladder(action: str):
+    al = (action or "").lower()
+    if "göz çevresi" in al or "türevi" in al:
+        return None
+    for key, ladder in _ACID_LADDERS:
+        if key in al:
+            return ladder
+    return None
+
+
+def _acid_token(action: str, ladder: list) -> str:
+    for token in sorted(ladder, key=len, reverse=True):
+        start = 0
+        while True:
+            idx = action.find(token, start)
+            if idx < 0:
+                break
+            after = action[idx + len(token):idx + len(token) + 1]
+            if not after.isdigit():
+                return token
+            start = idx + 1
+    return ""
+
+
+def _step_acid_action(action: str, direction: str, origin: str) -> tuple:
+    """Bir kademe. Yukarı yalnızca ilk check-in'deki değere kadar."""
+    ladder = _acid_ladder(action)
+    if not ladder:
+        return action, origin
+    current = _acid_token(action, ladder)
+    if not current:
+        return action, origin
+    if not origin or origin not in ladder:
+        origin = current
+    cur_i = ladder.index(current)
+    ori_i = ladder.index(origin)
+    if direction == "down":
+        nxt = cur_i - 1 if cur_i > 0 else cur_i
+    elif direction == "up":
+        nxt = cur_i + 1 if cur_i < ori_i else cur_i
+    else:
+        nxt = cur_i
+    if nxt == cur_i:
+        return action, origin
+    return action.replace(current, ladder[nxt], 1), origin
+
+
+def _step_days(current, origin, direction: str):
+    cur = list(current or [])
+    ori = list(origin or [])
+    if not ori:
+        return cur
+    if direction == "down":
+        return cur[:-1] if len(cur) > 1 else cur
+    if len(cur) >= len(ori):
+        return ori
+    return ori[: len(cur) + 1]
+
+
+def _situation_direction(daily_data: dict, risk_level: str) -> str:
+    from concern_checkin_extras import diet_window_status
+
+    class _Req:
+        def __init__(self, data: dict):
+            self.high_glycemic_intake_today = data.get("high_glycemic_intake_today")
+            self.heavy_dairy_today = data.get("heavy_dairy_today")
+
+    data = daily_data or {}
+    feeling = str(data.get("skin_feeling") or "").lower()
+    diet = diet_window_status(
+        str(data.get("concern") or ""),
+        _Req(data),
+        data.get("past_logs") or [],
+    ).get("active")
+    if feeling in ("irritasyon", "kirik", "kuru") or risk_level in ("high", "crisis") or diet:
+        return "down"
+    if feeling == "iyi" and risk_level in ("normal", "moderate", "", None) and not diet:
+        return "up"
+    return "hold"
+
+
+def _weather_live(daily_data: dict) -> bool:
+    return bool((daily_data or {}).get("weather_available"))
+
+
+def _outdoors(daily_data: dict) -> bool:
+    return str((daily_data or {}).get("day_setting") or "") == "outdoor"
+
+
+def _weather_wants_barrier(daily_data: dict) -> bool:
+    if not _weather_live(daily_data):
+        return False
+    humidity = (daily_data or {}).get("humidity")
+    if humidity is not None and float(humidity) < 40:
+        return True
+    if _outdoors(daily_data):
+        temp = (daily_data or {}).get("temperature")
+        if temp is not None and float(temp) < 5:
+            return True
+    return False
+
+
+def _cream_for_situation(daily_data: dict) -> str:
+    data = daily_data or {}
+    feeling = str(data.get("skin_feeling") or "").lower()
+    concern = str(data.get("concern") or "")
+    humidity = data.get("humidity") if _weather_live(data) else None
+    temp = data.get("temperature") if _weather_live(data) and _outdoors(data) else None
+    if feeling in ("irritasyon", "kirik"):
+        return _skin_dimethicone("hassas")
+    if concern in ("acne", "oiliness", "pores"):
+        return _skin_linoleic("yagli")
+    if temp is not None and float(temp) < 5:
+        return _skin_gla("kuru")
+    if humidity is not None and float(humidity) < 40:
+        return _skin_gla("kuru")
+    if temp is not None and float(temp) > 35:
+        return _skin_dimethicone("yagli")
+    if humidity is not None and float(humidity) > 75:
+        return _skin_dimethicone("yagli")
+    return _skin_gla("hassas")
+
+
+def _has_user_cream(items: list) -> bool:
+    for it in items or []:
+        if it.get("concern_role") == "checkin_moisturizer":
+            continue
+        a = (it.get("action") or "").lower()
+        if a.startswith("nemlendirici") or a.startswith("gece:") or a.startswith("gece "):
+            return True
+    return False
+
+
+def _apply_checkin_strength(items: list, daily_data: dict, risk_level: str, changes: list) -> list:
+    """Asit yüzdesi ve sıklığı duruma göre bir kademe iner veya eski değere döner. Gerekirse gece kremi eklenir."""
+    direction = _situation_direction(daily_data, risk_level)
+    out = [dict(it) for it in (items or [])]
+    if direction == "hold":
+        return _sync_checkin_cream(out, daily_data, direction, changes)
+
+    for it in out:
+        action = it.get("action") or ""
+        if action.startswith("⏸️") or not _acid_ladder(action):
+            continue
+        if "checkin_acid_origin" not in it:
+            token = _acid_token(action, _acid_ladder(action))
+            it["checkin_acid_origin"] = token
+        if "checkin_freq_origin" not in it and isinstance(it.get("weekly_days"), list):
+            it["checkin_freq_origin"] = list(it["weekly_days"])
+        new_action, _origin = _step_acid_action(action, direction, it.get("checkin_acid_origin") or "")
+        new_days = _step_days(it.get("weekly_days"), it.get("checkin_freq_origin"), direction)
+        moved = new_action != action or new_days != list(it.get("weekly_days") or [])
+        if new_action != action:
+            it["action"] = new_action
+        if isinstance(it.get("weekly_days"), list) and new_days != it.get("weekly_days"):
+            it["weekly_days"] = new_days
+        if moved:
+            changes.append({
+                "item": action,
+                "old": action,
+                "new": it.get("action"),
+                "reason": (
+                    "Check-in durumu asit yüzdesini ve sıklığı bir kademe indirdi."
+                    if direction == "down"
+                    else "Check-in durumu asit yüzdesini ve sıklığı eski değere bir kademe yaklaştırdı."
+                ),
+            })
+
+    return _sync_checkin_cream(out, daily_data, direction, changes)
+
+
+def _sync_checkin_cream(out: list, daily_data: dict, direction: str, changes: list) -> list:
+    """Tek check-in kremi. Orijinal gece kremine dokunulmaz. Ürün bugünün verisine göre yeniden seçilir."""
+    product = _cream_for_situation(daily_data)
+    desired = f"Gece: {product}"
+    keep_for_weather = _weather_wants_barrier(daily_data)
+    has_checkin = any(it.get("concern_role") == "checkin_moisturizer" for it in out)
+    if direction == "up" and not keep_for_weather:
+        if has_checkin:
+            changes.append({
+                "item": "Gece kremi",
+                "old": "check-in ekledi",
+                "new": "kaldırıldı",
+                "reason": "Check-in durumu sakin. Eklenen gece kremi çıktı.",
+            })
+        return [it for it in out if it.get("concern_role") != "checkin_moisturizer"]
+    if has_checkin:
+        for it in out:
+            if it.get("concern_role") != "checkin_moisturizer":
+                continue
+            if it.get("action") != desired:
+                old = it.get("action") or ""
+                it["action"] = desired
+                it["detail"] = "Check-in verisi gece kremi ürününü bugüne göre seçti."
+                changes.append({
+                    "item": "Gece kremi",
+                    "old": old,
+                    "new": product,
+                    "reason": "Nem, sıcaklık veya cilt hissi gece kremi ürününü güncelledi.",
+                })
+        return out
+    if (direction == "down" or keep_for_weather) and not _has_user_cream(out):
+        out.append({
+            "time": "Akşam",
+            "category": "Bakım",
+            "icon": "🌙",
+            "action": desired,
+            "detail": "Check-in verisi gece kremi gerektiriyor.",
+            "usage": "Dermokozmetik adımdan sonra. Tüm yüze ince katman, gece bırak.",
+            "priority": 3,
+            "step_order": 30,
+            "concern_role": "checkin_moisturizer",
+        })
+        changes.append({
+            "item": "Gece kremi",
+            "old": "yok",
+            "new": product,
+            "reason": "Check-in durumu nemlendirici ekledi.",
+        })
+    return out
+
+
+_SPF_NUM = re.compile(r"SPF\s*\d+\+?", re.IGNORECASE)
+_NO_LOCATION_NOTE = "Konum olmadığı için hava durumuna göre değişim ve öneri verilemiyor."
+
+
+def _spf_number_for_uv(uv, concern: str) -> str:
+    try:
+        uv_f = float(uv)
+    except (TypeError, ValueError):
+        return ""
+    force_50 = str(concern or "") == "pigmentation"
+    if uv_f >= 8:
+        return "50+"
+    if uv_f >= 5 or force_50:
+        return "50"
+    if uv_f >= 3:
+        return "30+"
+    return "30"
+
+
+def _apply_checkin_weather(items: list, daily_data: dict, changes: list) -> tuple:
+    """Konum yoksa hava dokunulmaz. UV ve sıcaklık yalnızca dışarıda SPF numarasına girer."""
+    data = daily_data or {}
+    if not _weather_live(data):
+        return items, _NO_LOCATION_NOTE
+    bits = []
+    setting = str(data.get("day_setting") or "")
+    if setting not in ("indoor", "outdoor"):
+        bits.append("UV ve sıcaklık için bugün evin içi mi dışarısı mı seçilmedi. Bu ikisi rutine yazılmadı.")
+    elif setting == "indoor":
+        bits.append("Bugün evin içindesin. Dışarı UV ve sıcaklığı rutine yazılmadı.")
+    else:
+        uv = data.get("uv_index")
+        temp = data.get("temperature")
+        bits.append(f"Dışarıdasın. UV {uv}, sıcaklık {temp}°C rutine işlendi.")
+        number = _spf_number_for_uv(uv, str(data.get("concern") or ""))
+        if number:
+            rewritten = []
+            for it in items:
+                action = it.get("action") or ""
+                if not _SPF_NUM.search(action):
+                    rewritten.append(it)
+                    continue
+                new_action = _SPF_NUM.sub(f"SPF {number}", action, count=1)
+                if new_action != action:
+                    it = dict(it)
+                    it["action"] = new_action
+                    changes.append({
+                        "item": action,
+                        "old": action,
+                        "new": new_action,
+                        "reason": "Bugünkü UV güneş koruyucu numarasını güncelledi.",
+                    })
+                rewritten.append(it)
+            items = rewritten
+    humidity = data.get("humidity")
+    if humidity is not None:
+        bits.append(f"Nem %{int(float(humidity))} krem seçimine girdi.")
+    return items, " ".join(bits)
+
+
+def _support_recovery(items: list, daily_data: dict, changes: list) -> list:
+    feeling = str((daily_data or {}).get("skin_feeling") or "").lower()
+    if feeling not in ("irritasyon", "kirik"):
+        return items
+    if any(it.get("concern_role") == "checkin_recovery" for it in items):
+        return items
+    if feeling == "irritasyon":
+        action = "Toparlanma: tahriş sürdükçe güçlü adım durur"
+        detail = "Bariyer kremi ve sakin bakım önde. Tahriş geçince check-in'de iyi dersen duran adım geri açılır."
+    else:
+        action = "Toparlanma: bariyer toparlanana kadar güçlü adım durur"
+        detail = "Bariyer kremi önde. Cilt sakinleşince check-in'de iyi dersen duran adım geri açılır."
+    out = list(items)
+    out.append({
+        "time": "Gün boyu",
+        "category": "Yaşam",
+        "icon": "🌱",
+        "action": action,
+        "detail": detail,
+        "usage": "Güçlü aktifi bugün sürme. Kremi ince katman bırak.",
+        "priority": 0,
+        "step_order": 2,
+        "concern_role": "checkin_recovery",
+    })
+    changes.append({
+        "item": "Toparlanma",
+        "old": "yok",
+        "new": "bakım önde",
+        "reason": "Tahrişte adım durur, cildin toparlanması desteklenir.",
+    })
+    return out
+
+
+def routine_materially_changed(before: list, after: list) -> bool:
+    """Kayıt için: cilt hissi listesi boş olsa da risk veya beslenme süreci rutini değiştirdiyse yaz."""
+
+    def _snap(items: list) -> list:
+        rows = []
+        for it in items or []:
+            rows.append((
+                it.get("action"),
+                it.get("usage"),
+                tuple(it.get("weekly_days") or ()),
+                it.get("concern_role"),
+                it.get("detail") if it.get("concern_role") == "checkin_diet" else None,
+            ))
+        return rows
+
+    return _snap(before) != _snap(after)
+
+
 def adapt_existing_routine(
     current_routine: list,
     daily_data: dict,
@@ -4420,10 +5718,48 @@ def adapt_existing_routine(
     except Exception:
         pass
 
+    if skin_feeling == "iyi" and risk_level not in ("high", "crisis"):
+        resumed = []
+        had_recovery = any(it.get("concern_role") == "checkin_recovery" for it in current_routine)
+        for item in current_routine:
+            if item.get("concern_role") == "checkin_recovery":
+                continue
+            new_item = dict(item)
+            origin = new_item.get("checkin_paused_from")
+            action = new_item.get("action") or ""
+            if origin and action.startswith("⏸️"):
+                new_item["action"] = origin
+                new_item.pop("checkin_paused_from", None)
+                if new_item.get("priority") == 10:
+                    new_item["priority"] = 2
+                changes.append({
+                    "item": origin,
+                    "old": "duraklatıldı",
+                    "new": "devam",
+                    "reason": "Tahriş yok. Duran adım toparlanma sonrası açıldı.",
+                })
+            if new_item.get("checkin_barrier_time_origin"):
+                new_item["time"] = new_item.pop("checkin_barrier_time_origin")
+            if isinstance(new_item.get("checkin_barrier_days_origin"), list):
+                new_item["weekly_days"] = list(new_item.pop("checkin_barrier_days_origin"))
+            resumed.append(new_item)
+        if had_recovery:
+            changes.append({
+                "item": "Toparlanma",
+                "old": "açık",
+                "new": "kapandı",
+                "reason": "Cilt sakin. Toparlanma notu kalktı.",
+            })
+        current_routine = resumed
+
     for item in current_routine:
         action_lower = item.get("action", "").lower()
         ingredient_key = _detect_ingredient_key(action_lower)
         new_item = dict(item)
+
+        if (item.get("action") or "").startswith("⏸️"):
+            adapted.append(new_item)
+            continue
 
         trigger = trigger_for_item(new_item, skin_feeling)
         extra = (_cabinet_checkin.get(ingredient_key) or {}).get(skin_feeling) if ingredient_key else None
@@ -4437,9 +5773,17 @@ def adapt_existing_routine(
             continue
 
         action_type = trigger.get("action", "maintain")
+        if skin_feeling == "irritasyon" and action_type == "reduce":
+            action_type = "pause"
+            trigger = {
+                "action": "pause",
+                "days": int(trigger.get("days") or 3),
+                "note": "Tahrişte bu adım durur. Bakım ve toparlanma önde.",
+            }
 
         if action_type == "pause":
             days = trigger.get("days", 3)
+            new_item["checkin_paused_from"] = item.get("action")
             changes.append({
                 "item": item.get("action", ""),
                 "old": "aktif",
@@ -4478,6 +5822,15 @@ def adapt_existing_routine(
             )
 
         elif action_type == "increase":
+            if new_item.get("time") == "Akşam" and not new_item.get("checkin_barrier_time_origin"):
+                new_item["checkin_barrier_time_origin"] = "Akşam"
+                new_item["time"] = "Sabah ve Akşam"
+            wd = new_item.get("weekly_days")
+            if isinstance(wd, list) and 0 < len(wd) < 7 and not new_item.get("checkin_barrier_days_origin"):
+                extra = next((d for d in range(7) if d not in wd), None)
+                if extra is not None:
+                    new_item["checkin_barrier_days_origin"] = list(wd)
+                    new_item["weekly_days"] = sorted([*wd, extra])
             changes.append({
                 "item": item.get("action", ""),
                 "old": "standart",
@@ -4496,6 +5849,10 @@ def adapt_existing_routine(
 
         adapted.append(new_item)
 
+    adapted = _apply_checkin_diet_process(adapted, daily_data, changes)
+    adapted = _apply_checkin_strength(adapted, daily_data, risk_level, changes)
+    adapted = _support_recovery(adapted, daily_data, changes)
+    adapted, weather_note = _apply_checkin_weather(adapted, daily_data, changes)
     adapted = adjust_routine_for_risk(adapted, risk_level)
     sanitize_routine_items_details(adapted)
     attach_structured_fields_to_routine_items(adapted)
@@ -4508,4 +5865,5 @@ def adapt_existing_routine(
         "risk_level": risk_level,
         "risk_detail": risk_info.get("detail", ""),
         "adaptation_type": adaptation_type,
+        "weather_note": weather_note,
     }

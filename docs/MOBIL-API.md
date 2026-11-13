@@ -310,11 +310,12 @@ POST /devices/register
 }
 ```
 
-`actions_supported`: uygulama **sunucudan gelen** bildirimin butonlarını (aşağıya bakın)
-işleyebiliyorsa `true` gönderin. Bu durumda iOS mesajına `aps.category` eklenir; Android'e
-**yalnızca veri taşıyan** mesaj gider ve bildirimi butonlarıyla birlikte uygulama kendisi
-kurar. Varsayılan `false`'tur: kategori eklenmez (yoksa iOS, basınca kayıt yazmayan
-butonlar gösterir) ve sistem düz bildirimi gösterir.
+`actions_supported`: uygulama **sunucudan gelen** bildirimin butonlarını kendisi kurup
+işleyebiliyorsa `true`. Flutter uygulaması Firebase açık derlemelerde iki platformda da `true`
+gönderir (`PushClient.handlesNotificationActions`; akış aşağıda, "Bildirimden günlük veri
+toplama"). `true` olan Android cihaza **yalnızca veri taşıyan** mesaj gider, iOS cihaza
+`aps.category` eklenir. Varsayılan `false`: kategori eklenmez (yoksa iOS, basınca kayıt
+yazmayan butonlar gösterir) ve sistemin gösterdiği düz bildirim gider.
 
 `utc_offset_minutes` zorunludur: hatırlatıcı saatleri yerel olduğu için sunucu cihazın
 saat dilimini bilmek zorundadır. Uygulama açılışta, **saat farkı değişince** (yolculuk, yaz saati), **12 saatten uzun

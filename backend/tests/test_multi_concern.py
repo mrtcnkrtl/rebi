@@ -5,7 +5,13 @@ from multi_concern import build_guards, normalize_concern_entries, rank_concerns
 
 
 def _blob(items):
-    return " ".join(str(i.get("action") or "") + " " + str(i.get("detail") or "") for i in items).lower()
+    parts = []
+    for i in items:
+        parts.append(str(i.get("action") or ""))
+        parts.append(str(i.get("detail") or ""))
+        for c in i.get("choices") or []:
+            parts.append(str(c.get("action") or ""))
+    return " ".join(parts).lower()
 
 
 def _flow(**kwargs):
@@ -85,7 +91,9 @@ def test_pigmentation_plus_acne_chin_still_gets_zone():
     assert r["multi_concern"]["primary"] == "pigmentation"
     blob = _blob(r["routine_items"])
     assert "çene" in blob
-    assert "arbutin" in blob or "traneksamik" in blob
+    assert "retinol" in blob
+    assert "arbutin" not in blob
+    assert "glikolik" not in blob
     assert r["acne_zone_info"]
 
 
@@ -138,7 +146,7 @@ def test_highest_dryness_outranks_mild_acne():
     )
     assert r["multi_concern"]["primary"] == "dryness"
     blob = _blob(r["routine_items"])
-    assert "seramid" in blob or "squalane" in blob or "skualan" in blob
+    assert "dimetikon" in blob or "linolenik" in blob
     assert "azelaik" in blob
     assert "benzoil" not in blob
 

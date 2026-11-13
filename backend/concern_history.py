@@ -47,6 +47,7 @@ _CONCERN_TR = {
     "pores": "gözenek",
     "oiliness": "yağlılık",
     "sensitivity": "hassasiyet",
+    "undereye": "göz altı koyuluğu",
     "general": "genel bakım",
 }
 
@@ -126,6 +127,123 @@ def apply_history_to_guards(guards: dict, ranked: list[dict], history: dict) -> 
     return g
 
 
+_PASSING_CYCLE_PHASES = frozenset({"menstrual", "luteal"})
+_PHASE_WAIT_TR = {
+    "menstrual": "Adet günleri",
+    "luteal": "Adet öncesi günler",
+}
+
+
+def passing_cycle_window(
+    *,
+    gender: str = "",
+    cycle_phase: str = "",
+    triggers: Optional[list] = None,
+    is_pregnant: bool = False,
+) -> str:
+    """Adet kaynaklı sorunda, luteal veya adet penceresi bitene kadar yeni tedavi bekler.
+
+    Menopoz ve gebelik tıbbi hormonal durumdur; bekleme uygulanmaz.
+    Foliküler ve ovülasyon penceresi geçmiştir; tedavi o planda başlar.
+    """
+    if (gender or "").lower() not in ("female", "kadın", "kadin"):
+        return ""
+    if is_pregnant:
+        return ""
+    phase = (cycle_phase or "").strip().lower()
+    if phase not in _PASSING_CYCLE_PHASES:
+        return ""
+    if "period" not in {str(t) for t in (triggers or [])}:
+        return ""
+    return phase
+
+
+def _treatment_label(it: dict) -> str:
+    choices = it.get("choices") or []
+    action = ""
+    if choices:
+        default = it.get("default_choice_id")
+        chosen = next((c for c in choices if c.get("id") == default), choices[0])
+        action = str(chosen.get("action") or "")
+    if not action:
+        action = str(it.get("action") or "")
+    action = action.split("(INCI")[0].strip(" —-")
+    return action[:160]
+
+
+def _hold_treatment_item(it: dict) -> bool:
+    """İskelet (temizlik, nem, SPF) ve yaşam notu kalır; tedavi adımı bekler."""
+    if it.get("category") == "Koruma":
+        return False
+    role = str(it.get("concern_role") or "")
+    if role in ("environment", "undereye_lifestyle", "deferred_cycle"):
+        return False
+    so = it.get("step_order")
+    if so in (10, 30, 40):
+        return False
+    action = (it.get("action") or "").lower()
+    if action.startswith(("temizleme", "çift aşama", "gece", "nemlendirici")):
+        return False
+    if role.startswith(("primary", "support_", "zone")):
+        return True
+    if so in (18, 20, 25, 26) and it.get("category") == "Bakım":
+        return True
+    if it.get("choice_group") and it.get("category") == "Bakım":
+        return True
+    if "pms akne" in action or "hormonal akne" in action:
+        return True
+    return False
+
+
+def defer_treatment_until_window_passes(items: list[dict], phase: str) -> list[dict]:
+    """Pencere bitene kadar tedavi adımını rutin dışı bırak; madde adını sakla."""
+    phase = (phase or "").strip().lower()
+    if phase not in _PHASE_WAIT_TR:
+        return items
+    held = [it for it in items if _hold_treatment_item(it)]
+    if not held:
+        return items
+    primary = next(
+        (
+            it
+            for it in held
+            if it.get("step_order") == 20
+            and not str(it.get("concern_role") or "").startswith(("support_", "zone"))
+        ),
+        held[0],
+    )
+    label = _treatment_label(primary) or "seçilen dermokozmetik"
+    note = {
+        "time": "Akşam",
+        "category": "Bakım",
+        "icon": "⏸️",
+        "action": f"Bu dönem bitince: {label}",
+        "detail": (
+            f"{_PHASE_WAIT_TR[phase]} içindesin ve sorun adet döngüsüne bağlı. "
+            f"Bu pencere bitince başlanacak dermokozmetik: {label}. "
+            "Bugün temizlik, nemlendirici ve güneş koruyucu yeterli. "
+            "Menopoz ve gebelik bu beklemeye girmez."
+        ),
+        "usage": "Yeni asit, retinol veya leke maddesine bu pencerede başlama.",
+        "priority": 2,
+        "step_order": 20,
+        "concern_role": "deferred_cycle",
+        "deferred_until": phase,
+        "deferred_action": label,
+    }
+    held_ids = {id(it) for it in held}
+    out: list[dict] = []
+    inserted = False
+    for it in items:
+        if id(it) in held_ids:
+            if not inserted:
+                out.append(note)
+                inserted = True
+            continue
+        out.append(it)
+    return out
+
+
 def cap_weekly_days_from_timeline(items: list[dict], ranked: list[dict]) -> None:
     """Atak/aylık veya yeni başlangıç: güçlü bakım günlerini 2'ye indir."""
     if not ranked:
@@ -191,10 +309,10 @@ def build_history_routine_items(
         )
     elif "none" in past:
         lines.append("Daha önce tedavi denememişsin: sıklık düşük tutuldu, doz yığılmaz.")
-    if "period" in trig and (gender or "").lower() == "female":
+    if "period" in trig and (gender or "").lower() in ("female", "kadın", "kadin"):
         lines.append(
-            "Adet tetikleyicisi: luteal/adet haftasında yeni asit ekleme; "
-            "mevcut azelaik/niasinamidi çene odaklı sürdürmek yeterli."
+            "Adet tetikleyicisi: luteal ve adet günlerinde yeni dermokozmetik maddeye başlanmaz; "
+            "bu pencere bitince başlanır. Menopoz ve gebelik bu beklemeye girmez."
         )
     if not lines:
         return []

@@ -79,10 +79,13 @@ class FakeReminderNotifier implements ReminderNotifier {
 }
 
 class FakePushClient implements PushClient {
-  FakePushClient({this.available = true, this.pushToken = 'fcm-token-1'});
+  FakePushClient({this.available = true, this.pushToken = 'fcm-token-1', this.handlesNotificationActions = false});
 
   @override
   bool available;
+
+  @override
+  bool handlesNotificationActions;
 
   String? pushToken;
   int permissionRequests = 0;

@@ -223,6 +223,13 @@ void main() {
       expect(body['locale'], 'tr');
       expect(body['app_version'], '1.2.3');
       expect(body['push_enabled'], isTrue);
+      expect(body['actions_supported'], isFalse);
+    });
+
+    test('düğmeleri işleyebilen push istemcisi bunu kayıtta bildirir', () async {
+      final c = make(pushClient: FakePushClient(handlesNotificationActions: true));
+      await c.enable();
+      expect(backend.bodyOf('/devices/register')['actions_supported'], isTrue);
     });
 
     test('sunucuda FCM açıksa yerel bildirim kurulmaz (çift bildirim olmaz)', () async {

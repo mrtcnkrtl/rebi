@@ -964,6 +964,10 @@
     "activeBody": "Rebi Plus shows on your account. Thank you.",
     "included": "What's included?",
     "open": "Open Plus",
+    "contractsHint": "The payment page stays closed until both approvals are recorded. Price and term are shown on that page before any charge.",
+    "preInfo": "I have read the pre-contract information.",
+    "distance": "I have read the distance sales contract and I want the digital service to start as soon as payment is confirmed.",
+    "payError": "The approval could not be saved. The payment page did not open.",
     "backToChat": "Back to chat",
     "benefits": {
       "chat": {
@@ -1239,7 +1243,7 @@
   "mobileRoutine": {
     "askRebi": "Ask Rebi",
     "askPrompt": "Why am I using \"{{item}}\" in my routine and how should I apply it? Can you also suggest alternatives that suit my skin?",
-    "comboHint": "You don't need everything in one product: treat this line as example target ingredients; if you can't find them all together, pick one of the similar ones.",
+    "comboHint": "One moisturizer is enough. Look for these ingredients together on the label.",
     "stepCount": "{{n}} steps",
     "humidity": "humidity {{value}}%",
     "weeklyDays": "Use this on: {{days}}",

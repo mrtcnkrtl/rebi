@@ -28,6 +28,7 @@ Future<DeviceRegistration?> registerDevice({
   required bool pushEnabled,
   String? locale,
   String? appVersion,
+  bool actionsSupported = false,
 }) async {
   final res = await apiPost('/devices/register', {
     'user_id': userId,
@@ -37,6 +38,7 @@ Future<DeviceRegistration?> registerDevice({
     if (locale != null && locale.isNotEmpty) 'locale': locale,
     if (appVersion != null && appVersion.isNotEmpty) 'app_version': appVersion,
     'push_enabled': pushEnabled,
+    'actions_supported': actionsSupported,
   });
   if (!res.ok) return null;
   return DeviceRegistration(

@@ -1,6 +1,11 @@
 """Sorun başı süre/sıklık motora bağlanır."""
 
-from concern_history import apply_history_to_guards, cap_weekly_days_from_timeline, normalize_history_lists
+from concern_history import (
+    apply_history_to_guards,
+    cap_weekly_days_from_timeline,
+    normalize_history_lists,
+    passing_cycle_window,
+)
 from flow_engine import run_flow
 from multi_concern import normalize_concern_entries, rank_concerns
 
@@ -111,6 +116,66 @@ def test_eye_corner_zone_even_when_primary_is_aging():
     blob = " ".join(str(i.get("action") or "") for i in r["routine_items"]).lower()
     assert "göz kenarı" in blob
     assert any(z.get("zone") == "eye_corner" for z in r.get("acne_zone_info") or [])
+
+
+def _flow(**kwargs):
+    base = dict(
+        concern="acne",
+        severity_score=8,
+        age=28,
+        gender="female",
+        skin_type_key="combination",
+        stress_score=4,
+        sleep_hours=7.5,
+        water_intake=2.0,
+        smoking=False,
+        alcohol=False,
+        uv_index=3,
+        humidity=50,
+        temperature=22,
+        triggers=["period"],
+    )
+    base.update(kwargs)
+    return run_flow(**base)
+
+
+def test_passing_window_ignores_medical_hormonal_states():
+    assert passing_cycle_window(gender="female", cycle_phase="luteal", triggers=["period"]) == "luteal"
+    assert passing_cycle_window(gender="female", cycle_phase="menstrual", triggers=["period"]) == "menstrual"
+    assert passing_cycle_window(gender="female", cycle_phase="follicular", triggers=["period"]) == ""
+    assert passing_cycle_window(gender="female", cycle_phase="menopause", triggers=["period"]) == ""
+    assert passing_cycle_window(
+        gender="female", cycle_phase="luteal", triggers=["period"], is_pregnant=True
+    ) == ""
+    assert passing_cycle_window(gender="female", cycle_phase="luteal", triggers=["stress"]) == ""
+
+
+def test_period_window_holds_the_treatment_until_it_passes():
+    r = _flow(cycle_phase="luteal")
+    items = r["routine_items"]
+    deferred = next(i for i in items if i.get("concern_role") == "deferred_cycle")
+    assert "benzoil" in deferred["deferred_action"].lower()
+    assert r["multi_concern"]["guards"].get("defer_treatment") == "luteal"
+    actions = " ".join((i.get("action") or "") for i in items if i.get("concern_role") != "deferred_cycle").lower()
+    assert "benzoil" not in actions
+    assert "çinko 30" not in actions
+    assert any("temizle" in (i.get("action") or "").lower() for i in items)
+    assert any("spf" in (i.get("action") or "").lower() for i in items)
+
+
+def test_treatment_starts_once_the_period_window_has_passed():
+    r = _flow(cycle_phase="follicular")
+    assert "defer_treatment" not in r["multi_concern"]["guards"]
+    blob = " ".join((i.get("action") or "") for i in r["routine_items"]).lower()
+    assert "benzoil" in blob
+    assert "bu dönem bitince" not in blob
+
+
+def test_menopause_is_not_asked_to_wait():
+    r = _flow(cycle_phase="menopause")
+    assert "defer_treatment" not in r["multi_concern"]["guards"]
+    blob = " ".join((i.get("action") or "") for i in r["routine_items"]).lower()
+    assert "benzoil" in blob
 
 
 def test_normalize_history_filters_unknown():

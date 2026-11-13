@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTheme } from "../context/ThemeContext";
 import { useAuth } from "../context/AuthContext";
@@ -5,6 +6,7 @@ import { Sparkles, Crown, MessageCircle, Palette, ExternalLink, Check, Shield } 
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import { useTranslation } from "react-i18next";
 import { userHasRebiPlus } from "../lib/subscription";
+import { recordSalesConsent } from "../lib/salesConsent";
 
 const CHECKOUT_URL = import.meta.env.VITE_REBI_PLUS_CHECKOUT_URL || "";
 
@@ -13,6 +15,24 @@ export default function Subscribe() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const plus = userHasRebiPlus(user);
+  const [preInfo, setPreInfo] = useState(false);
+  const [distance, setDistance] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [payError, setPayError] = useState("");
+
+  async function openCheckout() {
+    if (!preInfo || !distance || busy) return;
+    setBusy(true);
+    setPayError("");
+    try {
+      await recordSalesConsent(user?.id);
+      window.open(CHECKOUT_URL, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setPayError(err?.message || "Onay kaydedilemedi. Ödeme sayfası açılmadı.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className={`min-h-screen ${theme.bg} pb-28 relative overflow-hidden`}>
@@ -132,14 +152,48 @@ export default function Subscribe() {
             ortam değişkeni ile ödeme sayfası açılır.
           </p>
           {CHECKOUT_URL ? (
-            <a
-              href={CHECKOUT_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-violet-950 font-extrabold px-6 py-4 shadow-xl shadow-black/25 hover:bg-violet-50 transition-colors"
-            >
-              Plus’ı aç <ExternalLink className="w-4 h-4" />
-            </a>
+            <div className="space-y-3">
+              <p className="text-xs text-white/80 leading-relaxed">
+                Ödeme sayfası, iki onay da kayda geçmeden açılmaz. Fiyat ve dönem, tahsilattan önce ödeme sayfasında gösterilir.
+              </p>
+              <label className="flex items-start gap-2 text-sm text-white/90">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={preInfo}
+                  onChange={(e) => setPreInfo(e.target.checked)}
+                />
+                <span>
+                  <Link to="/on-bilgilendirme" className="underline underline-offset-2">
+                    Ön bilgilendirme formunu
+                  </Link>{" "}
+                  okudum.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-white/90">
+                <input
+                  type="checkbox"
+                  className="mt-1"
+                  checked={distance}
+                  onChange={(e) => setDistance(e.target.checked)}
+                />
+                <span>
+                  <Link to="/mesafeli-satis" className="underline underline-offset-2">
+                    Mesafeli satış sözleşmesini
+                  </Link>{" "}
+                  okudum ve dijital hizmetin ödeme onayından hemen sonra başlamasını istiyorum.
+                </span>
+              </label>
+              <button
+                type="button"
+                disabled={!preInfo || !distance || busy}
+                onClick={openCheckout}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-white text-violet-950 font-extrabold px-6 py-4 shadow-xl shadow-black/25 hover:bg-violet-50 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+              >
+                Plus’ı aç <ExternalLink className="w-4 h-4" />
+              </button>
+              {payError ? <p className="text-xs text-amber-100">{payError}</p> : null}
+            </div>
           ) : (
             <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100/90">
               Ödeme URL’si tanımlı değil. Stripe/iyzico linkini alıp frontend ortamına ekleyin.

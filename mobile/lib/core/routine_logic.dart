@@ -140,11 +140,18 @@ final _pauseSuffix = RegExp(r'\s*—\s*ARA VER\s*$', caseSensitive: false, unico
 final _notNowSuffix = RegExp(r'\s*—\s*şimdilik kullanma\s*$', caseSensitive: false, unicode: true);
 final _dashSplit = RegExp(r'\s*[—–]\s*');
 final _inci = RegExp(r'\s*\(INCI[^)]*\)\s*', caseSensitive: false);
+final _inciOrDashParen = RegExp(r'\s*\([^)]*(?:INCI|inci:|—|–)[^)]*\)\s*', caseSensitive: false);
 
 /// Uzun rutin satırından okunur kısa başlık (INCI ve kimyasal ön ek gizlenir).
 String friendlyRoutineTitle(String? action, [String fallbackTitle = 'This step']) {
   if (action == null || action.isEmpty) return fallbackTitle;
-  final s = action.replaceFirst(_pausePrefix, '').replaceFirst(_pauseSuffix, '').replaceFirst(_notNowSuffix, '').trim();
+  final s = action
+      .replaceFirst(_pausePrefix, '')
+      .replaceFirst(_pauseSuffix, '')
+      .replaceFirst(_notNowSuffix, '')
+      .replaceAll(_inciOrDashParen, ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
   final parts = s.split(_dashSplit).map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
   if (parts.length >= 2) {
     final human = parts[1].replaceAll(_inci, '').trim();

@@ -10,12 +10,13 @@ const CONCERN_DEFS = {
   dryness: { label: "Kuruluk", color: "#f59e0b", bg: "bg-amber-500", ring: "ring-amber-200", light: "bg-amber-50", text: "text-amber-700", dotClass: "bg-amber-400" },
   pigmentation: { label: "Leke", color: "#92400e", bg: "bg-amber-800", ring: "ring-amber-300", light: "bg-amber-50", text: "text-amber-900", dotClass: "bg-amber-700" },
   sensitivity: { label: "Hassasiyet", color: "#ec4899", bg: "bg-pink-500", ring: "ring-pink-200", light: "bg-pink-50", text: "text-pink-700", dotClass: "bg-pink-400" },
+  undereye: { label: "Göz altı morluğu", color: "#6366f1", bg: "bg-indigo-500", ring: "ring-indigo-200", light: "bg-indigo-50", text: "text-indigo-700", dotClass: "bg-indigo-400" },
 };
 
 const ZONES = [
   { id: "forehead", label: "Alın", x: 50, y: 20, concerns: ["acne", "aging", "dryness", "pigmentation", "sensitivity"] },
   { id: "temples", label: "Şakak", x: 15, y: 32, concerns: ["acne", "aging", "sensitivity"] },
-  { id: "undereye", label: "Göz Altı", x: 35, y: 42, concerns: ["aging", "pigmentation", "sensitivity", "dryness"] },
+  { id: "undereye", label: "Göz Altı", x: 35, y: 42, concerns: ["undereye", "aging", "pigmentation", "sensitivity", "dryness"] },
   { id: "nose", label: "Burun", x: 50, y: 50, concerns: ["acne", "dryness", "sensitivity"] },
   { id: "left_cheek", label: "Sol Yanak", x: 22, y: 57, concerns: ["acne", "aging", "dryness", "pigmentation", "sensitivity"] },
   { id: "right_cheek", label: "Sağ Yanak", x: 78, y: 57, concerns: ["acne", "aging", "dryness", "pigmentation", "sensitivity"] },

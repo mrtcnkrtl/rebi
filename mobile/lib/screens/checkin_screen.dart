@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../core/api.dart';
 import '../core/checkin_prefill.dart';
 import '../core/checkin_stats.dart';
+import '../core/device_location.dart';
 import '../core/demo_user.dart';
 import '../core/i18n.dart';
 import '../core/routine_logic.dart';
@@ -51,6 +52,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
   double _sleepHours = 7;
   int _stressToday = 3;
   String _skinFeeling = '';
+  String _daySetting = '';
+  bool _locationMissing = false;
   bool _appliedRoutine = true;
   final _notes = TextEditingController();
   bool _ctxLoading = true;
@@ -79,6 +82,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
     super.initState();
     _waterMl.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      lookupDeviceLocation().then((loc) {
+        if (mounted) setState(() => _locationMissing = loc == null);
+      });
       final id = _uid;
       if (id != null && !isRoutineTrackingAccepted(id)) {
         context.go('/dashboard', extra: const {'flashNeedAccept': true});
@@ -226,6 +232,15 @@ class _CheckInScreenState extends State<CheckInScreen> {
         'notes': _notes.text.isEmpty ? null : _notes.text,
         'utc_offset_minutes': DateTime.now().timeZoneOffset.inMinutes,
       };
+      final loc = await lookupDeviceLocation();
+      if (mounted) setState(() => _locationMissing = loc == null);
+      if (loc != null) {
+        payload['location_lat'] = loc.lat;
+        payload['location_lon'] = loc.lon;
+      }
+      if (_daySetting == 'indoor' || _daySetting == 'outdoor') {
+        payload['day_setting'] = _daySetting;
+      }
       final w = parseWaterMlInput(_waterMl.text);
       if (w != null && w > 0) payload['water_ml_today'] = w;
       if (_makeupUsedToday != null) {
@@ -340,9 +355,45 @@ class _CheckInScreenState extends State<CheckInScreen> {
         ],
         CheckinSleepCard(hours: _sleepHours, onChanged: (v) => setState(() => _sleepHours = v)),
         gap,
+        if (_locationMissing)
+          RCard(
+            child: Text(
+              'Konum olmadığı için hava durumuna göre değişim ve öneri verilemiyor.',
+              style: tx(12, c: Tw.amber800, h: relaxed),
+            ),
+          ),
         CheckinStressCard(level: _stressToday, theme: theme, onChanged: (v) => setState(() => _stressToday = v)),
         gap,
         CheckinSkinCard(selected: _skinFeeling, theme: theme, onChanged: (id) => setState(() => _skinFeeling = id)),
+        gap,
+        RCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Bugün cildin daha çok nerede?', style: tx(14, w: 7, c: Tw.gray800)),
+              const SizedBox(height: 4),
+              Text(
+                'UV ve sıcaklık evin içi ile dışarısı arasında değişir. Bu cevap güneş koruyucu numarasına girer.',
+                style: tx(11, c: Tw.gray500, h: relaxed),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final (id, label) in const [('indoor', 'Evin içi'), ('outdoor', 'Dışarıda')])
+                    ChoiceChipBox(
+                      label: label,
+                      selected: _daySetting == id,
+                      activeText: Tw.teal900,
+                      inactiveText: Tw.gray600,
+                      onTap: () => setState(() => _daySetting = id),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
         gap,
         CheckinSymptomsCard(
           tags: _symptomTags,
@@ -443,6 +494,17 @@ class _CheckInScreenState extends State<CheckInScreen> {
           header(LucideIcons.sun, Tw.amber600, i18n.t('mobileCheckin.extras.$_concern')),
           q('long_sun_exposure_today'),
           q('spf_applied_today'),
+          if (_concern == 'pigmentation') ...[
+            q('high_glycemic_intake_today'),
+            q('heavy_dairy_today'),
+          ],
+        ];
+      case 'oiliness':
+        return [
+          const SizedBox(height: 16),
+          header(LucideIcons.droplets, Tw.sky500, 'Yağlılığa özel'),
+          q('high_glycemic_intake_today'),
+          q('heavy_dairy_today'),
         ];
       case 'dryness':
         return [

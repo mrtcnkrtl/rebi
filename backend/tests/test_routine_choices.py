@@ -1,4 +1,4 @@
-"""Rutin adımlarında gerçek 2 yollu seçenek kartları."""
+"""Aynı işi gören maddeler menü olmaz; satır motordan gelen tek formül olarak kalır."""
 
 from flow_engine import attach_structured_fields_to_routine_items, choices_for_routine_item, run_flow
 
@@ -8,7 +8,7 @@ def _attach(item):
     return item
 
 
-def test_choices_sequential_or_single_formula():
+def test_formula_stays_one_step_without_a_menu():
     it = {
         "time": "Akşam",
         "category": "Bakım",
@@ -20,14 +20,12 @@ def test_choices_sequential_or_single_formula():
         ),
     }
     _attach(it)
-    ids = {c["id"] for c in it["choices"]}
-    assert ids == {"single", "sequence"}
-    assert it["choice_key"]
-    seq = next(c for c in it["choices"] if c["id"] == "sequence")
-    assert "→ sonra" in seq["action"]
+    assert "choices" not in it
+    assert "niasinamid" in it["action"].lower()
+    assert "azelaik" in it["action"].lower()
 
 
-def test_choices_moisturizer_two_ingredients():
+def test_moisturizer_stays_the_written_formula():
     it = {
         "time": "Sabah",
         "category": "Bakım",
@@ -35,10 +33,8 @@ def test_choices_moisturizer_two_ingredients():
         "action": "Nemlendirici: Niasinamid %5 + Hyaluronik asit (hafif jel)",
     }
     _attach(it)
-    assert len(it["choices"]) == 2
-    labels = {c["label"] for c in it["choices"]}
-    assert "Niasinamid %5" in labels
-    assert "Hyaluronik asit" in labels
+    assert "choices" not in it
+    assert "+" in it["action"]
 
 
 def test_no_choices_canonical_311():
@@ -63,7 +59,7 @@ def test_no_choices_three_ingredient_barrier():
     assert "choices" not in it
 
 
-def test_choices_cleanser_or_split():
+def test_cleanser_or_split_is_not_a_menu():
     it = {
         "time": "Sabah",
         "category": "Bakım",
@@ -71,9 +67,7 @@ def test_choices_cleanser_or_split():
         "action": "Temizleme: Misel su veya süt bazlı temizleyici",
     }
     _attach(it)
-    labels = {c["label"] for c in it["choices"]}
-    assert "Misel su" in labels
-    assert "süt bazlı temizleyici" in labels
+    assert "choices" not in it
 
 
 def test_choices_for_item_skips_lifestyle():
@@ -85,7 +79,7 @@ def test_choices_for_item_skips_lifestyle():
     )
 
 
-def test_oily_morning_moisturizer_offers_two_picks():
+def test_oily_morning_moisturizer_is_one_formula():
     r = run_flow(
         age=26,
         gender="female",
@@ -102,10 +96,9 @@ def test_oily_morning_moisturizer_offers_two_picks():
         temperature=22,
         actives_experience="regular",
     )
-    moist = [
-        i
-        for i in r["routine_items"]
-        if str(i.get("action") or "").lower().startswith("nemlendirici")
-    ]
-    assert moist
-    assert len(moist[0].get("choices") or []) == 2
+    actions = [str(i.get("action") or "") for i in r["routine_items"]]
+    assert not any(a.lower().startswith("nemlendirici") for a in actions)
+    assert not any(a.lower().startswith("gece:") for a in actions)
+    oil = next(i for i in r["routine_items"] if "niasinamid" in (i.get("action") or "").lower())
+    assert "çinko" in oil["action"].lower()
+    assert "choices" not in oil

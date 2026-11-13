@@ -64,6 +64,7 @@ IconData concernGlyph(String id) => switch (id) {
       'dryness' => LucideIcons.wind,
       'pigmentation' => LucideIcons.sun,
       'sensitivity' => LucideIcons.flower,
+      'undereye' => LucideIcons.eye,
       _ => LucideIcons.sparkles,
     };
 

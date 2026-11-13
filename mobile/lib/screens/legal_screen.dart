@@ -21,7 +21,12 @@ class LegalScreen extends StatelessWidget {
     final i18n = context.i18n;
     final theme = context.watch<ThemeController>().theme;
     final sections = legalSections(kind, i18n.lang);
-    final title = kind == 'riza' ? i18n.t('legal.rizaTitle') : i18n.t('legal.kvkkTitle');
+    final title = switch (kind) {
+      'riza' => i18n.t('legal.rizaTitle'),
+      'onbilgi' => i18n.t('legal.preInfoTitle'),
+      'mesafeli' => i18n.t('legal.distanceTitle'),
+      _ => i18n.t('legal.kvkkTitle'),
+    };
 
     void open(String other) {
       if (other == kind) return;

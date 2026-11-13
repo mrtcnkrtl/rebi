@@ -1,4 +1,5 @@
 import rag_service as rs
+from free_chat_quota import free_chat_limit
 
 
 def test_strip_botty_openers_removes_leading_and_inline_hitap():
@@ -22,4 +23,15 @@ def test_strip_broad_routine_questions_kept_when_placement_question():
     out = rs._strip_broad_routine_questions(reply, user_message=user_msg)
     # placement intent => routine question should be preserved
     assert "rutininde" in out.lower()
+
+
+def test_chat_reply_keeps_two_sentences():
+    text = "Birinci cümle. İkinci cümle. Üçüncü cümle. Dördüncü cümle."
+    out = rs._chat_general_shape(text)
+    assert out == "Birinci cümle. İkinci cümle."
+
+
+def test_free_chat_daily_limit_defaults_to_six(monkeypatch):
+    monkeypatch.delenv("FREE_CHAT_DAILY_LIMIT", raising=False)
+    assert free_chat_limit() == 6
 

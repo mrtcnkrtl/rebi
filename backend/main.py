@@ -22,6 +22,7 @@ from contextlib import nullcontext
 from datetime import date, datetime, timedelta, timezone
 
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, CORS_ORIGINS, get_logger
+from privacy_incident import parse_discovered_at, record_privacy_incident
 from supabase_client import get_shared_client
 from async_bridge import configure_threadpool, run_async, run_sync
 from weather_service import FALLBACK as WEATHER_FALLBACK, fetch_weather_live, search_places
@@ -55,6 +56,7 @@ from shelf import SHELF_EVENT_TYPES, SHELF_LOOKBACK_DAYS, derive_products_out
 from flow_engine import (
     run_flow,
     adapt_existing_routine,
+    routine_materially_changed,
     CONCERN_KNOWLEDGE_MAP,
     get_routine_care_guide,
     sanitize_routine_items_details,
@@ -126,6 +128,8 @@ from rate_limit import (
     LIMIT_PUSH_RESPOND,
     LIMIT_UPLOAD_PHOTO,
     LIMIT_ACCOUNT_DELETE,
+    LIMIT_SALES_CONSENT,
+    LIMIT_PRIVACY_INCIDENT,
     LIMIT_INTRO_SEEN,
     get_client_ip,
     enforce_ai_user_limit,
@@ -1002,6 +1006,7 @@ class AssessmentRequest(BaseModel):
     makeup_removal: str = "cleanser"  # none | water | cleanser | double
     # UI: karışıklığı azaltan netleştirici işaretler (şimdilik opsiyonel)
     special_flags: Optional[dict] = None
+    undereye_look: Optional[dict] = None  # {color: unsure|brown|purple|both, puffiness: none|sometimes|often|all_day}
     # Yalnızca erkeğe sorulan tıraş cevabı (mobil). Rutini şimdilik değiştirmez; kaydedilir ve sohbet bağlamına verilir.
     shaving_frequency: int = 0  # 0 hayır, 1 ara sıra, 3 haftada birkaç, 7 her gün
     shaving_after: str = ""  # ok | irritated | ingrown ("" = tıraş olmuyor / sorulmadı)
@@ -1295,6 +1300,8 @@ class DailyCheckinRequest(BaseModel):
     notes: Optional[str] = None
     location_lat: Optional[float] = None
     location_lon: Optional[float] = None
+    # UV ve sıcaklık evin içi ile dışarısı arasında değişir. None ise bu ikisi uygulanmaz.
+    day_setting: Optional[str] = None
     # Koşullu check-in: riskte kullanılır; None ise profil/takip aynen
     water_ml_today: Optional[int] = None
     makeup_used_today: Optional[bool] = None
@@ -1324,6 +1331,9 @@ class DailyCheckinRequest(BaseModel):
         allowed_skin = {"iyi", "kuru", "yagli", "kirik", "irritasyon"}
         sf = (self.skin_feeling or "iyi").strip().lower()
         self.skin_feeling = sf if sf in allowed_skin else "iyi"
+        if self.day_setting is not None:
+            ds = str(self.day_setting).strip().lower()
+            self.day_setting = ds if ds in ("indoor", "outdoor") else None
         if self.water_ml_today is not None:
             self.water_ml_today = int(max(0, min(8000, int(self.water_ml_today))))
         if self.notes:
@@ -2497,6 +2507,19 @@ def device_register(request: Request, req: DeviceRegisterRequest):
     if not should_use_supabase_db(supabase, req.user_id):
         return DeviceRegisterResponse(push_configured=push_configured(), synced=False, dispatch_alive=_dispatch_alive())
     try:
+        existing = (
+            supabase.table("device_tokens")
+            .select("user_id")
+            .eq("token", req.token)
+            .limit(1)
+            .execute()
+        )
+        owner = str((existing.data or [{}])[0].get("user_id") or "") if existing.data else ""
+        if owner and owner != str(req.user_id):
+            log.info("Cihaz anahtarı başka hesaba bağlı; devralınmadı")
+            return DeviceRegisterResponse(
+                push_configured=push_configured(), synced=False, dispatch_alive=_dispatch_alive()
+            )
         supabase.table("device_tokens").upsert({
             "user_id": req.user_id,
             "token": req.token,
@@ -2878,6 +2901,8 @@ def _dispatch_page(supabase, users: dict[str, dict], totals: dict) -> None:
                     "log_event": reminder.get("log_event") or "",
                     "log_date": log_date,
                     "slot": reminder["slot"],
+                    # Flutter arka plan izolatında oturum yok; düğme kaydı bu kullanıcıya kuyruklanır.
+                    "user_id": uid,
                     "open_path": reminder.get("open_path") or reminder_open_path(reminder["id"]),
                     "actions": json.dumps(
                         [{"id": a["id"], "label": a["label"]} for a in reminder.get("actions") or []],
@@ -3171,6 +3196,7 @@ def generate_routine(request: Request, req: AssessmentRequest):
         makeup_frequency=req.makeup_frequency,
         makeup_removal=req.makeup_removal or "cleanser",
         special_flags=req.special_flags,
+        undereye_look=req.undereye_look,
         shaving_frequency=req.shaving_frequency,
         shaving_after=req.shaving_after,
         concerns=req.concerns,
@@ -3321,6 +3347,7 @@ def generate_routine(request: Request, req: AssessmentRequest):
                     "makeup_frequency": req.makeup_frequency,
                     "makeup_removal": req.makeup_removal or "cleanser",
                     "special_flags": req.special_flags or {},
+                    "undereye_look": req.undereye_look or {},
                     "shaving_frequency": req.shaving_frequency,
                     "shaving_after": req.shaving_after,
                     "concerns": req.concerns or [],
@@ -3990,8 +4017,6 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
     enforce_supabase_user(request, req.user_id)
     _enforce_ai_user_limit(req.user_id)
     _require_privacy_permission(req.user_id, "ai")
-    if req.location_lat is not None or req.location_lon is not None:
-        _require_privacy_permission(req.user_id, "location")
     log.info("Daily checkin isteği alındı")
 
     supabase = get_supabase()
@@ -4023,10 +4048,17 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
         except Exception as e:
             log.error("Check-in mükerrer kontrolü hatası: %s", e)
 
-    # 1. Hava durumu
-    weather_data = {"humidity": 50, "uv_index": 3, "temperature": 20}
+    # 1. Hava durumu. Konum yoksa varsayılan nem/UV/sıcaklık rutine yazılmaz.
+    weather_data = None
     if req.location_lat and req.location_lon:
-        weather_data = run_async(_weather_cached, req.location_lat, req.location_lon)
+        try:
+            _require_privacy_permission(req.user_id, "location")
+        except HTTPException as e:
+            if e.status_code not in (403, 503):
+                raise
+            weather_data = None
+        else:
+            weather_data = run_async(_weather_for_coords, req.location_lat, req.location_lon)
 
     # 2. Mevcut aktif rutini Supabase'den çek
     current_routine = []
@@ -4159,7 +4191,7 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
     risk_info = compute_risk_score(
         stress=stress_mapped,
         water_intake=water_intake,
-        humidity=weather_data.get("humidity", 50),
+        humidity=weather_data.get("humidity") if weather_data else None,
         sleep_hours=effective_sleep,
         makeup_frequency=makeup_frequency,
         makeup_removal=makeup_removal,
@@ -4195,6 +4227,15 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
         "applied_routine": req.applied_routine,
         "notes": req.notes or "",
         "tracking_today": tracking_today or {},
+        "concern": concern_for_carry,
+        "high_glycemic_intake_today": req.high_glycemic_intake_today,
+        "heavy_dairy_today": req.heavy_dairy_today,
+        "past_logs": past_logs,
+        "weather_available": bool(weather_data),
+        "humidity": weather_data.get("humidity") if weather_data else None,
+        "temperature": weather_data.get("temperature") if weather_data else None,
+        "uv_index": weather_data.get("uv_index") if weather_data else None,
+        "day_setting": req.day_setting,
     }
 
     adaptation = adapt_existing_routine(
@@ -4290,6 +4331,9 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
             ai_note = _generate_fallback_note(risk_info["level"], req.skin_feeling)
     else:
         ai_note = _generate_fallback_note(risk_info["level"], req.skin_feeling)
+    weather_note = (adaptation.get("weather_note") or "").strip()
+    if weather_note:
+        ai_note = f"{weather_note} {ai_note}".strip()
 
     # 6. Supabase: daily_logs'a kaydet + routine güncelle
     if should_use_supabase_db(supabase, req.user_id):
@@ -4302,7 +4346,7 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
                 "skin_feeling": req.skin_feeling,
                 "applied_routine": req.applied_routine,
                 "notes": req.notes,
-                "weather_data": weather_data,
+                "weather_data": weather_data or {"unavailable": True},
                 "risk_score": risk_info["score"],
                 "adaptation": {
                     "type": adaptation["adaptation_type"],
@@ -4324,6 +4368,7 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
                         "fragrance_new_product_today": req.fragrance_new_product_today,
                         "symptom_tags": req.symptom_tags or [],
                         "active_reaction_severity": req.active_reaction_severity,
+                        "day_setting": req.day_setting,
                         "recommendation_helpful": req.recommendation_helpful,
                         "recommendation_feedback_note": req.recommendation_feedback_note,
                     },
@@ -4346,7 +4391,9 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
                 except Exception as e:
                     log.error("checkin_feedback daily_events (ignored): %s", e)
 
-            if adaptation["changes"]:
+            if adaptation["changes"] or routine_materially_changed(
+                current_routine, adaptation["adapted_items"]
+            ):
                 supabase.table("routines").update({
                     "active_routine": adaptation["adapted_items"],
                 }).eq("user_id", req.user_id).eq("is_active", True).execute()
@@ -4393,6 +4440,7 @@ def _generate_fallback_note(risk_level: str, skin_feeling: str) -> str:
 _MAX_PHOTO_BYTES = 8 * 1024 * 1024
 _ALLOWED_PHOTO_EXT = frozenset({"jpg", "jpeg", "png", "webp", "heic", "heif"})
 _LEGAL_CONSENT_VERSION = "v2"
+_SALES_CONSENT_VERSION = "v1"
 
 
 def _photo_content_matches_extension(contents: bytes, ext: str) -> bool:
@@ -4521,6 +4569,7 @@ def _delete_user_application_data(supabase, user_id: str) -> None:
     targets = (
         ("privacy_preferences", "user_id"),
         ("legal_consents", "user_id"),
+        ("sales_consents", "user_id"),
         ("device_tokens", "user_id"),
         ("push_sends", "user_id"),
         ("reminder_settings", "user_id"),
@@ -4655,6 +4704,108 @@ def accept_legal_consent(request: Request, req: LegalConsentAcceptRequest):
         "document_version": req.document_version,
         "accepted_at": accepted_at,
         "already_recorded": already_recorded,
+    }
+
+
+class SalesConsentAcceptRequest(BaseModel):
+    user_id: str
+    document_version: str
+    pre_info_accepted: bool
+    distance_contract_accepted: bool
+
+
+@app.post(
+    "/sales-consent/accept",
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_SALES_CONSENT))],
+)
+def accept_sales_consent(request: Request, req: SalesConsentAcceptRequest):
+    """Ödeme sayfası açılmadan önce ön bilgilendirme ve mesafeli satış onayı."""
+    enforce_supabase_user(request, req.user_id)
+    if (
+        req.document_version != _SALES_CONSENT_VERSION
+        or not req.pre_info_accepted
+        or not req.distance_contract_accepted
+    ):
+        raise HTTPException(status_code=400, detail="Ön bilgilendirme ve mesafeli satış onayı gerekli.")
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    accepted_at = datetime.now(timezone.utc).isoformat()
+    try:
+        existing = (
+            supabase.table("sales_consents")
+            .select("accepted_at")
+            .eq("user_id", req.user_id)
+            .eq("document_version", req.document_version)
+            .limit(1)
+            .execute()
+        )
+        if existing.data:
+            return {
+                "ok": True,
+                "document_version": req.document_version,
+                "accepted_at": existing.data[0].get("accepted_at"),
+                "already_recorded": True,
+            }
+        supabase.table("sales_consents").insert({
+            "user_id": req.user_id,
+            "document_version": req.document_version,
+            "pre_info_accepted": True,
+            "distance_contract_accepted": True,
+            "accepted_at": accepted_at,
+        }).execute()
+    except Exception as e:
+        log.error("Satış onayı yazılamadı: error=%s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Satış onayı kaydedilemedi.")
+    return {
+        "ok": True,
+        "document_version": req.document_version,
+        "accepted_at": accepted_at,
+        "already_recorded": False,
+    }
+
+
+class PrivacyIncidentRequest(BaseModel):
+    summary: str = Field(min_length=8, max_length=2000)
+    discovered_at: Optional[str] = None
+
+
+def _require_privacy_incident_secret(request: Request) -> None:
+    """İhlal kaydı yalnız sunucu anahtarıyla açılır. Anahtar yoksa uç kapalıdır."""
+    secret = (os.getenv("PRIVACY_INCIDENT_SECRET") or "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail="Veri ihlali kaydı yapılandırılmamış.")
+    provided = (request.headers.get("x-privacy-incident-token") or "").strip()
+    if not provided or not secrets.compare_digest(provided, secret):
+        raise HTTPException(status_code=401, detail="Geçersiz kayıt anahtarı.")
+
+
+@app.post(
+    "/privacy/incidents",
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_PRIVACY_INCIDENT))],
+)
+def create_privacy_incident(request: Request, req: PrivacyIncidentRequest):
+    """Öğrenme anını ve 72 saatlik Kurul bildirim sonunu kaydeder. Bildirimi kendisi göndermez."""
+    _require_privacy_incident_secret(request)
+    supabase = get_supabase()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Supabase bağlantısı yok")
+    try:
+        discovered = parse_discovered_at(req.discovered_at)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="discovered_at tarihi okunamadı.")
+    try:
+        saved = record_privacy_incident(supabase, req.summary, discovered)
+    except Exception as e:
+        log.error("Veri ihlali kaydı yazılamadı: error=%s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Veri ihlali kaydı yazılamadı.")
+    return {
+        "ok": True,
+        "id": saved.get("id"),
+        "discovered_at": saved.get("discovered_at"),
+        "notify_kurul_by": saved.get("notify_kurul_by"),
     }
 
 

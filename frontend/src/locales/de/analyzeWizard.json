@@ -187,7 +187,8 @@
     "aging": "Wrinkles / aging",
     "dryness": "Dryness",
     "pigmentation": "Pigmentation / spots",
-    "sensitivity": "Sensitivity / redness"
+    "sensitivity": "Sensitivity / redness",
+    "undereye": "Under-eye darkness"
   },
   "zone": {
     "forehead": "Forehead",

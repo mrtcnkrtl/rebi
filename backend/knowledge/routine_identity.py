@@ -58,8 +58,42 @@ _OWNED_PHRASES: tuple[tuple[str, str], ...] = (
     ("petrolatum", "petrolatum"),
     ("vazelin", "petrolatum"),
     ("spf", "mineral_spf"),
+    ("mineral filtre", "mineral_spf"),
+    ("kimyasal/hibrit filtre", "chemical_spf"),
+    ("kimyasal/organik filtre", "chemical_spf"),
+    ("organik filtre", "chemical_spf"),
+    ("hibrit filtre", "chemical_spf"),
+    ("kimyasal filtre", "chemical_spf"),
+    ("bemotrizinol", "chemical_spf"),
     ("urea", "urea"),
     ("üre", "urea"),
+    ("meyan kökü", "licorice_extract"),
+    ("glycyrrhiza", "licorice_extract"),
+    ("yeşil çay", "green_tea"),
+    ("egcg", "green_tea"),
+    ("heksilrezorsinol", "hexylresorcinol"),
+    ("hexylresorcinol", "hexylresorcinol"),
+    ("mandelik asit", "mandelic_acid"),
+    ("mandelic acid", "mandelic_acid"),
+    ("glukonolakton", "pha"),
+    ("gluconolactone", "pha"),
+    ("polihidroksi asit", "pha"),
+    ("sülfür", "sulfur"),
+    ("kükürt", "sulfur"),
+    ("asetil glukozamin", "n_acetyl_glucosamine"),
+    ("acetyl glucosamine", "n_acetyl_glucosamine"),
+    ("kafein", "caffeine"),
+    ("caffeine", "caffeine"),
+    ("askorbil glukozit", "vitamin_c"),
+    ("c vitamini türevi", "vitamin_c"),
+    ("dimetikon", "dimethicone"),
+    ("linoleik asit", "linoleic_acid"),
+    ("gama linolenik", "gamma_linolenic_acid"),
+)
+
+# "spf" tek başına filtre tipi söylemez: kimyasal/hibrit yazılmışsa mineral sayılmaz.
+_MINERAL_EXPLICIT = tuple(
+    normalize(p) for p in ("mineral", "cinko oksit", "çinko oksit", "zinc oxide", "titanyum", "titanium")
 )
 
 OWNED_PHRASES: tuple[tuple[str, str], ...] = tuple(
@@ -82,7 +116,11 @@ BEHAVIOR: dict[str, str] = {
     "pha": "pause",
     "hidrokinon": "pause",
     "urea": "pause",
+    "mandelic_acid": "pause",
+    "sulfur": "pause",
     "bakuchiol": "reduce",
+    "hexylresorcinol": "reduce",
+    "n_acetyl_glucosamine": "reduce",
     "azelaik_asit": "reduce",
     "alfa_arbutin": "reduce",
     "traneksamik_asit": "reduce",
@@ -100,6 +138,12 @@ BEHAVIOR: dict[str, str] = {
     "allantoin": "barrier",
     "shea_butter": "barrier",
     "beeswax": "barrier",
+    "dimethicone": "barrier",
+    "linoleic_acid": "barrier",
+    "gamma_linolenic_acid": "barrier",
+    "licorice_extract": "maintain",
+    "green_tea": "maintain",
+    "caffeine": "maintain",
     "niacinamid": "maintain",
     "mineral_spf": "maintain",
     "chemical_spf": "maintain",
@@ -118,10 +162,13 @@ TOLERANCE_FAMILY: dict[str, str] = {
     "lactic_acid": "aha",
     "malic_acid": "aha",
     "pha": "aha",
+    "mandelic_acid": "aha",
     "azelaik_asit": "azelaic",
     "vitamin_c": "vitamin_c",
     "urea": "urea",
+    "sulfur": "sulfur",
     "alfa_arbutin": "pigment",
+    "hexylresorcinol": "pigment",
     "traneksamik_asit": "pigment",
     "kojik_asit": "pigment",
     "hidrokinon": "pigment",
@@ -135,6 +182,7 @@ PREGNANCY_UNSAFE_IDS = frozenset(
         "glycolic_acid",
         "hidrokinon",
         "traneksamik_asit",
+        "hexylresorcinol",
     }
 )
 
@@ -189,6 +237,8 @@ def stamp_canonical_ids(items: list[dict]) -> int:
             continue
         existing = [str(x) for x in (it.get("canonical_ingredient_ids") or [])]
         merged = list(dict.fromkeys([*existing, *found]))
+        if "chemical_spf" in merged and not any(m in text for m in _MINERAL_EXPLICIT):
+            merged = [x for x in merged if x != "mineral_spf"]
         if merged != existing:
             n += 1
         it["canonical_ingredient_ids"] = merged
@@ -308,10 +358,13 @@ def build_cabinet_active_plan(
             }
         )
     if has_spf and not any(r["active"] in PRIMARY_SPF_IDS for r in out):
+        fallback_spf = (
+            "chemical_spf" if "chemical_spf" in present and "mineral_spf" not in present else "mineral_spf"
+        )
         out.insert(
             0,
             {
-                "active": "mineral_spf",
+                "active": fallback_spf,
                 "name_tr": "Güneş filtresi",
                 "family": None,
                 "role": "spf",

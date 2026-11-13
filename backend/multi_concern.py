@@ -15,6 +15,7 @@ ALLOWED_CONCERNS = (
     "pores",
     "oiliness",
     "sensitivity",
+    "undereye",
     "general",
 )
 
@@ -164,6 +165,7 @@ def build_guards(
         "force_starter": force_starter,
         "prefer_azelaic": prefer_azelaic,
         "min_spf": min_spf,
+        "stings_with_products": bool(stings_with_products),
         "notes": notes,
         "by_id": by_id,
     }
@@ -250,7 +252,20 @@ def _secondary_item(
     age_group: dict,
 ) -> Optional[dict]:
     from flow_engine import (
+        NEW_ACTIVE_DOSES,
+        PREGNANCY_EXCLUDED_OPTIONS,
+        UNDEREYE_PM_EXTRA,
+        _opt_meta,
+        dose_tier,
+        _skin_undereye_nag,
         _skin_arbutin,
+        _skin_hexylresorcinol,
+        _skin_licorice,
+        _skin_nag_niacinamide,
+        _skin_undereye_arbutin,
+        _skin_undereye_licorice,
+        _skin_undereye_niacinamide,
+        make_equivalence_item,
         _skin_azelaic,
         _skin_bakuchiol,
         _skin_niacin_tranexamic,
@@ -261,20 +276,84 @@ def _secondary_item(
     )
 
     if cid == "pigmentation":
-        if "arbutin" in blob or "traneksamik" in blob:
+        if any(k in blob for k in ("arbutin", "traneksamik", "heksilrezorsinol", "meyan kökü", "glukozamin")):
             return None
         ab = "(%2)" if score <= 4 else "(%2-3)"
-        return {
+        base = {
             "time": "Akşam",
             "category": "Bakım",
             "icon": "💎",
-            "action": _skin_arbutin(ab) if score <= 6 else _skin_niacin_tranexamic(),
             "detail": (
                 f"İkincil leke (şiddet {score}/10): birincil tedaviyi bozmadan akşam leke katmanı. "
                 "Güçlü gece aktiflerinin olduğu akşamlarda onlar önce. Haftada 3-4 gece."
             ),
             "step_order": 22,
+            "concern_role": "support_pigmentation",
         }
+        excl = PREGNANCY_EXCLUDED_OPTIONS if guards.get("_pregnant") else ()
+        t = dose_tier(guards, score=score)
+        if t == "hassas":
+            return make_equivalence_item(
+                base,
+                "pigment_tyrosinase",
+                {"licorice": _skin_licorice("hassas"), "alfa_arbutin": _skin_arbutin(ab)},
+                default="licorice",
+                option_extra={"licorice": _opt_meta("licorice", "hassas")},
+            )
+        if score <= 6:
+            return make_equivalence_item(
+                base,
+                "pigment_tyrosinase",
+                {
+                    "alfa_arbutin": _skin_arbutin(ab),
+                    "hexylresorcinol": _skin_hexylresorcinol(t),
+                    "licorice": _skin_licorice(t),
+                },
+                default="hexylresorcinol",
+                exclude=excl,
+                option_extra={
+                    "hexylresorcinol": _opt_meta(
+                        "hexylresorcinol", t,
+                        NEW_ACTIVE_DOSES["hexylresorcinol"]["rinse_off_note"] if t != "hassas" else "",
+                    ),
+                    "licorice": _opt_meta("licorice", t),
+                },
+            )
+        return make_equivalence_item(
+            base,
+            "pigment_niacinamide_partner",
+            {"niacinamide_txa": _skin_niacin_tranexamic(), "nag_niacinamide": _skin_nag_niacinamide()},
+            exclude=excl,
+            option_extra={"nag_niacinamide": {"frequency_note": NEW_ACTIVE_DOSES["nag"]["synergy"]["freq"]}},
+        )
+
+    if cid == "undereye":
+        if "göz çevresi" in blob:
+            return None
+        return make_equivalence_item(
+            {
+                "time": "Akşam",
+                "category": "Bakım",
+                "icon": "👁️",
+                "detail": f"İkincil göz altı koyuluğu (şiddet {score}/10): göz çevresine nazik tek katman.",
+                "usage": "Gece kreminden önce, kemik çizgisine pirinç tanesi kadar; yüzük parmağıyla tapla.",
+                "step_order": 27,
+                "concern_role": "support_undereye",
+            },
+            "undereye_pm",
+            {
+                "undereye_niacinamide": _skin_undereye_niacinamide(),
+                "undereye_licorice": _skin_undereye_licorice(),
+                "undereye_arbutin": _skin_undereye_arbutin(),
+                "undereye_nag": _skin_undereye_nag(),
+            },
+            default=(
+                "undereye_licorice"
+                if dose_tier(guards, score=score) == "hassas"
+                else "undereye_niacinamide"
+            ),
+            option_extra=UNDEREYE_PM_EXTRA,
+        )
 
     if cid == "dryness":
         if "seramid" in blob or "squalane" in blob or "skualan" in blob:

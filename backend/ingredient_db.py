@@ -705,9 +705,9 @@ def _risk_detail_for_user(
     elif water_intake < 2.0:
         hints.append("Su tüketimin hedefin biraz altında kalabilir; gün içine birkaç bardak eklemek iyi olur.")
 
-    if humidity < 40:
+    if humidity is not None and humidity < 40:
         hints.append("Ortam nemi düşük sayılır; nemlendirme ve bariyer bakımı özellikle önemli.")
-    elif humidity < 60:
+    elif humidity is not None and humidity < 60:
         hints.append("Ortam nemi orta; rutindeki nem adımlarını sürdürmek yeterli olabilir.")
 
     if sleep_hours < 6:
@@ -772,12 +772,14 @@ def compute_risk_score(
     elif water_intake < 2.5:
         score += 1
 
-    if humidity < 25:
-        score += 4
-    elif humidity < 40:
-        score += 3
-    elif humidity < 60:
-        score += 1
+    # Konum yoksa nem puanı yazılmaz; varsayılan %50 riski şişirmesin.
+    if humidity is not None:
+        if humidity < 25:
+            score += 4
+        elif humidity < 40:
+            score += 3
+        elif humidity < 60:
+            score += 1
 
     if sleep_hours < 5:
         score += 5

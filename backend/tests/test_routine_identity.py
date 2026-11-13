@@ -197,6 +197,101 @@ def test_adapt_pauses_retinol_but_increases_urea_in_barrier_cream():
     assert by_new[cream_key] == "artırıldı"
     cream_row = next(r for r in out["adapted_items"] if "Seramid" in r["action"])
     assert "⏸️" not in cream_row["action"]
+    assert cream_row["time"] == "Sabah ve Akşam"
+
+
+def test_irritation_stops_vitamin_c_and_supports_recovery():
+    from flow_engine import adapt_existing_routine
+
+    items = [{
+        "time": "Sabah",
+        "category": "Bakım",
+        "action": "L-Askorbik asit %15-20 — C vitamini serumu",
+        "canonical_ingredient_ids": ["vitamin_c"],
+    }]
+    out = adapt_existing_routine(items, {"skin_feeling": "irritasyon", "concern": "aging"}, {"level": "normal", "detail": ""})
+    vit = next(i for i in out["adapted_items"] if "askorbik" in i["action"].lower() and "göz" not in i["action"].lower())
+    assert vit["action"].startswith("⏸️")
+    assert "%15-20" in vit["action"]
+    cream = next(i for i in out["adapted_items"] if i.get("concern_role") == "checkin_moisturizer")
+    assert "dimetikon" in cream["action"].lower()
+    assert any(i.get("concern_role") == "checkin_recovery" for i in out["adapted_items"])
+
+    calm = adapt_existing_routine(out["adapted_items"], {"skin_feeling": "iyi", "concern": "aging"}, {"level": "normal", "detail": ""})
+    vit2 = next(i for i in calm["adapted_items"] if "askorbik" in i["action"].lower())
+    assert not vit2["action"].startswith("⏸️")
+    assert "%15-20" in vit2["action"]
+    assert not any(i.get("concern_role") == "checkin_recovery" for i in calm["adapted_items"])
+    assert not any(i.get("concern_role") == "checkin_moisturizer" for i in calm["adapted_items"])
+
+
+def test_other_compounds_step_one_rung_and_eye_vitamin_c_stays():
+    from flow_engine import adapt_existing_routine
+
+    items = [
+        {"time": "Akşam", "category": "Bakım", "action": "Serbest retinol %0.5 (INCI: Retinol)", "canonical_ingredient_ids": ["retinol"]},
+        {"time": "Akşam", "category": "Bakım", "action": "Benzoil peroksit %5 kısa temas", "canonical_ingredient_ids": ["benzoil_peroksit"]},
+        {"time": "Sabah", "category": "Bakım", "action": "Göz çevresi: C vitamini türevi %5 göz kremi (saf L-askorbik değil)", "canonical_ingredient_ids": ["vitamin_c"]},
+    ]
+    daily = {"skin_feeling": "kuru", "concern": "aging"}
+    out = adapt_existing_routine(items, daily, {"level": "normal", "detail": ""})
+    actions = [i["action"] for i in out["adapted_items"]]
+    assert any("retinol %0.3" in a.lower() for a in actions)
+    assert any("%2.5" in a and "benzoil" in a.lower() for a in actions)
+    assert any("türevi %5" in a for a in actions)
+
+
+def test_missing_humidity_does_not_add_risk():
+    from ingredient_db import compute_risk_score
+
+    with_default = compute_risk_score(1, 3, 50, 8)
+    without = compute_risk_score(1, 3, None, 8)
+    assert without["score"] == with_default["score"] - 1
+
+
+def test_weather_without_location_does_not_move_spf_and_says_so():
+    from flow_engine import adapt_existing_routine
+
+    items = [{"time": "Sabah", "category": "Koruma", "action": "SPF 30 (hafif) — kimyasal filtre", "canonical_ingredient_ids": ["chemical_spf"]}]
+    out = adapt_existing_routine(items, {"skin_feeling": "iyi", "concern": "acne"}, {"level": "normal", "detail": ""})
+    assert out["adapted_items"][0]["action"].startswith("SPF 30")
+    assert "Konum olmadığı için" in out["weather_note"]
+
+
+def test_outdoor_uv_updates_spf_and_indoor_does_not():
+    from flow_engine import adapt_existing_routine
+
+    items = [{"time": "Sabah", "category": "Koruma", "action": "SPF 30 (hafif) — kimyasal filtre", "canonical_ingredient_ids": ["chemical_spf"]}]
+    weather = {"skin_feeling": "iyi", "concern": "acne", "weather_available": True, "humidity": 55, "temperature": 28, "uv_index": 9}
+    outdoor = adapt_existing_routine(items, {**weather, "day_setting": "outdoor"}, {"level": "normal", "detail": ""})
+    assert outdoor["adapted_items"][0]["action"].startswith("SPF 50+")
+    indoor = adapt_existing_routine(items, {**weather, "day_setting": "indoor"}, {"level": "normal", "detail": ""})
+    assert indoor["adapted_items"][0]["action"].startswith("SPF 30")
+    assert "evin içindesin" in indoor["weather_note"]
+
+
+def test_dry_air_reselects_the_checkin_cream_only():
+    from flow_engine import adapt_existing_routine
+
+    cream = {
+        "time": "Akşam",
+        "category": "Bakım",
+        "action": "Gece: gama linolenik asit (GLA) %0.05-0.5 saf GLA eşdeğeri",
+        "concern_role": "checkin_moisturizer",
+    }
+    daily = {
+        "skin_feeling": "kuru",
+        "concern": "dryness",
+        "weather_available": True,
+        "humidity": 20,
+        "temperature": 30,
+        "uv_index": 2,
+        "day_setting": "indoor",
+    }
+    out = adapt_existing_routine([cream], daily, {"level": "normal", "detail": ""})
+    night = next(i for i in out["adapted_items"] if i.get("concern_role") == "checkin_moisturizer")
+    assert "%0.1-1" in night["action"]
+    assert night["action"].lower().count("gece:") == 1
 
 
 def test_merge_strips_curated_alias_from_wrong_box():

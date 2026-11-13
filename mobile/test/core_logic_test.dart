@@ -99,6 +99,7 @@ void main() {
     expect(safeNext('/dashboard/chat'), '/dashboard/chat');
     expect(safeNext('//evil.com'), '/dashboard');
     expect(safeNext('https://evil.com'), '/dashboard');
+    expect(safeNext('/\\evil.com'), '/dashboard');
     expect(safeNext(null), '/dashboard');
   });
 

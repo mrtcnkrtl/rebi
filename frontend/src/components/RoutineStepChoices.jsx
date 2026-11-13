@@ -1,10 +1,10 @@
 import { useTranslation } from "react-i18next";
-import { persistStepChoice } from "../lib/routineStepChoices";
+import { choiceDiff, persistStepChoice } from "../lib/routineStepChoices";
 import { friendlyRoutineTitle } from "../lib/routineDisplay";
 
 export default function RoutineStepChoices({ item, userId, theme, selectedId, onChange }) {
   const { t } = useTranslation();
-  const choices = Array.isArray(item?.choices) ? item.choices.filter(Boolean).slice(0, 2) : [];
+  const choices = Array.isArray(item?.choices) ? item.choices.filter(Boolean) : [];
   if (choices.length < 2) return null;
 
   const onPick = (id) => {
@@ -19,6 +19,7 @@ export default function RoutineStepChoices({ item, userId, theme, selectedId, on
       <div className="grid grid-cols-2 gap-1.5">
         {choices.map((ch) => {
           const on = selectedId === ch.id;
+          const diff = choiceDiff(ch);
           return (
             <button
               type="button"
@@ -32,7 +33,10 @@ export default function RoutineStepChoices({ item, userId, theme, selectedId, on
                 color: on ? theme.primaryDark || "#0f766e" : "#111827",
               }}
             >
-              {friendlyRoutineTitle(ch.label || ch.action, ch.id)}
+              <span className="block">{friendlyRoutineTitle(ch.label || ch.action, ch.id)}</span>
+              {diff ? (
+                <span className="mt-0.5 block text-[11px] font-medium leading-snug text-gray-500">{diff}</span>
+              ) : null}
             </button>
           );
         })}
