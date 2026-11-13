@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTranslation } from "react-i18next";
-import HeroBackgroundVideo from "../components/HeroBackgroundVideo";
+import MouseDepthBackground from "../components/MouseDepthBackground";
 import AiDisclaimer from "../components/AiDisclaimer";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -119,24 +119,11 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-warm-50 via-white to-teal-50/30">
+    <div className="relative z-0 min-h-screen">
+      <MouseDepthBackground />
+      <div className="relative z-10">
       {/* Hero */}
       <section className="relative overflow-hidden">
-        <HeroBackgroundVideo videoEnabled={false} />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-teal-100/35 via-transparent to-transparent" />
-        <div className="absolute top-10 right-[-5%] w-[min(90vw,520px)] h-[min(90vw,520px)] bg-teal-200/25 rounded-full blur-3xl" />
-        <div className="absolute bottom-[-10%] left-[-8%] w-[min(95vw,640px)] h-[min(95vw,640px)] bg-purple-200/15 rounded-full blur-3xl" />
-        <div className="absolute -top-16 left-8 w-40 h-40 rounded-[2.5rem] bg-gradient-to-br from-fuchsia-300/25 via-purple-300/10 to-transparent rotate-12 blur-xl" />
-        <div className="absolute top-28 left-[55%] w-28 h-28 rounded-full bg-gradient-to-br from-amber-300/18 via-orange-300/10 to-transparent blur-xl" />
-        <div className="absolute bottom-20 right-10 w-44 h-44 rounded-[3rem] bg-gradient-to-br from-sky-300/20 via-cyan-300/10 to-transparent -rotate-12 blur-xl" />
-        <div
-          className="absolute inset-0 opacity-[0.35] mix-blend-soft-light"
-          style={{
-            backgroundImage:
-              "linear-gradient(135deg, rgba(255,255,255,0.65) 0%, transparent 35%, rgba(255,255,255,0.15) 65%, transparent 100%)",
-          }}
-        />
-
         <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 pt-7 pb-8 md:pt-10 md:pb-10">
           <div className="text-center max-w-6xl mx-auto w-full">
             <div
@@ -662,6 +649,7 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+      </div>
     </div>
   );
 }
