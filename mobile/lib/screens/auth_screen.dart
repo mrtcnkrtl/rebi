@@ -67,6 +67,12 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
   bool _photo = false;
   int _shake = 0;
 
+  /// Google tarayıcısı açılıyor (açılınca düğme yeniden kullanılabilir; dönüşü [AuthController] karşılar).
+  bool _googleBusy = false;
+
+  /// Google girişine başlandı: tarayıcıdan hata ile dönülürse "bağlantı geçersiz" yerine Google'a özgü mesaj gösterilir.
+  bool _googleStarted = false;
+
   /// Ekran klavyesi açık mı: açıkken sabit alt şerit gizlenir. `MediaQuery` bu bilgiyi gövdede (Scaffold klavye
   /// boşluğunu düşer) vermez ve `View.of` yeniden çizim tetiklemez; bu yüzden pencere metrikleri dinlenir.
   bool _keyboardOpen = false;
@@ -402,12 +408,44 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     }
   }
 
+  /// Google hesabıyla giriş/kayıt: tarayıcıyı açar. Oturum derin bağlantıyla döner; yönlendirici panele geçirir.
+  Future<void> _google() async {
+    FocusScope.of(context).unfocus();
+    final auth = context.read<AuthController>();
+    setState(() {
+      _googleBusy = true;
+      _googleStarted = true;
+      _error = '';
+      _info = '';
+      _canResend = false;
+    });
+    final r = await auth.signInWithGoogle();
+    if (!mounted) return;
+    setState(() => _googleBusy = false);
+    if (r.ok) return;
+    _googleStarted = false;
+    if (r.networkError || r.kind == AuthErrorKind.notConfigured) return _showAuthError(r.error ?? '', r.kind);
+    _showGoogleFailed();
+  }
+
+  void _showGoogleFailed() => setState(() {
+        _error = _t('mobileAuth.googleFailed');
+        _info = '';
+        _canResend = false;
+        _shake++;
+      });
+
   /// Geçersiz/süresi dolmuş e-posta bağlantısının nedenini bir kez gösterir.
   void _consumeLinkError() {
     if (!mounted) return;
     final auth = context.read<AuthController>();
     if (auth.linkError == null) return;
     auth.clearLinkError();
+    if (_googleStarted) {
+      // Google sayfasında vazgeçildi ya da Google hesabı reddedildi: e-posta bağlantısı açıklaması yanıltıcı olur.
+      _googleStarted = false;
+      return _showGoogleFailed();
+    }
     _showAuthError('', AuthErrorKind.linkInvalid, offerResend: true);
   }
 
@@ -584,6 +622,21 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                                   onTap: _resending ? null : _resend,
                                                 ),
                                                 const SizedBox(height: 8),
+                                              ],
+                                              if (canSwitch && googleSignInAvailable) ...[
+                                                GoogleButton(
+                                                  key: const Key('auth-google'),
+                                                  label: i18n.t('mobileAuth.google'),
+                                                  loading: _googleBusy,
+                                                  onPressed: _loading ? null : _google,
+                                                ),
+                                                if (signup) ...[
+                                                  const SizedBox(height: 8),
+                                                  Text(i18n.t('mobileAuth.googleNote'), textAlign: TextAlign.center, style: tx(12, c: Brand.inkSoft, h: snug)),
+                                                ],
+                                                const SizedBox(height: 18),
+                                                OrDivider(label: i18n.t('mobileAuth.orEmail')),
+                                                const SizedBox(height: 18),
                                               ],
                                               if (signup) ...[
                                                 AuthField(

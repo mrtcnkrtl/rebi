@@ -63,3 +63,46 @@ export function hasLocalPrivacyPermission(userId, permission) {
     return false;
   }
 }
+
+/*
+ * Google ile giriş sayfadan ayrılıp geri döner: girişten önce işaretlenen onaylar dönüşe kadar aynı sekmede
+ * (sessionStorage) bekler, oturum açılınca sunucuya yazılır. Yazılamazsa sorun değil: rızası olmayan oturumda
+ * yapay zekâ uçları 403 döner ve rıza kutusu açılır (ConsentRecoveryModal).
+ */
+const PENDING_OAUTH_CONSENT_KEY = "rebi_pending_oauth_consent";
+const PENDING_OAUTH_CONSENT_TTL_MS = 30 * 60 * 1000;
+
+export function stashPendingConsent(permissions = {}) {
+  try {
+    sessionStorage.setItem(
+      PENDING_OAUTH_CONSENT_KEY,
+      JSON.stringify({
+        location: permissions.location === true,
+        photo: permissions.photo === true,
+        at: Date.now(),
+      })
+    );
+  } catch {
+    /* gizli sekme / depolama kapalı: rıza kutusu yedek */
+  }
+}
+
+export async function flushPendingConsent(userId) {
+  if (!userId) return false;
+  let pending = null;
+  try {
+    const raw = sessionStorage.getItem(PENDING_OAUTH_CONSENT_KEY);
+    if (!raw) return false;
+    sessionStorage.removeItem(PENDING_OAUTH_CONSENT_KEY);
+    pending = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+  if (!pending || Date.now() - (pending.at || 0) > PENDING_OAUTH_CONSENT_TTL_MS) return false;
+  try {
+    await recordLegalConsent(userId, { ai: true, location: pending.location, photo: pending.photo });
+    return true;
+  } catch {
+    return false;
+  }
+}

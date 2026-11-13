@@ -52,6 +52,7 @@ void main() {
     ('analiz', '/dashboard/analyze', true),
     ('karsilama', '/', false),
     ('giris', '/auth', false),
+    ('kayit', '/auth?mode=signup', false),
     ('yasal', '/kvkk', false),
   ];
 

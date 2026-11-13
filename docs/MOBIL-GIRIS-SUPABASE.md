@@ -124,6 +124,40 @@ Gelmiyorsa uygulamada "Şu an e-posta gönderilemedi" ya da "Kısa sürede çok 
 **"Reset password" şablonu henüz değişmedi**: parola sıfırlama e-postası hâlâ Supabase'in tek kullanımlık `{{ .ConfirmationURL }}`
 bağlantısını kullanır; aynı bağlantı-tarayıcısı sorununa (A7) açıktır. Aynı kod + sayfa yöntemi sıfırlama için de uygulanabilir (bkz. §4).
 
+### 2.4 "Google ile devam et" (Google Cloud + Supabase)
+
+Kod hazır: web'de (`Auth.jsx`) ve **Android**'de görünür. **iOS'ta gizli**: App Store kuralı 4.8, üçüncü taraf girişi
+sunan uygulamadan "Apple ile giriş"i de ister; o eklenene kadar iOS'ta yalnızca e-posta vardır (`googleSignInAvailable`).
+Google akışı tarayıcıda yürür (Supabase OAuth); telefonda dönüş §2.1'deki `com.rebiovil.rebi://auth-callback` ile olur,
+yani Android imza parmak izi (SHA-1) **gerekmez**. Google ile gelen kullanıcı onay kodu görmez (adresi Google doğrulamıştır).
+Rıza: web'de onay kutuları Google düğmesinden önce işaretlenir ve dönüşte yazılır; mobilde rıza ilk açılışta rıza kutusuyla alınır.
+
+1. **console.cloud.google.com** → üstten proje seç / yeni proje (`Rebi`).
+2. **Google Auth Platform → Branding** (eski adı "OAuth consent screen"):
+   - App name `Rebi`, User support email: senin adresin, Developer contact: senin adresin.
+   - App domain: Home page `https://rebiovil.com`, Privacy policy `https://rebiovil.com/privacy-policy`,
+     Terms `https://rebiovil.com/kvkk`.
+   - Authorized domains: `rebiovil.com` ve `<proje-kimliği>.supabase.co` (Supabase proje adresindeki ilk parça).
+   - **Logo şimdilik ekleme**: logo, Google'ın marka incelemesini başlatır (birkaç gün sürer). Logosuz da çalışır.
+3. **Audience** → User type **External** → **Publish app** (durum "In production" olmalı). "Testing" durumunda
+   yalnızca test kullanıcısı olarak eklenen adresler girebilir; herkes "erişim engellendi" görür.
+   Yalnızca `email`, `profile`, `openid` kullanıldığı için ek doğrulama istenmez.
+4. **Clients → Create client** → Application type **Web application**, ad `Rebi Supabase`:
+   - Authorized JavaScript origins: `https://rebiovil.com`
+   - Authorized redirect URIs: Supabase'in Google sayfasında gösterdiği **Callback URL**
+     (`https://<proje-kimliği>.supabase.co/auth/v1/callback`).
+   - Create → **Client ID** ve **Client secret**'ı kopyala (secret'ı kimseyle paylaşma, koda/sohbete yapıştırma).
+5. Supabase Dashboard → **Authentication → Sign In / Providers → Google** → Enable → Client ID ve Client secret'ı yapıştır → Save.
+6. **Authentication → URL Configuration → Redirect URLs**: `https://rebiovil.com/**` ve
+   `com.rebiovil.rebi://auth-callback` listede olmalı (§2.1). Web, Google'dan `https://rebiovil.com/auth?next=…` adresine döner.
+7. Kontrol: sitede (kod canlıdayken) giriş → onayları işaretle → **Google ile devam et** → hesabını seç → panel açılmalı.
+   Telefonda: yeni derlemeyle giriş ekranı → Google ile devam et → tarayıcıda hesabı seç → uygulama açılmalı ve
+   ilk açılışta KVKK/açık rıza kutusu gelmeli.
+
+Bilinen görünüm: Google hesap seçme sayfasında "`<proje-kimliği>.supabase.co` uygulamasına devam et" yazar. Bunu
+"rebiovil.com" yapmak Supabase'in ücretli özel alan adı (Custom Domain) eklentisini gerektirir; işlevi etkilemez.
+Aynı e-postayla önceden e-posta/parola hesabı açmış kullanıcı Google ile girince Supabase iki girişi aynı hesapta birleştirir.
+
 ## 3. Telefonda doğrulama (cihaz testi)
 
 `MOBIL-CIHAZ-TESTI.md` §1'e ek olarak, 2.1 yapıldıktan sonra:

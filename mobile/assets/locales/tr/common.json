@@ -124,6 +124,9 @@
     }
   },
   "auth": {
+    "google": "Google ile devam et",
+    "or": "veya",
+    "googleFailed": "Google ile giriş tamamlanamadı. Tekrar dene ya da e-postanla devam et.",
     "welcome": "Hoş Geldin",
     "createAccount": "Hesap Oluştur",
     "loginToAccount": "Rebi hesabına giriş yap",

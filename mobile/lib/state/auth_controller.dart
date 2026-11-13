@@ -7,12 +7,20 @@ import '../core/api.dart';
 import '../core/auth_errors.dart';
 import '../core/legal_consent.dart';
 
-/// Parola sıfırlama (ve eski e-posta onayı) bağlantılarının uygulamayı açtığı adres (Android `intent-filter`,
+/// Parola sıfırlama, Google girişi (ve eski e-posta onayı) dönüşlerinin uygulamayı açtığı adres (Android `intent-filter`,
 /// iOS `CFBundleURLTypes`). Supabase panelinde Authentication → URL Configuration → Redirect URLs listesinde
 /// de bulunmalıdır; yoksa Supabase bağlantıyı Site URL'ye (web) yönlendirir ve uygulama açılmaz.
 /// Yeni onay e-postası bu adresi kullanmaz: 6 haneli kod uygulamada yazılır, düğme web onay sayfasına gider
 /// (docs/MOBIL-GIRIS-SUPABASE.md §1.1).
 const authCallbackUrl = 'com.rebiovil.rebi://auth-callback';
+
+/// "Google ile devam et" gösterilsin mi. iOS'ta gizli: App Store kuralı 4.8, üçüncü taraf girişi sunan uygulamadan
+/// "Apple ile giriş"i de ister; o eklenene kadar iOS'ta yalnızca e-posta ile giriş vardır.
+bool get googleSignInAvailable => debugGoogleSignInAvailable ?? (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+
+/// Testlerde platformdan bağımsız açıp kapatmak için.
+@visibleForTesting
+bool? debugGoogleSignInAvailable;
 
 class SignUpResult {
   const SignUpResult({
@@ -236,6 +244,20 @@ class AuthController extends ChangeNotifier {
       return AuthActionResult(error: e.toString(), networkError: network, kind: _kindOf(e, e.toString(), network));
     }
   }
+
+  /// Google hesabıyla giriş ya da kayıt (aynı düğme). Google hesabı tarayıcıda seçilir (SDK Android'de harici
+  /// tarayıcı açar); oturum [authCallbackUrl] derin bağlantısıyla uygulamaya döner ve `signedIn` olayıyla açılır.
+  /// Sonuç yalnızca tarayıcının açılıp açılmadığını söyler. Google'dan gelen kullanıcının e-postası Google'ca
+  /// doğrulanmıştır (onay kodu gerekmez); KVKK / açık rıza kaydı yoksa açılış paketi rıza kutusunu gösterir.
+  Future<AuthActionResult> signInWithGoogle() => _action((auth) async {
+        final opened = await auth.signInWithOAuth(
+          OAuthProvider.google,
+          redirectTo: authCallbackUrl,
+          // Telefonda birden çok Google hesabı varsa hangisiyle girileceği her seferinde sorulur.
+          queryParams: const {'prompt': 'select_account'},
+        );
+        if (!opened) throw StateError('browser');
+      });
 
   /// Onay e-postasını (yeni kod + düğme) yeniden gönderir; önceki e-postadaki kod ve bağlantı geçersiz olur.
   Future<AuthActionResult> resendConfirmation(String email) =>

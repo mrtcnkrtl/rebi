@@ -78,6 +78,9 @@
     }
   },
   "auth": {
+    "google": "Weiter mit Google",
+    "or": "oder",
+    "googleFailed": "Die Anmeldung mit Google wurde nicht abgeschlossen. Versuche es erneut oder fahre mit deiner E-Mail fort.",
     "welcome": "Willkommen",
     "createAccount": "Konto erstellen",
     "loginToAccount": "Bei Rebi anmelden",

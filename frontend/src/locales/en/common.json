@@ -124,6 +124,9 @@
     }
   },
   "auth": {
+    "google": "Continue with Google",
+    "or": "or",
+    "googleFailed": "Google sign-in didn't finish. Try again or continue with your email.",
     "welcome": "Welcome",
     "createAccount": "Create account",
     "loginToAccount": "Sign in to your Rebi account",

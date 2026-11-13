@@ -1008,6 +1008,10 @@
     "openApp": "Panele git"
   },
   "mobileAuth": {
+    "google": "Google ile devam et",
+    "orEmail": "veya e-postayla",
+    "googleNote": "Google ile devam edersen KVKK ve açık rıza onayını ilk açılışta isteriz.",
+    "googleFailed": "Google ile giriş tamamlanamadı. Tekrar dene ya da e-postanla devam et.",
     "strengthWeak": "Zayıf",
     "strengthFair": "Orta",
     "strengthStrong": "Güçlü",

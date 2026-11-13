@@ -244,3 +244,135 @@ class PasswordStrengthMeter extends StatelessWidget {
     );
   }
 }
+
+/// "Google ile devam et": Google'ın marka kuralına uygun açık zeminli düğme (çok renkli "G" + metin). Tema koyuysa
+/// da zemin beyaz kalır; Google logosu koyu zeminde tanınmaz.
+class GoogleButton extends StatelessWidget {
+  const GoogleButton({super.key, required this.label, required this.onPressed, this.loading = false});
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  static const _ink = Color(0xFF1F1F1F);
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null && !loading;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      excludeSemantics: true,
+      child: AnimatedOpacity(
+        opacity: enabled || loading ? 1 : .42,
+        duration: const Duration(milliseconds: 200),
+        child: Pressable(
+          onTap: enabled ? onPressed : null,
+          scale: .98,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 54),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(27),
+              border: Border.all(color: const Color(0xFF747775).withValues(alpha: .55), width: 1.2),
+            ),
+            child: loading
+                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: _ink))
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(width: 20, height: 20, child: CustomPaint(painter: GoogleLogoPainter())),
+                      const SizedBox(width: 12),
+                      Flexible(child: Text(label, textAlign: TextAlign.center, style: tx(16, w: 6, c: _ink, ls: .1))),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Google'ın dört renkli "G" logosu (48×48 tasarım ölçüsünden ölçeklenir).
+class GoogleLogoPainter extends CustomPainter {
+  const GoogleLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.scale(size.width / 48, size.height / 48);
+    canvas.drawPath(
+      Path()
+        ..moveTo(24, 9.5)
+        ..cubicTo(27.54, 9.5, 30.71, 10.72, 33.21, 13.1)
+        ..lineTo(40.06, 6.25)
+        ..cubicTo(35.9, 2.38, 30.47, 0, 24, 0)
+        ..cubicTo(14.62, 0, 6.51, 5.38, 2.56, 13.22)
+        ..lineTo(10.54, 19.41)
+        ..cubicTo(12.43, 13.72, 17.74, 9.5, 24, 9.5)
+        ..close(),
+      Paint()..color = const Color(0xFFEA4335),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(46.98, 24.55)
+        ..cubicTo(46.98, 22.98, 46.83, 21.46, 46.6, 20)
+        ..lineTo(24, 20)
+        ..lineTo(24, 29.02)
+        ..lineTo(36.94, 29.02)
+        ..cubicTo(36.36, 31.98, 34.68, 34.5, 32.16, 36.2)
+        ..lineTo(39.89, 42.2)
+        ..cubicTo(44.4, 38.02, 46.98, 31.84, 46.98, 24.55)
+        ..close(),
+      Paint()..color = const Color(0xFF4285F4),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(10.53, 28.59)
+        ..cubicTo(10.05, 27.14, 9.77, 25.6, 9.77, 24)
+        ..cubicTo(9.77, 22.4, 10.04, 20.86, 10.53, 19.41)
+        ..lineTo(2.55, 13.22)
+        ..cubicTo(0.92, 16.46, 0, 20.12, 0, 24)
+        ..cubicTo(0, 27.88, 0.92, 31.54, 2.56, 34.78)
+        ..lineTo(10.53, 28.59)
+        ..close(),
+      Paint()..color = const Color(0xFFFBBC05),
+    );
+    canvas.drawPath(
+      Path()
+        ..moveTo(24, 48)
+        ..cubicTo(30.48, 48, 35.93, 45.87, 39.89, 42.19)
+        ..lineTo(32.16, 36.19)
+        ..cubicTo(30.01, 37.64, 27.24, 38.49, 24, 38.49)
+        ..cubicTo(17.74, 38.49, 12.43, 34.27, 10.53, 28.58)
+        ..lineTo(2.55, 34.77)
+        ..cubicTo(6.51, 42.62, 14.62, 48, 24, 48)
+        ..close(),
+      Paint()..color = const Color(0xFF34A853),
+    );
+  }
+
+  @override
+  bool shouldRepaint(GoogleLogoPainter oldDelegate) => false;
+}
+
+/// İki giriş yolu arasındaki ayraç: ince çizgi — "veya e-postayla" — ince çizgi.
+class OrDivider extends StatelessWidget {
+  const OrDivider({super.key, required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final line = Expanded(child: Container(height: 1, color: Brand.inkFaint));
+    return Row(
+      children: [
+        line,
+        Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text(label, style: tx(13, w: 5, c: Brand.inkSoft))),
+        line,
+      ],
+    );
+  }
+}

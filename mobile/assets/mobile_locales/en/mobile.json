@@ -1008,6 +1008,10 @@
     "openApp": "Open dashboard"
   },
   "mobileAuth": {
+    "google": "Continue with Google",
+    "orEmail": "or with email",
+    "googleNote": "If you continue with Google, we'll ask for your privacy and consent approval when the app first opens.",
+    "googleFailed": "Google sign-in didn't finish. Try again or continue with your email.",
     "strengthWeak": "Weak",
     "strengthFair": "Fair",
     "strengthStrong": "Strong",

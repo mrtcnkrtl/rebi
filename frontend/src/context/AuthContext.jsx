@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { flushPendingConsent } from "../lib/legalConsent";
 
 const AuthContext = createContext({});
 
@@ -13,12 +14,16 @@ export function AuthProvider({ children }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
+      // Google dönüşü: bağlantıdaki oturum bu abonelikten önce işlenmiş olabilir.
+      if (session?.user) flushPendingConsent(session.user.id);
     });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      // Bekleyen Google onayı yoksa hiçbir şey yapmaz. Supabase dinleyicide beklemeyi önermez: ayrı tura bırakılır.
+      if (session?.user) setTimeout(() => flushPendingConsent(session.user.id), 0);
     });
 
     return () => subscription.unsubscribe();
@@ -47,6 +52,17 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
+  /** Google hesabıyla giriş ya da kayıt: sayfa Google'a gider, oturumla `/auth?next=…` adresine döner. */
+  const signInWithGoogle = async (next = "/dashboard") => {
+    if (!supabase) return { error: { message: "Supabase not configured" } };
+    const redirectTo = `${window.location.origin}/auth?next=${encodeURIComponent(next)}`;
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo, queryParams: { prompt: "select_account" } },
+    });
+    return { data, error };
+  };
+
   const signOut = async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
@@ -63,7 +79,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, loading, signUp, signIn, signOut, refreshUser }}
+      value={{ user, loading, signUp, signIn, signInWithGoogle, signOut, refreshUser }}
     >
       {children}
     </AuthContext.Provider>

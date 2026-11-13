@@ -78,6 +78,9 @@
     }
   },
   "auth": {
+    "google": "Continuer avec Google",
+    "or": "ou",
+    "googleFailed": "La connexion avec Google n'a pas abouti. Réessaie ou continue avec ton e-mail.",
     "welcome": "Bienvenue",
     "createAccount": "Créer un compte",
     "loginToAccount": "Connecte-toi à ton compte Rebi",

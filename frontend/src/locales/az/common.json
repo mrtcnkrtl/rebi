@@ -78,6 +78,9 @@
     }
   },
   "auth": {
+    "google": "Google ilə davam et",
+    "or": "və ya",
+    "googleFailed": "Google ilə giriş tamamlanmadı. Yenidən cəhd et və ya e-poçtunla davam et.",
     "welcome": "Xoş gəldin",
     "createAccount": "Hesab yarat",
     "loginToAccount": "Rebi hesabına daxil ol",

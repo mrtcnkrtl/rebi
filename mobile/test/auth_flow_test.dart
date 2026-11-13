@@ -31,6 +31,20 @@ class FakeAuth extends AuthController {
     return signInResult;
   }
 
+  /// `signInWithGoogle` sonucu; [googleUser] verilirse tarayıcıdan dönüş gibi `signedIn` olayı yayılır.
+  AuthActionResult googleResult = const AuthActionResult();
+  User? googleUser;
+
+  @override
+  Future<AuthActionResult> signInWithGoogle() async {
+    calls.add('google');
+    final u = googleUser;
+    if (googleResult.ok && u != null) {
+      debugEmitAuthState(AuthState(AuthChangeEvent.signedIn, Session(accessToken: 'tok', tokenType: 'bearer', user: u)));
+    }
+    return googleResult;
+  }
+
   @override
   Future<SignUpResult> signUp(String email, String password, String fullName, {ConsentPermissions? consent}) async {
     calls.add('signUp $email $fullName');
@@ -610,6 +624,71 @@ void main() {
       expect(find.text(tr('mobileAuth.errLinkInvalid')), findsOneWidget);
       expect(fake.linkError, isNull, reason: 'bir kez gösterilip temizlenir');
       expect(find.byKey(const Key('auth-resend')), findsOneWidget);
+    });
+  });
+
+  group('Google ile devam et', () {
+    tearDown(() => debugGoogleSignInAvailable = null);
+
+    Finder google() => find.byKey(const Key('auth-google'));
+
+    testWidgets('giriş ve kayıtta görünür; parola sıfırlamada yok', (tester) async {
+      await pumpApp(tester, location: '/auth', loggedIn: false, authController: FakeAuth());
+      expect(google(), findsOneWidget);
+      expect(find.text(tr('mobileAuth.orEmail')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.googleNote')), findsNothing, reason: 'rıza notu yalnızca kayıtta');
+
+      await tapFinder(tester, find.byKey(const Key('auth-forgot')));
+      expect(google(), findsNothing);
+    });
+
+    testWidgets('kayıt ekranında rıza kutularını işaretlemeden de kullanılabilir; rızanın sonra sorulacağı söylenir', (tester) async {
+      final fake = FakeAuth();
+      await pumpApp(tester, location: '/auth?mode=signup', loggedIn: false, authController: fake);
+      expect(find.text(tr('mobileAuth.googleNote')), findsOneWidget);
+      await tapFinder(tester, google());
+      expect(fake.calls, ['google']);
+    });
+
+    testWidgets('iOS gibi kapalı platformda gösterilmez', (tester) async {
+      debugGoogleSignInAvailable = false;
+      await pumpApp(tester, location: '/auth', loggedIn: false, authController: FakeAuth());
+      expect(google(), findsNothing);
+      expect(find.text(tr('mobileAuth.orEmail')), findsNothing);
+    });
+
+    testWidgets('dönüşte oturum açılır, panele geçilir; rızası olmayan kullanıcıya rıza kutusu açılır', (tester) async {
+      final backend = FakeBackend()
+        ..consentMissing = true
+        ..snapshot = {
+          ...FakeBackend().snapshot,
+          'consent': {'legal_version': 'v2', 'legal_accepted': false, 'ai_processing_allowed': false},
+        };
+      final fake = FakeAuth()..googleUser = fakeUser();
+      final h = await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake, backend: backend);
+      await tapFinder(tester, google());
+      await settle(tester, 8);
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+      expect(h.backend.calls('/legal-consent/accept'), isEmpty, reason: 'Google kaydında onay kutusu işaretlenmedi; kendiliğinden yazılmaz');
+      expect(find.text(tr('common.consentRecoveryTitle')), findsOneWidget);
+    });
+
+    testWidgets('tarayıcı açılamazsa anlaşılır mesaj gösterilir', (tester) async {
+      final fake = FakeAuth()..googleResult = const AuthActionResult(error: 'Bad state: browser');
+      await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
+      await tapFinder(tester, google());
+      expect(find.text(tr('mobileAuth.googleFailed')), findsOneWidget);
+    });
+
+    testWidgets('Google sayfasında vazgeçilip hatayla dönülürse e-posta bağlantısı mesajı yerine Google mesajı çıkar', (tester) async {
+      final fake = FakeAuth();
+      await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
+      await tapFinder(tester, google());
+      fake.debugEmitStreamError(const AuthException('access_denied'));
+      await settle(tester, 4);
+      expect(find.text(tr('mobileAuth.googleFailed')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.errLinkInvalid')), findsNothing);
+      expect(fake.linkError, isNull);
     });
   });
 }
