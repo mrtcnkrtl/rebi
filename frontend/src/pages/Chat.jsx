@@ -47,7 +47,7 @@ const URL_SPLIT = /(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 function MessageText({ text, linkColor }) {
   const parts = String(text || "").split(URL_SPLIT);
   return parts.map((part, i) =>
-    i % 2 === 1 ? (
+    i % 2 === 1 && (part.startsWith("https://") || part.startsWith("http://")) ? (
       <a
         key={i}
         href={part}

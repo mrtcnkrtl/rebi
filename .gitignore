@@ -1,7 +1,13 @@
 .env
+.env.local
+.env.development
+.env.production
 .envo
 deploy/.env.api
 *.local
+*.pem
+*serviceAccount*.json
+*firebase-adminsdk*.json
 
 .DS_Store
 **/.DS_Store

@@ -342,6 +342,9 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
       picked = await pickSkinPhoto(source, camera: camera);
     } on PlatformException {
       return;
+    } on StateError catch (e) {
+      if (mounted) setState(() => _submitError = e.message);
+      return;
     }
     if (picked == null || !mounted) return;
     setState(() => _form.photo = picked);

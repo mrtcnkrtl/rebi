@@ -41,11 +41,38 @@ PUBMED_FREE_HINTS = _env_flag("PUBMED_FREE_HINTS", "1")
 NCBI_API_KEY = os.getenv("NCBI_API_KEY", "").strip()
 PUBMED_CONTACT_EMAIL = os.getenv("PUBMED_CONTACT_EMAIL", "").strip()
 
+_LOCKED_ORIGINS = ("https://rebiovil.com", "https://www.rebiovil.com")
+_DEV_ORIGINS = (
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:3000",
+)
+
+
+def cors_origins() -> list[str]:
+    """Üretim listesindeki http:// kökenler düşer. Yerel Vite için ALLOW_HTTP_CORS=1."""
+    raw = os.getenv("CORS_ORIGINS")
+    if raw is None or not raw.strip():
+        found = list(_DEV_ORIGINS)
+    else:
+        allow_http = (os.getenv("ALLOW_HTTP_CORS") or "").strip().lower() in {"1", "true", "yes", "on"}
+        found = []
+        for origin in raw.split(","):
+            item = origin.strip().rstrip("/")
+            if not item:
+                continue
+            if item.startswith("http://") and not allow_http:
+                continue
+            if item not in found:
+                found.append(item)
+    for origin in _LOCKED_ORIGINS:
+        if origin not in found:
+            found.append(origin)
+    return found
+
+
 # CORS origins - production için environment variable'dan alınır
-CORS_ORIGINS = os.getenv(
-    "CORS_ORIGINS",
-    "http://localhost:5173,http://localhost:5174,http://localhost:3000"
-).split(",")
+CORS_ORIGINS = cors_origins()
 
 
 def get_logger(name: str) -> logging.Logger:

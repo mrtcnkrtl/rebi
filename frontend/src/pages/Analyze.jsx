@@ -10,6 +10,17 @@ import { hasCompletedOnboarding } from "../lib/routineTracking";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { isConsentError, requestConsentRecovery } from "../lib/consentRecovery";
 import { analyzeSkinPhotoQuality } from "../lib/imageQuality";
+
+const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
+const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", ""]);
+
+function photoRejection(file) {
+  if (!file) return "";
+  const type = String(file.type || "").toLowerCase();
+  if (!PHOTO_TYPES.has(type)) return "İzin verilen formatlar: jpeg, png, webp, heic.";
+  if (file.size > MAX_PHOTO_BYTES) return "Dosya çok büyük (en fazla 8 MB).";
+  return "";
+}
 import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import LoadingScreen from "../components/LoadingScreen";
 import SkinTypeVisual from "../components/SkinTypeVisual";
@@ -117,6 +128,11 @@ function AnalyzePhotoOnly({ user, navigate }) {
 
   const applyPhotoFile = async (file) => {
     if (!file) return;
+    const rejected = photoRejection(file);
+    if (rejected) {
+      setMsg({ type: "err", text: rejected });
+      return;
+    }
     if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
     setPhotoFile(file);
     const url = URL.createObjectURL(file);
@@ -646,6 +662,11 @@ export default function Analyze() {
   /* ─── Foto: galeri / mobil kamera / webcam ─── */
   const applyPhotoFile = async (file) => {
     if (!file) return;
+    const rejected = photoRejection(file);
+    if (rejected) {
+      setSubmitError(rejected);
+      return;
+    }
     if (previewUrlRef.current?.startsWith("blob:")) URL.revokeObjectURL(previewUrlRef.current);
     setPhotoFile(file);
     const url = URL.createObjectURL(file);

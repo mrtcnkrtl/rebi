@@ -39,6 +39,9 @@ class _AnalyzePhotoOnlyState extends State<AnalyzePhotoOnly> {
       picked = await pickSkinPhoto(source, camera: camera);
     } on PlatformException {
       return;
+    } on StateError catch (e) {
+      if (mounted) setState(() => _msg = ('err', e.message));
+      return;
     }
     if (picked == null || !mounted) return;
     setState(() {
