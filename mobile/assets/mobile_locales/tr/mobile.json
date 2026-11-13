@@ -236,7 +236,12 @@
         "fix": "Yanlış girdiysen düzelt",
         "customHint": "Başka miktar",
         "addButton": "Ekle",
-        "invalid": "1 ile {{max}} ml arasında bir miktar yaz."
+        "invalid": "1 ile {{max}} ml arasında bir miktar yaz.",
+        "remaining": "Kalan {{ml}} ml · yaklaşık {{n}} bardak",
+        "glass": "bir bardak",
+        "bottle": "küçük şişe",
+        "other": "Başka miktar",
+        "fixToggle": "Yanlış mı girdin? Düzelt"
       },
       "products": {
         "title": "Hangi ürün bitti?",
@@ -332,7 +337,11 @@
       "reopen": "Yeniden aç",
       "outBadge": "Bitti",
       "restock": "Aldım",
-      "outHint": "Rutinine sayılmaz"
+      "outHint": "Rutinine sayılmaz",
+      "stepInfo": "{{name}}: ayrıntılar",
+      "why": "Neden bu ürün?",
+      "nextEvening": "Akşam rutini {{time}} civarı. O zamana kadar cildin rahat.",
+      "weekFull": "Bugünü tamamladın. Bu hafta {{n}} tam gün."
     },
     "flow": {
       "title": "Gün akışı",
@@ -355,6 +364,11 @@
     },
     "dayLog": {
       "title": "Gün içi"
+    },
+    "week": {
+      "title": "Bu hafta",
+      "full": "{{n}}/{{total}} tam gün",
+      "a11y": "Bu hafta {{total}} günün {{n}} gününde sabah ve akşam rutinini tamamladın"
     }
   },
   "mobileNotifications": {
@@ -1481,5 +1495,107 @@
       "body": "Hava durumunu göstermek için konum bilgisinin işlenmesine izin vermen gerekiyor. Hesap > Gizlilik izinleri bölümünden açabilirsin.",
       "cta": "Gizlilik izinlerine git"
     }
+  },
+  "mobileWelcome": {
+    "skip": "Atla",
+    "progress": "Adım {{n}} / {{total}}",
+    "ready": {
+      "eyebrow": "Rutinin hazır",
+      "title": "Rutinin hazır, {{name}}.",
+      "titleNoName": "Rutinin hazır.",
+      "body": "Her gün sabah ve akşam birkaç dakika. Hangi gün ne uygulayacağını, ne zaman yapacağını biz takip ederiz.",
+      "morning": "sabah adımı",
+      "evening": "akşam adımı",
+      "minutes": "dakika / gün",
+      "start": "Takibe başla",
+      "review": "Önce planı incele",
+      "thisMorning": "Bu sabah",
+      "thisEvening": "Bu akşam"
+    },
+    "day": {
+      "eyebrow": "Günün düzeni",
+      "title": "Günün kaçta başlıyor?",
+      "body": "Hatırlatmaları yalnızca uyanık olduğun saatlere yayarız. Sonra Hatırlatıcılar'dan değiştirebilirsin.",
+      "wake": "Uyanış",
+      "sleep": "Uyku",
+      "invalid": "Uyanış ile uyku arasında en az 9 saat olmalı.",
+      "next": "Devam"
+    },
+    "notify": {
+      "eyebrow": "Hatırlatmalar",
+      "title": "Hatırlatayım mı?",
+      "body": "Günde birkaç kısa not, o kadar. Bildirimden doğrudan \"Yaptım\" diyebilirsin.",
+      "morningTitle": "Sabah rutini",
+      "morningBody": "Güne cildinle başla; birkaç dakika yeter.",
+      "waterTitle": "Bir bardak su",
+      "waterBody": "İçtin mi? Bildirimden işaretle.",
+      "eveningTitle": "Akşam rutini",
+      "eveningBody": "Günün yükünü temizleme zamanı.",
+      "enable": "Bildirimleri aç",
+      "later": "Şimdilik değil"
+    }
+  },
+  "mobileFocus": {
+    "start": "Adım adım uygula",
+    "close": "Kapat",
+    "stepOf": "Adım {{n}} / {{total}}",
+    "how": "Nasıl uygulanır",
+    "why": "Neden bu adım",
+    "done": "Yaptım, sıradaki",
+    "doneLast": "Yaptım, bitir",
+    "skip": "Bu adımı atla",
+    "alreadyDone": "Bu adımı bugün zaten işaretledin.",
+    "wait": "Emilmesi için 1 dk bekle",
+    "waiting": "{{s}} sn",
+    "waitStop": "Durdur",
+    "finishTitle": {
+      "morning": "Sabah rutini tamam",
+      "evening": "Akşam rutini tamam"
+    },
+    "finishBody": "Her gün birkaç dakika, tek seferde çok şey yapmaktan daha etkilidir."
+  },
+  "mobileJournal": {
+    "title": "Cilt günlüğü",
+    "subtitle": "Haftada bir fotoğraf. Değişimi en iyi zaman gösterir.",
+    "openHint": "Önce / sonra karşılaştır",
+    "consentTitle": "Fotoğrafların yalnızca sende",
+    "consentBody": "Günlük fotoğrafların özel bir alanda saklanır; yalnızca sen görürsün ve hesabını sildiğinde silinir. Saklamak için iznin gerekiyor; Gizlilik ayarlarından istediğin an geri alabilirsin.",
+    "consentCta": "Fotoğraf saklamaya izin ver",
+    "emptyTitle": "İlk fotoğrafınla başla",
+    "emptyBody": "Bugünü kaydet. Bir hafta sonra ikincisini çektiğinde değişimi yan yana göreceksin.",
+    "oneBody": "Bir hafta sonra ikincisini çek; karşılaştırma burada belirir.",
+    "before": "Önce",
+    "after": "Sonra",
+    "apart": "{{n}} gün arayla",
+    "compareHint": "Karşılaştırmak için kaydır",
+    "capture": "Bu haftanın fotoğrafını çek",
+    "captureEarly": "Yine de şimdi çek",
+    "next": "Sıradaki fotoğraf: {{day}}",
+    "all": "Tüm fotoğraflar ({{n}})",
+    "tipsTitle": "İyi bir karşılaştırma için",
+    "tipLight": "Gün ışığında, pencereye dönük dur.",
+    "tipBare": "Makyajsız, temiz bir yüzle çek.",
+    "tipFrame": "Telefonu göz hizasında tut; yüzün kadrajı doldursun.",
+    "camera": "Kamerayı aç",
+    "gallery": "Galeriden seç",
+    "saved": "Fotoğraf günlüğüne eklendi.",
+    "retake": "Kaydedildi, ama fotoğraf biraz {{issue}}. Bir dahaki sefere ışığa dön ve telefonu sabit tut.",
+    "dark": "karanlık",
+    "blurry": "bulanık",
+    "error": "Fotoğraflar şu an yüklenemedi. Aşağı çekip yenile.",
+    "uploadFailed": "Fotoğraf kaydedilemedi. Bağlantını kontrol edip tekrar dene.",
+    "a11yCompare": "{{before}} ile {{after}} fotoğraflarının karşılaştırması"
+  },
+  "mobileShare": {
+    "button": "Paylaş",
+    "title": "Haftanı paylaş",
+    "hint": "Görsel yalnızca bu özeti içerir; fotoğraf ya da sağlık ayrıntısı yoktur.",
+    "eyebrow": "Bu haftam",
+    "routineCaption": "gün sabah ve akşam rutinimi tamamladım",
+    "water": "günlük ortalama su",
+    "spf": "kez güneş kremi yeniledim",
+    "share": "Paylaş",
+    "shareText": "Bu hafta cildim için 7 günün {{n}} gününde rutinimi tamamladım. rebiovil.com",
+    "failed": "Paylaşılamadı, tekrar dene."
   }
 }

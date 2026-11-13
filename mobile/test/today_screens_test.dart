@@ -422,11 +422,16 @@ void main() {
 
     testWidgets('"Daha fazlası" iki sütunlu karolardır: altı karo, her biri tek dokunuşla ilgili ekranı açar', (tester) async {
       final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
-      for (final key in ['dashboard.dailyCheckinTitle', 'mobileShelf.title', 'mobileToday.quickPhoto', 'mobileToday.newAnalysis', 'mobileToday.showFullPlan', 'mobileHistory.open']) {
+      for (final key in ['dashboard.dailyCheckinTitle', 'mobileShelf.title', 'mobileJournal.title', 'mobileToday.newAnalysis', 'mobileToday.showFullPlan', 'mobileHistory.open']) {
         expect(find.text(tr(key)), findsOneWidget, reason: key);
       }
       await tapText(tester, tr('mobileHistory.open'));
       expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/history');
+      // Hızlı fotoğraf karosu cilt günlüğüne açılır (yükleme orada, haftalık karşılaştırmayla).
+      h.router.go('/dashboard');
+      await tester.pumpAndSettle();
+      await tapText(tester, tr('mobileJournal.title'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/journal');
     });
 
     testWidgets('varsayılan hava kullanılıyorsa konum ipucu görünür', (tester) async {
@@ -657,6 +662,7 @@ void main() {
 
   /// Alt sayfanın içindeki bir metni bulur (alttaki sayfada aynı metin olabilir).
   Finder inSheet(String text) => find.descendant(of: find.byType(BottomSheet), matching: find.text(text));
+  Finder labelInSheet(String label) => find.descendant(of: find.byType(BottomSheet), matching: find.bySemanticsLabel(label));
 
   Future<void> tapInSheet(WidgetTester tester, String text) => tapFinder(tester, inSheet(text).first);
 
@@ -667,13 +673,13 @@ void main() {
       final first = todaysMorning().first;
       final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
 
-      await tapText(tester, pickAction(first, localized: false));
+      await tapText(tester, shortStepName(pickAction(first, localized: false)));
       var body = lastIngest(h);
       expect(body['type'], 'routine_step');
       expect(body['payload'], {'done': true, 'block': 'morning', 'step_order': stepOrder(first).round()});
       expect((h.backend.progress['routine_steps'] as Map)['morning'], [stepOrder(first).round()]);
 
-      await tapText(tester, pickAction(first, localized: false));
+      await tapText(tester, shortStepName(pickAction(first, localized: false)));
       body = lastIngest(h);
       expect(body['payload'], {'done': false, 'block': 'morning', 'step_order': stepOrder(first).round()});
       expect((h.backend.progress['routine_steps'] as Map)['morning'], isEmpty);
@@ -685,7 +691,7 @@ void main() {
       expect(find.text(tr('mobileToday.bar.mark.morning')), findsOneWidget);
 
       for (final step in steps) {
-        await tapText(tester, pickAction(step, localized: false));
+        await tapText(tester, shortStepName(pickAction(step, localized: false)));
       }
       expect(lastIngest(h)['type'], 'routine_completed_block');
       expect(lastIngest(h)['payload'], {'morning': true});
@@ -704,11 +710,11 @@ void main() {
 
       // Tamamlanan blokta adımlar sakin bir özetin arkasına çekilir; istenirse açılır.
       expect(find.text(tr('mobileToday.hero.doneTitle.morning')), findsOneWidget);
-      expect(find.text(pickAction(steps.first, localized: false)), findsNothing);
+      expect(find.text(shortStepName(pickAction(steps.first, localized: false))), findsNothing);
       await tapText(tester, tr('mobileToday.hero.showSteps'));
 
       // Tamamlanmış blokta bir adımın işaretini kaldırmak bloğu açar, diğer adımlar tek tek işaretli kalır.
-      await tapText(tester, pickAction(steps.first, localized: false));
+      await tapText(tester, shortStepName(pickAction(steps.first, localized: false)));
       expect(h.backend.progress['routine_morning_done'], isFalse);
       final done = ((h.backend.progress['routine_steps'] as Map)['morning'] as List).cast<int>();
       expect(done, [for (final s in steps.skip(1)) stepOrder(s).round()]..sort());
@@ -759,7 +765,8 @@ void main() {
       final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backend);
 
       expect(find.text(tr('mobileToday.hero.doneTitle.morning')), findsOneWidget);
-      expect(find.text(tr('mobileToday.hero.doneBody')), findsOneWidget);
+      // Sabah bitince bir sonraki adım söylenir: akşam rutini penceresinin başı (varsayılan uyku 23:00 → 21:00).
+      expect(find.text(tr('mobileToday.hero.nextEvening', {'time': '21:00'})), findsOneWidget);
 
       await tapFinder(tester, find.text(tr('mobileToday.hero.reopen')).first);
       expect(h.backend.progress['routine_morning_done'], isFalse, reason: 'blok yeniden açıldı');
@@ -782,11 +789,14 @@ void main() {
 
     testWidgets('adımın nedeni ve nasıl uygulanacağı açılır', (tester) async {
       await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
-      final why = find.text(tr('dashboard.whySkincareButton'));
-      expect(why, findsWidgets);
-      await tapFinder(tester, why.first);
-      expect(find.text(tr('common.hide')), findsOneWidget);
+      // Satırda kısa ad; tam ad, neden ve nasıl uygulanacağı bilgi düğmesiyle açılan alt sayfada.
+      final first = shortStepName(pickAction(todaysMorning().first, localized: false));
+      final info = find.byTooltip(tr('mobileToday.hero.stepInfo', {'name': first}));
+      expect(info, findsOneWidget);
+      await tapFinder(tester, info);
+      expect(find.text(pickAction(todaysMorning().first, localized: false)), findsOneWidget, reason: 'tam ad sayfada');
       expect(find.textContaining(tr('dashboard.howToApply')), findsWidgets);
+      expect(find.text(tr('mobileRoutine.askRebi')), findsOneWidget);
     });
   });
 
@@ -903,19 +913,27 @@ void main() {
       await tapText(tester, tr('mobileToday.actions.waterMore'));
       expect(find.text(tr('mobileToday.sheets.water.title')), findsOneWidget);
 
-      await tapInSheet(tester, '+330 ml');
-      expect(lastIngest(h)['payload'], {'ml': 330});
-      expect(inSheet(tr('mobileToday.waterProgress', {'ml': 330, 'target': 2000})), findsOneWidget);
+      // İki büyük düğme: bardak (250) ve şişe (500).
+      await tapInSheet(tester, '+500 ml');
+      expect(lastIngest(h)['payload'], {'ml': 500});
+      expect(labelInSheet(tr('mobileToday.waterProgress', {'ml': 500, 'target': 2000})), findsOneWidget);
+      expect(inSheet(tr('mobileToday.sheets.water.remaining', {'ml': '1.500', 'n': 6})), findsOneWidget);
 
+      // Başka miktar yalnızca istenince açılır.
+      expect(find.byType(TextField), findsNothing);
+      await tapInSheet(tester, tr('mobileToday.sheets.water.other'));
       await tester.enterText(find.byType(TextField), '150');
       await tapInSheet(tester, tr('mobileToday.sheets.water.addButton'));
       expect(lastIngest(h)['payload'], {'ml': 150});
-      expect(h.backend.waterMl, 480);
+      expect(h.backend.waterMl, 650);
 
+      // Düzeltme de öyle.
+      expect(inSheet('−100 ml'), findsNothing);
+      await tapInSheet(tester, tr('mobileToday.sheets.water.fixToggle'));
       await tapInSheet(tester, '−100 ml');
       expect(lastIngest(h)['payload'], {'ml': -100});
-      expect(h.backend.waterMl, 380);
-      expect(inSheet(tr('mobileToday.waterProgress', {'ml': 380, 'target': 2000})), findsOneWidget);
+      expect(h.backend.waterMl, 550);
+      expect(labelInSheet(tr('mobileToday.waterProgress', {'ml': 550, 'target': 2000})), findsOneWidget);
     });
 
     testWidgets('geçersiz miktar kaydedilmez ve uyarır', (tester) async {
@@ -923,6 +941,7 @@ void main() {
       await tapText(tester, tr('mobileToday.actions.waterMore'));
       final before = h.backend.calls('/daily_tracking/ingest').length;
 
+      await tapInSheet(tester, tr('mobileToday.sheets.water.other'));
       await tester.enterText(find.byType(TextField), '5000');
       await tapInSheet(tester, tr('mobileToday.sheets.water.addButton'));
       expect(find.text(tr('mobileToday.sheets.water.invalid', {'max': maxCustomWaterMl})), findsOneWidget);
@@ -933,6 +952,7 @@ void main() {
       final backend = FakeBackend()..waterMl = 100;
       final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs(), backend: backend);
       await tapText(tester, tr('mobileToday.actions.waterMore'));
+      await tapInSheet(tester, tr('mobileToday.sheets.water.fixToggle'));
       await tapInSheet(tester, '−500 ml');
       expect(lastIngest(h)['payload'], {'ml': -100});
       expect(h.backend.waterMl, 0);

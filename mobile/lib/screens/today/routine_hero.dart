@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/day_log.dart';
+import '../../core/haptics.dart';
 import '../../core/i18n.dart';
+import '../../core/reminder_settings.dart';
 import '../../core/routine_logic.dart';
 import '../../core/routine_usage.dart';
 import '../../core/shelf.dart';
@@ -12,8 +14,10 @@ import '../../state/today_actions.dart';
 import '../../ui/brand/glyphs.dart';
 import '../../ui/brand/palette.dart';
 import '../../ui/tw.dart';
+import '../../ui/widgets/app_sheet.dart';
 import '../../ui/widgets/common.dart';
 import '../../ui/widgets/progress_ring.dart';
+import 'routine_focus.dart';
 import 'today_clock.dart';
 import '../routine/routine_parts.dart';
 import 'today_widgets.dart';
@@ -32,6 +36,7 @@ class RoutineHero extends StatefulWidget {
     required this.evening,
     this.morningNotes = const [],
     this.eveningNotes = const [],
+    this.trackingSince,
   });
 
   final TodayActions actions;
@@ -47,15 +52,40 @@ class RoutineHero extends StatefulWidget {
   final List<RoutineItem> morningNotes;
   final List<RoutineItem> eveningNotes;
 
+  /// Takibin başladığı an; "bu hafta" şeridinde bundan önceki günler sayılmaz (yeni kullanıcıya "0/7" gösterilmez).
+  final DateTime? trackingSince;
+
   @override
   State<RoutineHero> createState() => _RoutineHeroState();
 }
 
 class _RoutineHeroState extends State<RoutineHero> {
-  final Set<String> _expanded = {};
   final Set<String> _stepsShownWhenDone = {};
   bool _notesOpen = false;
   bool _busy = false;
+
+  /// Son çizimde hangi bloklar tamamdı: "tamamlanma anı" yalnızca bu oturumda tamamlanınca (açılışta değil) oynar.
+  Map<String, bool>? _doneBefore;
+  String? _doneBeforeDay;
+  String? _justCompleted;
+
+  /// Karşılaştırma ancak plan yüklendikten sonra başlar (yüklenirken her blok "yapılmamış" görünür; sunucudan gelen
+  /// "zaten tamam" bir tamamlanma anı değildir). Gün değişince taban yeniden kurulur.
+  void _noticeCompletion(TodayPlan? plan) {
+    if (plan == null) return;
+    final progress = plan.progress;
+    final now = {for (final b in routineBlocks) b: progress.blockDone(b)};
+    final before = _doneBeforeDay == plan.logDate ? _doneBefore : null;
+    _doneBefore = now;
+    _doneBeforeDay = plan.logDate;
+    if (before == null) return;
+    for (final b in routineBlocks) {
+      if (now[b] == true && before[b] != true) {
+        _justCompleted = b;
+        Haptics.milestone();
+      }
+    }
+  }
 
   Future<void> _guard(Future<void> Function() job) async {
     if (_busy) return;
@@ -88,6 +118,8 @@ class _RoutineHeroState extends State<RoutineHero> {
         final checked = steps.where((s) => blockDone || progress.stepsOf(block).contains(s)).length;
         final fraction = live.isEmpty ? (blockDone ? 1.0 : 0.0) : checked / live.length;
         final showSteps = !blockDone || _stepsShownWhenDone.contains(block);
+        _noticeCompletion(plan);
+        final week = plan?.routineWeek ?? const <RoutineDay>[];
 
         return Semantics(
           container: true,
@@ -99,10 +131,11 @@ class _RoutineHeroState extends State<RoutineHero> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _header(i18n, block, fraction, checked, live.length, blockDone),
+                if (week.length == 7) ...[const SizedBox(height: 16), _WeekStrip(days: week, theme: widget.theme, i18n: i18n, since: widget.trackingSince)],
                 const SizedBox(height: 16),
                 _segments(i18n, progress, plan),
                 const SizedBox(height: 6),
-                if (blockDone) _doneSummary(i18n, block, steps),
+                if (blockDone) _doneSummary(i18n, block, steps, plan),
                 if (showSteps) ...[
                   if (items.isEmpty)
                     Padding(
@@ -125,6 +158,7 @@ class _RoutineHeroState extends State<RoutineHero> {
                           last: i == items.length - 1,
                         ),
                 ],
+                if (!blockDone && live.isNotEmpty) _focusEntry(i18n, block, live),
                 if (notes.isNotEmpty) _notes(i18n, notes),
                 const SizedBox(height: 8),
               ],
@@ -231,8 +265,9 @@ class _RoutineHeroState extends State<RoutineHero> {
   }
 
   /// Blok tamamlandığında adımların yerine sakin bir bitiş durumu gösterilir.
-  Widget _doneSummary(I18n i18n, String block, List<int> steps) {
+  Widget _doneSummary(I18n i18n, String block, List<int> steps, TodayPlan? plan) {
     final shown = _stepsShownWhenDone.contains(block);
+    final fresh = _justCompleted == block;
     return Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 6),
       child: Container(
@@ -248,8 +283,9 @@ class _RoutineHeroState extends State<RoutineHero> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 TweenAnimationBuilder<double>(
-                  tween: Tween(begin: .6, end: 1),
-                  duration: const Duration(milliseconds: 420),
+                  key: ValueKey('done-$block-$fresh'),
+                  tween: Tween(begin: fresh ? .2 : .6, end: 1),
+                  duration: Duration(milliseconds: fresh ? 620 : 420),
                   curve: Curves.easeOutBack,
                   builder: (context, v, child) => Transform.scale(scale: v, child: child),
                   child: Container(
@@ -267,7 +303,7 @@ class _RoutineHeroState extends State<RoutineHero> {
                       Text(i18n.t('mobileToday.hero.doneTitle.$block'), style: heading(20, c: Tw.emerald800)),
                       const SizedBox(height: 2),
                       Text(
-                        i18n.t('mobileToday.hero.doneBody'),
+                        _doneMessage(i18n, block, plan),
                         style: tx(12.5, c: Tw.emerald800, h: relaxed),
                       ),
                     ],
@@ -297,6 +333,40 @@ class _RoutineHeroState extends State<RoutineHero> {
     );
   }
 
+  /// Odak modu girişi: adımların altında sakin, tam genişlikte bir satır.
+  Widget _focusEntry(I18n i18n, String block, List<RoutineItem> live) {
+    final theme = widget.theme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: TextButton.icon(
+        onPressed: () => RoutineFocusScreen.open(context, actions: widget.actions, block: block, items: live, localized: widget.localized),
+        style: TextButton.styleFrom(
+          minimumSize: const Size(double.infinity, 48),
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          foregroundColor: theme.fg,
+        ),
+        icon: Icon(LucideIcons.play, size: 17, color: theme.fg),
+        label: Text(i18n.t('mobileFocus.start'), style: tx(14, w: 7, c: theme.fg)),
+      ),
+    );
+  }
+
+  /// Bitiş cümlesi: sabahtan sonra akşamın ne zaman olduğu; iki blok da bitince haftanın tam gün sayısı.
+  String _doneMessage(I18n i18n, String block, TodayPlan? plan) {
+    if (plan == null) return i18n.t('mobileToday.hero.doneBody');
+    if (block == 'morning' && !plan.progress.eveningDone) {
+      final settings = plan.settings;
+      final evening = settings.windows['routine_evening']?.start ?? defaultReminderWindow('routine_evening', settings)?.start;
+      if (evening != null && evening.isNotEmpty) return i18n.t('mobileToday.hero.nextEvening', {'time': evening});
+    }
+    final week = plan.routineWeek;
+    if (week.length == 7 && plan.progress.morningDone && plan.progress.eveningDone) {
+      return i18n.t('mobileToday.hero.weekFull', {'n': week.where((d) => d.full).length});
+    }
+    return i18n.t('mobileToday.hero.doneBody');
+  }
+
   Widget _step(
     I18n i18n, {
     required String block,
@@ -308,18 +378,16 @@ class _RoutineHeroState extends State<RoutineHero> {
     required bool last,
   }) {
     final theme = widget.theme;
-    final key = '$block-$index';
-    final open = _expanded.contains(key);
+    final full = pickAction(item, localized: widget.localized);
+    final parts = stepParts(full);
     final detail = pickDetail(item, localized: widget.localized);
     final usage = routineStepUsage(item, i18n);
-    final hasMore = detail.isNotEmpty || usage.isNotEmpty;
-    final skincare = isSkincareStep(item);
-    final title = pickAction(item, localized: widget.localized);
+    final hasMore = detail.isNotEmpty || usage.isNotEmpty || parts.title != full;
 
     return Semantics(
       container: true,
       checked: checked,
-      label: title,
+      label: full,
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: _busy ? null : () => _guard(() => widget.actions.toggleStep(block: block, step: step, allSteps: allSteps)),
@@ -328,88 +396,87 @@ class _RoutineHeroState extends State<RoutineHero> {
           child: _rail(
             node: _CheckCircle(checked: checked, color: theme.primary),
             last: last,
-            child: Column(
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 3),
-                  // Yapılan adım soluklaşır ama okunur kalır (üstü çizilmez): sakin bir "tamam" hissi.
-                  child: Text(title, style: tx(16, w: 6, c: checked ? Tw.gray500 : Tw.gray900, h: 1.3)),
-                ),
-                StructuredBadges(item: item),
-                if (hasMore) ...[
-                  const SizedBox(height: 4),
-                  InkWell(
-                    borderRadius: BorderRadius.circular(8),
-                    onTap: () => setState(() => open ? _expanded.remove(key) : _expanded.add(key)),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: 1,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: Text(
-                                open
-                                    ? i18n.t('common.hide')
-                                    : skincare
-                                    ? i18n.t('dashboard.whySkincareButton')
-                                    : i18n.t('common.details'),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: tx(12, w: 5, c: theme.fg),
-                              ),
-                            ),
-                            Icon(open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 14, color: theme.fg),
-                          ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(top: 3),
+                        // Kısa ad; yapılan adım soluklaşır ama okunur kalır (üstü çizilmez): sakin bir "tamam" hissi.
+                        child: Text(parts.title, style: tx(16, w: 6, c: checked ? Tw.gray500 : Tw.gray900, h: 1.3)),
+                      ),
+                      if (parts.subtitle.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          parts.subtitle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: tx(13, c: checked ? Tw.gray400 : Tw.gray500, h: 1.35),
                         ),
-                      ),
-                    ),
+                      ],
+                      StructuredBadges(item: item),
+                    ],
                   ),
-                ],
-                if (open) ...[
-                  const SizedBox(height: 4),
-                  if (detail.isNotEmpty)
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: i18n.t('dashboard.shortWhy'),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          TextSpan(text: ' $detail'),
-                        ],
-                      ),
-                      style: tx(12, c: Tw.gray600, h: relaxed),
-                    ),
-                  if (usage.isNotEmpty) ...[
-                    if (detail.isNotEmpty) const SizedBox(height: 6),
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: skincare ? i18n.t('dashboard.howToApply') : i18n.t('dashboard.howToDo'),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          TextSpan(text: ' $usage'),
-                        ],
-                      ),
-                      style: tx(12, c: Tw.gray600, h: relaxed),
-                    ),
-                  ],
-                  const SizedBox(height: 2),
-                  TextLink(
-                    i18n.t('mobileRoutine.askRebi'),
-                    onTap: () =>
-                        askRebiAboutStep(context, item, RoutineCtx(i18n: i18n, theme: theme, localized: widget.localized, weekDays: const [])),
-                    style: tx(12, w: 7, c: theme.fg),
+                ),
+                if (hasMore)
+                  // Ayrıntı (tam ad, neden, nasıl uygulanır, Rebi'ye sor) satırı kalabalıklaştırmadan alt sayfada açılır.
+                  IconButton(
+                    tooltip: i18n.t('mobileToday.hero.stepInfo', {'name': parts.title}),
+                    onPressed: () => _showStepSheet(i18n, item, full, parts.title),
+                    icon: Icon(LucideIcons.info, size: 20, color: Tw.gray400),
+                    constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                    padding: EdgeInsets.zero,
                   ),
-                ],
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showStepSheet(I18n i18n, RoutineItem item, String full, String title) {
+    final theme = widget.theme;
+    final detail = pickDetail(item, localized: widget.localized);
+    final usage = routineStepUsage(item, i18n);
+    final skincare = isSkincareStep(item);
+    Widget section(String label, String text) => Padding(
+          padding: const EdgeInsets.only(top: 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(label, style: tx(12, w: 7, c: Tw.gray500, ls: .4)),
+              const SizedBox(height: 6),
+              Text(text, style: tx(14.5, c: Tw.gray700, h: relaxed)),
+            ],
+          ),
+        );
+    AppSheet.show<void>(
+      context,
+      title: title,
+      body: (ctx) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (full != title) Text(full, style: tx(15, w: 6, c: Tw.gray800, h: snug)),
+            StructuredBadges(item: item),
+            if (detail.isNotEmpty) section(skincare ? i18n.t('mobileToday.hero.why') : i18n.t('common.details'), detail),
+            if (usage.isNotEmpty) section(skincare ? i18n.t('dashboard.howToApply') : i18n.t('dashboard.howToDo'), usage),
+            const SizedBox(height: 22),
+            SecondaryButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                askRebiAboutStep(context, item, RoutineCtx(i18n: i18n, theme: theme, localized: widget.localized, weekDays: const []));
+              },
+              icon: LucideIcons.messageCircle,
+              label: i18n.t('mobileRoutine.askRebi'),
+              minHeight: 52,
+            ),
+          ],
         ),
       ),
     );
@@ -473,7 +540,7 @@ class _RoutineHeroState extends State<RoutineHero> {
             Padding(
               padding: const EdgeInsets.only(top: 3),
               child: Text(
-                pickAction(item, localized: widget.localized),
+                shortStepName(pickAction(item, localized: widget.localized)),
                 style: tx(16, w: 6, c: Tw.gray500, h: 1.3),
               ),
             ),
@@ -574,6 +641,114 @@ class _RoutineHeroState extends State<RoutineHero> {
 }
 
 /// İşaret dairesi: işaretlenince hafifçe büyüyüp yerine oturur, tik belirir.
+/// "Bu hafta": son 7 günün sabah/akşam rutini. Dolu daire: iki blok da tamam; halka içinde nokta: biri tamam;
+/// soluk halka: hiçbiri. Bugünün adı kalın yazılır.
+class _WeekStrip extends StatelessWidget {
+  const _WeekStrip({required this.days, required this.theme, required this.i18n, this.since});
+
+  final List<RoutineDay> days;
+  final RebiTheme theme;
+  final I18n i18n;
+  final DateTime? since;
+
+  /// Gün takip başlamadan önce miydi (ve o gün hiçbir şey yapılmadı mı)?
+  bool _before(RoutineDay d) {
+    final start = since;
+    final date = DateTime.tryParse(d.logDate);
+    if (start == null || date == null || d.any) return false;
+    return date.isBefore(DateTime(start.year, start.month, start.day));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final names = i18n.tList('dashboard.weekDays', const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    final full = days.where((d) => d.full).length;
+    final counted = days.where((d) => !_before(d)).length;
+    String dayName(RoutineDay d) {
+      final date = DateTime.tryParse(d.logDate);
+      return date == null || names.length != 7 ? '' : names[date.weekday - 1];
+    }
+
+    return Semantics(
+      container: true,
+      label: i18n.t('mobileToday.week.a11y', {'n': full, 'total': counted}),
+      excludeSemantics: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(i18n.t('mobileToday.week.title'), style: tx(11.5, w: 7, c: Tw.gray500, ls: .8)),
+              const Spacer(),
+              Text(i18n.t('mobileToday.week.full', {'n': full, 'total': counted}), style: tx(11.5, w: 6, c: Tw.gray600)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              for (var i = 0; i < days.length; i++)
+                Expanded(
+                  child: Column(
+                    children: [
+                      _WeekDot(day: days[i], color: theme.primary, today: i == days.length - 1, before: _before(days[i])),
+                      const SizedBox(height: 5),
+                      Text(
+                        dayName(days[i]),
+                        maxLines: 1,
+                        overflow: TextOverflow.clip,
+                        style: tx(10.5, w: i == days.length - 1 ? 7 : 5, c: i == days.length - 1 ? Tw.gray800 : Tw.gray500),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WeekDot extends StatelessWidget {
+  const _WeekDot({required this.day, required this.color, required this.today, this.before = false});
+
+  final RoutineDay day;
+  final Color color;
+  final bool today;
+
+  /// Takipten önceki gün: halka yerine kısa, soluk bir çizgi (kaçırılmış gibi görünmesin).
+  final bool before;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 24.0;
+    if (before) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: Center(child: Container(width: 10, height: 2, decoration: BoxDecoration(color: Tw.gray200, borderRadius: BorderRadius.circular(1)))),
+      );
+    }
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 380),
+      curve: Curves.easeOutCubic,
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: day.full ? color : Colors.transparent,
+        border: day.full ? null : Border.all(color: day.any ? color : (today ? Tw.gray400 : Tw.gray200), width: 1.6),
+      ),
+      alignment: Alignment.center,
+      child: day.full
+          ? const Icon(LucideIcons.check, size: 13, color: Colors.white)
+          : day.any
+          ? Container(width: 8, height: 8, decoration: BoxDecoration(shape: BoxShape.circle, color: color))
+          : null,
+    );
+  }
+}
+
 class _CheckCircle extends StatelessWidget {
   const _CheckCircle({required this.checked, required this.color});
 

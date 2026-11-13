@@ -110,7 +110,7 @@ void main() {
 
       for (final step in steps) {
         if (identical(step, product) || str(step['action']) == str(product['action'])) continue;
-        await tapText(tester, pickAction(step, localized: false));
+        await tapText(tester, shortStepName(pickAction(step, localized: false)));
       }
 
       expect(h.backend.progress['routine_morning_done'], isTrue, reason: 'kalan tüm adımlar işaretlenince blok tamamlanır');

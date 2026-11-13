@@ -426,8 +426,10 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
       }
       final data = res.data;
       final localPreview = photo?.file.path;
+      // İlk rutin: kısa karşılama (rutini kabul, gün saatleri, bildirim izni). Sonraki analizlerde doğrudan plana.
+      final firstRoutine = user != null && !isRoutineTrackingAccepted(user.id);
       router.go(
-        '/dashboard',
+        firstRoutine ? '/dashboard/welcome' : '/dashboard',
         extra: {
           'routine': data['routine'],
           'weather': data['weather'],

@@ -304,6 +304,21 @@ List<ReminderAction> reminderActions(Reminder r) => switch (r.id) {
     };
 
 /// `GET /today/plan` yanıtı: rutin, hava, havaya göre öneriler, hatırlatıcılar, ilerleme.
+/// "Bu hafta" şeridinin bir günü: sabah / akşam rutini tamamlandı mı.
+class RoutineDay {
+  const RoutineDay({required this.logDate, required this.morning, required this.evening});
+
+  factory RoutineDay.fromJson(Map<String, dynamic> j) =>
+      RoutineDay(logDate: '${j['log_date'] ?? ''}', morning: j['morning'] == true, evening: j['evening'] == true);
+
+  final String logDate;
+  final bool morning;
+  final bool evening;
+
+  bool get full => morning && evening;
+  bool get any => morning || evening;
+}
+
 class TodayPlan {
   const TodayPlan({
     required this.logDate,
@@ -316,6 +331,7 @@ class TodayPlan {
     required this.progress,
     required this.checkinDone,
     this.settings = const ReminderSettings(),
+    this.week = const [],
     this.decisions,
     this.productsOut = const [],
   });
@@ -336,6 +352,10 @@ class TodayPlan {
         settings: ReminderSettings.fromJson(j['reminder_settings']),
         decisions: WeatherDecisions.fromJson(j['weather_decisions']),
         productsOut: parseShelf(j['products_out']),
+        week: [
+          for (final d in (j['week'] is List ? j['week'] as List : const []))
+            if (d is Map) RoutineDay.fromJson(d.cast<String, dynamic>()),
+        ],
       );
 
   final String logDate;
@@ -359,6 +379,15 @@ class TodayPlan {
   /// Rafım: bitti işaretlenip yenisi alınmamış ürünler (gün sınırı yok; en son biten başta).
   final List<ShelfItem> productsOut;
 
+  /// Son 7 gün (eskiden yeniye) sunucunun gördüğü haliyle; eski sunucuda boş.
+  final List<RoutineDay> week;
+
+  /// "Bu hafta" şeridi: bugünün kaydı yerel ilerlemeyle (henüz sunucuya gitmemiş "yaptım" dahil) güncellenir.
+  List<RoutineDay> get routineWeek => [
+        for (final d in week)
+          d.logDate == logDate ? RoutineDay(logDate: d.logDate, morning: progress.morningDone, evening: progress.eveningDone) : d,
+      ];
+
   /// Hava verisi gerçek bir kaynaktan mı geldi (varsayılan değerler değil).
   bool get hasRealWeather => weatherSource != 'default';
 
@@ -378,6 +407,7 @@ class TodayPlan {
         settings: settings,
         decisions: decisions,
         productsOut: productsOut,
+        week: week,
       );
 
   /// Rafım listesi değişmiş kopya.
@@ -394,6 +424,7 @@ class TodayPlan {
         settings: settings,
         decisions: decisions,
         productsOut: next,
+        week: week,
       );
 
   /// Bu ürün şu an rafta bitmiş mi (ad eşleşmesi: büyük/küçük harf ve fazla boşluk fark yaratmaz).

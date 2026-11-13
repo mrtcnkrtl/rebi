@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart' show Size, Text;
+import 'package:flutter/material.dart' show IconButton, Size, Text;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/routine_logic.dart';
@@ -152,7 +152,10 @@ void main() {
 
     testWidgets('Bugün ekranındaki kahraman kartta da aynı bağlantı çalışır', (tester) async {
       final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
-      await tapFinder(tester, find.text(tr('dashboard.whySkincareButton')).first);
+      // Bugün'de ayrıntı, adımın bilgi düğmesiyle açılan alt sayfadadır.
+      // Saat sabit değil (sabah ya da akşam bloğu görünebilir): görünen ilk adımın bilgi düğmesi.
+      final suffix = tr('mobileToday.hero.stepInfo', {'name': ''});
+      await tapFinder(tester, find.byWidgetPredicate((w) => w is IconButton && (w.tooltip ?? '').endsWith(suffix)).first);
       await tapText(tester, tr('mobileRoutine.askRebi'));
       await settle(tester, 20);
 

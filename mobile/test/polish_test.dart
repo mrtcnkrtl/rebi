@@ -117,7 +117,7 @@ void main() {
       await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
       calls.clear();
       final first = RoutineView(asRoutine(routine)).routineByDay[getTurkeyWeekdayIndex()]!.morning.first;
-      await tapText(tester, pickAction(first, localized: false));
+      await tapText(tester, shortStepName(pickAction(first, localized: false)));
       expect(calls, contains('HapticFeedbackType.selectionClick'));
     });
   });

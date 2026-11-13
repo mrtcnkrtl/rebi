@@ -6,6 +6,8 @@ import 'screens/auth_screen.dart';
 import 'screens/chat_screen.dart';
 import 'screens/checkin_screen.dart';
 import 'screens/dashboard_screen.dart';
+import 'screens/journal_screen.dart';
+import 'screens/welcome/first_day_screen.dart';
 import 'screens/history_screen.dart';
 import 'screens/landing_screen.dart';
 import 'screens/legal_screen.dart';
@@ -131,6 +133,12 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const LegalScreen(kind: 'mesafeli'),
       ),
+      // İlk rutin oluşturulunca bir kez açılan karşılama (alt gezinme çubuğu olmadan, tam ekran).
+      GoRoute(
+        path: '/dashboard/welcome',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) => _fadeThroughPage(state, FirstDayScreen(nav: _extraMap(state.extra) ?? const {})),
+      ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
         builder: (context, state, child) => AppShell(location: state.uri, child: child),
@@ -174,6 +182,7 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
           GoRoute(path: '/dashboard/profile', pageBuilder: (context, state) => _fadeThroughPage(state, const MeScreen())),
           GoRoute(path: '/dashboard/account', pageBuilder: (context, state) => _fadeThroughPage(state, const ProfileScreen())),
           GoRoute(path: '/dashboard/history', pageBuilder: (context, state) => _fadeThroughPage(state, const HistoryScreen())),
+          GoRoute(path: '/dashboard/journal', pageBuilder: (context, state) => _fadeThroughPage(state, const JournalScreen())),
           GoRoute(path: '/dashboard/reminders', pageBuilder: (context, state) => _fadeThroughPage(state, const RemindersScreen())),
         ],
       ),

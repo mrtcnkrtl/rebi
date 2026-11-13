@@ -1653,6 +1653,8 @@ class TodayPlanResponse(BaseModel):
     reminder_settings: dict = {}
     progress: dict
     checkin_done: bool
+    # Son 7 gün (bugün dahil, eskiden yeniye): sabah / akşam rutini tamamlandı mı. Ana ekrandaki "bu hafta" şeridi.
+    week: list[dict] = []
 
 
 _ACCOUNT_DELETE_CONFIRM = "HESABIMI_SIL"
@@ -2033,7 +2035,63 @@ def today_plan_endpoint(
         reminder_settings=settings,
         progress=aggregated,
         checkin_done=checkin_done,
+        week=_routine_week(supabase, user_id, date.fromisoformat(today), aggregated),
     )
+
+
+_WEEK_DAYS = 7
+
+
+def _routine_week(supabase, user_id: str, today: date, progress: dict) -> list[dict]:
+    """
+    Son 7 günün rutin özeti: `[{"log_date", "morning", "evening"}]`, eskiden yeniye. Bugün `progress`ten gelir (zaten
+    hesaplandı); önceki 6 gün yalnızca `routine_completed_block` olaylarından tek indeksli sorguyla okunur. Aynı blok
+    için son olay geçerlidir (yeniden açma `{"morning": false}` yazar). Okunamazsa önceki günler boş (tamamlanmamış) döner.
+    """
+    first = today - timedelta(days=_WEEK_DAYS - 1)
+    done: dict[str, dict[str, bool]] = {}
+    if should_use_supabase_db(supabase, user_id):
+        try:
+            rows = _fetch_paged(lambda: (
+                supabase.table("daily_events")
+                .select("log_date,payload")
+                .eq("user_id", user_id)
+                .eq("type", "routine_completed_block")
+                .gte("log_date", str(first))
+                .lte("log_date", str(today - timedelta(days=1)))
+                .order("event_time")
+                .order("id")
+            ))
+        except Exception as e:
+            log.warning("Haftalık rutin özeti okunamadı: %s", type(e).__name__)
+            rows = []
+    else:
+        rows = [
+            {"log_date": day, "payload": ev.get("payload")}
+            for (uid, day), evs in _MEM_DAILY_EVENTS.items()
+            if uid == user_id and str(first) <= day < str(today)
+            for ev in evs
+            if ev.get("type") == "routine_completed_block"
+        ]
+    for row in rows:
+        payload = row.get("payload") if isinstance(row.get("payload"), dict) else {}
+        day = done.setdefault(str(row.get("log_date")), {})
+        for block in ("morning", "evening"):
+            if block in payload:
+                day[block] = bool(payload.get(block))
+    week = []
+    for i in range(_WEEK_DAYS):
+        d = first + timedelta(days=i)
+        if d == today:
+            week.append({
+                "log_date": str(d),
+                "morning": bool(progress.get("routine_morning_done")),
+                "evening": bool(progress.get("routine_evening_done")),
+            })
+        else:
+            day = done.get(str(d), {})
+            week.append({"log_date": str(d), "morning": day.get("morning", False), "evening": day.get("evening", False)})
+    return week
 
 
 _MAX_HISTORY_DAYS = 90

@@ -1,6 +1,6 @@
 {
   "user_id": "99999999-9999-4999-8999-999999999999",
-  "log_date": "2026-10-19",
+  "log_date": "2026-11-13",
   "has_routine": true,
   "routine": [
     {
@@ -66,7 +66,8 @@
       "icon": "💦",
       "action": "Ekstra nem: HA + Panthenol %5 katmanı",
       "detail": "Nem düşük (%38.0). Serum + nemlendirici ikili kullan.",
-      "priority": 2
+      "priority": 2,
+      "concern_role": "environment"
     }
   ],
   "weather_decisions": {
@@ -97,8 +98,8 @@
     {
       "product": "SPF 50 (geniş spektrumlu)",
       "step_order": 40,
-      "finished_at": "2026-10-19T12:30:00+00:00",
-      "log_date": "2026-10-19",
+      "finished_at": "2026-11-13T12:30:00+00:00",
+      "log_date": "2026-11-13",
       "days_out": 0
     }
   ],
@@ -110,7 +111,19 @@
       "start": "07:00",
       "end": "09:00",
       "every_minutes": null,
-      "log_event": "routine_completed_block"
+      "log_event": "routine_completed_block",
+      "category": "rebi_routine_morning",
+      "actions": [
+        {
+          "id": "done",
+          "label": "Yaptım",
+          "log_event": "routine_completed_block",
+          "payload": {
+            "morning": true
+          }
+        }
+      ],
+      "open_path": "/dashboard"
     },
     {
       "id": "water_intake",
@@ -119,7 +132,25 @@
       "start": "08:30",
       "end": "21:00",
       "every_minutes": 90,
-      "log_event": "water_intake"
+      "log_event": "water_intake",
+      "category": "rebi_water_intake",
+      "actions": [
+        {
+          "id": "waterYes",
+          "label": "İçtim",
+          "log_event": "water_intake",
+          "payload": {
+            "ml": 250
+          }
+        },
+        {
+          "id": "waterNo",
+          "label": "İçmedim",
+          "log_event": "water_skipped",
+          "payload": {}
+        }
+      ],
+      "open_path": "/dashboard"
     },
     {
       "id": "spf_refresh",
@@ -128,7 +159,17 @@
       "start": "11:00",
       "end": "16:00",
       "every_minutes": 120,
-      "log_event": "spf_refresh"
+      "log_event": "spf_refresh",
+      "category": "rebi_spf_refresh",
+      "actions": [
+        {
+          "id": "done",
+          "label": "Yaptım",
+          "log_event": "spf_refresh",
+          "payload": {}
+        }
+      ],
+      "open_path": "/dashboard"
     },
     {
       "id": "makeup_removal",
@@ -137,7 +178,10 @@
       "start": "21:00",
       "end": "23:00",
       "every_minutes": null,
-      "log_event": "makeup"
+      "log_event": "makeup",
+      "category": null,
+      "actions": [],
+      "open_path": "/dashboard"
     },
     {
       "id": "routine_evening",
@@ -146,7 +190,19 @@
       "start": "21:30",
       "end": "22:30",
       "every_minutes": null,
-      "log_event": "routine_completed_block"
+      "log_event": "routine_completed_block",
+      "category": "rebi_routine_evening",
+      "actions": [
+        {
+          "id": "done",
+          "label": "Yaptım",
+          "log_event": "routine_completed_block",
+          "payload": {
+            "evening": true
+          }
+        }
+      ],
+      "open_path": "/dashboard"
     }
   ],
   "reminder_settings": {
@@ -209,6 +265,7 @@
       "evening": []
     },
     "spf_refreshes": 1,
+    "water_skips": 0,
     "last_photo_meta": null,
     "checkin_feedback_events": 0,
     "makeup": {
@@ -221,9 +278,46 @@
       {
         "product": "SPF 50 (geniş spektrumlu)",
         "step_order": 40,
-        "at": "2026-10-19T12:30:00+00:00"
+        "at": "2026-11-13T12:30:00+00:00"
       }
     ]
   },
-  "checkin_done": true
+  "checkin_done": true,
+  "week": [
+    {
+      "log_date": "2026-11-07",
+      "morning": false,
+      "evening": false
+    },
+    {
+      "log_date": "2026-11-08",
+      "morning": false,
+      "evening": false
+    },
+    {
+      "log_date": "2026-11-09",
+      "morning": false,
+      "evening": false
+    },
+    {
+      "log_date": "2026-11-10",
+      "morning": false,
+      "evening": false
+    },
+    {
+      "log_date": "2026-11-11",
+      "morning": false,
+      "evening": false
+    },
+    {
+      "log_date": "2026-11-12",
+      "morning": false,
+      "evening": false
+    },
+    {
+      "log_date": "2026-11-13",
+      "morning": false,
+      "evening": false
+    }
+  ]
 }

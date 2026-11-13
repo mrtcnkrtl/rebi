@@ -288,10 +288,12 @@ void main() {
       'makeup_removal', 'special_flags',
     }, reason: 'web Analyze.jsx ile aynı alan kümesi');
 
-    // Panel: kabul çubuğu → takip modu
+    // İlk rutin: karşılama → "Takibe başla" rutini kabul eder → (bildirim adımları atlanır) → takip modu
+    expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/welcome');
+    await tapText(tester, tr('mobileWelcome.ready.start'));
+    expect(isRoutineTrackingAccepted(testUserId), isTrue);
+    await tapText(tester, tr('mobileWelcome.skip'));
     expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
-    expect(find.text(tr('dashboard.acceptBanner')), findsOneWidget);
-    await tapText(tester, tr('dashboard.acceptCta'));
     expect(find.byType(TodayHeader), findsOneWidget);
     expect(isRoutineTrackingAccepted(testUserId), isTrue);
     expect(getRoutineSnapshot(testUserId)?['acceptedAt'], isA<int>());

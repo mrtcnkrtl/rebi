@@ -17,6 +17,7 @@ import '../ui/widgets/common.dart';
 import '../ui/widgets/skeleton.dart';
 import '../ui/widgets/trend_charts.dart';
 import '../ui/brand/palette.dart';
+import 'history/week_share.dart';
 
 /// Geçmiş günler (`GET /me/history`): her gün için gün içi kayıtlar ve check-in.
 /// Web'de karşılığı yok; mobilde profilden ve panelden açılır.
@@ -293,6 +294,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Icon(LucideIcons.calendarDays, size: 16, color: theme.primary),
               const SizedBox(width: 8),
               Expanded(child: Text(i18n.t('mobileHistory.week.title'), style: tx(13.5, w: 7, c: Tw.gray800))),
+              // Haftalık özet görseli (hikâye boyutu); yalnızca alışkanlık özeti içerir.
+              TextButton.icon(
+                onPressed: () => showWeekShareSheet(context, theme: theme, days: days, stats: cur),
+                style: TextButton.styleFrom(minimumSize: const Size(48, 40), foregroundColor: theme.fg, padding: const EdgeInsets.symmetric(horizontal: 8)),
+                icon: Icon(LucideIcons.share2, size: 15, color: theme.fg),
+                label: Text(i18n.t('mobileShare.button'), style: tx(13, w: 7, c: theme.fg)),
+              ),
             ]),
             const SizedBox(height: 2),
             Text(i18n.t(prev == null ? 'mobileHistory.week.subtitleNoPrev' : 'mobileHistory.week.subtitle'), style: tx(11, c: Tw.gray500, h: relaxed)),

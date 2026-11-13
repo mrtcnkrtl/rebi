@@ -37,10 +37,11 @@ class TodayMoreList extends StatelessWidget {
         onTap: () => context.go('/dashboard/shelf'),
       ),
       _MoreTile(
-        icon: LucideIcons.camera,
+        icon: LucideIcons.images,
         color: Tw.purple600,
-        title: i18n.t('mobileToday.quickPhoto'),
-        onTap: () => context.push('/dashboard/analyze?photo=1'),
+        title: i18n.t('mobileJournal.title'),
+        subtitle: i18n.t('mobileJournal.openHint'),
+        onTap: () => context.go('/dashboard/journal'),
       ),
       _MoreTile(
         icon: LucideIcons.scanFace,

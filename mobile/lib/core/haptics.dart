@@ -13,6 +13,10 @@ class Haptics {
   /// Kayıt başarısız oldu.
   static void failure() => _run(HapticFeedback.mediumImpact);
 
+  /// Bir rutin bloğu (sabah / akşam) bu oturumda tamamlandı: günde en çok iki kez, belirgin tek vuruş.
+  /// Hatanın orta titreşiminden ayrı olsun diye ağır vuruş kullanılır.
+  static void milestone() => _run(HapticFeedback.heavyImpact);
+
   static void _run(Future<void> Function() action) {
     try {
       action().catchError((Object _) {});

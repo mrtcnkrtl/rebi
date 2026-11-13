@@ -58,6 +58,13 @@ class MeScreen extends StatelessWidget {
             onTap: () => context.go('/dashboard/reminders'),
           ),
           MenuRow(
+            icon: LucideIcons.images,
+            color: theme.primary,
+            title: i18n.t('mobileJournal.title'),
+            hint: i18n.t('mobileJournal.openHint'),
+            onTap: () => context.go('/dashboard/journal'),
+          ),
+          MenuRow(
             icon: LucideIcons.packageCheck,
             color: theme.primary,
             title: i18n.t('mobileShelf.title'),

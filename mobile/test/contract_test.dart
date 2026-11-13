@@ -30,6 +30,15 @@ void main() {
   group('GET /today/plan', () {
     final plan = TodayPlan.fromJson(contract('today_plan'));
 
+    test('"bu hafta" şeridi: 7 gün, eskiden yeniye, sonuncusu bugün', () {
+      expect(plan.week, hasLength(7));
+      expect(plan.week.last.logDate, plan.logDate);
+      final dates = [for (final d in plan.week) d.logDate];
+      expect(dates, [...dates]..sort());
+      // Bugün yerel ilerlemeden okunur (sunucuya henüz gitmemiş "yaptım" da görünür).
+      expect(plan.routineWeek.last.morning, plan.progress.morningDone);
+    });
+
     test('rutin, hava ve öneriler', () {
       expect(plan.hasRoutine, isTrue);
       expect(plan.routine, hasLength(4));

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/day_log.dart';
@@ -9,9 +10,9 @@ import '../../core/routine_logic.dart';
 import '../../core/today_plan.dart';
 import '../../state/theme_controller.dart';
 import '../../state/today_actions.dart';
+import '../../ui/brand/palette.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
-import '../../ui/widgets/progress_ring.dart';
 import 'today_widgets.dart';
 import '../../ui/brand/glyphs.dart';
 import '../../core/shelf.dart';
@@ -260,9 +261,17 @@ class _WaterBody extends StatefulWidget {
   State<_WaterBody> createState() => _WaterBodyState();
 }
 
+/// Su kaydı: üstte dolan bardak ve büyük rakam; altta iki büyük düğme (bardak / şişe). Başka miktar ve düzeltme,
+/// sayfayı kalabalıklaştırmasın diye yalnızca istenince açılır.
 class _WaterBodyState extends State<_WaterBody> {
   final _controller = TextEditingController();
   String? _error;
+  bool _customOpen = false;
+  bool _fixOpen = false;
+
+  /// Bir bardak (ml): "yaklaşık N bardak" hesabı ve ana düğme.
+  static const _glassMl = 250;
+  static const _bottleMl = 500;
 
   @override
   void dispose() {
@@ -297,87 +306,174 @@ class _WaterBodyState extends State<_WaterBody> {
   Widget build(BuildContext context) {
     final i18n = I18n.instance;
     final theme = widget.theme;
+    final nf = NumberFormat.decimalPattern(i18n.lang);
     return ListenableBuilder(
       listenable: widget.actions.plan,
       builder: (context, _) {
         final total = widget.actions.plan.plan?.progress.waterMl ?? 0;
         final target = widget.actions.plan.plan?.waterTarget ?? waterTargetMl;
         final fraction = (total / target).clamp(0.0, 1.0);
+        final reached = total >= target;
+        final remaining = (target - total).clamp(0, target);
+        final glasses = (remaining / _glassMl).ceil();
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(children: [
-              ProgressRing(
-                value: fraction,
-                size: 72,
-                stroke: 8,
-                color: total >= target ? Tw.emerald500 : Tw.blue500,
-                track: Tw.blue100,
-                child: Text('${(fraction * 100).round()}%', style: tx(14, w: 8, c: Tw.gray700)),
+            Semantics(
+              container: true,
+              label: i18n.t('mobileToday.waterProgress', {'ml': total, 'target': target}),
+              excludeSemantics: true,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(end: fraction),
+                    duration: const Duration(milliseconds: 650),
+                    curve: Curves.easeOutCubic,
+                    builder: (context, level, _) => CustomPaint(
+                      size: const Size(64, 88),
+                      painter: _GlassPainter(level: level, water: reached ? Tw.emerald500 : Tw.blue500, outline: Tw.gray300),
+                    ),
+                  ),
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text.rich(
+                          TextSpan(
+                            children: [
+                              TextSpan(text: nf.format(total), style: Brand.serif(40, color: Tw.gray900, h: 1)),
+                              TextSpan(text: '  / ${nf.format(target)} ml', style: tx(15, w: 5, c: Tw.gray500)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          reached
+                              ? i18n.t('mobileToday.waterGoalReached')
+                              : i18n.t('mobileToday.sheets.water.remaining', {'ml': nf.format(remaining), 'n': glasses}),
+                          style: tx(13.5, w: 5, c: reached ? Tw.emerald700 : Tw.gray600, h: 1.35),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(i18n.t('mobileToday.waterProgress', {'ml': total, 'target': target}), style: tx(18, w: 8, c: Tw.blueText)),
-                    if (total >= target)
-                      Text(i18n.t('mobileToday.waterGoalReached'), style: tx(12, w: 5, c: Tw.emerald700)),
-                  ],
-                ),
-              ),
-            ]),
-            const SizedBox(height: 18),
-            Text(i18n.t('mobileToday.sheets.water.add'), style: tx(12, w: 7, c: Tw.gray600)),
-            const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final ml in waterQuickAmounts)
-                TodayPill(label: '+$ml ml', color: ml == 250 ? Tw.blue600 : Tw.blueText, filled: ml == 250, onTap: () => _add(ml)),
-            ]),
-            const SizedBox(height: 14),
+            ),
+            const SizedBox(height: 24),
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
-                    textInputAction: TextInputAction.done,
-                    onSubmitted: (_) => _addCustom(),
-                    decoration: inputDecoration(
-                      hint: i18n.t('mobileToday.sheets.water.customHint'),
-                      suffixText: 'ml',
-                      focusColor: Tw.blue500,
-                      radius: 14,
-                      borderWidth: 1.5,
-                    ),
+                  child: _WaterButton(
+                    ml: _glassMl,
+                    caption: i18n.t('mobileToday.sheets.water.glass'),
+                    primary: true,
+                    onTap: () => _add(_glassMl),
                   ),
                 ),
                 const SizedBox(width: 10),
-                SizedBox(
-                  height: 48,
-                  child: TodayPill(label: i18n.t('mobileToday.sheets.water.addButton'), color: Tw.blue600, filled: true, onTap: _addCustom),
+                Expanded(
+                  child: _WaterButton(
+                    ml: _bottleMl,
+                    caption: i18n.t('mobileToday.sheets.water.bottle'),
+                    onTap: () => _add(_bottleMl),
+                  ),
                 ),
               ],
             ),
-            if (_error != null) ...[
-              const SizedBox(height: 6),
-              Text(_error!, style: tx(12, c: Tw.red600)),
-            ],
-            const SizedBox(height: 18),
-            Text(i18n.t('mobileToday.sheets.water.fix'), style: tx(12, w: 7, c: Tw.gray600)),
-            const SizedBox(height: 8),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final ml in const [100, 250, 500])
-                TodayPill(
-                  label: '−$ml ml',
-                  color: Tw.gray600,
-                  // Toplamın altına inecek düzeltme, kalan kadar düşürür.
-                  onTap: total <= 0 ? null : () => _add(-(ml < total ? ml : total), undoable: false),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 4,
+              children: [
+                TextButton(
+                  onPressed: () => setState(() => _customOpen = !_customOpen),
+                  style: TextButton.styleFrom(minimumSize: const Size(48, 48), foregroundColor: Tw.blueText),
+                  child: Text(i18n.t('mobileToday.sheets.water.other'), style: tx(14, w: 6, c: Tw.blueText)),
                 ),
-            ]),
-            const SizedBox(height: 20),
+                if (total > 0)
+                  TextButton(
+                    onPressed: () => setState(() => _fixOpen = !_fixOpen),
+                    style: TextButton.styleFrom(minimumSize: const Size(48, 48), foregroundColor: Tw.gray600),
+                    child: Text(i18n.t('mobileToday.sheets.water.fixToggle'), style: tx(14, w: 6, c: Tw.gray600)),
+                  ),
+              ],
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _customOpen
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: _controller,
+                                  autofocus: true,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(4)],
+                                  textInputAction: TextInputAction.done,
+                                  onSubmitted: (_) => _addCustom(),
+                                  decoration: inputDecoration(
+                                    hint: i18n.t('mobileToday.sheets.water.customHint'),
+                                    suffixText: 'ml',
+                                    focusColor: Tw.blue500,
+                                    radius: 14,
+                                    borderWidth: 1.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              SizedBox(
+                                height: 48,
+                                child: TodayPill(
+                                  label: i18n.t('mobileToday.sheets.water.addButton'),
+                                  color: Tw.blue600,
+                                  filled: true,
+                                  onTap: _addCustom,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_error != null) ...[
+                            const SizedBox(height: 6),
+                            Text(_error!, style: tx(12, c: Tw.red600)),
+                          ],
+                        ],
+                      ),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: _fixOpen && total > 0
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: [
+                          for (final ml in const [100, 250, 500])
+                            TodayPill(
+                              label: '−$ml ml',
+                              color: Tw.gray600,
+                              // Toplamın altına inecek düzeltme, kalan kadar düşürür.
+                              onTap: () => _add(-(ml < total ? ml : total), undoable: false),
+                            ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+            const SizedBox(height: 14),
             PrimaryButton(
               color: theme.primary,
               label: i18n.t('mobileToday.sheets.done'),
@@ -388,6 +484,102 @@ class _WaterBodyState extends State<_WaterBody> {
       },
     );
   }
+}
+
+/// Büyük su düğmesi: miktar (büyük) ve ne olduğu (bardak / şişe).
+class _WaterButton extends StatelessWidget {
+  const _WaterButton({required this.ml, required this.caption, required this.onTap, this.primary = false});
+
+  final int ml;
+  final String caption;
+  final VoidCallback onTap;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = primary ? Colors.white : Tw.blueText;
+    return Semantics(
+      button: true,
+      label: '+$ml ml, $caption',
+      excludeSemantics: true,
+      child: Material(
+        color: primary ? Tw.blue600 : Tw.blue50,
+        // İkincil düğmenin zemini koyu temada sayfaya çok yakın; ince kenar onu seçilir kılar.
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: primary ? BorderSide.none : BorderSide(color: Tw.dark ? Tw.blue500.withValues(alpha: .6) : Tw.blue100, width: 1.4),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          // Kayıt başarılı olunca `record` zaten hafif titreşim verir.
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+            child: Column(
+              children: [
+                Text('+$ml ml', style: tx(18, w: 7, c: fg)),
+                const SizedBox(height: 2),
+                Text(caption, style: tx(12.5, w: 5, c: primary ? Colors.white70 : Tw.gray500)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Hafifçe daralan bir bardak: ince dış çizgi, alttan `level` oranında dolan su ve suyun üstünde yumuşak bir kıvrım.
+class _GlassPainter extends CustomPainter {
+  _GlassPainter({required this.level, required this.water, required this.outline});
+
+  final double level;
+  final Color water;
+  final Color outline;
+
+  Path _glass(Size size) {
+    final w = size.width;
+    final h = size.height;
+    final inset = w * .11;
+    const r = 10.0;
+    return Path()
+      ..moveTo(0, 0)
+      ..lineTo(w, 0)
+      ..lineTo(w - inset, h - r)
+      ..quadraticBezierTo(w - inset - 1, h, w - inset - r, h)
+      ..lineTo(inset + r, h)
+      ..quadraticBezierTo(inset + 1, h, inset, h - r)
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final glass = _glass(size);
+    canvas.save();
+    canvas.clipPath(glass);
+    canvas.drawRect(Offset.zero & size, Paint()..color = water.withValues(alpha: .08));
+    if (level > 0) {
+      final top = size.height * (1 - level.clamp(0.0, 1.0));
+      final wave = Path()
+        ..moveTo(0, top)
+        ..cubicTo(size.width * .3, top - 4, size.width * .6, top + 4, size.width, top - 1)
+        ..lineTo(size.width, size.height)
+        ..lineTo(0, size.height)
+        ..close();
+      canvas.drawPath(wave, Paint()..color = water.withValues(alpha: .85));
+    }
+    canvas.restore();
+    canvas.drawPath(
+      glass,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.6
+        ..color = outline,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GlassPainter old) => old.level != level || old.water != water || old.outline != outline;
 }
 
 // --- Ürün bitti -------------------------------------------------------------

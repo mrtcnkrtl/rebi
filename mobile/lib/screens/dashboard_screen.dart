@@ -220,6 +220,13 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
     }();
   }
 
+  /// Rutin takibinin başladığı gün (ilk kabul). "Bu hafta" şeridi bundan önceki günleri kaçırılmış saymaz.
+  DateTime? _trackingSince() {
+    final uid = _uid;
+    final at = uid == null ? null : getRoutineSnapshot(uid)?['acceptedAt'];
+    return at is num && at > 0 ? DateTime.fromMillisecondsSinceEpoch(at.toInt()) : null;
+  }
+
   /// Kabul edilmiş rutinde, gezinmeyle gelen yeni rutin snapshot'a yazılır.
   void _syncNavSnapshot() {
     final uid = _uid;
@@ -460,6 +467,7 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
           evening: today.evening,
           morningNotes: [...v.wellnessMorningItems, ...v.dailyLifestyleItems],
           eveningNotes: [...v.wellnessEveningItems, ...v.dailyLifestyleItems],
+          trackingSince: _trackingSince(),
         ),
         const SizedBox(height: 14),
         NowCard(

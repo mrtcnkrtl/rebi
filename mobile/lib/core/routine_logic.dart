@@ -309,3 +309,73 @@ List<RoutineItem> asRoutine(Object? v) {
   if (v is! List) return const [];
   return v.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
 }
+
+// ── Kısa adım adı ───────────────────────────────────────────────────────────────────────────────
+// Sunucunun adım metinleri teknik ve uzundur ("Temizleme: Yüzey aktif (SLES-free) köpük temizleyici"). Listelerde
+// ve önizlemelerde kısa ad gösterilir ("Temizleme"); ayrıntının tamamı adıma dokununca açılır.
+
+/// Kısa ad bu uzunluğu geçerse kelime sınırından kısaltılır.
+const shortStepMaxLength = 30;
+
+/// İki nokta öncesi bir zaman sözcüğüyse ("Gece: Niasinamid…") ad iki nokta sonrasından alınır.
+const _timePrefixes = {'gece', 'sabah', 'akşam', 'aksam', 'night', 'morning', 'evening'};
+
+final _leadingMarks = RegExp(r'^[^\p{L}\p{N}(]+', unicode: true);
+final _inciNote = RegExp(r'\s*\(INCI:[^)]*\)', caseSensitive: false);
+final _trailingParens = RegExp(r'\s*\([^()]*\)\s*$');
+
+/// Adım metninin kısa adı ve (varsa) tek satırlık açıklaması:
+/// "Temizleme: Yüzey aktif (SLES-free) köpük temizleyici" → ("Temizleme", "Yüzey aktif köpük temizleyici"),
+/// "SPF 30+ (mat bitişli, yağsız SPF)" → ("SPF 30+", "mat bitişli, yağsız SPF"),
+/// "⏸️ Salisilik asit %1 tonik … — şimdilik kullanma" → ("Salisilik asit %1 tonik", "").
+({String title, String subtitle}) stepParts(String action) {
+  var s = action.trim().replaceFirst(_leadingMarks, '').replaceAll(_inciNote, '');
+  var subtitle = '';
+  final colon = s.indexOf(':');
+  if (colon > 0 && colon <= 28) {
+    final head = s.substring(0, colon).trim();
+    final rest = s.substring(colon + 1).trim();
+    if (_timePrefixes.contains(head.toLowerCase()) && rest.isNotEmpty) {
+      s = rest;
+    } else {
+      s = head;
+      subtitle = _clean(rest);
+    }
+  }
+  final dash = s.indexOf(' — ');
+  if (dash > 0) s = s.substring(0, dash);
+  while (_trailingParens.hasMatch(s)) {
+    final match = _trailingParens.firstMatch(s)!;
+    final next = s.substring(0, match.start);
+    if (next.trim().isEmpty) break;
+    if (subtitle.isEmpty) subtitle = match.group(0)!.trim().replaceAll(RegExp(r'^\(|\)$'), '').trim();
+    s = next;
+  }
+  s = s.trim();
+  if (s.length > shortStepMaxLength) {
+    final plus = s.indexOf(' + ');
+    if (plus >= 12 && plus <= shortStepMaxLength) {
+      s = s.substring(0, plus).trim();
+    } else {
+      final cut = s.lastIndexOf(' ', shortStepMaxLength - 1);
+      s = '${s.substring(0, cut > 8 ? cut : shortStepMaxLength - 1).trim()}…';
+    }
+  }
+  return (title: s, subtitle: subtitle == s ? '' : subtitle);
+}
+
+/// Açıklama satırı: " — " sonrası, INCI notları ve sondaki parantezler atılır.
+String _clean(String text) {
+  var s = text;
+  final dash = s.indexOf(' — ');
+  if (dash > 0) s = s.substring(0, dash);
+  while (_trailingParens.hasMatch(s)) {
+    final next = s.replaceFirst(_trailingParens, '');
+    if (next.trim().isEmpty) break;
+    s = next;
+  }
+  return s.replaceAll(RegExp(r'\s*\([^()]*\)'), '').replaceAll(RegExp(r'\s{2,}'), ' ').trim();
+}
+
+/// Kısa ad (bkz. [stepParts]).
+String shortStepName(String action) => stepParts(action).title;

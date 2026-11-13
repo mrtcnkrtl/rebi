@@ -236,7 +236,12 @@
         "fix": "Correct a wrong entry",
         "customHint": "Other amount",
         "addButton": "Add",
-        "invalid": "Enter an amount between 1 and {{max}} ml."
+        "invalid": "Enter an amount between 1 and {{max}} ml.",
+        "remaining": "{{ml}} ml to go · about {{n}} glasses",
+        "glass": "a glass",
+        "bottle": "small bottle",
+        "other": "Other amount",
+        "fixToggle": "Entered wrong? Fix it"
       },
       "products": {
         "title": "Which product ran out?",
@@ -332,7 +337,11 @@
       "reopen": "Reopen",
       "outBadge": "Finished",
       "restock": "Restocked",
-      "outHint": "Doesn't count toward your routine"
+      "outHint": "Doesn't count toward your routine",
+      "stepInfo": "{{name}}: details",
+      "why": "Why this product?",
+      "nextEvening": "Evening routine around {{time}}. Your skin is set until then.",
+      "weekFull": "You finished today. {{n}} full days this week."
     },
     "flow": {
       "title": "Your day",
@@ -355,6 +364,11 @@
     },
     "dayLog": {
       "title": "Through the day"
+    },
+    "week": {
+      "title": "This week",
+      "full": "{{n}}/{{total}} full days",
+      "a11y": "You completed both routines on {{n}} of {{total}} days this week"
     }
   },
   "mobileNotifications": {
@@ -1481,5 +1495,107 @@
       "body": "To show the weather we need your permission to process location data. You can turn it on under Account > Privacy permissions.",
       "cta": "Go to privacy permissions"
     }
+  },
+  "mobileWelcome": {
+    "skip": "Skip",
+    "progress": "Step {{n}} of {{total}}",
+    "ready": {
+      "eyebrow": "Your routine is ready",
+      "title": "Your routine is ready, {{name}}.",
+      "titleNoName": "Your routine is ready.",
+      "body": "A few minutes every morning and evening. We keep track of what to apply on which day, and when.",
+      "morning": "morning steps",
+      "evening": "evening steps",
+      "minutes": "minutes / day",
+      "start": "Start tracking",
+      "review": "Review the plan first",
+      "thisMorning": "This morning",
+      "thisEvening": "This evening"
+    },
+    "day": {
+      "eyebrow": "Your day",
+      "title": "When does your day start?",
+      "body": "We only spread reminders across your waking hours. You can change this later in Reminders.",
+      "wake": "Wake up",
+      "sleep": "Bedtime",
+      "invalid": "Leave at least 9 hours between waking up and bedtime.",
+      "next": "Continue"
+    },
+    "notify": {
+      "eyebrow": "Reminders",
+      "title": "Want a nudge?",
+      "body": "A few short notes a day, that's all. You can tap \"Done\" right from the notification.",
+      "morningTitle": "Morning routine",
+      "morningBody": "Start the day with your skin; a few minutes is enough.",
+      "waterTitle": "A glass of water",
+      "waterBody": "Had one? Mark it from the notification.",
+      "eveningTitle": "Evening routine",
+      "eveningBody": "Time to wash off the day.",
+      "enable": "Turn on notifications",
+      "later": "Not now"
+    }
+  },
+  "mobileFocus": {
+    "start": "Go step by step",
+    "close": "Close",
+    "stepOf": "Step {{n}} of {{total}}",
+    "how": "How to apply",
+    "why": "Why this step",
+    "done": "Done, next",
+    "doneLast": "Done, finish",
+    "skip": "Skip this step",
+    "alreadyDone": "You already ticked this step today.",
+    "wait": "Wait 1 min to let it absorb",
+    "waiting": "{{s}} s",
+    "waitStop": "Stop",
+    "finishTitle": {
+      "morning": "Morning routine done",
+      "evening": "Evening routine done"
+    },
+    "finishBody": "A few minutes every day beats doing a lot at once."
+  },
+  "mobileJournal": {
+    "title": "Skin journal",
+    "subtitle": "One photo a week. Time shows change best.",
+    "openHint": "Compare before / after",
+    "consentTitle": "Your photos stay with you",
+    "consentBody": "Journal photos are stored in a private space; only you can see them and they are deleted with your account. Storing them needs your permission, which you can withdraw anytime in Privacy settings.",
+    "consentCta": "Allow photo storage",
+    "emptyTitle": "Start with your first photo",
+    "emptyBody": "Capture today. When you take the second one a week from now, you'll see the change side by side.",
+    "oneBody": "Take the second one in a week; the comparison appears here.",
+    "before": "Before",
+    "after": "After",
+    "apart": "{{n}} days apart",
+    "compareHint": "Drag to compare",
+    "capture": "Take this week's photo",
+    "captureEarly": "Take one now anyway",
+    "next": "Next photo: {{day}}",
+    "all": "All photos ({{n}})",
+    "tipsTitle": "For a good comparison",
+    "tipLight": "Face a window in daylight.",
+    "tipBare": "Use a clean face without makeup.",
+    "tipFrame": "Hold the phone at eye level; let your face fill the frame.",
+    "camera": "Open camera",
+    "gallery": "Choose from gallery",
+    "saved": "Photo added to your journal.",
+    "retake": "Saved, but the photo is a little {{issue}}. Next time, face the light and hold the phone steady.",
+    "dark": "dark",
+    "blurry": "blurry",
+    "error": "Photos couldn't load right now. Pull down to refresh.",
+    "uploadFailed": "The photo couldn't be saved. Check your connection and try again.",
+    "a11yCompare": "Comparison of {{before}} and {{after}} photos"
+  },
+  "mobileShare": {
+    "button": "Share",
+    "title": "Share your week",
+    "hint": "The image contains only this summary; no photos or health details.",
+    "eyebrow": "My week",
+    "routineCaption": "days I finished both my morning and evening routine",
+    "water": "average water a day",
+    "spf": "sunscreen top-ups",
+    "share": "Share",
+    "shareText": "This week I finished my skincare routine on {{n}} of 7 days. rebiovil.com",
+    "failed": "Couldn't share, try again."
   }
 }
