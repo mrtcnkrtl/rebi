@@ -34,6 +34,9 @@ Future<PickedPhoto?> pickSkinPhoto(ImageSource source, {CameraDevice camera = Ca
   final file = await _picker.pickImage(source: source, preferredCameraDevice: camera, imageQuality: 92);
   if (file == null) return null;
   final bytes = await file.readAsBytes();
+  if (bytes.length > 8 * 1024 * 1024) {
+    throw StateError('Dosya çok büyük (en fazla 8 MB).');
+  }
   return PickedPhoto(file, bytes);
 }
 

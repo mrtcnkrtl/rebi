@@ -73,6 +73,12 @@ def test_account_deletion_explicitly_covers_personal_data_tables():
     _delete_user_application_data(db, USER_ID)
 
     assert db.calls == [
+        ("knowledge_chunk_entities", "user_id", USER_ID),
+        ("knowledge_entities", "user_id", USER_ID),
+        ("knowledge_chunks", "user_id", USER_ID),
+        ("knowledge_documents", "user_id", USER_ID),
+        ("knowledge_folders", "user_id", USER_ID),
+        ("chat_messages", "user_id", USER_ID),
         ("privacy_preferences", "user_id", USER_ID),
         ("legal_consents", "user_id", USER_ID),
         ("sales_consents", "user_id", USER_ID),

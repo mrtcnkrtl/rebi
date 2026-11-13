@@ -142,6 +142,7 @@ def check_budget() -> None:
     try:
         spent = spent_today_usd()
     except Exception:
+        log.warning("Gemini harcama sayacı okunamadı; çağrı sürdü")
         return
     if spent >= limit:
         _warn_once("limit", spent, limit)

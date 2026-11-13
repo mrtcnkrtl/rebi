@@ -9,6 +9,7 @@ import asyncio
 import httpx
 import json
 from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request, Query
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
@@ -200,11 +201,30 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORS_ORIGINS + ["https://rebiovil.com", "https://www.rebiovil.com"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "Accept-Language"],
 )
+
+
+@app.exception_handler(RequestValidationError)
+async def _short_validation(_request: Request, exc: RequestValidationError):
+    kinds = ",".join(sorted({str(err.get("type") or "") for err in exc.errors()}))
+    log.info("Geçersiz istek: %s", kinds[:120])
+    return JSONResponse(status_code=422, content={"detail": "Gönderilen bilgi eksik ya da geçersiz."})
+
+
+@app.middleware("http")
+async def _transport_and_headers(request: Request, call_next):
+    if (request.headers.get("x-forwarded-proto") or "").lower() == "http":
+        return JSONResponse(status_code=400, content={"detail": "HTTPS gerekli."})
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 # Açılışta uygulanan şema durumu /health üzerinden görünür: sessiz şema
@@ -4431,6 +4451,12 @@ def _delete_user_application_data(supabase, user_id: str) -> None:
     migration'ından önce yayına çıkan sürüm hesap silmeyi bozmasın). Diğer her hata durdurur.
     """
     targets = (
+        ("knowledge_chunk_entities", "user_id"),
+        ("knowledge_entities", "user_id"),
+        ("knowledge_chunks", "user_id"),
+        ("knowledge_documents", "user_id"),
+        ("knowledge_folders", "user_id"),
+        ("chat_messages", "user_id"),
         ("privacy_preferences", "user_id"),
         ("legal_consents", "user_id"),
         ("sales_consents", "user_id"),
@@ -4825,7 +4851,7 @@ def upload_photo(request: Request, user_id: str, file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        log.error("Fotoğraf yükleme hatası: %s", e)
+        log.error("Fotoğraf yükleme hatası: %s", type(e).__name__)
         raise HTTPException(status_code=500, detail="Fotoğraf yüklenemedi.")
 
 
