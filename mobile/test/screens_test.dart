@@ -3,13 +3,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:rebi/core/ai_sharing.dart';
 import 'package:rebi/core/i18n.dart';
 import 'package:rebi/core/local_store.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/analyze/analyze_screen.dart';
 import 'package:rebi/screens/today/today_header.dart';
 import 'package:rebi/ui/shell/app_shell.dart';
-import 'package:rebi/ui/components/severity_test.dart';
 
 import 'helpers/app_harness.dart';
 
@@ -33,7 +33,7 @@ void main() {
   group('giriş yapmamış kullanıcı', () {
     testWidgets('landing: ana eylem kayıt ekranını açar ve analize yönlendirmeyi taşır', (tester) async {
       final h = await pumpApp(tester, location: '/', loggedIn: false);
-      expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
+      expect(find.text(tr('mobileLanding.heroTitle')), findsOneWidget);
       await tapText(tester, tr('landing.ctaBuildRoutine'));
       expect(h.router.routeInformationProvider.value.uri.toString(), '/auth?next=%2Fdashboard%2Fanalyze&mode=signup');
       expect(find.text(tr('auth.createAccount')), findsOneWidget);
@@ -48,21 +48,27 @@ void main() {
       expect(find.text(tr('auth.fullName')), findsNothing);
     });
 
-    testWidgets('landing: Rebi ile konuş anonim sohbete gider', (tester) async {
+    testWidgets('landing: Rebi ile konuş oturumsuzken sohbet davetine gider (yazı alanı yok, giriş/kayıt eylemleri var)', (tester) async {
       final h = await pumpApp(tester, location: '/', loggedIn: false);
       await tapText(tester, tr('landing.ctaChat'));
       expect(h.router.routeInformationProvider.value.uri.path, '/rebi');
-      expect(find.text(tr('chat.emptyTitle')), findsOneWidget);
+      expect(find.text(tr('mobileChat.gate.title')), findsOneWidget);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.text(tr('auth.signup')), findsOneWidget);
+      expect(find.text(tr('auth.login')), findsOneWidget);
     });
 
-    testWidgets('landing: yana kaydırınca sahne metinleri değişir', (tester) async {
+    testWidgets('landing: tek kahraman, tek ana eylem; kaydırmalı sahne, yüzen kart ve ilerleme göstergesi yoktur', (tester) async {
       await pumpApp(tester, location: '/', loggedIn: false);
-      await tester.drag(find.byType(PageView), const Offset(-320, 0));
-      await settle(tester, 6);
-      expect(find.text(tr('mobileLanding.s2Title')), findsOneWidget);
-      await tester.drag(find.byType(PageView), const Offset(-320, 0));
-      await settle(tester, 6);
-      expect(find.text(tr('mobileLanding.s3Title')), findsOneWidget);
+      expect(find.byType(PageView), findsNothing, reason: 'sahneler arasında kaydırma yok');
+      expect(find.text(tr('mobileLanding.heroTitle')), findsOneWidget);
+      expect(find.text(tr('mobileLanding.heroSub')), findsOneWidget);
+      // Ana düğme tek: dolu (krem) düğme yalnızca "Rutini oluştur"dur; geri kalanlar sessiz metin eylemleridir.
+      expect(find.text(tr('landing.ctaBuildRoutine')), findsOneWidget);
+      expect(find.text(tr('auth.login')), findsOneWidget);
+      expect(find.text(tr('landing.ctaChat')), findsOneWidget);
+      expect(find.text(tr('legal.kvkkTitle')), findsOneWidget);
+      expect(find.text(tr('legal.rizaTitle')), findsOneWidget);
     });
 
     testWidgets('landing: oturum açıkken ana eylem panele götürür', (tester) async {
@@ -72,45 +78,44 @@ void main() {
       expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
     });
 
-    testWidgets('splash: animasyon bitince karşılamaya geçer', (tester) async {
-      final h = await pumpApp(tester, location: '/splash', loggedIn: false);
-      expect(h.router.routeInformationProvider.value.uri.path, '/splash');
-      await settle(tester, 12);
-      expect(h.router.routeInformationProvider.value.uri.path, '/');
-      expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
-    });
-
     testWidgets('korumalı rota girişe yönlendirir ve next parametresini taşır', (tester) async {
       final h = await pumpApp(tester, location: '/dashboard/chat', loggedIn: false);
       expect(h.router.routeInformationProvider.value.uri.toString(), '/auth?next=%2Fdashboard%2Fchat');
     });
 
-    testWidgets('auth: onay kutuları işaretlenmeden gönderilemez, form doğrulaması çalışır', (tester) async {
-      await pumpApp(tester, location: '/auth', loggedIn: false);
+    // KVKK ve açık rıza yalnızca kayıt ekranında alınır (girişte kutu yok: test/auth_flow_test.dart).
+    testWidgets('auth (kayıt): onay kutuları işaretlenmeden gönderilemez, form doğrulaması çalışır', (tester) async {
+      await pumpApp(tester, location: '/auth?mode=signup', loggedIn: false);
       final submit = find.byKey(const Key('auth-submit'));
       await tester.ensureVisible(submit.first);
       await tester.tap(submit.first, warnIfMissed: false);
       await settle(tester, 3);
       expect(find.text('Lütfen bu alanı doldurun.'), findsNothing, reason: 'onaysız düğme pasif olmalı');
 
+      // İsteğe bağlı izinler varsayılan olarak katlıdır; açılınca konum ve fotoğraf kutuları görünür, ikisi de işaretsizdir.
+      expect(find.text(tr('auth.locationConsent')), findsNothing);
+      expect(find.byType(Checkbox), findsNWidgets(2));
+      await tapText(tester, tr('auth.optionalPermissions'));
+      expect(find.byType(Checkbox), findsNWidgets(4));
       await tapText(tester, tr('auth.locationConsent'));
+      expect(find.text('1/2'), findsOneWidget, reason: 'açık izin sayısı satırda görünür');
       final boxes = find.byType(Checkbox);
       await tapFinder(tester, boxes.at(0));
       await tapFinder(tester, boxes.at(1));
       await tapFinder(tester, submit.first);
-      expect(find.text('Lütfen bu alanı doldurun.'), findsNWidgets(2));
+      expect(find.text('Lütfen bu alanı doldurun.'), findsNWidgets(3), reason: 'ad, e-posta, parola');
 
-      await tester.enterText(find.byType(TextFormField).at(0), 'yanlis-eposta');
-      await tester.enterText(find.byType(TextFormField).at(1), '123');
+      await tester.enterText(find.byType(TextFormField).at(1), 'yanlis-eposta');
+      await tester.enterText(find.byType(TextFormField).at(2), '123');
       await settle(tester, 4); // alanın ekrana kaydırma animasyonu bitsin
       await tapFinder(tester, submit.first);
       expect(find.text('Lütfen geçerli bir e-posta adresi girin.'), findsOneWidget);
       expect(find.textContaining('en az 6 karakter'), findsOneWidget);
     });
 
-    testWidgets('auth: KVKK bağlantısı formu kaybetmeden üstte açılır', (tester) async {
-      final h = await pumpApp(tester, location: '/auth', loggedIn: false);
-      await tester.enterText(find.byType(TextFormField).at(0), 'ayse@ornek.com');
+    testWidgets('auth (kayıt): KVKK bağlantısı formu kaybetmeden üstte açılır', (tester) async {
+      final h = await pumpApp(tester, location: '/auth?mode=signup', loggedIn: false);
+      await tester.enterText(find.byType(TextFormField).at(1), 'ayse@ornek.com');
       final rich = find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().contains(tr('auth.kvkkLink')));
       await tester.ensureVisible(rich.first);
       await tester.pump();
@@ -137,12 +142,21 @@ void main() {
       expect(find.text(tr('dashboard.startAnalyze')), findsOneWidget);
     });
 
-    testWidgets('yapay zekâ beyanı bir kez onaylanır ve kalıcıdır', (tester) async {
+    testWidgets('yapay zekâ veri paylaşımı: Google Gemini ve gönderilen veriler açıklanır, izin kalıcıdır', (tester) async {
       await pumpApp(tester, location: '/dashboard', acknowledgeAi: false);
-      expect(find.text(tr('common.aiDisclaimerTitle')), findsOneWidget);
-      await tapText(tester, tr('common.aiDisclaimerAck'));
-      expect(find.text(tr('common.aiDisclaimerTitle')), findsNothing);
-      expect(LocalStore.instance.getString('rebi-ai-disclaimer-ack-v1'), '1');
+      expect(find.text(tr('mobileAiSharing.title')), findsOneWidget);
+      expect(find.text(tr('mobileAiSharing.who')), findsOneWidget);
+      expect(find.textContaining('Google'), findsWidgets);
+      await tapText(tester, tr('mobileAiSharing.allow'));
+      expect(find.text(tr('mobileAiSharing.title')), findsNothing);
+      expect(hasAiSharingConsent(testUserId), isTrue);
+    });
+
+    testWidgets('yapay zekâ veri paylaşımı: "Şimdi değil" kutuyu kapatır, izin verilmiş sayılmaz', (tester) async {
+      await pumpApp(tester, location: '/dashboard', acknowledgeAi: false);
+      await tapText(tester, tr('mobileAiSharing.decline'));
+      expect(find.text(tr('mobileAiSharing.title')), findsNothing);
+      expect(hasAiSharingConsent(testUserId), isFalse);
     });
 
     testWidgets('kabul edilmiş rutin: takip modu, günün planı ve hızlı kayıt', (tester) async {
@@ -195,48 +209,51 @@ void main() {
 
   testWidgets('analiz sihirbazı uçtan uca: backend gövdesi web ile aynı, rutin kabul edilir', (tester) async {
     final h = await pumpApp(tester, location: '/dashboard/analyze');
+    Future<void> next() => tapFinder(tester, find.byKey(const Key('flow-next')));
 
-    // Adım 1
-    expect(find.text(packS('step1.title')), findsOneWidget);
+    // Karşılama
+    expect(find.text(tr('mobileAnalyze.intro.title')), findsOneWidget);
+    await tapFinder(tester, find.byKey(const Key('flow-start')));
+
+    // Sen — tek soru tek ekran; tek seçimli sorular dokununca ilerler
+    expect(find.text(tr('mobileAnalyze.basics.title')), findsOneWidget);
     expect(find.text('Ayşe Test'), findsOneWidget, reason: 'ad oturumdan gelir');
     await tester.enterText(find.widgetWithText(TextField, '25'), '28');
+    await settle(tester, 3);
+    await next();
     await tapText(tester, packS('gender.female'));
     await tapText(tester, packS('step1.hormonal_pregnant'));
-    await tapText(tester, tr('analyze.continue'));
 
-    // Adım 2
-    expect(find.text(packS('step2.title')), findsOneWidget);
+    // Cildin
     await tapText(tester, packS('skinPicker.oily.label'));
     await tapText(tester, packS('concern.acne'));
+    await next();
     await tapText(tester, packS('zone.forehead'));
-    await tapText(tester, packS('makeup.frequency.3'));
-    await tapText(tester, tr('common.continue'));
-
-    // Adım 3 — aktif deneyim → şiddet → tetikleyici → tedavi → beklenti
-    expect(find.text(packS('step3.activesTitle')), findsOneWidget);
-    await tapText(tester, packS('activesExperience.regular'));
-    await tapText(tester, tr('common.continue'));
-    expect(find.byType(SeverityTest), findsOneWidget);
-    final questions = severityQuestions('acne');
-    var index = 0;
-    for (final q in questions) {
-      final count = (q['options'] as List).length;
-      final options = find.descendant(of: find.byType(SeverityTest), matching: find.byType(InkWell));
-      await tapFinder(tester, options.at(index + count - 1)); // her sorunun en şiddetli seçeneği
-      index += count;
+    await next();
+    for (final q in severityQuestions('acne')) {
+      await tapText(tester, ((q['options'] as List).last as Map)['label'].toString()); // her sorunun en şiddetli seçeneği
     }
-    expect(find.text('10/10'), findsOneWidget);
-    await tapText(tester, packS('duration.3-6'));
-    await tapText(tester, tr('common.continue'));
-    await tapText(tester, packS('trigger.stress'));
-    await tapText(tester, tr('common.continue'));
-    await tapText(tester, tr('common.continue'));
-    await tapText(tester, tr('analyze.continue'));
 
-    // Adım 4
-    expect(find.text(tr('analyze.finalStep')), findsOneWidget);
-    await tapText(tester, packS('tolerance.bad'));
-    await tapText(tester, packS('step4.createRoutineCta'));
+    // Günlük hayat — stres testi atlanır
+    expect(find.text(tr('mobileAnalyze.life.title')), findsOneWidget);
+    await next();
+    await tapFinder(tester, find.byKey(const Key('flow-skip')));
+    await tapText(tester, packS('smokingAmount.0'));
+    await tapText(tester, packS('alcoholFreq.0'));
+    await tapText(tester, packS('makeup.frequency.3'));
+    await next();
+
+    // Ürünlerin
+    await tapText(tester, packS('activesExperience.regular'));
+    await tapFinder(tester, find.byKey(const Key('tol-retinol')));
+    await tapFinder(tester, find.byKey(const Key('tol-retinol-bad')));
+    await next();
+
+    // Son adım: fotoğraf (atlanır) → özet → oluştur
+    expect(find.text(tr('mobileAnalyze.photo.title')), findsOneWidget);
+    await next();
+    expect(find.text(tr('mobileAnalyze.summary.title', {'name': 'Ayşe Test'})), findsOneWidget);
+    await next();
     await settle(tester, 20);
 
     final body = h.backend.bodyOf('/generate_routine');
@@ -250,7 +267,7 @@ void main() {
     expect(body['cycle_phase'], '');
     expect(body['acne_zones'], ['forehead']);
     expect(body['severity_score'], 10, reason: 'anket tamamlanınca hesaplanan skor gider');
-    expect(body['stress_score'], 6, reason: 'PSS varsayılan 0 → (16*16/40) yuvarlanır');
+    expect(body['stress_score'], 6, reason: 'PSS atlandı → varsayılan cevaplar (16*16/40) yuvarlanır');
     expect(body['water_intake'], 2);
     expect(body['sleep_hours'], 7);
     expect(body['smoking'], false);
@@ -285,7 +302,7 @@ void main() {
     await pumpApp(tester, location: '/dashboard/analyze', prefs: acceptedPrefs());
     expect(find.text(tr('analyze.routineReadyTitle')), findsOneWidget);
     await tapText(tester, tr('analyze.newAnalyzeFull'));
-    expect(find.text(packS('step1.title')), findsOneWidget);
+    expect(find.text(tr('mobileAnalyze.intro.title')), findsOneWidget);
   });
 
   testWidgets('check-in: rutin kabul edilmeden açılmaz', (tester) async {
@@ -408,14 +425,6 @@ void main() {
       expect(accept['ai_processing_accepted'], true);
       expect(accept['document_version'], 'v2');
       expect(find.text(tr('common.consentRecoveryTitle')), findsNothing);
-    });
-
-    testWidgets('anonim sohbet demo kimliğiyle gider', (tester) async {
-      final h = await pumpApp(tester, location: '/rebi', loggedIn: false);
-      await tester.enterText(find.byType(TextField), 'Selam');
-      await tester.testTextInput.receiveAction(TextInputAction.send);
-      await settle(tester);
-      expect(h.backend.bodyOf('/chat_general')['user_id'], '00000000-0000-4000-8000-000000000001');
     });
   });
 
@@ -591,7 +600,7 @@ void main() {
     await tester.tap(find.text('English'));
     await settle(tester, 4);
     expect(LocalStore.instance.getString('rebi-lang'), 'en');
-    expect(find.text(tr('mobileLanding.s1Title')), findsOneWidget);
+    expect(find.text(tr('mobileLanding.heroTitle')), findsOneWidget);
   });
 
   testWidgets('hızlı foto yükleme: Supabase yoksa açıklama gösterir', (tester) async {
@@ -608,23 +617,27 @@ void main() {
     }
   });
 
-  testWidgets('küçük telefon: kadın + düzenli döngü alanları taşmaz', (tester) async {
+  testWidgets('küçük telefon: kadın + düzenli döngü soruları taşmaz', (tester) async {
     await pumpApp(tester, location: '/dashboard/analyze', size: const Size(320, 568));
+    await tapFinder(tester, find.byKey(const Key('flow-start')));
+    await tester.enterText(find.widgetWithText(TextField, '25'), '28');
+    await settle(tester, 3);
+    await tapFinder(tester, find.byKey(const Key('flow-next')));
     await tapText(tester, packS('gender.female'));
     await tapText(tester, packS('step1.hormonal_regular'));
-    expect(find.text(packS('step1.periodHint')), findsOneWidget);
+    expect(find.text(tr('mobileAnalyze.period.title')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
   group('küçük telefon (320×568) taşma kontrolü', () {
-    for (final loc in ['/', '/auth', '/dashboard', '/dashboard/analyze', '/dashboard/checkin', '/dashboard/chat', '/dashboard/themes', '/dashboard/subscribe']) {
+    for (final loc in ['/', '/auth', '/rebi', '/dashboard', '/dashboard/analyze', '/dashboard/checkin', '/dashboard/chat', '/dashboard/themes', '/dashboard/subscribe']) {
       testWidgets(loc, (tester) async {
         await pumpApp(
           tester,
           location: loc,
           prefs: loc == '/dashboard/analyze' ? const {} : acceptedPrefs(),
           size: const Size(320, 568),
-          loggedIn: loc != '/' && loc != '/auth',
+          loggedIn: loc != '/' && loc != '/auth' && loc != '/rebi',
         );
         expect(tester.takeException(), isNull);
       });

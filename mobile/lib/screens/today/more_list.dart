@@ -5,85 +5,86 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/i18n.dart';
 import '../../state/theme_controller.dart';
 import '../../ui/tw.dart';
-import '../../ui/widgets/common.dart';
 import 'today_widgets.dart';
 
-/// "Daha fazlası": Bugün'ün altındaki tek liste. Eskiden üst üste dört ince düğmeydi; artık check-in, fotoğraf,
-/// yeni analiz, haftanın tamamı ve geçmiş sakin satırlar hâlinde durur.
+/// "Daha fazlası": Bugün'ün altındaki karolar. Eskiden altı satırlık uzun bir listeydi; şimdi iki sütunlu, her biri tek
+/// dokunuşla bir yere götüren sakin karolar (check-in, rafım, hızlı fotoğraf, yeni analiz, haftanın tamamı, geçmiş).
 class TodayMoreList extends StatelessWidget {
   const TodayMoreList({super.key, required this.theme, required this.checkinDone, this.shelfCount = 0});
 
   final RebiTheme theme;
   final bool checkinDone;
 
-  /// Rafta bitmiş ürün sayısı (satırın alt metni).
+  /// Rafta bitmiş ürün sayısı (karonun alt metni).
   final int shelfCount;
 
   @override
   Widget build(BuildContext context) {
     final i18n = I18n.instance;
+    final tiles = <_MoreTile>[
+      _MoreTile(
+        icon: checkinDone ? LucideIcons.circleCheck : LucideIcons.clipboardCheck,
+        color: checkinDone ? Tw.emerald700 : theme.primary,
+        title: i18n.t('dashboard.dailyCheckinTitle'),
+        subtitle: i18n.t(checkinDone ? 'mobileToday.checkinDoneToday' : 'dashboard.dailyCheckinSubtitle'),
+        onTap: () => context.go('/dashboard/checkin'),
+      ),
+      _MoreTile(
+        icon: LucideIcons.packageCheck,
+        color: shelfCount > 0 ? Tw.amber700 : theme.primary,
+        title: i18n.t('mobileShelf.title'),
+        subtitle: i18n.t(shelfCount > 0 ? 'mobileShelf.countHint' : 'mobileShelf.emptyHint', {'n': shelfCount}),
+        onTap: () => context.go('/dashboard/shelf'),
+      ),
+      _MoreTile(
+        icon: LucideIcons.camera,
+        color: Tw.purple600,
+        title: i18n.t('mobileToday.quickPhoto'),
+        onTap: () => context.push('/dashboard/analyze?photo=1'),
+      ),
+      _MoreTile(
+        icon: LucideIcons.scanFace,
+        color: Tw.blue600,
+        title: i18n.t('mobileToday.newAnalysis'),
+        onTap: () => context.go('/dashboard/analyze'),
+      ),
+      _MoreTile(
+        icon: LucideIcons.calendarRange,
+        color: Tw.amber700,
+        title: i18n.t('mobileToday.showFullPlan'),
+        onTap: () => context.go('/dashboard/routine'),
+      ),
+      _MoreTile(
+        icon: LucideIcons.calendarDays,
+        color: Tw.green700,
+        title: i18n.t('mobileHistory.open'),
+        onTap: () => context.go('/dashboard/history'),
+      ),
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SectionLabel(i18n.t('mobileToday.more.title')),
-        RCard(
-          padding: const EdgeInsets.symmetric(horizontal: 6),
-          radius: 24,
-          child: Column(
-            children: [
-              _MoreRow(
-                icon: checkinDone ? LucideIcons.circleCheck : LucideIcons.clipboardCheck,
-                color: checkinDone ? Tw.emerald700 : theme.primary,
-                title: i18n.t('dashboard.dailyCheckinTitle'),
-                subtitle: i18n.t(checkinDone ? 'mobileToday.checkinDoneToday' : 'dashboard.dailyCheckinSubtitle'),
-                onTap: () => context.go('/dashboard/checkin'),
-              ),
-              const Hairline(indent: 64),
-              _MoreRow(
-                icon: LucideIcons.packageCheck,
-                color: shelfCount > 0 ? Tw.amber700 : theme.primary,
-                title: i18n.t('mobileShelf.title'),
-                subtitle: i18n.t(shelfCount > 0 ? 'mobileShelf.countHint' : 'mobileShelf.emptyHint', {'n': shelfCount}),
-                onTap: () => context.go('/dashboard/shelf'),
-              ),
-              const Hairline(indent: 64),
-              _MoreRow(
-                icon: LucideIcons.camera,
-                color: Tw.purple600,
-                title: i18n.t('mobileToday.quickPhoto'),
-                onTap: () => context.push('/dashboard/analyze?photo=1'),
-              ),
-              const Hairline(indent: 64),
-              _MoreRow(
-                icon: LucideIcons.scanFace,
-                color: Tw.blue600,
-                title: i18n.t('mobileToday.newAnalysis'),
-                onTap: () => context.go('/dashboard/analyze'),
-              ),
-              const Hairline(indent: 64),
-              _MoreRow(
-                icon: LucideIcons.calendarRange,
-                color: Tw.amber700,
-                title: i18n.t('mobileToday.showFullPlan'),
-                onTap: () => context.go('/dashboard/routine'),
-              ),
-              const Hairline(indent: 64),
-              _MoreRow(
-                icon: LucideIcons.calendarDays,
-                color: Tw.green700,
-                title: i18n.t('mobileHistory.open'),
-                onTap: () => context.go('/dashboard/history'),
-              ),
-            ],
+        for (var i = 0; i < tiles.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: 12),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tiles[i]),
+                const SizedBox(width: 12),
+                Expanded(child: i + 1 < tiles.length ? tiles[i + 1] : const SizedBox.shrink()),
+              ],
+            ),
           ),
-        ),
+        ],
       ],
     );
   }
 }
 
-class _MoreRow extends StatelessWidget {
-  const _MoreRow({required this.icon, required this.color, required this.title, required this.onTap, this.subtitle});
+class _MoreTile extends StatelessWidget {
+  const _MoreTile({required this.icon, required this.color, required this.title, required this.onTap, this.subtitle});
 
   final IconData icon;
   final Color color;
@@ -92,34 +93,44 @@ class _MoreRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        button: true,
-        label: title,
+  Widget build(BuildContext context) {
+    final tint = Color.alphaBlend(color.withValues(alpha: .07), Tw.surface);
+    return Semantics(
+      button: true,
+      label: subtitle == null ? title : '$title. $subtitle',
+      excludeSemantics: true,
+      child: Material(
+        color: tint,
+        borderRadius: BorderRadius.circular(22),
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(22),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            child: Row(
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 116),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(22), border: Border.all(color: Tw.gray100)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TodayIconBadge(icon: icon, color: color, size: 40),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: tx(14.5, w: 6, c: Tw.gray900, h: snug)),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
-                        Text(subtitle!, style: tx(12, c: Tw.gray500, h: snug)),
-                      ],
-                    ],
-                  ),
+                Container(
+                  width: 40,
+                  height: 40,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(color: color.withValues(alpha: .15), shape: BoxShape.circle),
+                  child: Icon(icon, size: 20, color: Tw.readable(color, bg: Color.alphaBlend(color.withValues(alpha: .15), tint))),
                 ),
-                Icon(LucideIcons.chevronRight, size: 18, color: Tw.gray400),
+                const Spacer(),
+                const SizedBox(height: 10),
+                Text(title, style: tx(14.5, w: 6, c: Tw.gray900, h: 1.25)),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 3),
+                  Text(subtitle!, style: tx(12, c: Tw.gray500, h: snug), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ],
               ],
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }

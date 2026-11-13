@@ -3986,6 +3986,73 @@ def build_special_flags_routine_items(
     return items
 
 
+_SHAVING_FREQ_TR = {1: "ara sıra", 3: "haftada birkaç kez", 7: "her gün"}
+
+
+def build_shaving_routine_items(*, gender: str, shaving_frequency: int, shaving_after: str) -> list:
+    """
+    Tıraştan sonra kızarma/yanma ya da batık tüy bildiren erkek kullanıcı için tek bir Yaşam notu.
+    Bakım satırı eklemez ve etken-madde mantığına girmez (özel işaret notlarıyla aynı kalıp): tıraş tekniği,
+    tıraş sonrası bariyer bakımı ve o bölgeye aynı gece güçlü aktif sürmeme uyarısı verir. Kalıcı ya da
+    iltihaplı durumda dermatolog yönlendirmesi içerir; tıbbi işlem önermez.
+    """
+    if (gender or "").lower() != "male":
+        return []
+    freq = int(shaving_frequency or 0)
+    if freq <= 0 or shaving_after not in ("irritated", "ingrown"):
+        return []
+    how = _SHAVING_FREQ_TR.get(freq, "düzenli")
+
+    if shaving_after == "irritated":
+        action = "Tıraş sonrası tahriş — bakım notu"
+        detail = (
+            f"Tıraş olduğunu ({how}) ve sonrasında kızarma ya da yanma yaşadığını söyledin. Tıraş cildin üst tabakasını "
+            "inceltir; bariyeri desteklemek ve tıraşı nazikleştirmek bu tahrişi çoğu zaman azaltır. Tıraşı cildi ılık suyla "
+            "yumuşattıktan sonra, temiz ve keskin bir bıçakla, aynı bölgeden tekrar tekrar geçmeden yap."
+        )
+        usage = (
+            "Tıraştan hemen sonra soğuk suyla durula, kokusuz ve alkolsüz bir nemlendirici ya da yatıştırıcı sür. "
+            "Tıraş yaptığın akşam o bölgeye retinol, AHA/BHA gibi güçlü aktifleri sürme; ertesi güne bırak. "
+            "Tahriş birkaç günde geçmiyor, kabuklanıyor ya da irinleniyorsa bir dermatoloğa danış."
+        )
+        priority = 2
+    else:
+        action = "Batık tüy — bakım notu"
+        detail = (
+            f"Tıraş olduğunu ({how}) ve sonrasında batık tüy ya da küçük sivilcecikler çıktığını söyledin. Tüy yönünde, tek "
+            "geçişle tıraş olmak ve tıraşı sıklaştırmamak batık tüyü azaltmaya yardımcı olur; kısa süre tıraşa ara vermek "
+            "bölgeyi dinlendirir."
+        )
+        usage = (
+            "Tıraştan önce cildi ılık suyla yumuşat, tüy yönünde tek geçiş yap. Cildin tolere ediyorsa tıraş yapmadığın "
+            "günlerde bölgeye nazik bir BHA (salisilik asit) haftada 1–2 kez uygulanabilir; aynı gece birden çok güçlü aktifi "
+            "üst üste kullanma. Kızaran, ağrılı ya da irinli lezyonlara elinle müdahale etme; geçmiyorsa dermatoloğa danış."
+        )
+        priority = 3
+
+    return [
+        {
+            "time": "Günlük",
+            "category": "Yaşam",
+            "icon": "🌿",
+            "action": action,
+            "detail": detail,
+            "usage": usage,
+            "priority": priority,
+            "step_order": 94,
+        }
+    ]
+
+
+def _shaving_context_tr(gender: str, shaving_frequency: int, shaving_after: str) -> str:
+    """AI cilası ve sohbet için tek cümlelik tıraş bağlamı (yalnız erkek, tıraş olan)."""
+    freq = int(shaving_frequency or 0)
+    if (gender or "").lower() != "male" or freq <= 0:
+        return ""
+    after = {"ok": "rahat", "irritated": "kızarma/yanma", "ingrown": "batık tüy"}.get(shaving_after, "belirtilmedi")
+    return f" Tıraş: {_SHAVING_FREQ_TR.get(freq, 'düzenli')}, tıraş sonrası cilt: {after}."
+
+
 def _special_flags_context_tr(flags: dict) -> str:
     if not flags:
         return ""
@@ -4126,6 +4193,8 @@ def run_flow(
     past_treatments: Optional[list] = None,
     expectations: Optional[list] = None,
     nutrition: Optional[dict] = None,
+    shaving_frequency: int = 0,
+    shaving_after: str = "",
 ) -> dict:
     """
     Ana akış fonksiyonu. Tüm dalları çalıştırır, sıfır token harcar.
@@ -4473,6 +4542,13 @@ def run_flow(
             temperature=float(temperature or 0),
         )
     )
+    routine_items.extend(
+        build_shaving_routine_items(
+            gender=gender,
+            shaving_frequency=shaving_frequency,
+            shaving_after=shaving_after,
+        )
+    )
     routine_items.sort(
         key=lambda x: (
             time_order.get(x["time"], 2),
@@ -4582,7 +4658,32 @@ def run_flow(
         f"(katman {personalization['tier']}/3, özet skor {personalization['composite_score']}/100; "
         f"yaşam riski {personalization['risk_score']} puan → {personalization['risk_level']})."
     )
-    special_ctx = _special_flags_context_tr(special_flags_norm)
+    special_ctx = _special_flags_context_tr(special_flags_norm) + _shaving_context_tr(
+        gender, shaving_frequency, shaving_after
+    )
+
+    multi_ctx = ""
+    if len(ranked) > 1:
+        bits = []
+        for e in ranked:
+            lab = CONCERN_KNOWLEDGE_MAP.get(e["id"], {}).get("label_tr", e["id"])
+            bits.append(f"{lab} {e['score']}/10")
+        multi_ctx = (
+            f" Çoklu sorun (şiddete göre sıra): {', '.join(bits)}. "
+            "Birincil en yüksek skor; ikinciller birbirini kötüleştirmeyecek katman. "
+        )
+        if guards.get("notes"):
+            multi_ctx += "Kısıt: " + "; ".join(guards["notes"]) + "."
+    hist_bits = []
+    for e in ranked:
+        if e.get("duration") or e.get("frequency") or e.get("note"):
+            hist_bits.append(
+                f"{e['id']} süre={e.get('duration') or '-'} sıklık={e.get('frequency') or '-'}"
+            )
+    if history.get("triggers"):
+        hist_bits.append("tetik=" + ",".join(history["triggers"]))
+    if hist_bits:
+        multi_ctx += " Zaman çizelgesi: " + "; ".join(hist_bits) + "."
 
     multi_ctx = ""
     if len(ranked) > 1:

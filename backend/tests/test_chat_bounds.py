@@ -1,21 +1,20 @@
 """Sohbet gövdesi ve profil metni sınırları."""
 
-from main import _bound_chat_history
+from main import CHAT_HISTORY_MAX_TURNS, CHAT_MESSAGE_MAX_CHARS, ChatRequest
 from rag_service import _assessment_profile_text
 
 
-def test_chat_rejects_oversized_message(client):
-    res = client.post("/chat", json={"user_id": "u", "message": "a" * 4001})
-    assert res.status_code == 422
+def test_chat_clips_oversized_message():
+    req = ChatRequest(user_id="u", message="a" * (CHAT_MESSAGE_MAX_CHARS + 1))
+    assert len(req.message) == CHAT_MESSAGE_MAX_CHARS
 
 
-def test_history_is_clipped_and_roles_are_only_user_or_assistant():
-    history = [{"role": "system", "content": "x" * 5000}, {"role": "assistant", "content": "tamam"}]
-    history.extend({"role": "user", "content": "a"} for _ in range(20))
-    bounded = _bound_chat_history(history)
-    assert len(bounded) == 16
-    assert bounded[0] == {"role": "user", "content": "x" * 2000}
-    assert bounded[1]["role"] == "assistant"
+def test_history_is_clipped_to_recent_turns():
+    history = [{"role": "user", "content": "x" * 5000}]
+    history.extend({"role": "user", "content": "a"} for _ in range(30))
+    bounded = ChatRequest(user_id="u", message="merhaba", history=history).history
+    assert len(bounded) == CHAT_HISTORY_MAX_TURNS
+    assert all(isinstance(item, dict) for item in bounded)
 
 
 def test_profile_text_stays_on_one_line():

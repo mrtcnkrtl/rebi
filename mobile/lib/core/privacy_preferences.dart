@@ -1,8 +1,9 @@
 import 'api.dart';
 import 'consent_recovery.dart';
+import 'i18n.dart';
 
 Future<Map<String, dynamic>> _check(ApiResponse res) async {
-  if (!res.ok) throw Exception(detailOr(res.data, 'Gizlilik tercihi işlemi başarısız.'));
+  if (!res.ok) throw Exception(detailOr(res.data, I18n.instance.t('mobileCommon.errors.privacy', const {}, 'Gizlilik tercihi işlemi başarısız.')));
   return res.data;
 }
 

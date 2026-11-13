@@ -11,12 +11,16 @@ enum ChatFailure {
   /// Oturum doğrulanamadı (401).
   auth,
 
+  /// Kısa sürede çok fazla istek (429): sunucu kullanıcı başına dakikalık/saatlik sınır koyar; biraz beklemek yeter.
+  rateLimited,
+
   /// Diğer.
   generic;
 
   /// HTTP durumundan neden.
   static ChatFailure fromStatus(int status) => switch (status) {
         401 => ChatFailure.auth,
+        429 => ChatFailure.rateLimited,
         502 || 503 || 504 => ChatFailure.server,
         _ => ChatFailure.generic,
       };

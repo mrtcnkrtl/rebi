@@ -2,19 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config/env.dart';
 import '../core/i18n.dart';
 import '../core/subscription.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
-import '../ui/components/appearance_card.dart';
-import '../ui/shell/app_shell.dart';
-import '../ui/tw.dart';
-import '../ui/widgets/common.dart';
-import 'today/today_widgets.dart';
 import '../ui/brand/palette.dart';
+import '../ui/components/appearance_card.dart';
+import '../ui/components/language_sheet.dart';
+import '../ui/shell/app_shell.dart';
+import '../ui/shell/page_stage.dart';
+import '../ui/tw.dart';
+import '../ui/widgets/app_sheet.dart';
+import '../ui/widgets/common.dart';
+import '../ui/widgets/menu_list.dart';
+import 'today/today_widgets.dart';
 
-/// "Ben" sekmesi: hesap özeti ve ayarlara giden menü. Hamburger menüsünün yerini alır.
+/// "Ben" sekmesi: hesap özeti ve ayarlara giden menü. Üst sahne (avatar, ad, e-posta) diğer ekranlarla aynı dildedir;
+/// eylemler tek yüzeyli gruplar halinde, ilgili olanlar bir arada durur.
 class MeScreen extends StatelessWidget {
   const MeScreen({super.key});
 
@@ -27,76 +34,85 @@ class MeScreen extends StatelessWidget {
     final fullName = '${user?.userMetadata?['full_name'] ?? ''}'.trim();
     final name = fullName.isNotEmpty ? fullName : (user?.email?.split('@').first ?? i18n.t('mobileMe.noName'));
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
-      maxWidth: 672,
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 32),
+      badge: plus ? _PlusBadge(label: i18n.t('mobileMe.plusBadge')) : null,
+      title: name,
+      subtitle: user?.email,
+      leading: _Avatar(name: name),
+      bottomPadding: 32,
       children: [
-        _Header(name: name, email: user?.email ?? '', plus: plus, theme: theme),
-        const SizedBox(height: 24),
-        _GroupTitle(i18n.t('mobileMe.groups.account')),
-        _MenuRow(
-          icon: LucideIcons.shield,
-          color: theme.primary,
-          title: i18n.t('mobileMe.account.title'),
-          hint: i18n.t('mobileMe.account.hint'),
-          onTap: () => context.go('/dashboard/account'),
-        ),
-        const SizedBox(height: 10),
-        _MenuRow(
-          icon: LucideIcons.bellRing,
-          color: theme.primary,
-          title: i18n.t('mobileReminders.open'),
-          hint: i18n.t('mobileReminders.openHint'),
-          onTap: () => context.go('/dashboard/reminders'),
-        ),
-        const SizedBox(height: 10),
-        _MenuRow(
-          icon: LucideIcons.packageCheck,
-          color: theme.primary,
-          title: i18n.t('mobileShelf.title'),
-          hint: i18n.t('mobileMe.shelf.hint'),
-          onTap: () => context.go('/dashboard/shelf'),
-        ),
-        const SizedBox(height: 10),
-        _MenuRow(
-          icon: LucideIcons.scan,
-          color: theme.primary,
-          title: i18n.t('mobileMe.reanalyze.title'),
-          hint: i18n.t('mobileMe.reanalyze.hint'),
-          onTap: () => context.go('/dashboard/analyze'),
-        ),
-        const SizedBox(height: 24),
-        _GroupTitle(i18n.t('mobileMe.groups.look')),
+        MenuGroup(rows: [
+          MenuRow(
+            icon: LucideIcons.shield,
+            color: theme.primary,
+            title: i18n.t('mobileMe.account.title'),
+            hint: i18n.t('mobileMe.account.hint'),
+            onTap: () => context.go('/dashboard/account'),
+          ),
+          MenuRow(
+            icon: LucideIcons.bellRing,
+            color: theme.primary,
+            title: i18n.t('mobileReminders.open'),
+            hint: i18n.t('mobileReminders.openHint'),
+            onTap: () => context.go('/dashboard/reminders'),
+          ),
+          MenuRow(
+            icon: LucideIcons.packageCheck,
+            color: theme.primary,
+            title: i18n.t('mobileShelf.title'),
+            hint: i18n.t('mobileMe.shelf.hint'),
+            onTap: () => context.go('/dashboard/shelf'),
+          ),
+          MenuRow(
+            icon: LucideIcons.scan,
+            color: theme.primary,
+            title: i18n.t('mobileMe.reanalyze.title'),
+            hint: i18n.t('mobileMe.reanalyze.hint'),
+            onTap: () => context.go('/dashboard/analyze'),
+          ),
+        ]),
+        const SizedBox(height: 28),
         AppearanceCard(theme: theme),
         const SizedBox(height: 10),
-        _MenuRow(
-          icon: LucideIcons.palette,
-          color: Tw.purple600,
-          title: i18n.t('mobileMe.themes.title'),
-          hint: i18n.t('mobileMe.themes.hint'),
-          onTap: () => context.go('/dashboard/themes'),
-        ),
-        const SizedBox(height: 24),
-        _GroupTitle(i18n.t('mobileMe.groups.more')),
-        if (plus || plusPurchasable) ...[
-          _MenuRow(
-            icon: LucideIcons.crown,
-            color: Tw.amber600,
-            title: i18n.t('mobileMe.plus.title'),
-            hint: i18n.t(plus ? 'mobileMe.plus.active' : 'mobileMe.plus.hint'),
-            onTap: () => context.go('/dashboard/subscribe'),
+        MenuGroup(rows: [
+          MenuRow(
+            icon: LucideIcons.palette,
+            color: Tw.purple600,
+            title: i18n.t('mobileMe.themes.title'),
+            hint: i18n.t('mobileMe.themes.hint'),
+            onTap: () => context.go('/dashboard/themes'),
           ),
-          const SizedBox(height: 10),
-        ],
-        RCard(
-          padding: const EdgeInsets.all(14),
-          radius: 20,
-          child: const Align(alignment: Alignment.centerLeft, child: LanguageSelect()),
-        ),
-        const SizedBox(height: 24),
+        ]),
+        const SizedBox(height: 28),
+        SectionLabel(i18n.t('mobileMe.groups.more')),
+        MenuGroup(rows: [
+          if (plus || plusPurchasable)
+            MenuRow(
+              icon: LucideIcons.crown,
+              color: Tw.amber600,
+              title: i18n.t('mobileMe.plus.title'),
+              hint: i18n.t(plus ? 'mobileMe.plus.active' : 'mobileMe.plus.hint'),
+              onTap: () => context.go('/dashboard/subscribe'),
+            ),
+          MenuRow(
+            icon: LucideIcons.languages,
+            color: theme.primary,
+            title: i18n.t('lang.label'),
+            hint: languageLabels[i18n.lang] ?? i18n.lang,
+            onTap: () => showLanguageSheet(context),
+          ),
+          MenuRow(
+            icon: LucideIcons.lifeBuoy,
+            color: theme.primary,
+            title: i18n.t('mobileMe.support.title'),
+            hint: i18n.t('mobileMe.support.hint'),
+            onTap: openSupport,
+          ),
+        ]),
+        const SizedBox(height: 28),
         SecondaryButton(
-          onPressed: () => signOutAndGoHome(context),
+          onPressed: () => _confirmSignOut(context),
           borderColor: Tw.red200,
           textColor: Tw.readable(Tw.red600),
           icon: LucideIcons.logOut,
@@ -108,97 +124,88 @@ class MeScreen extends StatelessWidget {
   }
 }
 
-class _Header extends StatelessWidget {
-  const _Header({required this.name, required this.email, required this.plus, required this.theme});
+/// E-posta uygulamasını destek adresiyle açar; e-posta uygulaması yoksa web'deki destek sayfasını açar.
+Future<void> openSupport() async {
+  final mail = Uri(scheme: 'mailto', path: Env.supportEmail, query: 'subject=Rebi');
+  try {
+    if (await launchUrl(mail)) return;
+  } catch (_) {
+    /* e-posta uygulaması yok */
+  }
+  await launchUrl(Uri.parse(Env.supportPageUrl), mode: LaunchMode.externalApplication);
+}
 
-  final String name;
-  final String email;
-  final bool plus;
-  final RebiTheme theme;
+/// Çıkış, yanlışlıkla dokunmaya karşı bir onay sayfasından geçer (çıkış bildirimleri ve cihaz kaydını da siler).
+Future<void> _confirmSignOut(BuildContext context) async {
+  final i18n = I18n.instance;
+  final confirmed = await AppSheet.show<bool>(
+    context,
+    title: i18n.t('mobileMe.logoutConfirm.title'),
+    subtitle: i18n.t('mobileMe.logoutConfirm.body'),
+    body: (ctx) => Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        PrimaryButton(
+          color: Tw.fillWithWhiteText(Tw.red600),
+          icon: LucideIcons.logOut,
+          label: i18n.t('mobileMe.logoutConfirm.confirm'),
+          onPressed: () => Navigator.of(ctx).pop(true),
+        ),
+        const SizedBox(height: 10),
+        SecondaryButton(onPressed: () => Navigator.of(ctx).pop(false), label: i18n.t('mobileMe.logoutConfirm.cancel')),
+      ],
+    ),
+  );
+  if (confirmed == true && context.mounted) await signOutAndGoHome(context);
+}
+
+/// Plus hesabının küçük hapı: krem çerçeveli, taç simgeli (renk yok; sahne sakin kalır).
+class _PlusBadge extends StatelessWidget {
+  const _PlusBadge({required this.label});
+
+  final String label;
 
   @override
   Widget build(BuildContext context) {
-    final i18n = I18n.instance;
-    final initial = name.isEmpty ? '?' : name.characters.first.toUpperCase();
-    return Row(
-      children: [
-        Container(
-          width: 64,
-          height: 64,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: theme.primary),
-          child: Text(initial, style: heading(30, c: Colors.white, w: 500)),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(children: [
-                Flexible(child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: heading(26, h: 1.1))),
-                if (plus) ...[
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: Tw.amber100, borderRadius: BorderRadius.circular(999)),
-                    child: Text(i18n.t('mobileMe.plusBadge'), style: tx(10, w: 8, c: Tw.amber900)),
-                  ),
-                ],
-              ]),
-              if (email.isNotEmpty) Text(email, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(13, c: Tw.gray500)),
-            ],
-          ),
-        ),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Brand.cream.withValues(alpha: .4)),
+        color: Brand.cream.withValues(alpha: .08),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(LucideIcons.crown, size: 13, color: Brand.cream),
+          const SizedBox(width: 6),
+          Text(label, style: tx(12, w: 7, c: Brand.cream)),
+        ],
+      ),
     );
   }
 }
 
-class _GroupTitle extends StatelessWidget {
-  const _GroupTitle(this.text);
+/// Sahnedeki avatar: krem çerçeveli, içinde Fraunces baş harf (düz dolgu yok; sahnenin derin tonu görünür kalır).
+class _Avatar extends StatelessWidget {
+  const _Avatar({required this.name});
 
-  final String text;
-
-  @override
-  Widget build(BuildContext context) =>
-      Padding(padding: const EdgeInsets.only(left: 4, bottom: 8), child: Text(text.toUpperCase(), style: tx(11, w: 7, c: Tw.gray500, ls: .6)));
-}
-
-class _MenuRow extends StatelessWidget {
-  const _MenuRow({required this.icon, required this.color, required this.title, required this.hint, required this.onTap});
-
-  final IconData icon;
-  final Color color;
-  final String title;
-  final String hint;
-  final VoidCallback onTap;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: title,
-      child: RCard(
-        padding: const EdgeInsets.all(14),
-        radius: 20,
-        onTap: onTap,
-        child: Row(
-          children: [
-            TodayIconBadge(icon: icon, color: color),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title, style: tx(14, w: 7, c: Tw.gray800)),
-                  const SizedBox(height: 2),
-                  Text(hint, style: tx(12, c: Tw.gray500, h: snug)),
-                ],
-              ),
-            ),
-            Icon(LucideIcons.chevronRight, size: 18, color: Tw.gray400),
-          ],
+    final initial = name.isEmpty ? '?' : name.characters.first.toUpperCase();
+    return ExcludeSemantics(
+      child: Container(
+        width: 68,
+        height: 68,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Brand.cream.withValues(alpha: .1),
+          border: Border.all(color: Brand.cream.withValues(alpha: .34), width: 1.4),
         ),
+        child: Text(initial, style: Brand.serif(32, color: Brand.cream, h: 1, ls: 0)),
       ),
     );
   }

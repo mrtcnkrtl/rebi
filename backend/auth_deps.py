@@ -104,8 +104,10 @@ def _decode_access_token(token: str) -> dict:
         except jwt.InvalidTokenError:
             return fn(False)
 
-    use_jwks = bool(kid) or alg in {"ES256", "RS256", "EdDSA"}
-    if use_jwks:
+    # Yöntemi `kid` değil `alg` belirler: Supabase, "JWT Signing Keys" açıkken eski paylaşılan sırla (HS256)
+    # imzalanan token'lara da `kid` koyar; o anahtar JWKS'te yayımlanmadığı için JWKS yoluna gitmek token'ı
+    # doğrulayamaz (`PyJWKClientError`) ve istek 500 ile düşerdi.
+    if alg in {"ES256", "RS256", "EdDSA"}:
         return try_decode(decode_jwks)
     return try_decode(decode_hs256)
 
@@ -137,7 +139,11 @@ def enforce_supabase_user(request: Request, user_id: str) -> None:
         payload = _decode_access_token(token)
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Oturum süresi doldu, yeniden giriş yapın")
-    except jwt.InvalidTokenError:
+    except jwt.PyJWKClientConnectionError:
+        # Supabase'in imza anahtarları (JWKS) alınamadı: kullanıcının suçu değil, yeniden giriş çözmez.
+        raise HTTPException(status_code=503, detail="Kimlik doğrulama anahtarları şu an alınamadı, biraz sonra tekrar dene.")
+    except jwt.PyJWTError:
+        # InvalidTokenError ve bilinmeyen `kid` (PyJWKClientError) dahil: yakalanmazsa istek açıklamasız 500 olur.
         raise HTTPException(status_code=401, detail="Geçersiz oturum token'ı")
 
     sub = str(payload.get("sub") or "")
@@ -164,7 +170,7 @@ def decode_supabase_jwt_payload(request: Request) -> dict | None:
         return None
     try:
         return _decode_access_token(token)
-    except jwt.InvalidTokenError:
+    except jwt.PyJWTError:
         return None
 
 

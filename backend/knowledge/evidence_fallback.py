@@ -21,6 +21,9 @@ def is_gemini_retryable_error(err: Exception) -> bool:
 
 
 def is_gemini_non_retryable_error(err: Exception) -> bool:
+    # Günlük bütçe dolduysa yeniden denemek (bekleyerek) anlamsız: hemen yedeğe düşülür.
+    if type(err).__name__ == "GeminiBudgetExceeded":
+        return True
     et = str(err or "").lower()
     return any(x in et for x in ("400", "invalid argument", "403", "permission denied", "not found"))
 

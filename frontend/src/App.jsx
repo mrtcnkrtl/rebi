@@ -9,6 +9,7 @@ import AiDisclaimerModal from "./components/AiDisclaimerModal";
 import ConsentRecoveryModal from "./components/ConsentRecoveryModal";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import ConfirmEmail from "./pages/ConfirmEmail";
 import Dashboard from "./pages/Dashboard";
 import Analyze from "./pages/Analyze";
 import Chat from "./pages/Chat";
@@ -18,6 +19,7 @@ import Subscribe from "./pages/Subscribe";
 import Profile from "./pages/Profile";
 import Legal from "./pages/Legal";
 import { safeNext } from "./lib/safeNext";
+import Support from "./pages/Support";
 
 const RoutineChoicePreview = import.meta.env.DEV
   ? lazy(() => import("./pages/RoutineChoicePreview.jsx"))
@@ -54,10 +56,14 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/auth" element={user ? <Navigate to={next} replace /> : <Auth />} />
+        {/* E-posta onay düğmesinin açtığı sayfa: giriş yapmış kullanıcıyı da yönlendirmez, token'ı düğmeyle doğrular. */}
+        <Route path="/auth/confirm" element={<ConfirmEmail />} />
         <Route path="/kvkk" element={<Legal />} />
         <Route path="/riza" element={<Legal />} />
         <Route path="/on-bilgilendirme" element={<Legal />} />
         <Route path="/mesafeli-satis" element={<Legal />} />
+        <Route path="/destek" element={<Support />} />
+        <Route path="/support" element={<Support />} />
         <Route path="/rebi" element={<Chat />} />
         {RoutineChoicePreview && (
           <Route

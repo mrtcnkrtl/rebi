@@ -1,0 +1,4 @@
+/* İzin metinlerinin İngilizcesi (Info.plist'teki Türkçe değerlerin karşılığı). */
+"NSCameraUsageDescription" = "Rebi needs camera access so you can take a skin photo. The photo is uploaded only when you save it.";
+"NSPhotoLibraryUsageDescription" = "Rebi needs access to your photo library so you can choose a skin photo from your gallery.";
+"NSLocationWhenInUseUsageDescription" = "Your location is used to adapt your routine to the local weather and UV index.";

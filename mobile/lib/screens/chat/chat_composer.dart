@@ -36,65 +36,86 @@ class ChatComposer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final i18n = I18n.instance;
+    final bottom = MediaQuery.paddingOf(context).bottom;
     // Büyük yazı boyutunda dipnotlar ekranı kaplamasın: çubuk ekranın %42'siyle sınırlı, taşarsa kayar.
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * .42),
       child: SingleChildScrollView(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-          decoration: BoxDecoration(
-            color: Tw.surface.withValues(alpha: .92),
-            border: Border(top: BorderSide(color: Tw.gray100)),
-          ),
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(12, 6, 12, 8 + bottom),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      focusNode: focusNode,
-                      readOnly: locked,
-                      textInputAction: TextInputAction.send,
-                      minLines: 1,
-                      maxLines: 4,
-                      onSubmitted: (_) => onSend(),
-                      style: tx(14),
-                      decoration: inputDecoration(
-                        hint: i18n.t('chat.placeholder'),
-                        focusColor: theme.primary,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                      )
-                          .copyWith(hintStyle: tx(14, c: Tw.gray500), hintMaxLines: 1, constraints: const BoxConstraints(minHeight: 48)),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Semantics(
-                    button: true,
-                    enabled: canSend,
-                    label: i18n.t('mobileChat.send', const {}, 'Send'),
-                    child: Material(
-                      color: canSend ? theme.primary : Tw.gray200,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        customBorder: const CircleBorder(),
-                        onTap: canSend ? onSend : null,
-                        child: SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: Icon(LucideIcons.arrowUp, size: 22, color: canSend ? Colors.white : Tw.gray400),
+              // Yüzen "dock": alan ve gönder düğmesi tek yuvarlak yüzeyde; çerçeve ve gölge yüzeyin kendisindedir.
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Tw.surface,
+                  borderRadius: BorderRadius.circular(32),
+                  border: Border.all(color: Tw.gray100),
+                  boxShadow: Tw.dark ? null : const [BoxShadow(color: Color(0x1F0B3D38), blurRadius: 24, offset: Offset(0, 8))],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        focusNode: focusNode,
+                        readOnly: locked,
+                        textInputAction: TextInputAction.send,
+                        minLines: 1,
+                        maxLines: 4,
+                        cursorColor: theme.primary,
+                        onSubmitted: (_) => onSend(),
+                        style: tx(15, c: Tw.gray900),
+                        decoration: InputDecoration(
+                          hintText: i18n.t('chat.placeholder'),
+                          hintStyle: tx(15, c: Tw.gray500),
+                          hintMaxLines: 1,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          filled: false,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                          constraints: const BoxConstraints(minHeight: 48),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 6),
+                    Semantics(
+                      button: true,
+                      enabled: canSend,
+                      label: i18n.t('mobileChat.send', const {}, 'Send'),
+                      child: AnimatedScale(
+                        scale: canSend ? 1 : .92,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOutBack,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          decoration: BoxDecoration(shape: BoxShape.circle, color: canSend ? theme.primary : Tw.gray100),
+                          child: Material(
+                            type: MaterialType.transparency,
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: canSend ? onSend : null,
+                              child: SizedBox(
+                                width: 48,
+                                height: 48,
+                                child: Icon(LucideIcons.arrowUp, size: 22, color: canSend ? Colors.white : Tw.gray400),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
               if (!compact) ...[
-                const SizedBox(height: 6),
+                const SizedBox(height: 8),
                 footer,
-                const AiDisclaimer(textAlign: TextAlign.center, padding: EdgeInsets.only(top: 6)),
+                const AiDisclaimer(textAlign: TextAlign.center, padding: EdgeInsets.only(top: 4)),
               ],
             ],
           ),

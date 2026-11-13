@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../core/api.dart';
 import '../core/checkin_prefill.dart';
 import '../core/checkin_stats.dart';
-import '../core/daily_tracking.dart';
 import '../core/device_location.dart';
 import '../core/demo_user.dart';
 import '../core/i18n.dart';
@@ -17,27 +14,17 @@ import '../core/routine_tracking.dart';
 import '../core/today_plan.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/components/modals.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
-import 'analyze/analyze_widgets.dart';
-import '../ui/brand/glyphs.dart';
-import '../ui/brand/palette.dart';
+import '../ui/widgets/skeleton.dart';
+import 'checkin/checkin_form_cards.dart';
+import 'checkin/checkin_parts.dart';
+import 'checkin/checkin_report.dart';
+import 'checkin/checkin_water.dart';
 
-const _skinFeelings = [
-  ('iyi', 'İyi', 'Normal hissediyorum'),
-  ('kuru', 'Kuru', 'Sıkışma, gerginlik'),
-  ('yagli', 'Yağlı', 'Parlaklık, yağlanma'),
-  ('kirik', 'Hassas', 'Kızarıklık, soyulma'),
-  ('irritasyon', 'İrritasyon', 'Yanma, batma'),
-];
-
-const _stressLevels = [
-  (1, 'Çok düşük'),
-  (2, 'Düşük'),
-  (3, 'Orta'),
-  (4, 'Yüksek'),
-  (5, 'Çok yüksek'),
-];
+export 'checkin/checkin_water.dart' show formatGlassesLabel, mlPerGlass, parseWaterMlInput;
 
 const _concernExtraKeys = [
   'picked_skin_today',
@@ -51,28 +38,9 @@ const _concernExtraKeys = [
   'tried_new_active_today',
 ];
 
-/// Check-in su: Türkiye'de sık kullanılan "1 bardak ≈ 250 ml" (2 L ≈ 8 bardak).
-const mlPerGlass = 250;
-
-int? parseWaterMlInput(String? raw) {
-  final s = (raw ?? '').trim().replaceFirst(',', '.');
-  if (s.isEmpty) return null;
-  final n = num.tryParse(s);
-  if (n == null || !n.isFinite || n < 0) return null;
-  final r = n.round();
-  return r > 8000 ? 8000 : r;
-}
-
-String formatGlassesLabel(int ml) {
-  if (ml <= 0) return '0 bardak';
-  final glasses = ml / mlPerGlass;
-  final num rounded = (glasses - glasses.round()).abs() < 0.05 ? glasses.round() : (glasses * 10).round() / 10;
-  return 'yaklaşık ${jsString(rounded)} bardak';
-}
-
-const _networkMsg = 'Bağlantı kurulamadı. İnternetini ve API adresini kontrol et; backend çalışıyor mu?';
-
-/// Günlük check-in (web: `pages/CheckIn.jsx`).
+/// Günlük check-in (web: `pages/CheckIn.jsx`). Bu dosya yalnızca durumu ve akışı yönetir (yükleme, bugünün kayıtlarından ön
+/// doldurma, gönderme); kartlar `checkin/` altındadır. Dört durum (yükleniyor, bugün yapıldı, form, rapor) hep sahneyle başlar.
+/// Tüm metinler `mobileCheckin.*` / `checkin.*` içindedir.
 class CheckInScreen extends StatefulWidget {
   const CheckInScreen({super.key});
 
@@ -103,14 +71,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
   String _submitError = '';
   final List<String> _symptomTags = [];
   int _reactionSeverity = 2;
-  bool _feedbackBusy = false;
 
   /// Bugünkü takip kayıtlarından önceden doldurulan cevap sayısı (0 ise bilgi çıkmaz).
   int _prefilled = 0;
-
-  /// null | sent | skipped
-  String? _feedbackStatus;
-  final _feedbackNote = TextEditingController();
 
   String? get _uid => context.read<AuthController>().user?.id;
 
@@ -137,7 +100,6 @@ class _CheckInScreenState extends State<CheckInScreen> {
   void dispose() {
     _notes.dispose();
     _waterMl.dispose();
-    _feedbackNote.dispose();
     super.dispose();
   }
 
@@ -231,7 +193,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       }
       if (res.data['already_checked_in'] == true) setState(() => _alreadyCheckedIn = true);
     } catch (e) {
-      if (mounted && isNetworkError(e)) setState(() => _submitError = _networkMsg);
+      if (mounted && isNetworkError(e)) setState(() => _submitError = I18n.instance.t('mobileCheckin.errors.network'));
     } finally {
       if (mounted) setState(() => _statusLoading = false);
     }
@@ -243,13 +205,18 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   bool get _showWaterExtra => _concernDriven.contains(_concern) || _assessmentWater < 2;
 
-  bool get _showMakeupExtra =>
-      _assessmentMakeup >= 3 || const ['acne', 'pigmentation', 'sensitivity', 'aging'].contains(_concern);
+  bool get _showMakeupExtra => _assessmentMakeup >= 3 || const ['acne', 'pigmentation', 'sensitivity', 'aging'].contains(_concern);
 
   bool get _showConcernIntro => _concernDriven.contains(_concern);
 
   Future<void> _submit() async {
     if (!_canSubmit) return;
+    final i18n = I18n.instance;
+    if (!await ensureAiSharing(context)) {
+      if (mounted) setState(() => _submitError = i18n.t('mobileAiSharing.declined'));
+      return;
+    }
+    if (!mounted) return;
     final user = context.read<AuthController>().user;
     setState(() {
       _loading = true;
@@ -294,53 +261,25 @@ class _CheckInScreenState extends State<CheckInScreen> {
       if (res.status == 409) {
         final d = res.data['detail'];
         setState(() {
-          _submitError = d is String ? d : 'Bugün için check-in zaten yapıldı.';
+          _submitError = d is String ? d : i18n.t('mobileCheckin.errors.alreadyDone');
           _alreadyCheckedIn = true;
         });
         return;
       }
       if (!res.ok) {
-        setState(() => _submitError = '${formatApiErrorDetail(res.data)} (${res.status})');
+        setState(() => _submitError = '${apiErrorMessage(res)} (${res.status})');
         return;
       }
       await recordCheckInSuccess(user?.id, appliedRoutine: _appliedRoutine);
       if (!mounted) return;
-      setState(() {
-        _feedbackStatus = null;
-        _feedbackNote.clear();
-        _result = res.data;
-      });
+      setState(() => _result = res.data);
     } catch (e) {
-      if (mounted) setState(() => _submitError = isNetworkError(e) ? _networkMsg : 'Beklenmeyen bir hata oluştu.');
+      if (mounted) {
+        setState(() => _submitError = i18n.t(isNetworkError(e) ? 'mobileCheckin.errors.network' : 'mobileCheckin.errors.unexpected'));
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  Future<void> _sendFeedback(String helpful) async {
-    setState(() => _feedbackBusy = true);
-    final note = _feedbackNote.text;
-    await ingestDailyTrackingEvent(_uid, 'checkin_feedback', {
-      'helpful': helpful,
-      'note': note.length > 500 ? note.substring(0, 500) : note,
-      'source_screen': 'checkin_report',
-    });
-    if (!mounted) return;
-    setState(() {
-      _feedbackStatus = 'sent';
-      _feedbackBusy = false;
-    });
-  }
-
-  Future<void> _backToDashboard() async {
-    final result = _result!;
-    final id = _uid;
-    final today = asRoutine(result['today_routine']);
-    if (id != null && isRoutineTrackingAccepted(id) && today.isNotEmpty) {
-      await saveRoutineSnapshot(id, {...?getRoutineSnapshot(id), 'routine': result['today_routine'], 'checkinResult': result});
-    }
-    if (!mounted) return;
-    context.go('/dashboard', extra: {'routine': result['today_routine'], 'checkinResult': result});
   }
 
   @override
@@ -348,26 +287,37 @@ class _CheckInScreenState extends State<CheckInScreen> {
     final i18n = context.i18n;
     final theme = context.watch<ThemeController>().theme;
 
-    if (_result != null) return _resultView(i18n, theme);
+    if (_result != null) return CheckinReport(result: _result!, theme: theme);
 
     if (_statusLoading) {
-      return ThemedBackground(
+      return StagePage(
         theme: theme,
-        child: Center(child: SizedBox(width: 32, height: 32, child: CircularProgressIndicator(color: Tw.gray400))),
+        title: i18n.t('checkin.title'),
+        subtitle: i18n.t('checkin.subtitle'),
+        backTo: '/dashboard',
+        children: const [SkeletonCard(lines: 3), SizedBox(height: 12), SkeletonCard(lines: 3)],
       );
     }
 
     if (_alreadyCheckedIn) {
-      return ThemedPage(
+      return StagePage(
         theme: theme,
+        title: i18n.t('checkin.alreadyTitle'),
+        subtitle: i18n.t('checkin.alreadyDesc'),
+        backTo: '/dashboard',
         children: [
-          Icon(LucideIcons.circleCheckBig, size: 56, color: Tw.teal500),
-          const SizedBox(height: 16),
-          Text(i18n.t('checkin.alreadyTitle'), textAlign: TextAlign.center, style: heading(24)),
-          const SizedBox(height: 8),
-          Text(i18n.t('checkin.alreadyDesc'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray500)),
-          const SizedBox(height: 24),
-          _solidButton(theme.primary, i18n.t('checkin.backToDashboard'), () => context.go('/dashboard')),
+          RCard(
+            padding: const EdgeInsets.all(20),
+            radius: 24,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(child: Icon(LucideIcons.circleCheckBig, size: 44, color: theme.fg)),
+                const SizedBox(height: 18),
+                PrimaryButton(color: theme.primary, label: i18n.t('checkin.backToDashboard'), onPressed: () => context.go('/dashboard')),
+              ],
+            ),
+          ),
         ],
       );
     }
@@ -375,427 +325,46 @@ class _CheckInScreenState extends State<CheckInScreen> {
     return _formView(i18n, theme);
   }
 
-  Widget _solidButton(Color color, String label, VoidCallback? onTap, {Widget? leading, Widget? trailing, double vPad = 12}) {
-    return Material(
-      color: color,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: vPad, horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (leading != null) ...[leading, const SizedBox(width: 8)],
-              Flexible(child: Text(label, textAlign: TextAlign.center, style: tx(16, w: 6, c: Colors.white))),
-              if (trailing != null) ...[const SizedBox(width: 8), trailing],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _resultView(I18n i18n, RebiTheme theme) {
-    final result = _result!;
-    final changes = (result['changes'] as List?)?.whereType<Map>().toList() ?? const [];
-    final today = asRoutine(result['today_routine']);
-    final localized = i18n.prefersLocalized;
-
-    return ThemedPage(
-      theme: theme,
-      children: [
-        Center(child: GradientIconBox(icon: LucideIcons.sparkles, from: theme.accent, to: theme.primary, size: 64, iconSize: 32)),
-        const SizedBox(height: 16),
-        Text(i18n.t('checkin.todayReport'), textAlign: TextAlign.center, style: heading(24)),
-        const SizedBox(height: 4),
-        Text.rich(
-          TextSpan(children: [
-            const TextSpan(text: 'Risk: '),
-            TextSpan(text: str(result['risk_level']), style: tx(14, w: 6, c: theme.fg)),
-            if (result['adaptation_type'] == 'major') const TextSpan(text: ' — Büyük değişiklikler yapıldı'),
-          ]),
-          textAlign: TextAlign.center,
-          style: tx(14, c: Tw.gray500),
-        ),
-        const SizedBox(height: 24),
-        if (truthy(result['ai_note'])) ...[
-          RCard(
-            leftBorderColor: theme.primary,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(padding: const EdgeInsets.only(top: 2), child: Icon(LucideIcons.sparkles, size: 20, color: theme.primary)),
-                const SizedBox(width: 12),
-                Expanded(child: Text(str(result['ai_note']), style: tx(14, c: Tw.gray700, h: relaxed))),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
-        if (changes.isNotEmpty) ...[
-          Row(
-            children: [
-              Icon(LucideIcons.circleAlert, size: 16, color: Tw.amber500),
-              const SizedBox(width: 8),
-              Expanded(child: Text('Değişiklikler', style: tx(14, w: 7, c: Tw.gray700))),
-            ],
-          ),
-          const SizedBox(height: 8),
-          for (final c in changes) ...[
-            RCard(
-              padding: const EdgeInsets.all(12),
-              borderColor: Tw.amber100,
-              color: Color.alphaBlend(Tw.amber50.withValues(alpha: .5), Tw.surface),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(str(c['item']), style: tx(14, w: 5, c: Tw.gray800)),
-                  const SizedBox(height: 2),
-                  Text.rich(
-                    TextSpan(children: [
-                      TextSpan(text: '${str(c['old'])} → '),
-                      TextSpan(text: str(c['new']), style: tx(12, w: 6, c: theme.fg)),
-                    ]),
-                    style: tx(12, c: Tw.gray500),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(str(c['reason']), style: tx(12, c: Tw.gray500)),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          const SizedBox(height: 12),
-        ],
-        if (today.isNotEmpty) ...[
-          Text('Bugünün Rutini', style: tx(14, w: 7, c: Tw.gray700)),
-          const SizedBox(height: 8),
-          for (final item in today.take(10)) ...[
-            RCard(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(glyphForEmoji(str(item['icon']), fallback: LucideIcons.dot), size: 16, color: Tw.gray600),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(pickAction(item, localized: localized), style: tx(12, w: 6, c: Tw.gray800)),
-                        StructuredBadges(item: item),
-                        const SizedBox(height: 2),
-                        Text(
-                          pickDetail(item, localized: localized),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: tx(11, c: Tw.gray500),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    margin: const EdgeInsets.only(top: 2),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(color: theme.primaryLight, borderRadius: BorderRadius.circular(999)),
-                    child: Text(str(item['time']), style: tx(9, c: theme.primaryDark)),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 6),
-          ],
-          const SizedBox(height: 14),
-        ],
-        if (_feedbackStatus == null)
-          RCard(
-            margin: const EdgeInsets.only(bottom: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(i18n.t('checkin.feedbackTitle'), style: tx(14, w: 6, c: Tw.gray800)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _feedbackNote,
-                  minLines: 2,
-                  maxLines: 2,
-                  style: tx(12),
-                  decoration: inputDecoration(
-                    radius: 12,
-                    borderWidth: 1,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _feedbackButton(
-                        border: Tw.emerald200,
-                        bg: Tw.emerald50,
-                        fg: Tw.emerald900,
-                        icon: LucideIcons.thumbsUp,
-                        label: 'OK',
-                        onTap: _feedbackBusy ? null : () => _sendFeedback('helpful'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _feedbackButton(
-                        border: Tw.rose200,
-                        bg: Tw.rose50,
-                        fg: Tw.rose900,
-                        icon: LucideIcons.thumbsDown,
-                        onTap: _feedbackBusy ? null : () => _sendFeedback('not_helpful'),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    OutlinedButton(
-                      onPressed: _feedbackBusy ? null : () => setState(() => _feedbackStatus = 'skipped'),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: Tw.gray200),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        minimumSize: Size.zero,
-                      ),
-                      child: Text(i18n.t('checkin.feedbackSkip'), style: tx(12, w: 5, c: Tw.gray500)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          )
-        else if (_feedbackStatus == 'sent')
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text(i18n.t('checkin.feedbackThanks'), textAlign: TextAlign.center, style: tx(12, c: Tw.emerald700)),
-          ),
-        _solidButton(
-          theme.primary,
-          i18n.t('checkin.backToDashboard'),
-          _backToDashboard,
-          trailing: const Icon(LucideIcons.arrowRight, size: 16, color: Colors.white),
-        ),
-      ],
-    );
-  }
-
-  Widget _feedbackButton({
-    required Color border,
-    required Color bg,
-    required Color fg,
-    required IconData icon,
-    String? label,
-    required VoidCallback? onTap,
-  }) {
-    return Opacity(
-      opacity: onTap == null ? .6 : 1,
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(12), border: Border.all(color: border, width: 2)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 16, color: fg),
-                if (label != null) ...[const SizedBox(width: 8), Text(label, style: tx(14, w: 6, c: fg))],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _cardTitle(IconData icon, Color color, String text) => Row(
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(width: 8),
-          Expanded(child: Text(text, style: tx(14, w: 7, c: Tw.gray800))),
-        ],
-      );
-
-  Widget _selectable({required bool selected, required RebiTheme theme, required Widget child, required VoidCallback onTap, EdgeInsets? padding}) {
-    return AnimatedScale(
-      scale: selected ? 1.05 : 1,
-      duration: const Duration(milliseconds: 150),
-      child: Material(
-        color: selected ? theme.primaryLight : Tw.gray50,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: selected ? theme.primary : Colors.transparent, width: 2),
-              boxShadow: selected ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 4))] : null,
-            ),
-            child: child,
-          ),
-        ),
-      ),
-    );
-  }
+  // ---- Form ----
 
   Widget _formView(I18n i18n, RebiTheme theme) {
     const gap = SizedBox(height: 16);
-    return ThemedPage(
+    final skinSevere = _skinFeeling == 'irritasyon' || _skinFeeling == 'kirik';
+    return StagePage(
       theme: theme,
+      title: i18n.t('checkin.title'),
+      subtitle: i18n.t('checkin.subtitle'),
+      backTo: '/dashboard',
+      bottomBar: _submitBar(i18n, theme),
       children: [
-        Text(i18n.t('checkin.title'), textAlign: TextAlign.center, style: heading(28)),
-        const SizedBox(height: 4),
-        Text(i18n.t('checkin.subtitle'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray500)),
-        const SizedBox(height: 8),
-        Text(
-          'Uyku ve stres cevapların, geçmiş check-in kayıtlarınla kısa süreli harmanlanarak risk özetine girer.',
-          textAlign: TextAlign.center,
-          style: tx(11, c: Tw.gray500, h: relaxed),
-        ),
-        const SizedBox(height: 32),
         if (_submitError.isNotEmpty) ...[
-          NoticeBox(text: _submitError, bg: Tw.amber50, border: Tw.amber200, fg: Tw.amber900),
+          NoticeBox(text: _submitError, bg: Tw.amber50, border: Tw.amber200, fg: Tw.amber900, fontSize: 13.5),
           gap,
         ],
         if (_prefilled > 0) ...[
           NoticeBox(
             text: i18n.t('mobileCheckin.prefilled', {'n': _prefilled}),
-            bg: theme.primaryLight.withValues(alpha: .35),
+            // Sahneye binebilir: yarı saydam dolgu sahnenin koyusunu geçirir, bu yüzden yüzeyle karıştırılıp opak yapılır.
+            bg: Color.alphaBlend(theme.primaryLight.withValues(alpha: .35), Tw.surface),
             border: theme.primaryLight,
-            fg: theme.primaryDark,
+            fg: Tw.readable(theme.primaryDark, bg: Color.alphaBlend(theme.primaryLight.withValues(alpha: .35), Tw.surface)),
             icon: LucideIcons.sparkles,
-            fontSize: 12,
+            fontSize: 13,
           ),
           gap,
         ],
-        // S1: Uyku
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _cardTitle(LucideIcons.moon, Tw.indigo500, 'Dün gece kaç saat uyudun?'),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: RangeSlider1(
-                      value: _sleepHours,
-                      min: 3,
-                      max: 12,
-                      step: .5,
-                      color: Tw.indigo500,
-                      onChanged: (v) => setState(() => _sleepHours = v),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  SizedBox(
-                    width: 48,
-                    child: Text('${jsString(_sleepHours)}s', textAlign: TextAlign.center, style: tx(18, w: 7, c: Tw.dark ? Tw.indigo400 : Tw.indigo600)),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('3s', style: tx(10, c: Tw.gray500)),
-                    Text('7.5s', style: tx(10, c: Tw.gray500)),
-                    Text('12s', style: tx(10, c: Tw.gray500)),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
+        CheckinSleepCard(hours: _sleepHours, onChanged: (v) => setState(() => _sleepHours = v)),
         gap,
-        // S2: Stres
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _cardTitle(LucideIcons.smilePlus, Tw.purple500, 'Bugün stres seviyeni nasıl tanımlarsın?'),
-              const SizedBox(height: 12),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (final (value, label) in _stressLevels) ...[
-                    if (value > 1) const SizedBox(width: 8),
-                    Expanded(
-                      child: _selectable(
-                        selected: _stressToday == value,
-                        theme: theme,
-                        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 2),
-                        onTap: () => setState(() => _stressToday = value),
-                        child: Column(
-                          children: [
-                            Icon(stressGlyph(value), size: 22, color: _stressToday == value ? theme.primary : Tw.gray400),
-                            const SizedBox(height: 2),
-                            Text(label, textAlign: TextAlign.center, style: tx(10, w: _stressToday == value ? 6 : 5, c: _stressToday == value ? theme.primaryDark : Tw.gray600, h: tight)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (_locationMissing) ...[
-          gap,
+        if (_locationMissing)
           RCard(
             child: Text(
               'Konum olmadığı için hava durumuna göre değişim ve öneri verilemiyor.',
               style: tx(12, c: Tw.amber800, h: relaxed),
             ),
           ),
-        ],
+        CheckinStressCard(level: _stressToday, theme: theme, onChanged: (v) => setState(() => _stressToday = v)),
         gap,
-        // S3: Cilt hissi
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _cardTitle(LucideIcons.droplets, theme.primary, 'Cildin bugün nasıl hissediyor?'),
-              const SizedBox(height: 12),
-              for (final (id, label, desc) in _skinFeelings) ...[
-                _selectable(
-                  selected: _skinFeeling == id,
-                  theme: theme,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  onTap: () => setState(() => _skinFeeling = id),
-                  child: Row(
-                    children: [
-                      Icon(skinFeelingGlyph(id), size: 22, color: _skinFeeling == id ? theme.primary : Tw.gray500),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(label, style: tx(14, w: 5, c: Tw.gray800)),
-                            Text(desc, style: tx(11, c: Tw.gray500)),
-                          ],
-                        ),
-                      ),
-                      if (_skinFeeling == id) Icon(LucideIcons.circleCheckBig, size: 20, color: theme.primary),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ],
-          ),
-        ),
+        CheckinSkinCard(selected: _skinFeeling, theme: theme, onChanged: (id) => setState(() => _skinFeeling = id)),
         gap,
         RCard(
           child: Column(
@@ -807,469 +376,154 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 'UV ve sıcaklık evin içi ile dışarısı arasında değişir. Bu cevap güneş koruyucu numarasına girer.',
                 style: tx(11, c: Tw.gray500, h: relaxed),
               ),
-              const SizedBox(height: 12),
-              for (final (id, label, desc) in const [
-                ('indoor', 'Evin içi', 'Dışarı UV ve sıcaklık rutine yazılmaz'),
-                ('outdoor', 'Dışarıda', 'UV ve sıcaklık güneş koruyucu numarasına girer'),
-              ]) ...[
-                _selectable(
-                  selected: _daySetting == id,
-                  theme: theme,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  onTap: () => setState(() => _daySetting = id),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(label, style: tx(14, w: 5, c: Tw.gray800)),
-                            Text(desc, style: tx(11, c: Tw.gray500)),
-                          ],
-                        ),
-                      ),
-                      if (_daySetting == id) Icon(LucideIcons.circleCheckBig, size: 20, color: theme.primary),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ],
-          ),
-        ),
-        gap,
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(i18n.t('checkin.symptomsTitle'), style: tx(14, w: 7, c: Tw.gray800)),
-              const SizedBox(height: 4),
-              Text(i18n.t('checkin.symptomsHint'), style: tx(11, c: Tw.gray500, h: relaxed)),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final (id, key) in const [
-                    ('redness_diffuse', 'checkin.symptomRedness'),
-                    ('burning_stinging', 'checkin.symptomBurning'),
-                    ('flaking_peeling', 'checkin.symptomFlaking'),
-                    ('acne_flare', 'checkin.symptomAcne'),
-                  ])
+                  for (final (id, label) in const [('indoor', 'Evin içi'), ('outdoor', 'Dışarıda')])
                     ChoiceChipBox(
-                      label: i18n.t(key),
-                      selected: _symptomTags.contains(id),
+                      label: label,
+                      selected: _daySetting == id,
                       activeText: Tw.teal900,
                       inactiveText: Tw.gray600,
-                      onTap: () => setState(() => _symptomTags.contains(id) ? _symptomTags.remove(id) : _symptomTags.add(id)),
+                      onTap: () => setState(() => _daySetting = id),
                     ),
                 ],
               ),
             ],
           ),
         ),
-        if (_skinFeeling == 'irritasyon' || _skinFeeling == 'kirik') ...[
+        gap,
+        CheckinSymptomsCard(
+          tags: _symptomTags,
+          onToggle: (id) => setState(() => _symptomTags.contains(id) ? _symptomTags.remove(id) : _symptomTags.add(id)),
+        ),
+        if (skinSevere) ...[
           gap,
-          RCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(i18n.t('checkin.reactionSeverityTitle'), style: tx(14, w: 7, c: Tw.gray800)),
-                const SizedBox(height: 4),
-                Text(i18n.t('checkin.reactionSeverityHint'), style: tx(11, c: Tw.gray500)),
-                const SizedBox(height: 8),
-                RangeSlider1(
-                  value: _reactionSeverity.toDouble(),
-                  min: 1,
-                  max: 3,
-                  step: 1,
-                  color: Tw.teal600,
-                  onChanged: (v) => setState(() => _reactionSeverity = v.round()),
-                ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [for (final n in ['1', '2', '3']) Text(n, style: tx(10, c: Tw.gray500))],
-                ),
-              ],
-            ),
-          ),
+          CheckinReactionSeverityCard(severity: _reactionSeverity, onChanged: (v) => setState(() => _reactionSeverity = v)),
         ],
         gap,
-        // S4: Rutin uygulandı mı
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _cardTitle(LucideIcons.circleCheckBig, Tw.green500, 'Dünkü rutini uyguladın mı?'),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(child: _yesNo('Evet', _appliedRoutine, theme.primary, () => setState(() => _appliedRoutine = true))),
-                  const SizedBox(width: 12),
-                  Expanded(child: _yesNo('Hayır', !_appliedRoutine, Tw.red500, () => setState(() => _appliedRoutine = false))),
-                ],
-              ),
-            ],
-          ),
-        ),
-        if (_showConcernIntro) ...[
+        CheckinRoutineAppliedCard(applied: _appliedRoutine, theme: theme, onChanged: (v) => setState(() => _appliedRoutine = v)),
+        if (_showConcernIntro) ...[gap, const CheckinConcernIntroCard()],
+        if (_showWaterExtra) ...[gap, CheckinWaterCard(controller: _waterMl, theme: theme)],
+        if (_showMakeupExtra) ...[
           gap,
-          RCard(
-            borderColor: Tw.slate100,
-            color: Color.alphaBlend(Tw.slate50.withValues(alpha: .9), Tw.surface),
-            child: Text.rich(
-              TextSpan(children: [
-                TextSpan(text: 'Endişene özel:', style: TextStyle(fontWeight: FontWeight.w600, color: Tw.slate800)),
-                TextSpan(
-                  text: ' Aşağıdaki ek sorular analizindeki ana soruna göre seçilir. Cevap vermezsen atla; geçmiş check-in '
-                      'örüntüleri bazen risk özetine yansır. Uyku ve stres üstte, geçmiş kayıtlarla harmanlanır.',
-                ),
-              ]),
-              style: tx(11, c: Tw.slate600, h: relaxed),
-            ),
+          CheckinMakeupCard(
+            used: _makeupUsedToday,
+            removal: _makeupRemovalToday,
+            theme: theme,
+            onUsed: (v) => setState(() {
+              _makeupUsedToday = v;
+              // "Atla": yöntem varsayılana döner (sunucuya gitmez).
+              if (v == null) _makeupRemovalToday = 'cleanser';
+            }),
+            onRemoval: (id) => setState(() => _makeupRemovalToday = id),
           ),
         ],
-        if (_showWaterExtra) ...[gap, _waterCard(theme)],
-        if (_showMakeupExtra) ...[gap, _makeupCard()],
-        ..._concernExtras(),
+        ..._concernExtras(i18n, theme),
         gap,
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text.rich(
-                TextSpan(children: [
-                  const TextSpan(text: 'Eklemek istediğin bir şey var mı? '),
-                  TextSpan(text: '(opsiyonel)', style: tx(14, c: Tw.gray500)),
-                ]),
-                style: tx(14, w: 7, c: Tw.gray800),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _notes,
-                minLines: 2,
-                maxLines: 4,
-                style: tx(14),
-                decoration: inputDecoration(
-                  hint: 'Dün yeni bir madde denedim, güneşte kaldım...',
-                  radius: 12,
-                  borderWidth: 1,
-                  focusColor: theme.primary,
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        Opacity(
-          opacity: _canSubmit || _loading ? 1 : .5,
-          child: _solidButton(
-            _canSubmit || _loading ? theme.primary : Tw.gray400,
-            _loading ? 'Analiz ediliyor...' : i18n.t('checkin.submit'),
-            _canSubmit ? _submit : null,
-            vPad: 16,
-            leading: _loading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white))
-                : const Icon(LucideIcons.send, size: 20, color: Colors.white),
-          ),
+        CheckinNotesCard(controller: _notes, theme: theme),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 18, 8, 0),
+          child: Text(i18n.t('mobileCheckin.blendNote'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500, h: relaxed)),
         ),
       ],
     );
   }
 
-  Widget _yesNo(String label, bool selected, Color color, VoidCallback onTap) {
-    return Material(
-      color: selected ? Tw.fillWithWhiteText(color) : Tw.gray50,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 48),
-          alignment: Alignment.center,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: selected ? const [BoxShadow(color: Color(0x1A000000), blurRadius: 6, offset: Offset(0, 4))] : null,
+  /// Sabit gönder çubuğu: uzun formun sonuna kaydırmadan gönderilir; düğme kapalıyken nedenini söyler (cilt hissi seçilmedi).
+  Widget _submitBar(I18n i18n, RebiTheme theme) {
+    final needsSkin = _skinFeeling.isEmpty && !_loading;
+    return StageBottomBar(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (needsSkin)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(i18n.t('mobileCheckin.needSkin'), textAlign: TextAlign.center, style: tx(12.5, w: 5, c: Tw.gray600, h: snug)),
+            ),
+          if (_loading)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Semantics(liveRegion: true, child: Text(i18n.t('mobileCheckin.analyzing'), textAlign: TextAlign.center, style: tx(12.5, c: Tw.gray600))),
+            ),
+          PrimaryButton(
+            color: theme.primary,
+            loading: _loading,
+            icon: LucideIcons.send,
+            label: i18n.t('checkin.submit'),
+            onPressed: _canSubmit ? _submit : null,
+            minHeight: 54,
           ),
-          child: Text(label, textAlign: TextAlign.center, style: tx(16, w: 5, c: selected ? Colors.white : Tw.gray600)),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _waterCard(RebiTheme theme) {
-    final parsed = parseWaterMlInput(_waterMl.text);
-    void bump(int delta) {
-      final next = ((parsed ?? 0) + delta).clamp(0, 8000);
-      _waterMl.text = '$next';
-    }
-
-    Widget smallBtn(String label, VoidCallback onTap, {bool primary = false}) => Material(
-          color: primary ? theme.primary : Tw.surface,
-          borderRadius: BorderRadius.circular(8),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: onTap,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 48),
-              alignment: Alignment.center,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: primary ? theme.primary : Tw.gray200),
-              ),
-              child: Text(label, style: tx(12, w: 5, c: primary ? Colors.white : Tw.gray700)),
-            ),
+  /// Analizdeki ana soruna göre ek sorular (akne, yaşlanma/leke, kuruluk, hassasiyet) ve başlıkları.
+  List<Widget> _concernExtras(I18n i18n, RebiTheme theme) {
+    Widget header(IconData icon, Color color, String text) => Padding(
+          padding: const EdgeInsets.only(bottom: 10, left: 2),
+          child: Row(
+            children: [
+              Icon(icon, size: 17, color: color),
+              const SizedBox(width: 8),
+              Expanded(child: Text(text, style: tx(13, w: 7, c: Tw.gray800))),
+            ],
           ),
         );
+    Widget q(String key) =>
+        CheckinExtraQuestion(questionKey: key, value: _concernExtra[key], theme: theme, onChanged: (v) => setState(() => _concernExtra[key] = v));
 
-    return RCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _cardTitle(LucideIcons.droplets, Tw.sky500, 'Bugün içtiğin su (ml)'),
-          const SizedBox(height: 8),
-          Text.rich(
-            TextSpan(children: [
-              const TextSpan(text: 'Miktarı '),
-              TextSpan(text: 'mililitre (ml)', style: tx(11, w: 7, c: Tw.gray700)),
-              const TextSpan(text: ' olarak yaz. Hesaplama: '),
-              TextSpan(text: '1 bardak = $mlPerGlass ml', style: tx(11, w: 7, c: Tw.gray700)),
-              const TextSpan(
-                text: ' (standart su bardağı). Boş bırakırsan uygulama içi su takibi veya analizdeki günlük hedefin kullanılır.',
-              ),
-            ]),
-            style: tx(11, c: Tw.gray500, h: relaxed),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _waterMl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-            style: tx(14, w: 5),
-            decoration: inputDecoration(
-              hint: 'Örn. ${mlPerGlass * 8} (8 bardak)',
-              suffixText: 'ml',
-              radius: 12,
-              borderWidth: 1,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text('Gönderirken değer tam sayı ml olarak kaydedilir (en fazla 8000 ml).', style: tx(10, c: Tw.gray500)),
-          if (parsed != null && parsed > 0) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Tw.sky50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Tw.sky100),
-              ),
-              child: Text(
-                '${NumberFormat.decimalPattern('tr').format(parsed)} ml → ${formatGlassesLabel(parsed)}',
-                style: tx(12, w: 6, c: Tw.sky800),
-              ),
-            ),
-          ],
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              smallBtn('−1 bardak (−$mlPerGlass ml)', () => bump(-mlPerGlass)),
-              smallBtn('+1 bardak (+$mlPerGlass ml)', () => bump(mlPerGlass), primary: true),
-              smallBtn('+½ bardak (+125 ml)', () => bump(125)),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _tri(String label, bool selected, VoidCallback onTap, {bool plain = false}) => Material(
-        color: selected ? Tw.teal50 : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: onTap,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 48),
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: selected ? Tw.teal500 : Tw.gray200, width: 2),
-            ),
-            child: Text(label, textAlign: TextAlign.center, style: tx(13, w: 5, c: plain ? Tw.gray600 : Tw.gray900)),
-          ),
-        ),
-      );
-
-  Widget _makeupCard() {
-    return RCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _cardTitle(LucideIcons.palette, Tw.rose500, 'Bugün makyaj'),
-          const SizedBox(height: 8),
-          Text('İstersen atla; seçmezsen risk hesabında yalnızca profil makyaj sıklığın kullanılır.',
-              style: tx(11, c: Tw.gray500, h: relaxed)),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _tri('Evet', _makeupUsedToday == true, () => setState(() => _makeupUsedToday = true))),
-              const SizedBox(width: 8),
-              Expanded(child: _tri('Hayır', _makeupUsedToday == false, () => setState(() => _makeupUsedToday = false))),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _tri('Atla', false, plain: true, () {
-                  setState(() {
-                    _makeupUsedToday = null;
-                    _makeupRemovalToday = 'cleanser';
-                  });
-                }),
-              ),
-            ],
-          ),
-          if (_makeupUsedToday == true) ...[
-            const SizedBox(height: 12),
-            Text('Nasıl temizledin?', style: tx(11, w: 5, c: Tw.gray700)),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: [
-                for (final (id, label) in const [
-                  ('cleanser', 'Temizleyici'),
-                  ('double', 'Çift aşama'),
-                  ('water', 'Sadece su'),
-                  ('wipe', 'Misel su / mendil'),
-                  ('none', 'Temizlemedim'),
-                ])
-                  ChoiceChipBox(
-                    label: label,
-                    selected: _makeupRemovalToday == id,
-                    radius: 8,
-                    fontSize: 10,
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    activeText: Tw.gray900,
-                    inactiveText: Tw.gray600,
-                    onTap: () => setState(() => _makeupRemovalToday = id),
-                  ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  /// Evet / Hayır / Atla — check-in ek soruları.
-  Widget _extraTristate(String title, String key, {String? description}) {
-    final i18n = I18n.instance;
-    final value = _concernExtra[key];
-    return RCard(
-      margin: const EdgeInsets.only(bottom: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(title, style: tx(14, w: 7, c: Tw.gray800)),
-          if (description != null) ...[
-            const SizedBox(height: 4),
-            Text(description, style: tx(11, c: Tw.gray500, h: relaxed)),
-          ],
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(child: _tri(i18n.t('common.yes'), value == true, () => setState(() => _concernExtra[key] = true))),
-              const SizedBox(width: 8),
-              Expanded(child: _tri(i18n.t('common.no'), value == false, () => setState(() => _concernExtra[key] = false))),
-              const SizedBox(width: 8),
-              Expanded(child: _tri(i18n.t('common.skip'), false, plain: true, () => setState(() => _concernExtra[key] = null))),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _extraHeader(IconData icon, Color color, String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Row(
-          children: [
-            Icon(icon, size: 16, color: color),
-            const SizedBox(width: 8),
-            Expanded(child: Text(text, style: tx(12, w: 7, c: Tw.gray800))),
-          ],
-        ),
-      );
-
-  List<Widget> _concernExtras() {
     switch (_concern) {
       case 'acne':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.hand, Tw.rose500, 'Akneye özel'),
-          _extraTristate('Ciltte sivilce/komedon kurcaladın mı?', 'picked_skin_today',
-              description: 'Mekanik irritasyon bariyeri zayıflatır; risk özetine yansır.'),
-          _extraTristate('Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?', 'high_glycemic_intake_today',
-              description: 'Beyaz un, tatlı, şekerli içecek gibi.'),
-          _extraTristate('Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?', 'heavy_dairy_today',
-              description: 'Bazı akne eğilimlerinde tetikleyici olabilir.'),
+          header(LucideIcons.hand, Tw.rose600, i18n.t('mobileCheckin.extras.acne')),
+          q('picked_skin_today'),
+          q('high_glycemic_intake_today'),
+          q('heavy_dairy_today'),
         ];
       case 'aging':
       case 'pigmentation':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.sun, Tw.amber500, _concern == 'aging' ? 'Yaşlanma endişesine özel' : 'Lekelenmeye özel'),
-          _extraTristate('Uzun süre doğrudan güneş altında kaldın mı?', 'long_sun_exposure_today',
-              description: '30 dk+ açık güneş veya yoğun UV günü.'),
-          _extraTristate('Yüz için güneş koruyucu uyguladın mı?', 'spf_applied_today',
-              description: 'Rutindeki SPF adımını tamamladıysan Evet.'),
+          header(LucideIcons.sun, Tw.amber600, i18n.t('mobileCheckin.extras.$_concern')),
+          q('long_sun_exposure_today'),
+          q('spf_applied_today'),
           if (_concern == 'pigmentation') ...[
-            _extraTristate('Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?', 'high_glycemic_intake_today',
-                description: 'Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez.'),
-            _extraTristate('Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?', 'heavy_dairy_today',
-                description: 'Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez.'),
+            q('high_glycemic_intake_today'),
+            q('heavy_dairy_today'),
           ],
         ];
       case 'oiliness':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.droplets, Tw.sky500, 'Yağlılığa özel'),
-          _extraTristate('Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?', 'high_glycemic_intake_today',
-              description: 'Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez.'),
-          _extraTristate('Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?', 'heavy_dairy_today',
-              description: 'Tekrarlayan kayıt asit sıklığını düşürür. Madde değişmez.'),
+          header(LucideIcons.droplets, Tw.sky500, 'Yağlılığa özel'),
+          q('high_glycemic_intake_today'),
+          q('heavy_dairy_today'),
         ];
       case 'dryness':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.wind, Tw.sky500, 'Kuruluğa özel'),
-          _extraTristate('Ev/iş ortamı çok kuru muydu? (ısıtma, klima, rüzgâr)', 'very_dry_environment_today'),
-          _extraTristate('Uzun veya çok sıcak duş aldın mı?', 'long_hot_shower_today',
-              description: 'Bariyer kuruluğunu artırabilir.'),
+          header(LucideIcons.wind, Tw.sky500, i18n.t('mobileCheckin.extras.dryness')),
+          q('very_dry_environment_today'),
+          q('long_hot_shower_today'),
         ];
       case 'sensitivity':
         return [
           const SizedBox(height: 16),
-          _extraHeader(LucideIcons.flower, Tw.violet400, 'Hassasiyete özel'),
-          _extraTristate('Yeni parfüm veya yoğun kokulu ürün kullandın mı?', 'fragrance_new_product_today'),
-          _extraTristate('Uzun veya çok sıcak duş aldın mı?', 'long_hot_shower_today'),
+          header(LucideIcons.flower, Tw.violet400, i18n.t('mobileCheckin.extras.sensitivity')),
+          q('fragrance_new_product_today'),
+          q('long_hot_shower_today'),
           Padding(
-            padding: const EdgeInsets.only(top: 4, bottom: 4),
-            child: Row(
-              children: [
-                Icon(LucideIcons.flaskConical, size: 16, color: Tw.violet400),
-                const SizedBox(width: 8),
-                Expanded(child: Text('Aktif madde', style: tx(11, w: 6, c: Tw.gray700))),
-              ],
-            ),
+            padding: const EdgeInsets.only(top: 4),
+            child: header(LucideIcons.flaskConical, Tw.violet400, i18n.t('mobileCheckin.extras.active')),
           ),
-          _extraTristate('Yeni güçlü madde veya peeling denedin mi?', 'tried_new_active_today',
-              description: 'Örn. retinol, AHA/BHA, yüksek konsantrasyon serum.'),
+          q('tried_new_active_today'),
         ];
     }
     return const [];

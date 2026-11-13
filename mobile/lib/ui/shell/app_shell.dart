@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -44,6 +47,15 @@ AppTab? tabForPath(String path) {
 bool isSubPage(String path) {
   final tab = tabForPath(path);
   return tab != null && path != tab.path;
+}
+
+/// Kendi üst sahnesini çizen yollar: sahne durum çubuğunun altına uzanır, bu yüzden kabuk burada üst güvenli alanı
+/// uygulamaz ve geri çubuğu çizmez (alt sayfalarda "Geri" sahnenin içindedir). Sahnesiz kalan tek alt sayfa, kendi
+/// akışını çizen analizdir (hızlı fotoğraf yükleme kabuklu kalır).
+bool hasStage(String path) {
+  if (!path.startsWith('/dashboard')) return false;
+  if (path == '/dashboard/analyze') return false;
+  return true;
 }
 
 /// Düzen: genel sayfalarda (sohbet, yasal) üstte logo ve menü; açılış ve giriş kendi üst çubuğunu çizer; giriş yapmış kullanıcıda
@@ -103,14 +115,28 @@ class _AppShellState extends State<AppShell> {
     final theme = context.watch<ThemeController>().theme;
     final path = widget.location.path;
     final isDashboard = path.startsWith('/dashboard');
-    final isAiSurface = isDashboard || path.startsWith('/rebi');
+    // Oturumsuz `/rebi` bir davettir (yapay zekâ yok): beyan penceresi davetin üstüne binmez, sohbette gösterilir.
+    final isAiSurface = isDashboard || (path.startsWith('/rebi') && user != null);
     final inApp = user != null && isDashboard;
+    final keyboardOpen = MediaQuery.viewInsetsOf(context).bottom > 0;
+    // Analiz sihirbazı (tam form) tam ekran bir akıştır: alt çubuk ve geri çubuğu yoktur, üst güvenli alanı kendisi uygular.
+    final focusFlow = inApp && path == '/dashboard/analyze' && widget.location.queryParameters['photo'] != '1';
     // Açılış ve giriş ekranları kendi üst çubuğunu çizer (hero zeminin üstünde).
-    final immersive = path == '/' || path == '/auth';
+    final immersive = path == '/' || path == '/auth' || path == '/rebi';
+
+    // Sayfa zemini krem kâğıt (koyu modda koyu): durum çubuğu simgeleri buna göre. Sahnesi olan ekranlar (Bugün) kendi
+    // `AnnotatedRegion`ıyla açık simge ister; en üstteki bölge geçerli olur.
+    final chrome = (Tw.dark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark).copyWith(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Tw.surface,
+      systemNavigationBarIconBrightness: Tw.dark ? Brightness.light : Brightness.dark,
+    );
 
     return BackButtonListener(
       onBackButtonPressed: _onBack,
-      child: Stack(
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: chrome,
+        child: Stack(
         children: [
           Scaffold(
             backgroundColor: Tw.background,
@@ -119,11 +145,13 @@ class _AppShellState extends State<AppShell> {
                 // Krem kâğıt + temanın hafif yıkaması tek yerde çizilir: geri çubuğu ve sayfa aynı zeminde durur.
                 ? DecoratedBox(
                     decoration: BoxDecoration(gradient: theme.bg),
+                    // Sahneli ekranlarda (`hasStage`) üst sahne durum çubuğunun altına uzanır: güvenli alanı sayfa uygular.
                     child: SafeArea(
+                      top: !focusFlow && !hasStage(path),
                       bottom: false,
                       child: Column(
                         children: [
-                          if (isSubPage(path)) _SubBar(path: path),
+                          if (isSubPage(path) && !focusFlow && !hasStage(path)) _SubBar(path: path),
                           Expanded(child: widget.child),
                         ],
                       ),
@@ -141,11 +169,13 @@ class _AppShellState extends State<AppShell> {
                         ),
                     ],
                   ),
-            bottomNavigationBar: inApp ? _BottomNav(path: path) : null,
+            // Klavye açıkken (sohbet, check-in notu, arama alanları) alt çubuk gizlenir: yazma alanına yer açılır, çubuk klavyenin üstünde asılı kalmaz.
+            bottomNavigationBar: inApp && !focusFlow && !keyboardOpen ? _BottomNav(path: path) : null,
           ),
-          if (isAiSurface) const Positioned.fill(child: AiDisclaimerModal()),
+          if (isAiSurface) const Positioned.fill(child: AiSharingModal()),
           if (user != null) const Positioned.fill(child: ConsentRecoveryModal()),
         ],
+        ),
       ),
     );
   }
@@ -376,7 +406,11 @@ class _BottomNav extends StatelessWidget {
                         active: active == tab,
                         color: theme.fg,
                         lightColor: theme.primaryLight,
-                        onTap: () => context.go(tab.path),
+                        onTap: () {
+                          // Başka bir sekmeye geçerken hafif tıkırtı (aynı sekmeye dokunmak yalnızca köke döner).
+                          if (active != tab) unawaited(HapticFeedback.selectionClick().catchError((_) {}));
+                          context.go(tab.path);
+                        },
                       ),
                     ),
                 ],

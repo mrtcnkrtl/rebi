@@ -1,5 +1,16 @@
 {
   "mobileToday": {
+    "empty": {
+      "eyebrow": "First step",
+      "title": "Let's start by getting to know your skin",
+      "body": "A photo and a few questions are enough. We'll build your own morning and evening routine together.",
+      "step1": "A photo and a few questions",
+      "step1Sub": "Tell us about your skin and lifestyle",
+      "step2": "Rebi analyzes",
+      "step2Sub": "Based on your skin and the weather",
+      "step3": "Your routine is ready",
+      "step3Sub": "Morning and evening steps, with reminders"
+    },
     "title": "Today",
     "now": "Right now",
     "later": "Coming up",
@@ -37,6 +48,7 @@
       "title": "For today's weather",
       "weatherLine": "{{temp}}°C · UV {{uv}} · humidity {{humidity}}%",
       "locationHint": "Estimated weather values are in use. Allow location access to get advice based on live weather.",
+      "attribution": "Weather data: Open-Meteo.com",
       "source": {
         "live": "Live weather (your location)",
         "tracking": "Weather logged today",
@@ -241,6 +253,21 @@
     "newAnalysis": "New analysis",
     "settings": "Reminder settings",
     "weatherPill": "{{temp}}° · UV {{uv}} · humidity {{humidity}}%",
+    "weatherPanel": {
+      "title": "Today's weather",
+      "humidity": "HUMIDITY",
+      "uv": {
+        "low": "Low",
+        "moderate": "Moderate",
+        "high": "High",
+        "veryHigh": "Very high"
+      },
+      "hum": {
+        "dry": "Dry",
+        "comfortable": "Balanced",
+        "humid": "Humid"
+      }
+    },
     "weatherPillEstimated": "estimated",
     "decisions": {
       "spf": {
@@ -385,6 +412,14 @@
     "retry": "Try again",
     "notSynced": "Logs aren't stored on the server for this account; history may look empty.",
     "summaryTitle": "Summary",
+    "tiles": {
+      "days": "days logged",
+      "checkins": "check-ins",
+      "routine": "full routine days",
+      "water": "avg water",
+      "sleep": "avg sleep",
+      "risk": "avg risk"
+    },
     "summary": {
       "recordedDays": "{{n}} days logged",
       "checkins": "{{n}} check-ins",
@@ -579,6 +614,29 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "mobileThemes": {
+    "accent": "Accent color",
+    "preview": "Preview",
+    "plusPrefix": "For Rebi Plus, see the ",
+    "plusLink": "subscription page",
+    "names": {
+      "teal": "Forest",
+      "green": "Sage",
+      "pink": "Powder",
+      "lavender": "Lavender",
+      "sunset": "Sunset",
+      "ocean": "Deep Water",
+      "noir": "Night"
+    },
+    "sample": {
+      "title": "Morning routine",
+      "hint": "Three steps for today",
+      "cleanser": "Cleanser",
+      "serum": "Serum",
+      "sunscreen": "Sunscreen",
+      "done": "I did my morning routine"
+    }
+  },
   "mobileNav": {
     "today": "Today",
     "routine": "Routine",
@@ -613,13 +671,38 @@
     },
     "plusBadge": "Plus",
     "logout": "Sign out",
+    "logoutConfirm": {
+      "title": "Sign out?",
+      "body": "Your reminders will stop on this device. You can sign back in any time.",
+      "confirm": "Yes, sign out",
+      "cancel": "Cancel"
+    },
     "noName": "Rebi user",
     "shelf": {
       "hint": "Keep track of finished products and restocks"
+    },
+    "support": {
+      "title": "Support and contact",
+      "hint": "Questions, feedback and account or data requests"
     }
   },
   "mobileCommon": {
-    "loading": "Loading"
+    "loading": "Loading",
+    "errorScreen": {
+      "title": "Something went wrong",
+      "body": "There was a problem loading this page.",
+      "home": "Back to home"
+    },
+    "errors": {
+      "noResponse": "Didn't get a meaningful reply from the server.",
+      "incomplete": "Couldn't complete that. Try again in a while.",
+      "session": "Your session may have expired. Try signing out and back in.",
+      "rateLimited": "We're going a bit fast. Wait a few seconds and try again.",
+      "busy": "The server is busy right now. Try again in a moment.",
+      "server": "Something went wrong on the server. Try again in a moment.",
+      "profileSave": "Couldn't save your profile.",
+      "privacy": "Couldn't update the privacy preference."
+    }
   },
   "mobileChat": {
     "suggestionsTitle": "Suggested questions for today",
@@ -646,13 +729,16 @@
       "bodyDay": "Your allowance renews tomorrow. You can keep using your routine, tracking and check-in today.",
       "bodyMonth": "Your allowance renews at the start of the month. Until then you can keep using your routine, tracking and check-in.",
       "close": "OK",
-      "signIn": "Sign in",
       "plusOpen": "Open Rebi Plus",
       "plusSwitch": "Go Plus",
       "notNow": "Close for now",
       "bulletData": "More consistent advice from your tracking and check-ins",
-      "bulletThemes": "Premium themes and new features",
-      "signInNote": "You'll need an account to use the routine side anyway."
+      "bulletThemes": "Premium themes and new features"
+    },
+    "gate": {
+      "title": "Let's meet first.",
+      "hello": "Hi, I'm Rebi. Once I know your skin and your routine, my answers are made for you, not for everyone.",
+      "why": "All it takes is a free account: your conversations stay yours and pick up where you left off on any device."
     },
     "contextLabel": "Rebi knows your day",
     "context": {
@@ -669,11 +755,205 @@
       "offline": "Couldn't connect. Check your internet and try again.",
       "server": "The server isn't responding right now. Try again in a moment.",
       "auth": "Your session may have expired. Try signing out and back in.",
+      "rateLimited": "We're going a bit fast. Wait a few seconds and try again.",
       "generic": "Couldn't get a reply. Want to try again?"
     }
   },
+  "mobileAccount": {
+    "unavailable": "Account settings aren't available right now.",
+    "intro": {
+      "a": "Rebi keeps your data safe. You can add a new skin photo with the ",
+      "b": " or go to the full ",
+      "c": ". The images you upload are listed below."
+    },
+    "passwordNote": "Changing your password only applies to accounts that sign in with email. If you use social sign-in, the password can't be changed here.",
+    "name": {
+      "title": "Display name",
+      "hint": "Your full name",
+      "save": "Save details",
+      "saved": "Your details were updated.",
+      "failed": "Couldn't save."
+    },
+    "password": {
+      "title": "Change password",
+      "hint": "New password (at least 6 characters)",
+      "confirm": "Repeat new password",
+      "update": "Update password",
+      "tooShort": "Password must be at least 6 characters.",
+      "mismatch": "Passwords don't match.",
+      "updated": "Your password was updated.",
+      "failed": "Couldn't change the password."
+    },
+    "privacy": {
+      "title": "Privacy permissions",
+      "body": "For routines, check-in insights and chat, your data is sent to the Google Gemini API; details are in the link below and the KVKK notice. You can change permissions at any time.",
+      "location": "Share precise location for weather/UV",
+      "photo": "Store skin photos in a private area",
+      "save": "Save permissions",
+      "saved": "Your privacy preferences were saved.",
+      "failed": "Couldn't save privacy preferences.",
+      "loadFailed": "Couldn't load privacy preferences.",
+      "aiSharing": "Data sharing with Google Gemini (required for routines, check-in insights and chat)",
+      "aiSharingDetails": "What is shared?"
+    },
+    "stats": {
+      "intro": "Your streak and consistency update here as you check in daily. Goal: a check-in habit for {{n}} days in a row.",
+      "applied": "Days you said you followed your routine in check-ins: ",
+      "goal": "Streak goal ({{n}} days)",
+      "journey": "Your routine journey: ",
+      "days": "{{n}} days",
+      "sinceAccept": " (since you accepted it)",
+      "noAcceptDate": "The date you accepted your routine will be recorded automatically from the next update.",
+      "checkin": "Check in",
+      "addPhoto": "Add a photo"
+    },
+    "delete": {
+      "title": "Permanently delete account",
+      "body": "Your profile, routines, daily records and analysis data are deleted from the database. Your skin photos are removed from storage. This can't be undone; if Rebi Plus or other membership details remain in the billing system, you may need to cancel them there too.",
+      "confirm": "To confirm, type exactly: ",
+      "phraseMismatch": "To delete permanently, type exactly {{phrase}} in the box.",
+      "requestFailed": "Request failed",
+      "failed": "Couldn't delete the account.",
+      "button": "Delete my account permanently"
+    },
+    "photos": {
+      "error": "Couldn't load photos.",
+      "empty": "No saved photos yet.",
+      "noPreview": "No preview",
+      "hint": "Images you upload in the analysis are listed here by date (by the file date on the server)."
+    },
+    "privacyLoadFailed": "Couldn't load your privacy preferences.",
+    "photosLoadFailed": "Couldn't load your photos.",
+    "nameSaved": "Your details are updated.",
+    "saveFailed": "Couldn't save.",
+    "passwordTooShort": "Password must be at least 6 characters.",
+    "passwordMismatch": "Passwords don't match.",
+    "passwordSaved": "Your password is updated.",
+    "passwordFailed": "Couldn't change your password.",
+    "deletePhraseWrong": "To delete permanently, type exactly {{phrase}} in the box.",
+    "requestFailed": "Request failed",
+    "deleteFailed": "Couldn't delete your account.",
+    "privacySaved": "Your privacy preferences are saved.",
+    "privacySaveFailed": "Couldn't save your privacy preferences.",
+    "notConfigured": "Supabase is not configured; profile and photos are unavailable.",
+    "infoSafe": " keeps your data safe. Add a new skin photo with ",
+    "infoOr": " or go to the full ",
+    "infoEnd": ". The images you uploaded are listed below.",
+    "displayName": "Display name",
+    "displayNameHint": "Your full name",
+    "saveName": "Save details",
+    "changePassword": "Change password",
+    "newPassword": "New password (at least 6 characters)",
+    "newPasswordAgain": "Repeat new password",
+    "updatePassword": "Update password",
+    "privacyTitle": "Privacy permissions",
+    "privacyBody": "AI processing for your routine and chat is performed by A3 Biyoteknoloji; details are in the privacy notice and explicit consent texts. You can change location and photo permissions at any time.",
+    "privacyLocation": "Share precise location for weather/UV",
+    "privacyPhoto": "Store skin photos in private storage",
+    "privacySave": "Save permissions",
+    "themes": "Themes",
+    "statsIntro": "Your streak and consistency update as you check in daily. Goal: a {{days}}-day check-in habit in a row.",
+    "adherenceDays": "Days you said you followed your routine in check-ins: ",
+    "streakGoal": "Streak goal ({{days}} days)",
+    "journey": "Your routine journey: ",
+    "journeyDays": "{{days}} days",
+    "journeySince": " (since you accepted it)",
+    "journeyPending": "The routine acceptance date is saved automatically from the next update.",
+    "doCheckin": "Check in",
+    "addPhoto": "Add photo",
+    "deleteTitle": "Delete account permanently",
+    "deleteBody": "Your profile, routines, daily logs and analysis data are deleted from the database. Your skin photos are removed from storage. This cannot be undone.",
+    "deleteTypeToConfirm": "Type exactly to confirm: ",
+    "deleteButton": "Delete my account permanently",
+    "noPhotos": "No saved photos yet.",
+    "noPreview": "No preview",
+    "photosIntro": "Images you uploaded in analysis are listed here by date (based on the file date on the server).",
+    "deletePhrase": "DELETE"
+  },
   "mobileCheckin": {
-    "prefilled": "{{n}} answers were filled in from today's tracking. Change them if you like."
+    "prefilled": "{{n}} answers were filled in from today's tracking. Change them if you like.",
+    "blendNote": "Your sleep and stress answers are briefly blended with your recent check-ins before they feed into the risk summary.",
+    "analyzing": "Analyzing...",
+    "needSkin": "Pick how your skin feels today to send your check-in.",
+    "errors": {
+      "network": "Couldn't connect. Check your internet and try again.",
+      "alreadyDone": "You've already checked in today.",
+      "unexpected": "Something went wrong."
+    },
+    "result": {
+      "risk": "Risk: {{level}}",
+      "major": "Major changes were made",
+      "changes": "Changes",
+      "todayRoutine": "Today's routine"
+    },
+    "sleep": {
+      "question": "How many hours did you sleep last night?",
+      "unit": "{{h}}h"
+    },
+    "stress": {
+      "question": "How would you describe your stress level today?",
+      "l1": "Very low",
+      "l2": "Low",
+      "l3": "Medium",
+      "l4": "High",
+      "l5": "Very high"
+    },
+    "skin": {
+      "question": "How does your skin feel today?",
+      "iyi": { "title": "Good", "desc": "Feels normal" },
+      "kuru": { "title": "Dry", "desc": "Tightness, rough patches" },
+      "yagli": { "title": "Oily", "desc": "Shine, greasiness" },
+      "kirik": { "title": "Sensitive", "desc": "Redness, peeling" },
+      "irritasyon": { "title": "Irritated", "desc": "Burning, stinging" }
+    },
+    "routineQuestion": "Did you follow yesterday's routine?",
+    "concernIntro": {
+      "lead": "Tailored to your concern:",
+      "body": "The extra questions below are chosen from the main concern in your analysis. Skip any you'd rather not answer; past check-in patterns sometimes show up in the risk summary. Sleep and stress above are blended with your recent records."
+    },
+    "notes": {
+      "question": "Anything you'd like to add?",
+      "optional": "(optional)",
+      "hint": "I tried a new ingredient yesterday, spent time in the sun..."
+    },
+    "water": {
+      "title": "Water you drank today (ml)",
+      "help": "Enter the amount in milliliters (ml). 1 glass = {{glass}} ml (a standard glass). If you leave it empty, the in-app water tracking or the daily target from your analysis is used.",
+      "placeholder": "e.g. {{ml}} (8 glasses)",
+      "note": "The value is saved as whole milliliters when you submit (up to 8000 ml).",
+      "minus": "−1 glass (−{{ml}} ml)",
+      "plus": "+1 glass (+{{ml}} ml)",
+      "half": "+½ glass (+{{ml}} ml)",
+      "zeroGlasses": "0 glasses",
+      "aboutGlasses": "about {{n}} glasses"
+    },
+    "makeup": {
+      "title": "Makeup today",
+      "hint": "Skip if you like; if you don't choose, only your profile makeup frequency is used in the risk calculation.",
+      "how": "How did you remove it?",
+      "cleanser": "Cleanser",
+      "double": "Double cleanse",
+      "water": "Water only",
+      "wipe": "Micellar water / wipe",
+      "none": "Didn't remove"
+    },
+    "extras": {
+      "acne": "For acne",
+      "aging": "For aging concerns",
+      "pigmentation": "For pigmentation",
+      "dryness": "For dryness",
+      "sensitivity": "For sensitivity",
+      "active": "Active ingredients",
+      "picked_skin_today": { "q": "Did you pick at pimples or blackheads?", "d": "Mechanical irritation weakens the barrier and shows up in the risk summary." },
+      "high_glycemic_intake_today": { "q": "A meal today that spiked your blood sugar?", "d": "Like white flour, sweets or sugary drinks." },
+      "heavy_dairy_today": { "q": "Did you have a lot of dairy (milk, yogurt, cheese)?", "d": "Can be a trigger for some acne-prone skin." },
+      "long_sun_exposure_today": { "q": "Did you spend a long time in direct sun?", "d": "30+ minutes of open sun, or a high-UV day." },
+      "spf_applied_today": { "q": "Did you apply sunscreen to your face?", "d": "Answer Yes if you completed the SPF step of your routine." },
+      "very_dry_environment_today": { "q": "Was your home or office very dry? (heating, A/C, wind)" },
+      "long_hot_shower_today": { "q": "Did you take a long or very hot shower?", "d": "It can increase barrier dryness." },
+      "fragrance_new_product_today": { "q": "Did you use a new perfume or strongly scented product?" },
+      "tried_new_active_today": { "q": "Did you try a new strong active or a peel?", "d": "E.g. retinol, AHA/BHA, high-concentration serums." }
+    }
   },
   "mobileSubscribe": {
     "unavailable": "Rebi Plus can't be purchased in the app right now. It will show up here once it's active on your account.",
@@ -706,21 +986,9 @@
     }
   },
   "mobileLanding": {
-    "chipUv": "UV 6",
-    "chipHumidity": "Humidity 48%",
-    "chipSpf": "SPF 50",
-    "chipActive": "Niacinamide",
-    "tagMorning": "Morning routine",
-    "tagMorningSub": "Completed",
-    "tagSpf": "Reapply SPF",
-    "tagSpfSub": "UV 6 · Humidity 48%",
-    "openApp": "Open dashboard",
-    "s1Title": "Truly know your skin",
-    "s1Sub": "Your photo, lifestyle and local weather in a single analysis.",
-    "s2Title": "Science-backed routine",
-    "s2Sub": "Morning and evening steps built on active ingredients, not brands.",
-    "s3Title": "Adapts to you daily",
-    "s3Sub": "Daily check-ins and weather shape your routine around your skin."
+    "heroTitle": "A routine made\nfor your skin.",
+    "heroSub": "Your photo, lifestyle and weather become your morning and evening steps.",
+    "openApp": "Open dashboard"
   },
   "mobileAuth": {
     "strengthWeak": "Weak",
@@ -729,7 +997,225 @@
     "strengthHint": "At least 6 characters. Mix letters, numbers and symbols.",
     "trust": "Your data is protected under KVKK.",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "forgotPassword": "Forgot password?",
+    "forgotTitle": "Reset your password",
+    "forgotSubtitle": "Enter your email address and we will send you a reset link.",
+    "forgotSend": "Send reset link",
+    "forgotSent": "If this address is registered, we sent a reset link. Tap it and the app opens so you can set a new password. Check your spam folder if it does not arrive.",
+    "backToLogin": "Back to sign in",
+    "resetTitle": "Set a new password",
+    "resetSubtitle": "Choose a new password for your account.",
+    "resetNewPassword": "New password",
+    "resetConfirmPassword": "Repeat the new password",
+    "resetSave": "Save password",
+    "resetCancel": "Cancel",
+    "resetMismatch": "The passwords do not match.",
+    "signupSent": "You are registered. Check your spam folder if the email does not arrive.",
+    "resendConfirmation": "Resend confirmation email",
+    "resendSent": "We sent a new email. Use only the newest email's code; older ones stop working. Check your spam folder too.",
+    "verifyTitle": "Confirm your email",
+    "verifySubtitle": "We sent a 6-digit code to {{email}}.",
+    "verifyCodeLabel": "Confirmation code",
+    "verifyCodeShort": "Enter the 6-digit code.",
+    "verifySubmit": "Confirm",
+    "verifyHint": "Type the code or tap the button in the email. If you confirmed with the button, continue below.",
+    "verifyContinue": "I've confirmed, continue",
+    "verifyChangeEmail": "Change address",
+    "verifyResend": "Resend code",
+    "resendWait": "Resend ({{s}} s)",
+    "errCodeInvalid": "The code is wrong or has expired. Make sure you typed the code from the latest email; if it still fails, resend it.",
+    "needEmailFirst": "Enter your email address first.",
+    "errInvalidCredentials": "Email or password is incorrect. Please check and try again.",
+    "errEmailNotConfirmed": "This email is not confirmed yet. Enter the code from your email or tap its confirm button; resend it if it did not arrive.",
+    "errAlreadyRegistered": "An account with this email already exists. Try signing in; if you forgot your password, tap \"Forgot password?\".",
+    "errWeakPassword": "This password is too weak. Choose a longer one that mixes letters, numbers and symbols.",
+    "errSamePassword": "The new password must be different from the old one.",
+    "errRateLimited": "Too many attempts in a short time. Wait a minute or two and try again; if it continues, turn off any VPN / corporate network.",
+    "errEmailSend": "The email could not be sent right now. Please try again in a few minutes.",
+    "errLinkInvalid": "The link is invalid or has expired. Email apps can open links in advance, so your account may already be confirmed: try signing in first. If not, resend the confirmation email. If you are resetting your password, request a new link.",
+    "errNetwork": "Could not reach the server. Make sure your internet / VPN connection is on, then try again."
+  },
+  "mobileAnalyze": {
+    "loading": {
+      "title": "Preparing your routine.",
+      "subtitle": "Your skin, the weather where you are and your daily habits are being considered together.",
+      "weather": "Checking today's weather",
+      "science": "Reading scientific sources",
+      "ai": "AI is assessing your skin and habits",
+      "build": "Building your morning and evening routine",
+      "note": "Just keep the screen on; your routine opens by itself when it's ready."
+    },
+    "chapters": {
+      "about": "You",
+      "skin": "Your skin",
+      "life": "Daily life",
+      "products": "Your products",
+      "finish": "Last step"
+    },
+    "next": "Continue",
+    "decrease": "Decrease",
+    "increase": "Increase",
+    "leaveTitle": "Leave the analysis?",
+    "leaveBody": "Your answers so far will not be saved.",
+    "leaveStay": "Keep going",
+    "leaveExit": "Leave",
+    "intro": {
+      "title": "Let’s get to know you.",
+      "lead": "I need to know a few things so I can build your routine around you.",
+      "time": "Takes about 3 minutes.",
+      "easy": "One question per screen. Skip what you don’t know and change it later.",
+      "private": "Your answers are only used to personalize your routine.",
+      "start": "Let’s begin"
+    },
+    "basics": {
+      "title": "First, about you",
+      "subtitle": "Rebi will call you by your name.",
+      "ageRange": "Rebi is made for ages {{min}}–{{max}}. Could you check your age?"
+    },
+    "gender": {
+      "title": "Your gender?",
+      "subtitle": "Hormones affect skin; we shape the routine around that."
+    },
+    "hormonal": {
+      "title": "How are your hormones?",
+      "subtitle": "Your cycle changes how your skin behaves from week to week."
+    },
+    "period": {
+      "title": "When did your last period start?",
+      "subtitle": "Knowing where you are in your cycle lets us adjust the routine.",
+      "pick": "Pick a date",
+      "cycle": "Your cycle length",
+      "days": "{{n}} days"
+    },
+    "skinType": {
+      "title": "What is your skin type?",
+      "subtitle": "If you are not sure, pick \"Normal\"; Rebi works it out from your other answers.",
+      "guide": "How do I tell my skin type?"
+    },
+    "concerns": {
+      "title": "What bothers you most?",
+      "subtitle": "You can pick more than one."
+    },
+    "primary": {
+      "title": "Where should we start?",
+      "subtitle": "I will build the routine around this first."
+    },
+    "zones": {
+      "title": "Where do you notice it?",
+      "subtitle": "Pick the areas affected by {{concern}}. Continue if you are not sure."
+    },
+    "flags": {
+      "title": "A little more detail",
+      "subtitle": "Pick what fits you; continue if none do.",
+      "aging": "Which lines stand out?",
+      "sensitivity": "How does your skin react?"
+    },
+    "severity": {
+      "caption": "{{name}} · {{n}}/{{total}}"
+    },
+    "life": {
+      "title": "Water and sleep",
+      "subtitle": "Pick a value close to your daily average.",
+      "water": "Water per day",
+      "sleep": "Sleep per night",
+      "liters": "{{n}} L",
+      "hours": "{{n}} hours"
+    },
+    "stress": {
+      "title": "Stress affects skin too.",
+      "lead": "Let’s look at your last month with 10 short questions; it takes about a minute.",
+      "note": "You can skip it for now; your routine is still created.",
+      "start": "Take the test",
+      "skip": "Skip for now",
+      "caption": "Stress test · {{n}}/{{total}}",
+      "scale": {
+        "0": "Never",
+        "1": "Almost never",
+        "2": "Sometimes",
+        "3": "Fairly often",
+        "4": "Very often"
+      }
+    },
+    "smoking": {
+      "title": "Do you smoke?",
+      "subtitle": "We ask because it affects skin repair."
+    },
+    "alcohol": {
+      "title": "Do you drink alcohol?",
+      "subtitle": "We ask because it affects skin hydration."
+    },
+    "makeup": {
+      "title": "Do you wear makeup?",
+      "subtitle": "How you cleanse shapes your routine."
+    },
+    "shaving": {
+      "title": "Do you shave?",
+      "subtitle": "Shaving can irritate skin; we shape your care around it.",
+      "freq": {
+        "0": "No",
+        "1": "Occasionally",
+        "3": "A few times a week",
+        "7": "Every day"
+      },
+      "afterQuestion": "How does your skin feel after shaving?",
+      "after": {
+        "ok": "Comfortable",
+        "irritated": "Red or stinging",
+        "ingrown": "Ingrown hairs or small bumps"
+      }
+    },
+    "actives": {
+      "title": "Have you used strong actives?",
+      "subtitle": "Like retinol, AHA/BHA or high-strength vitamin C."
+    },
+    "tolerance": {
+      "title": "How did your skin react to each?",
+      "subtitle": "Anything you leave alone counts as \"No issues\". We never put ingredients you reacted badly to in your routine.",
+      "sheet": "Pick how it went with this ingredient.",
+      "short": {
+        "never": "Not tried",
+        "good": "No issues",
+        "mild": "Mild reaction",
+        "bad": "Bad reaction"
+      }
+    },
+    "photo": {
+      "title": "Would you like to add a photo?",
+      "subtitle": "It helps a lot to compare your progress over time. You can add one later too.",
+      "tip": "Take it in natural light with your face straight on. You can also continue without a photo.",
+      "stored": "Your photo is kept private, in a secure area only you can access."
+    },
+    "location": {
+      "serviceOff": "Your phone’s location service is off. Turn it on and try again.",
+      "denied": "Location permission was not granted. You can try again or create the routine without location.",
+      "blocked": "Location permission is off. Allow it for Rebi in Settings, then come back here.",
+      "timeout": "Couldn’t get your location right now. Try again in an open area; you can also create the routine without it.",
+      "openSettings": "Open location settings",
+      "openAppSettings": "Open app settings",
+      "retry": "Try again",
+      "consentTitle": "Use your location for the weather?",
+      "consentBody": "To adjust your routine to local temperature, humidity and UV, we send your approximate location (≈1 km) to the weather service. You can turn it off any time in Me → Account and privacy.",
+      "consentAllow": "Allow and get location",
+      "consentLater": "Not now",
+      "consentFailed": "Couldn’t save the permission. Check your connection and try again."
+    },
+    "summary": {
+      "title": "We’re ready, {{name}}.",
+      "titleNoName": "We’re ready.",
+      "lead": "I will build your routine from this.",
+      "age": "Age",
+      "skin": "Skin type",
+      "focus": "Focus",
+      "severity": "Severity",
+      "photo": "Photo",
+      "photoAdded": "Added",
+      "photoNone": "Not added",
+      "location": "Share my location",
+      "locationHint": "I adjust the routine to your local weather and UV. Optional.",
+      "locationSet": "Location received",
+      "create": "Create my routine"
+    }
   },
   "mobileShelf": {
     "title": "My shelf",
@@ -777,5 +1263,174 @@
     "promptBody": "Sunscreen, moisturizer and lip balm advice follows the real weather at your location. Your location is only used approximately (~1 km).",
     "promptEnable": "Turn on location",
     "promptLater": "Not now"
+  },
+  "mobileCheckinForm": {
+    "feel": {
+      "iyi": [
+        "Good",
+        "I feel normal"
+      ],
+      "kuru": [
+        "Dry",
+        "Tight, tense"
+      ],
+      "yagli": [
+        "Oily",
+        "Shiny, greasy"
+      ],
+      "kirik": [
+        "Sensitive",
+        "Redness, peeling"
+      ],
+      "irritasyon": [
+        "Irritated",
+        "Burning, stinging"
+      ]
+    },
+    "stress": {
+      "1": "Very low",
+      "2": "Low",
+      "3": "Medium",
+      "4": "High",
+      "5": "Very high"
+    },
+    "glassesZero": "0 glasses",
+    "glassesApprox": "about {{n}} glasses",
+    "networkError": "Couldn't connect. Check your internet and try again.",
+    "alreadyDone": "You already checked in today.",
+    "unexpected": "Something went wrong.",
+    "risk": "Risk: ",
+    "majorChanges": " — Major changes made",
+    "changes": "Changes",
+    "todayRoutine": "Today's routine",
+    "intro": "Your sleep and stress answers are briefly blended with your past check-ins to form the risk summary.",
+    "sleepQ": "How many hours did you sleep last night?",
+    "hoursShort": "{{n}}h",
+    "stressQ": "How would you describe your stress level today?",
+    "skinQ": "How does your skin feel today?",
+    "routineQ": "Did you follow yesterday's routine?",
+    "yes": "Yes",
+    "no": "No",
+    "skip": "Skip",
+    "concernTitle": "For your concern:",
+    "concernBody": " The extra questions below are chosen from the main concern in your analysis. Skip any you prefer not to answer; past check-in patterns sometimes feed into the risk summary. Sleep and stress, above, are blended with past entries.",
+    "notesQ": "Anything you want to add? ",
+    "optional": "(optional)",
+    "notesHint": "I tried a new active yesterday, spent time in the sun...",
+    "analyzing": "Analyzing...",
+    "waterQ": "Water you drank today (ml)",
+    "waterIntro1": "Enter the amount in ",
+    "waterUnit": "millilitres (ml)",
+    "waterIntro2": ". Conversion: ",
+    "waterGlass": "1 glass = {{ml}} ml",
+    "waterIntro3": " (standard glass). If you leave it empty, your in-app water tracking or daily goal from analysis is used.",
+    "waterHint": "e.g. {{ml}} (8 glasses)",
+    "waterNote": "The value is saved as whole ml when sent (at most 8000 ml).",
+    "glassMinus": "−1 glass (−{{ml}} ml)",
+    "glassPlus": "+1 glass (+{{ml}} ml)",
+    "glassHalf": "+½ glass (+125 ml)",
+    "makeupQ": "Makeup today",
+    "makeupIntro": "Skip if you like; if you don't choose, only the makeup frequency in your profile is used for risk.",
+    "removalQ": "How did you remove it?",
+    "removal": {
+      "cleanser": "Cleanser",
+      "double": "Double cleanse",
+      "water": "Water only",
+      "wipe": "Micellar water / wipe",
+      "none": "Didn't remove"
+    },
+    "acne": "For acne",
+    "acnePick": "Did you pick at spots or blackheads?",
+    "acnePickD": "Mechanical irritation weakens the barrier; it shows up in the risk summary.",
+    "acneSugar": "Did you have a high-sugar meal that spikes blood sugar today?",
+    "acneSugarD": "Such as white flour, sweets or sugary drinks.",
+    "acneDairy": "Did you have a lot of dairy (milk, yoghurt, cheese)?",
+    "acneDairyD": "Can be a trigger for some acne tendencies.",
+    "aging": "For ageing",
+    "pigmentation": "For dark spots",
+    "sun": "Did you spend a long time in direct sun?",
+    "sunD": "30+ min of open sun or a high-UV day.",
+    "spf": "Did you apply sunscreen to your face?",
+    "spfD": "Yes if you completed the SPF step in your routine.",
+    "dryness": "For dryness",
+    "dryEnv": "Was your home/work very dry? (heating, AC, wind)",
+    "shower": "Did you take a long or very hot shower?",
+    "showerD": "Can increase barrier dryness.",
+    "sensitivity": "For sensitivity",
+    "fragrance": "Did you use a new perfume or strongly scented product?",
+    "active": "Active ingredient",
+    "newActive": "Did you try a new strong active or peel?",
+    "newActiveD": "e.g. retinol, AHA/BHA, high-concentration serum."
+  },
+  "mobileMisc": {
+    "authNotConfigured": "Sign-in isn't available: the app was built without server settings.",
+    "authNetwork": "Couldn't reach the server. Check your internet connection and try again.",
+    "authRateLimit": "Too many attempts in a short time. Please wait 1-2 minutes and try again.",
+    "genericError": "Something went wrong",
+    "signupConfirm": "You're registered. Sign in after tapping the confirmation link in your email. If it hasn't arrived, check your spam folder.",
+    "loadingWeather": "Checking the weather...",
+    "loadingLiterature": "Scanning scientific literature...",
+    "loadingAi": "AI is analyzing...",
+    "loadingRoutine": "Preparing your routine...",
+    "loadingTitle": "Rebi is analyzing",
+    "loadingSubtitle": "Preparing a holistic routine just for you",
+    "accentColor": "ACCENT COLOR",
+    "preview": "PREVIEW",
+    "plusFor": "For Rebi Plus, see the ",
+    "plusPage": "subscription page",
+    "previewTitle": "Morning routine",
+    "previewSub": "Three steps for today",
+    "previewCleanser": "Cleanser",
+    "previewSerum": "Serum",
+    "previewSpf": "Sunscreen",
+    "previewDone": "I did my morning routine",
+    "themeNames": {
+      "teal": "Forest",
+      "green": "Sage",
+      "pink": "Powder",
+      "lavender": "Lavender",
+      "sunset": "Sunset",
+      "ocean": "Deep Water",
+      "noir": "Night"
+    },
+    "apiNoResponse": "Didn't get a meaningful response from the server.",
+    "apiFailed": "Couldn't complete the request. Please try again later.",
+    "errorTitle": "Something went wrong",
+    "errorBody": "An error occurred while loading the page.",
+    "errorHome": "Back to home"
+  },
+  "mobileRoutineHints": {
+    "morning": {
+      "retinoid": "Retinoids (retinol, retinal, adapalene etc.) in your routine: do not use in the morning.",
+      "bakuchiol": "Bakuchiol in your routine: do not use in the morning.",
+      "arbutin_leke": "Spot-targeting actives (arbutin, tranexamic acid etc.) in your routine: do not use in the morning.",
+      "aha": "AHA (glycolic, lactic etc.) in your routine: do not use in the morning.",
+      "bha": "BHA (salicylic acid) in your routine: do not use in the morning.",
+      "benzoil": "Benzoyl peroxide in your routine: do not use in the morning.",
+      "azelaik": "Azelaic acid (treatment strength) in your routine: do not use in the morning."
+    },
+    "starter": "Ramp-up",
+    "everyDay": "Daily",
+    "perWeek": "{{n}}×/week",
+    "families": {
+      "azelaic": "Azelaic",
+      "vitamin_c": "Vit. C",
+      "pigment": "Spots"
+    },
+    "percent": "{{n}}%"
+  },
+  "mobileAiSharing": {
+    "title": "Sharing data with AI",
+    "intro": "To build your routine, interpret your daily check-ins and answer in chat, Rebi sends the information below to a third-party AI service. Nothing is sent until you allow it.",
+    "whatTitle": "Data that is sent",
+    "items": "Profile details: your name, age and gender\nYour skin type, skin concerns and analysis answers\nHealth and lifestyle answers: pregnancy, cycle phase, smoking, alcohol, sleep, stress and water intake\nYour daily check-ins and the products in your routine\nMessages you write in chat\nIf location permission is on, weather and UV information for your area",
+    "whoTitle": "Who receives it",
+    "who": "Google LLC (Gemini API). Data is sent over an encrypted connection and used only to generate responses for you. Under the paid Gemini API terms, Google does not use this data to train its models, and it applies protection at least equal to ours.",
+    "notSent": "Your skin photos, email address and password are never sent to the AI.",
+    "control": "You can withdraw this permission at any time in Account > Privacy permissions. Without it, routine creation, check-in insights and chat won't work; you can keep using the other features.",
+    "privacyLink": "Privacy policy (KVKK Privacy Notice)",
+    "allow": "Allow and continue",
+    "decline": "Not now",
+    "declined": "This feature needs your permission to share data with the AI service."
   }
 }

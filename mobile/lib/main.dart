@@ -82,9 +82,9 @@ class _ErrorCard extends StatelessWidget {
                   child: Icon(LucideIcons.cloudAlert, size: 30, color: Tw.red600),
                 ),
                 const SizedBox(height: 16),
-                Text('Bir Sorun Oluştu', style: tx(20, w: 7)),
+                Text(I18n.instance.t('mobileCommon.errorScreen.title', const {}, 'Bir sorun oluştu'), style: tx(20, w: 7)),
                 const SizedBox(height: 8),
-                Text('Sayfa yüklenirken bir hata meydana geldi.', textAlign: TextAlign.center, style: tx(14, c: Tw.gray500)),
+                Text(I18n.instance.t('mobileCommon.errorScreen.body', const {}, 'Sayfa yüklenirken bir hata meydana geldi.'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray600)),
                 if (kDebugMode) ...[
                   const SizedBox(height: 16),
                   Container(
@@ -111,7 +111,7 @@ class _ErrorCard extends StatelessWidget {
                     },
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                      child: Text('Ana Sayfaya Dön', style: tx(14, w: 5, c: Colors.white)),
+                      child: Text(I18n.instance.t('mobileCommon.errorScreen.home', const {}, 'Ana sayfaya dön'), style: tx(14, w: 5, c: Colors.white)),
                     ),
                   ),
                 ),

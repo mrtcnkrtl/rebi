@@ -10,6 +10,7 @@ import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../state/today_plan_controller.dart';
 import '../ui/brand/palette.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/widgets/skeleton.dart';
@@ -93,15 +94,13 @@ class _ShelfScreenState extends State<ShelfScreen> {
     final theme = context.watch<ThemeController>().theme;
     final c = _controller;
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
-      maxWidth: 672,
-      padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+      title: i18n.t('mobileShelf.title'),
+      subtitle: i18n.t('mobileShelf.subtitle'),
+      backTo: '/dashboard',
+      onRefresh: c?.reload,
       children: [
-        Text(i18n.t('mobileShelf.title'), style: heading(32, h: 1.1)),
-        const SizedBox(height: 6),
-        Text(i18n.t('mobileShelf.subtitle'), style: tx(14, c: Tw.gray500, h: relaxed)),
-        const SizedBox(height: 20),
         if (c == null)
           _empty(i18n)
         else
@@ -121,12 +120,6 @@ class _ShelfScreenState extends State<ShelfScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (c.pendingCount > 0) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(i18n.t('mobileShelf.pending', {'count': c.pendingCount}), style: tx(12, c: Tw.amber900)),
-          ),
-        ],
         if (items.isEmpty)
           _empty(i18n)
         else ...[
@@ -137,6 +130,11 @@ class _ShelfScreenState extends State<ShelfScreen> {
             child: Text(i18n.t('mobileShelf.hint'), style: tx(12, c: Tw.gray500, h: relaxed)),
           ),
         ],
+        if (c.pendingCount > 0)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
+            child: Text(i18n.t('mobileShelf.pending', {'count': c.pendingCount}), style: tx(12, c: Tw.readable(Tw.amber700))),
+          ),
       ],
     );
   }

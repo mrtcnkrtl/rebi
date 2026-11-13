@@ -20,15 +20,19 @@ const TR_KVKK = [
     body: "Rutin ve sohbet için yapay zekâ işlemesi A3 Biyoteknoloji tarafından, Google Gemini AI altyapısı kullanılarak gerçekleştirilir. Barındırma ve veritabanı için veriler Supabase’e aktarılabilir. Konum izni verirseniz kesin koordinatlar Open-Meteo’ya (yedek olarak OpenWeather’a) iletilir. Fotoğraf izni verirseniz görüntüler private Supabase Storage alanında saklanır. Zorunlu hallerde yetkili kamu kurumlarına aktarım yapılabilir; yurt dışı aktarımlarda KVKK usulleri uygulanır.",
   },
   {
-    title: "5. Saklama süresi",
+    title: "5. Üçüncü taraf yapay zekâ hizmeti (Google Gemini)",
+    body: "Rutin oluşturma, check-in yorumu, rutin çevirisi ve sohbet yanıtları için aşağıdaki veriler, uygulama içinde ayrıca izin vermenizden sonra Google LLC’nin Gemini API hizmetine şifreli bağlantıyla gönderilir: ad, yaş ve cinsiyet; cilt tipi, şikâyet ve analiz cevapları; hamilelik/döngü, sigara, alkol, uyku, stres ve su tüketimi gibi sağlık ve yaşam tarzı bilgileri; günlük check-in kayıtları ve rutindeki ürünler; sohbet mesajları; konum izni verdiyseniz bölgenizin hava ve UV bilgisi. Cilt fotoğrafları, e-posta adresi ve şifre Gemini’ye gönderilmez. Veriler yalnızca size yanıt üretmek amacıyla kullanılır; Google, ücretli Gemini API koşulları gereği bu verileri kendi modellerini eğitmek için kullanmaz ve veri işleme şartları kapsamında en az bu metinde açıklanan düzeyde koruma sağlar. Bu izni uygulamada Hesap > Gizlilik izinleri bölümünden istediğiniz zaman geri alabilirsiniz; bu durumda yapay zekâ özellikleri çalışmaz, diğer özellikler kullanılmaya devam edilebilir.",
+  },
+  {
+    title: "6. Saklama süresi",
     body: "Aktif profil ve rutin hesabınız açık olduğu sürece saklanır. Giriş sunumu IP hash’i 180 gün, günlük mikro olaylar 400 gün; günlük check-in ile kullanılmayan geçmiş rutin/değerlendirme kayıtları en fazla 730 gün tutulur. Cilt fotoğrafları siz silene veya hesabınızı kapatana kadar saklanır. Hesabı sildiğinizde profil, rutin, check-in, rıza kaydı ve fotoğraflar kaldırılır; kanunen zorunlu kayıtlar ilgili süre boyunca ayrıca tutulabilir.",
   },
   {
-    title: "6. Haklarınız (KVKK m.11)",
+    title: "7. Haklarınız (KVKK m.11)",
     body: "Verilerinizin işlenip işlenmediğini öğrenme, bilgi talep etme, amaca uygunluğu öğrenme, yurt içinde/dışında aktarılan üçüncü kişileri bilme, düzeltilmesini isteme, silinmesini/yok edilmesini isteme, itiraz ve zararın giderilmesini talep etme haklarınız vardır. Başvurularınız makul sürede yanıtlanır.",
   },
   {
-    title: "7. Çerez ve yerel depolama",
+    title: "8. Çerez ve yerel depolama",
     body: "Oturum, dil, rutin takibi ve bu metinlere verdiğiniz onay tarayıcınızda (ör. localStorage) tutulabilir. Zorunlu olanlar hizmetin çalışması içindir.",
   },
 ];
@@ -51,15 +55,19 @@ const EN_KVKK = [
     body: "AI processing for routines and chat is performed by A3 Biyoteknoloji using Google Gemini AI infrastructure. Data may also be shared with Supabase for hosting and database services. If location permission is granted, precise coordinates are sent to Open-Meteo (or OpenWeather as fallback). If photo permission is granted, images are stored in private Supabase Storage. Transfers abroad follow applicable KVKK procedures.",
   },
   {
-    title: "5. Retention",
+    title: "5. Third-party AI service (Google Gemini)",
+    body: "For routine creation, check-in insights, routine translation and chat replies, the following data is sent over an encrypted connection to Google LLC’s Gemini API, only after you give separate permission in the app: name, age and gender; skin type, concerns and analysis answers; health and lifestyle information such as pregnancy/cycle, smoking, alcohol, sleep, stress and water intake; daily check-ins and the products in your routine; chat messages; and, if you granted location permission, weather and UV information for your area. Skin photos, email address and password are never sent to Gemini. The data is used only to generate responses for you; under the paid Gemini API terms Google does not use it to train its models, and under its data processing terms provides protection at least equal to that described in this notice. You can withdraw this permission at any time in Account > Privacy permissions in the app; AI features will then stop working while other features remain available.",
+  },
+  {
+    title: "6. Retention",
     body: "Active profiles and routines are kept while the account remains open. Intro IP hashes are retained for 180 days, daily events for 400 days, and check-ins plus unused historical routines/assessments for up to 730 days. Skin photos remain until you delete them or close the account. Account deletion removes profile, routines, check-ins, consent evidence and photos; legally required records may be retained for the applicable period.",
   },
   {
-    title: "6. Your rights (KVKK art. 11)",
+    title: "7. Your rights (KVKK art. 11)",
     body: "You may learn whether your data is processed, request information, learn the purpose, know third-party recipients, request correction, erasure/destruction, object, and claim damages. We respond within a reasonable time.",
   },
   {
-    title: "7. Cookies and local storage",
+    title: "8. Cookies and local storage",
     body: "Session, language, routine tracking and this consent may be stored in your browser (e.g. localStorage). Strictly necessary items are required for the service to work.",
   },
 ];

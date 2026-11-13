@@ -11,6 +11,8 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:provider/provider.dart';
+import 'package:rebi/core/ai_sharing.dart';
+import 'package:rebi/core/demo_user.dart';
 import 'package:rebi/core/api.dart';
 import 'package:rebi/core/consent_recovery.dart';
 import 'package:rebi/core/event_outbox.dart';
@@ -54,6 +56,10 @@ class FakeBackend {
 
   /// true: yapay zekâ uçları rıza kaydı yokmuş gibi 403 döner.
   bool consentMissing = false;
+
+  /// `GET /legal-consent/status` yanıtı: sunucuda bu kullanıcının rıza kaydı var mı. [consentStatusFails] doluysa o durum koduyla düşer.
+  bool consentRecordedOnServer = false;
+  int? consentStatusFails;
   Map<String, dynamic> checkinStatus = {'already_checked_in': false, 'log_date': '2026-10-10'};
 
   /// `GET /me/snapshot` yanıtı; testler istediği alanı değiştirir.
@@ -113,6 +119,17 @@ class FakeBackend {
   /// Açılış paketi isteği hata (ör. çevrimdışı sunucu) döndürsün.
   bool snapshotFails = false;
 
+  /// `GET/POST /privacy-preferences`: sunucudaki konum / fotoğraf işleme izinleri. [privacyFails] true ise ikisi de hata verir.
+  bool privacyLocation = false;
+  bool privacyPhoto = false;
+  bool privacyFails = false;
+
+  /// `POST /account/delete` durum kodu (200: hesap silindi).
+  int accountDeleteStatus = 200;
+
+  /// `POST /generate_routine` (analiz sihirbazı) hata döndürsün.
+  bool generateFails = false;
+
   /// Günün planı isteği hata döndürsün.
   bool planFails = false;
 
@@ -121,6 +138,9 @@ class FakeBackend {
 
   /// Doluysa `GET /today/plan` bu tamamlanana kadar yanıt vermez (yükleniyor durumunu görmek için).
   Completer<void>? planGate;
+
+  /// Dolu ise sohbet yanıtı bu tamamlanana kadar bekler ("Rebi düşünüyor" durumunu denetlemek için).
+  Completer<void>? chatGate;
 
   /// Rafım (`products_out`): bitti işaretlenip yenisi alınmamış ürünler. `product_finished` / `product_restocked` kayıtlarıyla
   /// sunucudaki türetme kuralıyla güncel tutulur (aynı ad iki kez eklenmez, aldım listeden çıkarır).
@@ -329,6 +349,7 @@ class FakeBackend {
           case 'GET /chat/history':
             return ok({'messages': [], 'cursor': null});
           case 'POST /chat_general':
+            await chatGate?.future;
             if (chatFailTimes > 0) {
               chatFailTimes--;
               if (chatFailOffline) throw const SocketException('çevrimdışı');
@@ -356,7 +377,20 @@ class FakeBackend {
               'usage_remaining': 3,
               'usage_limit': 5,
             });
+          case 'POST /account/delete':
+            if (accountDeleteStatus != 200) return http.Response('{"detail":"Hesap silinemedi (sunucu)"}', accountDeleteStatus);
+            return ok({'ok': true});
+          case 'GET /privacy-preferences':
+            if (privacyFails) return http.Response('{"detail":"hata"}', 502);
+            return ok({'location_processing_allowed': privacyLocation, 'photo_processing_allowed': privacyPhoto});
+          case 'POST /privacy-preferences':
+            if (privacyFails) return http.Response('{"detail":"hata"}', 502);
+            final sent = (jsonDecode(req.body) as Map).cast<String, dynamic>();
+            privacyLocation = sent['location_processing_allowed'] == true;
+            privacyPhoto = sent['photo_processing_allowed'] == true;
+            return ok({'location_processing_allowed': privacyLocation, 'photo_processing_allowed': privacyPhoto});
           case 'POST /generate_routine':
+            if (generateFails) return http.Response('{"detail":"hata"}', 502);
             return ok(routineFixture);
           case 'GET /daily_checkin/status':
             return ok(checkinStatus);
@@ -392,6 +426,16 @@ class FakeBackend {
               }
             }
             return ok({'ok': true, 'log_date': '2026-10-10', 'aggregated': progress});
+          case 'GET /legal-consent/status':
+            if (consentStatusFails != null) return http.Response('Internal Server Error', consentStatusFails!);
+            return ok({
+              'accepted': consentRecordedOnServer,
+              'document_version': 'v2',
+              'accepted_at': consentRecordedOnServer ? '2026-10-01T09:00:00Z' : null,
+              'ai_processing_accepted': consentRecordedOnServer,
+              'location_processing_accepted': false,
+              'photo_processing_accepted': false,
+            });
           case 'POST /legal-consent/accept':
             consentMissing = false;
             return ok({'ok': true, 'accepted_at': '2026-10-10T10:00:00Z'});
@@ -492,6 +536,12 @@ Future<Harness> pumpApp(
 
   /// true: Inter yazı tipi isteğe bağlı (görsel testler `loadBrandFonts` ile gerçek yazı tiplerini yükler).
   bool realFonts = false,
+
+  /// Giriş/kayıt çağrılarını Supabase'siz yanıtlayan sahte denetleyici (`AuthController`'ı genişletir).
+  AuthController? authController,
+
+  /// false: ilk kare çizilir çizilmez döner (açılış sekansının ilk karesi gibi, zamanla değişen ilk anları denetlemek için).
+  bool settleAfter = true,
 }) async {
   tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
@@ -500,7 +550,12 @@ Future<Harness> pumpApp(
   resetConsentRecovery();
   EventOutbox.instance.debugReset();
   SharedPreferences.setMockInitialValues({
-    if (acknowledgeAi) 'rebi-ai-disclaimer-ack-v1': '1',
+    // Yapay zekâ ile veri paylaşım izni: test kullanıcısı, özel kullanıcı ve demo için önceden verilmiş sayılır.
+    if (acknowledgeAi) ...{
+      aiSharingKey(testUserId): '1',
+      aiSharingKey(demoUserId): '1',
+      if (user != null) aiSharingKey(user.id): '1',
+    },
     'rebi-lang': lang,
     ...prefs,
   });
@@ -523,7 +578,7 @@ Future<Harness> pumpApp(
     );
   });
 
-  final auth = AuthController();
+  final auth = authController ?? AuthController();
   if (loggedIn) auth.debugSetUser(user ?? fakeUser());
   final theme = ThemeController(auth);
   final sync = HomeSyncController(auth);
@@ -562,7 +617,7 @@ Future<Harness> pumpApp(
     ),
   ));
   router.go(location, extra: extra);
-  await settle(tester);
+  if (settleAfter) await settle(tester);
   return Harness(auth, theme, router, fb, sync, outbox, notifications, fakeNotifier);
 }
 

@@ -14,9 +14,9 @@ import '../state/home_sync_controller.dart';
 import '../state/notifications_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/components/notification_widgets.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
-import '../ui/brand/palette.dart';
 import 'reminders/delivery_card.dart';
 import 'reminders/quiet_card.dart';
 import 'reminders/time_picker.dart';
@@ -164,14 +164,13 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final theme = context.watch<ThemeController>().theme;
     final saved = _saved;
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
-      maxWidth: 672,
+      title: i18n.t('mobileReminders.title'),
+      subtitle: i18n.t('mobileReminders.subtitle'),
+      backTo: '/dashboard/profile',
+      bottomBar: _saveBar(i18n, theme),
       children: [
-        Text(i18n.t('mobileReminders.title'), style: heading(30)),
-        const SizedBox(height: 4),
-        Text(i18n.t('mobileReminders.subtitle'), style: tx(14, c: Tw.gray500)),
-        const SizedBox(height: 16),
         NotificationSettingsCard(theme: theme),
         DeliveryCard(theme: theme),
         const SizedBox(height: 16),
@@ -196,21 +195,27 @@ class _RemindersScreenState extends State<RemindersScreen> {
           _categoriesCard(i18n, theme),
           const SizedBox(height: 16),
           QuietHoursCard(settings: _draft, onChanged: _edit, theme: theme),
-          const SizedBox(height: 16),
+        ],
+      ],
+    );
+  }
+
+  /// Sabit kaydet çubuğu: değişiklik olduğunda (ve kaydedildi/hata mesajı görünürken) çıkar; uzun sayfanın sonuna kaydırmadan kaydedilir.
+  Widget? _saveBar(I18n i18n, RebiTheme theme) {
+    final visible = _real && _saved != null && (_dirty || _saving || _showSaved || _error != null);
+    if (!visible) return null;
+    return StageBottomBar(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
           if (_error != null) ...[
-            NoticeBox(
-              text: _error!,
-              bg: Tw.red50,
-              border: Tw.red200,
-              fg: Tw.red700,
-              icon: LucideIcons.circleAlert,
-              fontSize: 12,
-            ),
-            const SizedBox(height: 12),
+            NoticeBox(text: _error!, bg: Tw.red50, border: Tw.red200, fg: Tw.red700, icon: LucideIcons.circleAlert, fontSize: 12.5),
+            const SizedBox(height: 8),
           ],
           if (_showSaved) ...[
             StatusLine(ok: true, text: i18n.t('mobileReminders.saved')),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
           ],
           PrimaryButton(
             color: theme.primary,
@@ -219,7 +224,7 @@ class _RemindersScreenState extends State<RemindersScreen> {
             onPressed: _dirty && _draft.dayIsValid ? _save : null,
           ),
         ],
-      ],
+      ),
     );
   }
 

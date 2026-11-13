@@ -310,6 +310,25 @@ Bugün düğme sadece günlük olay yazıyor. Önerim "Rafım" mantığı:
   (1320×2868 + 1080×2160, 8 ekran). Eksik: Play öne çıkan görseli (tasarım), iPad görüntüleri, hesaplar, URL'ler.
 - **G5:** `docs/MOBIL-MUSTERI-DEMOSU.md` (hazırlık, 10 adımlı akış, bilinen sınırlar, müşteriye kısa not).
 
+### Faz H — Tutarlılık turu: tüm ekranlar aynı sahnede  *(boyut: büyük)* — **yapıldı (2026-10-30)**
+
+Bugün, Rutin, Sohbet, Giriş ve Analiz yeni dile geçmişti; Ben, Geçmiş, Rafım, Hatırlatıcılar, Görünüm, Abonelik, Hesap ve
+Check-in hâlâ "düz başlık + geri çubuğu" idi ve bir kısmı İngilizce arayüzde de Türkçe sabit metin taşıyordu.
+
+| # | İş | Sonuç |
+|---|----|-------|
+| H1 | Oturumsuz sohbet: yazı alanı yerine "Önce tanışalım" daveti (`ChatGate`). | commit `cc7ac86`. |
+| H2 | Ortak `PageStage` / `StagePage` (`ui/shell/page_stage.dart`): derin ton sahne + silik "R" + krem Fraunces başlık, geri bağlantısı sahnenin içinde, `StageSegments` (aralık seçici), ilk kart sahneye biner. Kabuk `hasStage(path)` ile bu yollarda üst güvenli alanı ve eski geri çubuğunu uygulamaz. | Analiz dışındaki tüm `/dashboard*` ekranları sahneli. |
+| H3 | Ben: avatar + ad + e-posta sahnesi, eylemler tek yüzeyli gruplar (`MenuGroup`/`MenuRow`, `ui/widgets/menu_list.dart`). Geçmiş: aralık seçici sahnede. Rafım, Hatırlatıcılar, Görünüm, Abonelik, Hesap: sahne + aynı gövde. | Tasarım dili belgesinde "Sayfa sahnesi". |
+| H4 | Check-in baştan düzenlendi: dört durum (yükleniyor, bugün yapıldı, form, rapor) hep sahneyle başlar; tüm sabit Türkçe metinler `mobileCheckin.*` (TR + EN); ≥ 12 punto; seçim kutuları sakin (ölçeklenme/gölge yok); rapor tek kart bölümleri. | Gövde ve sunucu sözleşmesi aynı. |
+| H5 | Hesap ekranındaki ~40 sabit Türkçe metin `mobileAccount.*`; Görünüm ekranındaki 4 metin `mobileThemes.*`. | İngilizce arayüz artık bu ekranlarda İngilizce. |
+| H6 | Aşağı çekip yenileme (`PullToRefresh`): Bugün (plan), Geçmiş, Rafım. | Hafif titreşim. |
+| H7 | Sohbet 429 (kullanıcı başına hız sınırı) için ayrı, sakin mesaj (`ChatFailure.rateLimited`). | Backend limiti zaten 20/dk + 200/sa. |
+| H8 | Hesap ekranı `screens/account/` altında 7 karta bölündü (özet, rutin özeti, ad, şifre, gizlilik, fotoğraflar, hesabı sil); `account_screen_test`. **Hata düzeltildi:** hesap silinince planlı yerel bildirimler ve cihaz kaydı kalıyordu. | Üyelik tarihi artık uygulama dilinde. |
+| H9 | Check-in `screens/checkin/` altına bölündü (1197 → 460 satır); giriş ekranının yapı taşları `screens/auth/`. Sabit alt çubuk: Check-in gönder (kapalıysa nedenini söyler), Hatırlatıcıları kaydet (yalnız değişiklik varken). | Davranış aynı. |
+| H10 | `LoadingScreen` (rutin üretimi) sahne dilinde; tema adları, önizleme ve genel hata ekranı TR+EN; Geçmiş özeti büyük sayılı karolar; çıkış onayı; dil = satır + alt sayfa; `apiErrorMessage` (5xx'te ham ayrıntı yok). | |
+| H11 | Ortak `StageSurface`; solarak geçiş (`_fadeThroughPage`); klavye açılınca alt gezinme gizlenir; sahne metni tablette gövdeyle hizalı; `ChoiceChipBox` Wrap'te şişmesi ve kapalı `SecondaryButton` kontrastı düzeltildi. | Erişilebilirlik 52 → 88 senaryo; testler 1039. |
+
 ---
 
 ## 5. Sıra ve bağımlılıklar

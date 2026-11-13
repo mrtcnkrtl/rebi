@@ -1,0 +1,4 @@
+/* İzin metinleri (Info.plist'teki değerlerle aynı). */
+"NSCameraUsageDescription" = "Cilt fotoğrafı çekebilmen için kamera erişimi gerekir. Fotoğraf yalnızca sen kaydettiğinde yüklenir.";
+"NSPhotoLibraryUsageDescription" = "Galeriden cilt fotoğrafı seçebilmen için fotoğraf arşivine erişim gerekir.";
+"NSLocationWhenInUseUsageDescription" = "Rutinini hava durumu ve UV indeksine göre uyarlamak için konumun kullanılır.";

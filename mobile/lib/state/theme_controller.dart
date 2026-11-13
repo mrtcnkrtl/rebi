@@ -16,6 +16,7 @@ class RebiTheme {
     required this.primary,
     required this.primaryLight,
     required this.primaryDark,
+    required this.deep,
     required this.accent,
     required this.cardBorder,
     required this.bg,
@@ -29,6 +30,10 @@ class RebiTheme {
   final Color primary;
   final Color primaryLight;
   final Color primaryDark;
+
+  /// Derin ton: Bugün üst sahnesinin zemini (üstüne krem yazı yazılır). Orman'da marka yeşili; koyu modda
+  /// uyarlanmaz, yalnızca [stage] biraz koyulaştırır.
+  final Color deep;
   final Color accent;
   final Color cardBorder;
 
@@ -40,6 +45,9 @@ class RebiTheme {
   /// (`primary` düğme dolgusudur ve üstüne beyaz yazı yazılır; koyu zeminde metin olarak soluk kalır.)
   Color get fg => Tw.dark ? Color.lerp(primary, Colors.white, .5)! : primary;
 
+  /// Bugün üst sahnesinin zemin rengi: açık modda [deep], koyu modda koyu sayfa zemininde parlamasın diye biraz koyulaşmış hâli.
+  Color get stage => Tw.dark ? Color.lerp(deep, Colors.black, .28)! : deep;
+
   /// Koyu mod için: açık tint ve koyu metin tonları uyarlanır; `primary` / `accent` aynı kalır.
   /// (`cardBorder` ve `bg` zaten koyu moda duyarlı renklerden kuruludur.)
   RebiTheme adaptedForDark() => RebiTheme(
@@ -48,6 +56,7 @@ class RebiTheme {
         primary: primary,
         primaryLight: Tw.adapt(primaryLight),
         primaryDark: Tw.adaptText(primaryDark),
+        deep: deep,
         accent: accent,
         cardBorder: cardBorder,
         bg: bg,
@@ -78,6 +87,7 @@ RebiTheme _theme({
       primary: primary,
       primaryLight: light,
       primaryDark: dark,
+      deep: dark,
       accent: accent,
       cardBorder: Tw.gray100,
       bg: _wash(light),

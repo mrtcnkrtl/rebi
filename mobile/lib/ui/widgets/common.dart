@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/i18n.dart';
@@ -229,9 +232,11 @@ class SecondaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final borderColor = this.borderColor ?? Tw.gray200;
-    final textColor = this.textColor ?? Tw.gray900;
     final enabled = onPressed != null && !loading;
+    // Kapalı düğme: yarı saydam (soluk, kontrast düşer) yerine sakin gri çerçeve ve okunur gri metin (PrimaryButton'daki gibi).
+    final disabled = !enabled && !loading;
+    final borderColor = disabled ? Tw.gray200 : (this.borderColor ?? Tw.gray200);
+    final textColor = disabled ? Tw.gray600 : (this.textColor ?? Tw.gray900);
     final content = loading
         ? SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.2, color: textColor))
         : child ??
@@ -247,22 +252,19 @@ class SecondaryButton extends StatelessWidget {
                 if (trailingIcon != null) ...[const SizedBox(width: 8), Icon(trailingIcon, size: 20, color: textColor)],
               ],
             );
-    return Opacity(
-      opacity: enabled || loading ? 1 : 0.5,
-      child: Container(
-        constraints: BoxConstraints(minHeight: minHeight),
-        decoration: BoxDecoration(
-          color: Tw.surface,
+    return Container(
+      constraints: BoxConstraints(minHeight: minHeight),
+      decoration: BoxDecoration(
+        color: disabled ? Tw.gray50 : Tw.surface,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
           borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: borderColor, width: 1.5),
-        ),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(999),
-            onTap: enabled ? onPressed : null,
-            child: Padding(padding: padding, child: Center(widthFactor: 1, child: content)),
-          ),
+          onTap: enabled ? onPressed : null,
+          child: Padding(padding: padding, child: Center(widthFactor: 1, child: content)),
         ),
       ),
     );
@@ -275,6 +277,7 @@ InputDecoration inputDecoration({
   IconData? prefixIcon,
   Widget? suffix,
   String? suffixText,
+  String? errorText,
   Color? focusColor,
   double radius = 16,
   double borderWidth = 1.5,
@@ -298,6 +301,11 @@ InputDecoration inputDecoration({
     suffixIcon: suffix,
     suffixText: suffixText,
     suffixStyle: tx(12, w: 6, c: Tw.gray500),
+    errorText: errorText,
+    errorStyle: tx(13, w: 5, c: Tw.red700),
+    errorMaxLines: 2,
+    errorBorder: b(Tw.red500),
+    focusedErrorBorder: b(Tw.red500),
     enabledBorder: b(borderColor),
     disabledBorder: b(borderColor),
     focusedBorder: b(focusColor),
@@ -316,6 +324,7 @@ class ThemedPage extends StatelessWidget {
     this.controller,
     this.crossAxisAlignment = CrossAxisAlignment.stretch,
     this.background,
+    this.onRefresh,
   });
 
   final RebiTheme theme;
@@ -326,21 +335,50 @@ class ThemedPage extends StatelessWidget {
   final CrossAxisAlignment crossAxisAlignment;
   final Widget? background;
 
+  /// Verilirse sayfa aşağı çekilerek yenilenir ([PullToRefresh]).
+  final Future<void> Function()? onRefresh;
+
   @override
   Widget build(BuildContext context) {
+    final scroll = SingleChildScrollView(
+      controller: controller,
+      padding: padding,
+      physics: onRefresh == null ? null : const AlwaysScrollableScrollPhysics(),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Column(crossAxisAlignment: crossAxisAlignment, children: children),
+        ),
+      ),
+    );
     return ThemedBackground(
       theme: theme,
       extra: background,
-      child: SingleChildScrollView(
-        controller: controller,
-        padding: padding,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: maxWidth),
-            child: Column(crossAxisAlignment: crossAxisAlignment, children: children),
-          ),
-        ),
-      ),
+      child: onRefresh == null ? scroll : PullToRefresh(color: theme.primary, onRefresh: onRefresh!, child: scroll),
+    );
+  }
+}
+
+/// Aşağı çekip yenileme: gösterge durum çubuğunun altında, yüzey renkli yuvarlak olarak belirir (üst sahnenin üstünde de okunur).
+/// Çekme bırakıldığında hafif bir titreşim verir. Kaydırılan alan `AlwaysScrollableScrollPhysics` kullanmalıdır (kısa içerikte de çekilsin).
+class PullToRefresh extends StatelessWidget {
+  const PullToRefresh({super.key, required this.onRefresh, required this.child, required this.color});
+
+  final Future<void> Function() onRefresh;
+  final Widget child;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      color: color,
+      backgroundColor: Tw.surface,
+      edgeOffset: MediaQuery.paddingOf(context).top + 8,
+      onRefresh: () {
+        unawaited(HapticFeedback.selectionClick().catchError((_) {}));
+        return onRefresh();
+      },
+      child: child,
     );
   }
 }
@@ -489,16 +527,22 @@ class ChoiceChipBox extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           // Dokunma alanı en az 48 dp.
           constraints: const BoxConstraints(minHeight: 48, minWidth: 48),
-          alignment: center ? Alignment.center : Alignment.centerLeft,
           padding: padding,
           decoration: BoxDecoration(
             color: selected ? activeBg : inactiveBg,
             borderRadius: BorderRadius.circular(radius),
             border: Border.all(color: selected ? activeBorder : Tw.gray200, width: 1.5),
           ),
-          child: leading == null
-              ? text
-              : Row(mainAxisSize: MainAxisSize.min, children: [leading!, const SizedBox(width: 6), Flexible(child: text)]),
+          // `alignment` kullanılmaz: sınırlı genişlikte kutuyu tam genişliğe şişirir ve Wrap içindeki çipler satır doldururdu.
+          // Ortalı çip (Expanded içinde) genişler; ortasız çip içeriği kadar olur, Column(stretch) içinde yine tam genişliktedir.
+          child: Align(
+            alignment: center ? Alignment.center : Alignment.centerLeft,
+            widthFactor: center ? null : 1,
+            heightFactor: 1,
+            child: leading == null
+                ? text
+                : Row(mainAxisSize: MainAxisSize.min, children: [leading!, const SizedBox(width: 6), Flexible(child: text)]),
+          ),
         ),
       ),
     );

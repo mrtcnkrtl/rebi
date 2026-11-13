@@ -338,6 +338,7 @@ def test_dispatch_does_not_query_the_shelf_outside_the_restock_window(monkeypatc
         raise AssertionError("pencere kapalıyken Rafım sorgulanmamalı")
 
     monkeypatch.setattr(main, "_products_out", boom)
+    monkeypatch.setattr(main, "_products_out_bulk", boom)
 
     assert _dispatch(client).status_code == 200
     assert not [c for c in sender.calls if c["data"]["reminder_id"] == "restock_check"]

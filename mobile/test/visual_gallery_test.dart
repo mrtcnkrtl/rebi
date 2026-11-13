@@ -4,8 +4,9 @@ import 'package:flutter/material.dart' show Size, TextField, TextInputAction;
 import 'package:flutter/painting.dart' show debugDisableShadows;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/device_location.dart';
-import 'package:rebi/core/i18n.dart';
+import 'package:rebi/screens/profile_screen.dart' show debugAccountAvailable;
 import 'package:rebi/screens/today/today_clock.dart';
+import 'package:rebi/ui/components/loading_screen.dart';
 import 'package:rebi/ui/tw.dart';
 
 import 'helpers/app_harness.dart';
@@ -24,9 +25,13 @@ void main() {
   setUpAll(() async {
     if (screenshotsEnabled) await loadBrandFonts();
   });
-  setUp(() => todayPanelClock = () => DateTime(2026, 10, 10, 9, 15));
+  setUp(() {
+    todayPanelClock = () => DateTime(2026, 10, 10, 9, 15);
+    debugAccountAvailable = true; // hesap ekranı Supabase yapılandırması olmadan da çizilsin
+  });
   tearDown(() {
     todayPanelClock = DateTime.now;
+    debugAccountAvailable = null;
     Tw.dark = false;
   });
 
@@ -34,8 +39,10 @@ void main() {
     ('bugun', '/dashboard', true),
     ('rutin', '/dashboard/routine', true),
     ('sohbet', '/dashboard/chat', true),
+    ('sohbet-davet', '/rebi', false),
     ('gecmis', '/dashboard/history', true),
     ('ben', '/dashboard/profile', true),
+    ('hesap', '/dashboard/account', true),
     ('gorunum', '/dashboard/themes', true),
     ('hatirlaticilar', '/dashboard/reminders', true),
     ('rafim', '/dashboard/shelf', true),
@@ -44,6 +51,7 @@ void main() {
     ('analiz', '/dashboard/analyze', true),
     ('karsilama', '/', false),
     ('giris', '/auth', false),
+    ('yasal', '/kvkk', false),
   ];
 
   for (final dark in [false, true]) {
@@ -160,6 +168,7 @@ void main() {
     ('sohbet-uzun', '/dashboard/chat', 1500),
     ('gecmis-uzun', '/dashboard/history', 3400),
     ('ben-uzun', '/dashboard/profile', 1900),
+    ('hesap-uzun', '/dashboard/account', 4200),
     ('checkin-uzun', '/dashboard/checkin', 2600),
     ('abonelik-uzun', '/dashboard/subscribe', 2600),
   ];
@@ -214,7 +223,7 @@ void main() {
     }
   }
 
-  // Analiz sihirbazı (yeni kullanıcı): adım 1 ve adım 2.
+  // Analiz sihirbazı (yeni kullanıcı): karşılama. Soru ekranlarının görselleri `analyze_flow_test`'te.
   for (final dark in [false, true]) {
     testWidgets('${dark ? 'koyu' : 'acik'} · analiz-adim1', (tester) async {
       Tw.dark = dark;
@@ -226,16 +235,19 @@ void main() {
         debugDisableShadows = true;
       }
     }, skip: !screenshotsEnabled);
+  }
 
-    testWidgets('${dark ? 'koyu' : 'acik'} · analiz-adim2', (tester) async {
+  // Rutin üretilirken bekleme ekranı (üçüncü adım etkin).
+  for (final dark in [false, true]) {
+    testWidgets('${dark ? 'koyu' : 'acik'} · yukleniyor-rutin', (tester) async {
       Tw.dark = dark;
       debugDisableShadows = false;
       try {
-        await pumpApp(tester, location: '/dashboard/analyze', backend: FakeBackend(), realFonts: true, size: const Size(390, 2200));
-        await tester.enterText(find.widgetWithText(TextField, '25'), '28');
-        await tapText(tester, Pack(I18n.instance.analyzeWizardPack).s('gender.female'));
-        await tapText(tester, tr('analyze.continue'));
-        await shoot(tester, '${dark ? 'koyu' : 'acik'}-analiz-adim2', width: 585);
+        await pumpStandalone(tester, (theme) => const LoadingScreen());
+        for (var i = 0; i < 12; i++) {
+          await tester.pump(const Duration(milliseconds: 500));
+        }
+        await shoot(tester, '${dark ? 'koyu' : 'acik'}-yukleniyor-rutin', width: 585);
       } finally {
         debugDisableShadows = true;
       }

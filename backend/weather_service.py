@@ -1,7 +1,36 @@
+import threading
+import time
+
 import httpx
 from config import OPENWEATHER_API_KEY, get_logger
 
 log = get_logger("weather")
+
+# Sağlayıcıya yapılan her çağrı sayılır ve günlüğe `weather_call ...` satırı olarak yazılır. Open-Meteo ücretli
+# planı ayda çağrı sayısıyla ölçülür (Standard 1 milyon); gerçek hacim bu satırlardan okunur:
+#   docker compose logs api | grep -c weather_call
+_totals: dict[str, dict[str, int]] = {}
+_totals_lock = threading.Lock()
+
+
+def _record_call(provider: str, ok: bool, started: float) -> None:
+    with _totals_lock:
+        t = _totals.setdefault(provider, {"calls": 0, "failures": 0})
+        t["calls"] += 1
+        if not ok:
+            t["failures"] += 1
+    log.info("weather_call provider=%s ok=%d ms=%d", provider, 1 if ok else 0, int((time.perf_counter() - started) * 1000))
+
+
+def usage_snapshot() -> dict[str, dict[str, int]]:
+    """Süreç başlangıcından beri sağlayıcı başına çağrı ve hata sayısı."""
+    with _totals_lock:
+        return {k: dict(v) for k, v in _totals.items()}
+
+
+def reset_usage() -> None:
+    with _totals_lock:
+        _totals.clear()
 
 FALLBACK = {
     "humidity": 50,
@@ -22,6 +51,7 @@ async def fetch_weather_live(lat: float, lon: float) -> dict | None:
     çağıran, varsayılan değeri gerçek hava gibi saklamamalı."""
 
     # Try Open-Meteo first (completely free, no API key)
+    started = time.perf_counter()
     try:
         url = "https://api.open-meteo.com/v1/forecast"
         params = {
@@ -59,14 +89,17 @@ async def fetch_weather_live(lat: float, lon: float) -> dict | None:
             result["uv_window"] = window
         if now_uv is not None:
             result["uv_now"] = now_uv
+        _record_call("open-meteo", True, started)
         log.info("Open-Meteo OK: %s°C, UV %s, nem %%%s", result["temperature"], result["uv_index"], result["humidity"])
         return result
 
     except Exception as e:
+        _record_call("open-meteo", False, started)
         log.warning("Open-Meteo hatası: %s — fallback deneniyor", e)
 
     # Fallback: OpenWeatherMap (if key is available)
     if OPENWEATHER_API_KEY:
+        started = time.perf_counter()
         try:
             base_url = "https://api.openweathermap.org/data/3.0/onecall"
             params = {
@@ -87,9 +120,11 @@ async def fetch_weather_live(lat: float, lon: float) -> dict | None:
                 "temperature": round(c.get("temp", 20)),
                 "description": c.get("weather", [{}])[0].get("description", "bilinmiyor"),
             }
+            _record_call("openweather", True, started)
             log.info("OpenWeatherMap OK: %s°C, UV %s", result["temperature"], result["uv_index"])
             return result
         except Exception as e:
+            _record_call("openweather", False, started)
             log.warning("OpenWeatherMap hatası: %s", e)
 
     log.warning("Tüm hava servisleri başarısız")

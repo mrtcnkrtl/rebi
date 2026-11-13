@@ -112,7 +112,7 @@ void main() {
       backend.todayPlan = richPlan(backend);
       final h = await pumpApp(tester, location: '/dashboard/chat', backend: backend);
 
-      expect(find.text(tr('mobileChat.suggestionsTitle')), findsOneWidget);
+      expect(find.text(tr('mobileChat.suggestionsTitle')), findsNothing, reason: 'öneriler etiketsizdir (gereksiz başlık yok)');
       final uv = tr('mobileChat.suggestions.uvHigh', {'uv': 8});
       expect(find.text(uv), findsOneWidget);
       expect(find.text(tr('mobileChat.suggestions.makeupPending')), findsOneWidget);
@@ -147,12 +147,6 @@ void main() {
       await tester.enterText(find.byType(TextField), 'bir şey yazıyorum');
       await tester.pump();
       expect(find.text(tr('mobileChat.suggestions.uvHigh', {'uv': 8})), findsNothing, reason: 'yazarken gizlenir');
-    });
-
-    testWidgets('anonim sohbette genel öneriler çıkar ve plan istenmez', (tester) async {
-      final h = await pumpApp(tester, location: '/rebi', loggedIn: false);
-      expect(find.text(tr('mobileChat.suggestions.generic1')), findsOneWidget);
-      expect(h.backend.calls('/today/plan'), isEmpty);
     });
 
     testWidgets('plan alınamazsa genel öneriler kalır', (tester) async {

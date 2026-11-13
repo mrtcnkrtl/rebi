@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/ai_sharing.dart';
 import '../../core/consent_recovery.dart';
+import '../../core/demo_user.dart';
 import '../../core/i18n.dart';
 import '../../core/legal_consent.dart';
-import '../../core/local_store.dart';
 import '../../state/auth_controller.dart';
 import '../tw.dart';
 import '../widgets/common.dart';
@@ -53,49 +55,149 @@ class _ModalFrame extends StatelessWidget {
   }
 }
 
-const _ackKey = 'rebi-ai-disclaimer-ack-v1';
+/// Üçüncü taraf yapay zekâ ile veri paylaşımı izninin içeriği: ne gönderilir, kime, ne için, ne gönderilmez,
+/// nasıl geri alınır. Hem yapay zekâ ekranlarında kendiliğinden açılan kutuda hem de gönderimden hemen önce
+/// ([ensureAiSharing]) aynı metin gösterilir.
+class AiSharingPanel extends StatelessWidget {
+  const AiSharingPanel({super.key, required this.onAllow, required this.onDecline});
 
-/// Yapay zekâ beyanı: cihaz başına bir kez onaylanan açılır kutu.
-class AiDisclaimerModal extends StatefulWidget {
-  const AiDisclaimerModal({super.key});
+  final VoidCallback onAllow;
+  final VoidCallback onDecline;
 
   @override
-  State<AiDisclaimerModal> createState() => _AiDisclaimerModalState();
+  Widget build(BuildContext context) {
+    final i18n = context.i18n;
+    final body = tx(13.5, c: Tw.gray600, h: relaxed);
+    final heading = tx(13.5, w: 8, c: Tw.gray700);
+    final items = i18n.t('mobileAiSharing.items').split('\n').where((e) => e.trim().isNotEmpty);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(color: Tw.teal600, borderRadius: BorderRadius.circular(16)),
+            child: const Icon(LucideIcons.sparkles, color: Colors.white, size: 24),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Semantics(header: true, child: Text(i18n.t('mobileAiSharing.title'), style: tx(18, w: 9))),
+        const SizedBox(height: 8),
+        Text(i18n.t('mobileAiSharing.intro'), style: body),
+        const SizedBox(height: 14),
+        Text(i18n.t('mobileAiSharing.whatTitle'), style: heading),
+        const SizedBox(height: 4),
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(top: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('•  ', style: body),
+                Expanded(child: Text(item, style: body)),
+              ],
+            ),
+          ),
+        const SizedBox(height: 14),
+        Text(i18n.t('mobileAiSharing.whoTitle'), style: heading),
+        const SizedBox(height: 4),
+        Text(i18n.t('mobileAiSharing.who'), style: body),
+        const SizedBox(height: 14),
+        Text(i18n.t('mobileAiSharing.notSent'), style: body),
+        const SizedBox(height: 8),
+        Text(i18n.t('mobileAiSharing.control'), style: body),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextLink(
+            i18n.t('mobileAiSharing.privacyLink'),
+            onTap: () => context.push('/kvkk'),
+            style: tx(13, w: 6, c: Tw.teal700),
+            underline: true,
+          ),
+        ),
+        const SizedBox(height: 8),
+        const AiDisclaimer(),
+        const SizedBox(height: 20),
+        PrimaryButton(onPressed: onAllow, label: i18n.t('mobileAiSharing.allow')),
+        const SizedBox(height: 8),
+        SecondaryButton(onPressed: onDecline, label: i18n.t('mobileAiSharing.decline')),
+      ],
+    );
+  }
 }
 
-class _AiDisclaimerModalState extends State<AiDisclaimerModal> {
-  bool _open = LocalStore.instance.getString(_ackKey) != '1';
+String _aiUserId(BuildContext context) => context.read<AuthController>().user?.id ?? demoUserId;
 
-  void _dismiss() {
-    LocalStore.instance.setString(_ackKey, '1');
-    setState(() => _open = false);
+/// İzin açıklamasını gösterir; kullanıcının seçimini döndürür (kaydetmez).
+Future<bool> showAiSharingDialog(BuildContext context) async {
+  final allowed = await showGeneralDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    barrierColor: Colors.transparent,
+    pageBuilder: (ctx, _, _) => _ModalFrame(
+      maxWidth: 448,
+      scroll: true,
+      child: AiSharingPanel(
+        onAllow: () => Navigator.of(ctx).pop(true),
+        onDecline: () => Navigator.of(ctx).pop(false),
+      ),
+    ),
+  );
+  return allowed == true;
+}
+
+/// Yapay zekâya veri gidecek bir isteğin hemen öncesinde çağrılır: izin yoksa açıklamayı gösterip sorar.
+/// İzin verildiyse (ya da daha önce verilmişse) true döner; kullanıcı vazgeçerse istek gönderilmemelidir.
+Future<bool> ensureAiSharing(BuildContext context) async {
+  final uid = _aiUserId(context);
+  if (hasAiSharingConsent(uid)) return true;
+  if (!await showAiSharingDialog(context)) return false;
+  await setAiSharingConsent(uid, true);
+  return true;
+}
+
+/// Yapay zekâ ekranlarında (panel, sohbet) izin verilmemişse kendiliğinden açılan kutu.
+/// "Şimdi değil" yalnızca bu açılışta kapatır; izin olmadan yapay zekâ isteği gönderilmez ([ensureAiSharing]).
+class AiSharingModal extends StatefulWidget {
+  const AiSharingModal({super.key});
+
+  @override
+  State<AiSharingModal> createState() => _AiSharingModalState();
+}
+
+class _AiSharingModalState extends State<AiSharingModal> {
+  bool _dismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    aiSharingChanges.addListener(_onChange);
+  }
+
+  @override
+  void dispose() {
+    aiSharingChanges.removeListener(_onChange);
+    super.dispose();
+  }
+
+  void _onChange() {
+    if (mounted) setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_open) return const SizedBox.shrink();
-    final i18n = context.i18n;
+    final uid = context.watch<AuthController>().user?.id ?? demoUserId;
+    if (_dismissed || hasAiSharingConsent(uid)) return const SizedBox.shrink();
     return _ModalFrame(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Tw.teal600,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(color: Tw.teal600.withValues(alpha: .2), blurRadius: 15, offset: const Offset(0, 8))],
-            ),
-            child: const Icon(LucideIcons.sparkles, color: Colors.white, size: 24),
-          ),
-          const SizedBox(height: 16),
-          Text(i18n.t('common.aiDisclaimerTitle'), textAlign: TextAlign.center, style: tx(18, w: 9)),
-          const SizedBox(height: 8),
-          Text(i18n.t('common.aiDisclaimer'), textAlign: TextAlign.center, style: tx(14, c: Tw.gray600, h: relaxed)),
-          const SizedBox(height: 24),
-          SizedBox(width: double.infinity, child: PrimaryButton(onPressed: _dismiss, label: i18n.t('common.aiDisclaimerAck'))),
-        ],
+      maxWidth: 448,
+      scroll: true,
+      child: AiSharingPanel(
+        onAllow: () => setAiSharingConsent(uid, true),
+        onDecline: () => setState(() => _dismissed = true),
       ),
     );
   }

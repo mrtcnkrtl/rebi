@@ -8,15 +8,17 @@ Vektör araması yapmaz -> embedding token'ı harcamaz.
 Sadece Supabase PostgreSQL filtreleri kullanır.
 """
 
-from supabase import create_client
+
+from async_bridge import run_sync
 from config import SUPABASE_URL, SUPABASE_SERVICE_KEY, get_logger
+from supabase_client import get_shared_client
 
 log = get_logger("knowledge_router")
 
 supabase = None
 if SUPABASE_URL and SUPABASE_SERVICE_KEY:
     try:
-        supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
+        supabase = get_shared_client()
         log.info("Supabase bağlantısı kuruldu")
     except Exception as e:
         log.error("Supabase bağlantı hatası: %s", e)
@@ -25,8 +27,13 @@ if SUPABASE_URL and SUPABASE_SERVICE_KEY:
 async def execute_query_plan(query_plan: list[dict]) -> dict:
     """
     Flow Engine'den gelen sorgu planını çalıştırır.
-    Her sorgu metadata filtreleri ile Supabase'e gider.
+    Her sorgu metadata filtreleri ile Supabase'e gider. Sorgular senkron olduğu için
+    olay döngüsünü bloklamasın diye iş parçacığında çalışır.
     """
+    return await run_sync(_execute_query_plan_sync, query_plan)
+
+
+def _execute_query_plan_sync(query_plan: list[dict]) -> dict:
     if not supabase:
         log.warning("Supabase bağlantısı yok, boş döndürülüyor")
         return {"knowledge_chunks": [], "sources": [], "total_retrieved": 0, "by_category": {}}

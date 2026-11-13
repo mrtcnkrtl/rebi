@@ -243,13 +243,27 @@ Akşam check-in'i; rutini risk skoruna göre uyarlar. Yapay zekâ izni gerekir.
   (`/me/reminder-settings` ile aynı; yoksa 2000). Geçmiş ekranı grafik referansını ve "hedefi tutturulan gün" sayısını bununla
   hesaplar; alanı bilmeyen eski sunucuda mobil 2000 kullanır.
 
+## Olay yazımı: hata davranışı
+
+`POST /daily_tracking/ingest` veritabanına yazamazsa **503** döner (olay sessizce süreç belleğine yazılıp "tamam" denmez).
+İstemci olayı aynı `client_event_id` ile kuyrukta tutup yeniden denemelidir; tekrar yazım olayı iki kez saydırmaz.
+Kullanıcı başına dakikada 300 olaydan fazlası **429** (`Retry-After: 15`) alır; çevrimdışı kuyruğun toplu gönderimi
+(en fazla 200 olay) bu sınırın altındadır.
+
 ## Sohbet
 
 Sohbet geçmişi sunucuda tutulur; web ve mobil aynı konuşmayı görür.
 
 - `POST /chat_general` — `{ user_id, message, history, utc_offset_minutes }`. `utc_offset_minutes` (−840…840) verilirse sohbet kullanıcının yerel gününün özetini (hava, su, makyaj ve temizleme yöntemi, beslenme, rutin) yanıt için kullanır; özet kısa tutulur, ürün adı içermez ve yalnızca soruyla ilgiliyse kullanılır. Yanıt: `reply`, kota alanları
   (`usage_kind`, `usage_remaining`, `usage_limit`, `chat_quota_exceeded`). Başarılı her
-  tur sunucuda saklanır.
+  tur sunucuda saklanır. Girdi sınırları (aşan kısım reddedilmez, sessizce kırpılır):
+  `message` en fazla 4000 karakter; `history` son 20 tur, her turun metni en fazla 1500
+  karakter. Sunucu zaten yalnızca son birkaç turu kullanır; istemci tüm geçmişi göndermek
+  zorunda değildir.
+  **Kullanıcı başına hız sınırı:** yapay zekâ uçları (`/chat_general`, `/chat_assessment`, `/chat`,
+  `/routine/translate_items`, `/generate_routine`, `/daily_checkin`) kullanıcı başına dakikada 20 ve saatte 200
+  istekle sınırlıdır (IP'den bağımsız; sınırsız Plus dahil). Aşılırsa `429` ve `Retry-After: 30` döner; bu istekler
+  günlük/aylık sohbet kotasından düşmez. İstemci bir süre bekleyip yeniden denemelidir.
 - `GET /chat/history?user_id=...&limit=50&after_seq=&surface=general` — eskiden yeniye
   mesajlar ve `cursor`. `after_seq` verilirse yalnızca o imleçten sonrakiler gelir;
   cihaz `cursor` değerini saklayıp her açılışta tüm geçmişi indirmemelidir.
@@ -323,14 +337,19 @@ her 5 dakikada bir (saat başlarına hizalı) bu ucu çağırır; sunucuda elle 
 Elle denemek için:
 
 ```bash
-curl -fsS -X POST -H "X-Push-Dispatch-Token: $PUSH_DISPATCH_SECRET"   "https://rebiovil.com/api/push/dispatch?max_users=1000"
+curl -fsS -X POST -H "X-Push-Dispatch-Token: $PUSH_DISPATCH_SECRET"   "https://rebiovil.com/api/push/dispatch?max_users=20000"
 ```
 
 Yanıt: `users_considered`, `reminders_sent`, `notifications_sent`, `invalid_tokens_removed`,
-`push_configured` ve **`deliveries_failed`** (FCM'e ulaşılamadığı için gitmeyen; gönderim rezervi geri alınır
-ve pencere bitmeden sonraki turda yeniden denenir). Son turun özeti `GET /health` içinde
-`push_dispatch` altında görünür (`at` zamanı bayatlarsa dağıtıcı çalışmıyordur).
-`max_users` sınırına ulaşılırsa sunucu günlüğüne uyarı düşer.
+`push_configured`, **`deliveries_failed`** (FCM'e ulaşılamadığı için gitmeyen; gönderim rezervi geri alınır
+ve pencere bitmeden sonraki turda yeniden denenir), **`users_skipped`** (verisi okunamadığı için bu turda atlanan
+kullanıcılar: yapılmış işi tekrar hatırlatmamak için susulur) ve **`truncated`**. Son turun özeti `GET /health`
+içinde `push_dispatch` altında görünür (`at` zamanı bayatlarsa dağıtıcı çalışmıyordur).
+
+Kullanıcılar 100'lük sayfalarla işlenir; her sayfa için ayar, olay, check-in, konum ve raf verisi toplu
+sorgularla okunur. Tur `PUSH_DISPATCH_BUDGET_SECONDS` (varsayılan 200 sn) ya da `max_users` sınırını aşarsa
+`truncated: true` döner ve sunucu günlüğüne uyarı düşer; sonraki tur kaldığı kullanıcıdan devam eder, sondaki
+kullanıcılar aç kalmaz.
 
 Her hatırlatıcı gün içinde bir kez gider (`push_sends` defteri). Geçersiz hâle gelen
 cihaz anahtarları (FCM 403/404) otomatik silinir.
@@ -345,53 +364,66 @@ Bildirim verisi (`data`, tüm değerler metin):
 | `slot` | `13:00` | pencere içindeki gönderim saati |
 | `open_path` | `/dashboard` | dokununca açılacak ekran (web yolu) |
 | `actions` | `[{"id":"water250","label":"+250 ml"}]` | JSON metni; buton yoksa `[]` |
-| `user_id` | | bildirimin kullanıcısı; arka plan izolatında oturum olmadığı için kuyruk buna yazar |
-| `title`, `body` | | yalnızca Android `actions_supported` cihazlarda (yalnızca-veri mesajı) |
+| `title`, `body` | | yalnızca Android `actions_supported` cihazlarda |
 
 `actions_supported` iOS cihazlarda `aps.category` = `rebi_<reminder_id>` olarak gelir
-(uygulamanın `flutter_local_notifications` ile kaydettiği kategori adıyla aynı).
+(uygulamanın yerel bildirimde kullandığı kategori adıyla aynı).
 
 ### Bildirimden günlük veri toplama
 
 Kullanıcı uygulamayı açmadan bildirimin üzerindeki butonla cevap verir; cevap günlük
 kayda (`daily_events`) yazılır ve hatırlatıcı planı buna göre güncellenir (ör. su hedefi
-dolunca su hatırlatıcısı susar). Mobil uygulama **Flutter**'dır; bildirimler
-`flutter_local_notifications` (yerel) ve `firebase_messaging` (sunucu) ile çalışır.
+dolunca su hatırlatıcısı susar, makyaj temizlendiyse temizlik hatırlatıcısı düşer).
 
-**Butonların tek kaynağı uygulamadır.** Kimlik, kayıt tipi ve yük
-`mobile/lib/core/today_plan.dart` → `reminderActions` içindedir; düğme kimliği
-`<reminder_id>:<etiket>` (ör. `water_intake:water250`), iOS kategorisi `rebi_<reminder_id>`.
-Sunucunun listesi (`GET /push/actions`, `/today/plan` → `reminders[].actions`) bunun **olay
-yazan** eylemleriyle aynıdır; iki liste saparsa `backend/tests/test_push_actions.py` kırılır.
+**1. Kategorileri kaydet.** iOS butonları ancak bildirim gelmeden önce kaydedilmiş
+kategoriden çizer. Açılışta `GET /push/actions` çağırın ve her kategoriyi
+`UNNotificationCategory` olarak kaydedin (kimlik doğrulaması gerekmez):
 
-**Akış (Flutter):**
+```json
+{
+  "categories": [
+    { "id": "water_intake", "category": "rebi_water_intake", "open_path": "/dashboard",
+      "actions": [ { "id": "water250", "label": "+250 ml" }, { "id": "water500", "label": "+500 ml" } ] },
+    { "id": "nutrition_log", "category": "rebi_nutrition_log", "open_path": "/dashboard",
+      "actions": [ { "id": "junkNo", "label": "Hayır" } ] }
+  ]
+}
+```
 
-| durum | kim gösterir | butona dokunuş |
-| --- | --- | --- |
-| Yerel bildirim (FCM kapalı veya dağıtıcı susmuş) | `flutter_local_notifications` | Android: arka planda `rebiNotificationBackground` olayı kuyruğa yazar. iOS: düğme uygulamayı açar |
-| Sunucu push'u, Android | Yalnızca-veri mesajı → `FirebaseMessaging.onBackgroundMessage` (`rebiPushBackground`) ya da uygulama açıkken `onMessage` → `showPushReminder` aynı kanal ve düğmelerle yerel bildirim kurar | Yerel bildirimle aynı yol |
-| Sunucu push'u, iOS | Sistem; düğmeler `aps.category` ile uygulamanın kaydettiği `rebi_<reminder_id>` kategorisinden | `AppDelegate.swift` (`PushActionInbox`) dokunuşu yerel depoya yazar, uygulama açılır; `takePendingPushActions` okuyup gönderir |
+Android'de `onMessageReceived` içinde `data.actions` listesinden `NotificationCompat`
+butonları kurulur. Butonlar arka planda çalışmalı (uygulamayı öne getirmeden).
 
-Arka plan izolatında Supabase oturumu yoktur; düğme olayı cihazdaki kuyruğa yazılır ve uygulama
-açılınca `POST /daily_tracking/ingest` ile gönderilir (`client_event_id` ile tekrar sayılmaz).
+**2. Cevabı gönder.**
 
-**iOS'ta sunucu bildiriminin düğmesi.** Kategoriler `flutter_local_notifications` ile
-kaydedildiği için sunucu mesajındaki `aps.category` düğmeleri gösterir; ama dokunuş
-`firebase_messaging` üzerinden Dart'a **düğme kimliği olmadan** (`onMessageOpenedApp`) gelir.
-Bu yüzden `AppDelegate` `userNotificationCenter(_:didReceive:)` içinde, yalnızca sunucu
-bildirimlerinde (`UNPushNotificationTrigger`), dokunuşu `flutter.rebi-pending-push-actions`
-anahtarına (`shared_preferences`'ın `UserDefaults` alanı) ekler ve olayı eklentilere aynen iletir.
-Uygulama oturum açılınca, öne gelince ve sunucu bildirimi açılınca bu listeyi okuyup siler ve
-uygulama içi dokunuşla aynı yoldan kaydeder. iOS düğmeleri uygulamayı öne getirir
-(`DarwinNotificationActionOption.foreground`), kayıt o anda gider.
+```
+POST /push/respond
+Authorization: Bearer <supabase_access_token>
+{
+  "user_id": "…",
+  "reminder_id": "water_intake",
+  "action_id": "water250",
+  "log_date": "2026-10-28",
+  "slot": "13:00"
+}
+```
 
-**`POST /push/respond` (isteğe bağlı).** Uygulamanın yükü bilmediği istemciler için sunucu
-tarafı karşılığıdır; Flutter uygulaması kullanmaz (kendi kuyruğuyla `/daily_tracking/ingest`'e
-yazar). Gövde: `{ user_id, reminder_id, action_id, log_date, slot }`. `action_id` hem `water250`
-hem `water_intake:water250` biçiminde kabul edilir; kaydı sunucu çözer ve aynı
-`reminder_id` + `log_date` + `slot` için ikinci dokunuş sayılmaz. Cevap gönderim defterine de
-yazılır, sunucu o pencereye ayrıca push göndermez. 422: böyle bir düğme yok ya da `slot`
-`SS:DD` değil; 403: `user_id` anahtarla uyuşmuyor. Yanıt: `{ ok, log_date, log_event, aggregated }`.
+`log_date` ve `slot` bildirim verisinden aynen geri gönderilir. Hangi olayın hangi yükle
+yazılacağına sunucu karar verir; uygulama yük göndermez. Aynı bildirime (aynı
+`reminder_id` + `log_date` + `slot`) ikinci dokunuş sayılmaz, bu yüzden çevrimdışı
+kuyruğun tekrar denemesi güvenlidir. Kendi kimliğinizi kullanmak isterseniz
+`client_event_id` gönderebilirsiniz.
+
+Yanıt:
+
+```json
+{ "ok": true, "log_date": "2026-10-28", "log_event": "water_intake",
+  "aggregated": { "water_ml_total": 750, "…": "…" } }
+```
+
+| kod | anlamı |
+| --- | --- |
+| 422 | bu hatırlatıcıda böyle bir buton yok veya `slot` biçimi `SS:DD` değil |
+| 403 | `user_id` anahtarla uyuşmuyor |
 
 Butonlar:
 
@@ -405,8 +437,21 @@ Butonlar:
 | `nutrition_log` | `junkNo` → abur cubur yemedi |
 | `makeup_removal`, `lip_balm`, `daily_checkin`, `restock_check` | buton yok; dokununca `open_path` açılır |
 
-Seçim ekranı açan eylemler ("Evet, yedim", "Temizledim") buton değildir; bildirime dokunmak
-o ekranı açar.
+Liste uygulamanın `reminderActions` listesindeki **olay yazan** eylemlerle aynıdır
+(kimlikler `mobileToday.actions.*` çeviri anahtarlarıdır). Seçim ekranı açan eylemler
+("Evet, yedim", "Temizledim") buton değildir. Uygulamanın düğme kimliği biçimi
+(`water_intake:water250`) da `action_id` olarak kabul edilir. İki liste birbirinden
+saparsa `backend/tests/test_push_actions.py` kırılır.
+
+**Yerel bildirimler.** Sunucuda FCM kapalıysa (`push_configured: false`) uygulama
+`GET /today/plan` yanıtındaki `reminders` ile yerel bildirim kurar; her hatırlatıcıda
+`category`, `actions` ve `open_path` aynı biçimde gelir. Cevap yine `POST /push/respond`
+ile gönderilir (`slot` = bildirimin kurulduğu saat). Cevap deftere de yazıldığı için
+sunucu aynı pencereye ayrıca push göndermez.
+
+**Arka planda oturum.** Buton arka planda çalıştığında erişim anahtarının süresi dolmuş
+olabilir; isteği göndermeden önce Supabase SDK'sıyla oturumu tazeleyin. İstek
+başarısız olursa cevabı kuyruğa alıp uygulama açıldığında tekrar gönderin.
 
 ## Rıza ve gizlilik
 

@@ -13,6 +13,8 @@ import 'package:rebi/screens/analyze/analyze_screen.dart';
 import 'package:rebi/screens/checkin_screen.dart';
 import 'package:rebi/ui/components/severity_test.dart';
 
+import 'helpers/app_harness.dart';
+
 void main() {
   group('check-in serisi (web: lib/checkinStats.js)', () {
     final now = DateTime.utc(2026, 10, 10, 12);
@@ -34,6 +36,7 @@ void main() {
   });
 
   group('formatApiErrorDetail (web: lib/apiErrors.js)', () {
+    setUp(loadTestI18n);
     test('string detail', () => expect(formatApiErrorDetail({'detail': 'Yetkisiz'}), 'Yetkisiz'));
     test('pydantic liste detayı birleştirilir', () {
       expect(
@@ -49,6 +52,35 @@ void main() {
     test('message alanı', () => expect(formatApiErrorDetail({'message': 'Hata'}), 'Hata'));
     test('boş gövde', () => expect(formatApiErrorDetail({}), 'İşlem tamamlanamadı. Bir süre sonra tekrar dene.'));
     test('null gövde', () => expect(formatApiErrorDetail(null), 'Sunucudan anlamlı bir yanıt alınamadı.'));
+  });
+
+  group('apiErrorMessage (kullanıcıya gösterilen hata cümlesi)', () {
+    setUp(loadTestI18n);
+
+    test('5xx ham ayrıntıyı göstermez, sakin cümle verir', () {
+      final raw = {'detail': 'Internal Server Error'};
+      expect(apiErrorMessage(ApiResponse(500, raw)), isNot(contains('Internal')));
+      expect(apiErrorMessage(ApiResponse(500, raw)), 'Sunucuda bir sorun oluştu. Biraz sonra tekrar dene.');
+      for (final s in [408, 502, 503, 504]) {
+        expect(apiErrorMessage(ApiResponse(s, raw)), 'Sunucu şu an yoğun. Biraz sonra tekrar dene.', reason: '$s');
+      }
+    });
+
+    test('401 ve 429 ne yapacağını söyler', () {
+      expect(apiErrorMessage(const ApiResponse(401, {})), contains('Oturum'));
+      expect(apiErrorMessage(const ApiResponse(429, {})), contains('Birkaç saniye'));
+    });
+
+    test('diğer istemci hatalarında sunucunun kendi açıklaması gösterilir', () {
+      expect(apiErrorMessage(const ApiResponse(409, {'detail': 'Bugün için check-in zaten yapıldı.'})), 'Bugün için check-in zaten yapıldı.');
+      expect(apiErrorMessage(const ApiResponse(422, {})), 'İşlem tamamlanamadı. Bir süre sonra tekrar dene.');
+    });
+
+    test('İngilizce arayüzde İngilizce', () {
+      loadTestI18n('en');
+      expect(apiErrorMessage(const ApiResponse(503, {})), 'The server is busy right now. Try again in a moment.');
+      expect(apiErrorMessage(const ApiResponse(422, {})), "Couldn't complete that. Try again in a while.");
+    });
   });
 
   test('rıza hatası yalnızca 403 + "izni gerekli"', () {
@@ -106,6 +138,7 @@ void main() {
       expect(parseWaterMlInput('-5'), isNull);
     });
     test('formatGlassesLabel', () {
+      loadTestI18n();
       expect(formatGlassesLabel(0), '0 bardak');
       expect(formatGlassesLabel(2000), 'yaklaşık 8 bardak');
       expect(formatGlassesLabel(375), 'yaklaşık 1.5 bardak');

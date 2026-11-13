@@ -79,14 +79,18 @@ class _RevealState extends State<Reveal> with SingleTickerProviderStateMixin {
   }
 }
 
-/// Dokunmaya yumuşak "basılma" geri bildirimi verir (dalga yerine küçülme + hafif titreşim).
+/// Dokunmaya yumuşak "basılma" geri bildirimi verir (dalga yerine küçülme + hafif titreşim). Basarken çabuk küçülür,
+/// bırakınca yay gibi hafifçe aşıp yerine oturur (`easeOutBack`).
 class Pressable extends StatefulWidget {
-  const Pressable({super.key, required this.child, required this.onTap, this.scale = .97, this.haptic = true});
+  const Pressable({super.key, required this.child, required this.onTap, this.scale = .97, this.haptic = true, this.impact = false});
 
   final Widget child;
   final VoidCallback? onTap;
   final double scale;
   final bool haptic;
+
+  /// true ise seçim tıkırtısı yerine daha belirgin hafif darbe (ana eylem düğmeleri).
+  final bool impact;
 
   @override
   State<Pressable> createState() => _PressableState();
@@ -112,14 +116,14 @@ class _PressableState extends State<Pressable> {
         onTapCancel: enabled ? () => _set(false) : null,
         onTap: enabled
             ? () {
-                if (widget.haptic) unawaited(HapticFeedback.selectionClick().catchError((_) {}));
+                if (widget.haptic) unawaited((widget.impact ? HapticFeedback.lightImpact() : HapticFeedback.selectionClick()).catchError((_) {}));
                 widget.onTap!();
               }
             : null,
         child: AnimatedScale(
           scale: _down ? widget.scale : 1,
-          duration: const Duration(milliseconds: 110),
-          curve: Curves.easeOut,
+          duration: Duration(milliseconds: _down ? 100 : 320),
+          curve: _down ? Curves.easeOut : Curves.easeOutBack,
           child: widget.child,
         ),
       ),
@@ -164,4 +168,105 @@ class _ShakeState extends State<Shake> with SingleTickerProviderStateMixin {
       },
     );
   }
+}
+
+/// [child]in üstünden bir kez, yumuşak bir ışık bandı geçirir (ana eylem düğmesine dikkat çeker). [delay] sonra
+/// [duration] boyunca oynar; "animasyonları azalt" açıkken hiç oynamaz. Dokunmayı engellemez.
+class ShimmerOnce extends StatefulWidget {
+  const ShimmerOnce({
+    super.key,
+    required this.child,
+    required this.radius,
+    this.delay = Duration.zero,
+    this.duration = const Duration(milliseconds: 1100),
+    this.color = const Color(0xFF14B8A6),
+  });
+
+  final Widget child;
+
+  /// Bandın kırpılacağı köşe yarıçapı (düğmeninkiyle aynı).
+  final double radius;
+  final Duration delay;
+  final Duration duration;
+
+  /// Bandın rengi: zemine göre görünür olmalı (krem düğmede turkuaz, koyu düğmede beyaz).
+  final Color color;
+
+  @override
+  State<ShimmerOnce> createState() => _ShimmerOnceState();
+}
+
+class _ShimmerOnceState extends State<ShimmerOnce> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: widget.delay + widget.duration);
+  bool _started = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_started) return;
+    _started = true;
+    if (!reduceMotion(context)) _c.forward();
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final start = widget.delay.inMilliseconds / (widget.delay + widget.duration).inMilliseconds;
+    return Stack(
+      children: [
+        widget.child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: ExcludeSemantics(
+              child: AnimatedBuilder(
+                animation: _c,
+                builder: (context, _) {
+                  final p = Curves.easeInOut.transform(Interval(start, 1).transform(_c.value));
+                  if (p <= 0 || p >= 1) return const SizedBox.shrink();
+                  return CustomPaint(painter: _ShimmerPainter(p, widget.radius, widget.color));
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ShimmerPainter extends CustomPainter {
+  _ShimmerPainter(this.p, this.radius, this.color);
+
+  final double p;
+  final double radius;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final clip = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
+    canvas.save();
+    canvas.clipRRect(clip);
+    // Eğik, yumuşak kenarlı bant: soldan sağa süzülür; ortası en parlak, kenarları saydam.
+    final w = size.width * .34;
+    final x = -w + (size.width + 2 * w) * p;
+    canvas.translate(x, size.height / 2);
+    canvas.rotate(-.35);
+    final band = Rect.fromLTWH(-w / 2, -size.height * 1.2, w, size.height * 2.4);
+    canvas.drawRect(
+      band,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [color.withValues(alpha: 0), color.withValues(alpha: .22), color.withValues(alpha: 0)],
+        ).createShader(band),
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ShimmerPainter old) => old.p != p;
 }

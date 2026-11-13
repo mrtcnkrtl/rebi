@@ -1,14 +1,17 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/material.dart' show Size, TextField, TextInputAction;
+import 'package:flutter/material.dart' show Checkbox, Key, Size, TextField, TextFormField, TextInputAction;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/device_location.dart';
 import 'package:rebi/core/routine_tracking.dart';
+import 'package:rebi/screens/profile_screen.dart' show debugAccountAvailable;
 import 'package:rebi/screens/today/today_clock.dart';
 import 'package:rebi/ui/tw.dart';
 
+import 'auth_flow_test.dart' show FakeAuth;
 import 'helpers/a11y.dart';
+import 'helpers/analyze_walk.dart';
 import 'helpers/app_harness.dart';
 import 'helpers/notification_fakes.dart';
 
@@ -145,13 +148,89 @@ void main() {
       await pumpApp(t, location: '/dashboard/reminders', prefs: accepted(), backend: populated());
       await tapText(t, tr('mobileReminders.categories.routine.title'));
     }),
+    ('Hatırlatıcılar · kaydet çubuğu', (t) async {
+      await pumpApp(t, location: '/dashboard/reminders', prefs: accepted(), backend: populated());
+      await tapText(t, tr('mobileReminders.water.every.60'));
+    }),
+    ('Hesap', (t) async {
+      debugAccountAvailable = true;
+      addTearDown(() => debugAccountAvailable = null);
+      await pumpApp(t, location: '/dashboard/account', prefs: accepted(), backend: populated());
+    }),
+    ('Ben · çıkış onayı', (t) async {
+      await pumpApp(t, location: '/dashboard/profile', prefs: accepted(), backend: populated());
+      await tapText(t, tr('mobileMe.logout'));
+    }),
+    ('Ben · dil sayfası', (t) async {
+      await pumpApp(t, location: '/dashboard/profile', prefs: accepted(), backend: populated());
+      await tapText(t, tr('lang.label'));
+    }),
     ('Rafım', (t) => pumpApp(t, location: '/dashboard/shelf', prefs: accepted(), backend: populated())),
     ('Temalar', (t) => pumpApp(t, location: '/dashboard/themes', prefs: accepted(), backend: populated())),
     ('Check-in', (t) => pumpApp(t, location: '/dashboard/checkin', prefs: accepted(), backend: populated())),
+    ('Check-in · cilt seçili', (t) async {
+      await pumpApp(t, location: '/dashboard/checkin', prefs: accepted(), backend: populated());
+      await tapText(t, tr('mobileCheckin.skin.kuru.title'));
+    }),
     ('Abonelik', (t) => pumpApp(t, location: '/dashboard/subscribe', prefs: accepted(), backend: populated())),
     ('Analiz · hazır', (t) => pumpApp(t, location: '/dashboard/analyze', prefs: accepted(), backend: populated())),
-    ('Analiz · adım 1', (t) => pumpApp(t, location: '/dashboard/analyze', backend: FakeBackend())),
+    ('Analiz · karşılama', (t) => pumpApp(t, location: '/dashboard/analyze', backend: FakeBackend())),
+    ('Analiz · ad ve yaş', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'basics');
+    }),
+    ('Analiz · cilt tipi (tek seçim)', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'skinType');
+    }),
+    ('Analiz · sorunlar (çoklu seçim)', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'concerns');
+    }),
+    ('Analiz · şiddet sorusu', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'severity');
+    }),
+    ('Analiz · su ve uyku', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'waterSleep');
+    }),
+    ('Analiz · stres testi daveti', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'stressIntro');
+    }),
+    ('Analiz · sigara', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'smoking');
+    }),
+    ('Analiz · tıraş (erkek)', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'shaving');
+    }),
+    ('Analiz · ürün tepkileri', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'tolerance');
+    }),
+    ('Analiz · fotoğraf', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'photo');
+    }),
+    ('Analiz · özet', (t) async {
+      await pumpApp(t, location: '/dashboard/analyze');
+      await analyzeWalkTo(t, 'summary');
+    }),
+    ('Sohbet · oturumsuz davet', (t) => pumpApp(t, location: '/rebi', loggedIn: false)),
     ('Giriş', (t) => pumpApp(t, location: '/auth', loggedIn: false)),
+    ('Giriş · e-posta kodu', (t) async {
+      await pumpApp(t, location: '/auth?mode=signup', loggedIn: false, authController: FakeAuth());
+      await t.enterText(find.byType(TextFormField).at(0), 'Ayşe Test');
+      await t.enterText(find.byType(TextFormField).at(1), 'ayse@ornek.com');
+      await t.enterText(find.byType(TextFormField).at(2), 'parola123');
+      await settle(t, 4);
+      await tapFinder(t, find.byType(Checkbox).at(0));
+      await tapFinder(t, find.byType(Checkbox).at(1));
+      await tapFinder(t, find.byKey(const Key('auth-submit')).first);
+    }),
     ('Açılış', (t) => pumpApp(t, location: '/', loggedIn: false)),
     ('KVKK metni', (t) => pumpApp(t, location: '/kvkk', loggedIn: false)),
   ];

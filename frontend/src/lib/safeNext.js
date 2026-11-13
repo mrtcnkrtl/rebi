@@ -12,6 +12,9 @@ export function safeNext(raw) {
   }
   if (!path.startsWith("/") || path.startsWith("//") || path.startsWith("/\\")) return fallback;
   if (path.includes("\\") || path.includes("://")) return fallback;
-  if (/[\u0000-\u001f\u007f]/.test(path)) return fallback;
+  for (let i = 0; i < path.length; i += 1) {
+    const code = path.charCodeAt(i);
+    if (code <= 31 || code === 127) return fallback;
+  }
   return path;
 }

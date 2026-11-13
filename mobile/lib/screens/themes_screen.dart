@@ -8,9 +8,12 @@ import '../core/subscription.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/brand/palette.dart';
+import '../ui/brand/brand_caps.dart';
 import '../ui/components/appearance_card.dart';
+import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import 'today/today_widgets.dart';
 
 /// Vurgu rengi seçimi + canlı önizleme (web: `pages/Themes.jsx`). Uygulamanın dili tektir; seçilen renk
 /// yalnızca düğmelerde, seçimlerde ve vurgularda görünür.
@@ -34,17 +37,16 @@ class ThemesScreen extends StatelessWidget {
       ctrl.setThemeId(t.id);
     }
 
-    return ThemedPage(
+    return StagePage(
       theme: theme,
+      title: i18n.t('themes.title'),
+      subtitle: i18n.t('themes.subtitle'),
+      backTo: '/dashboard/profile',
+      maxWidth: 512,
       children: [
-        Text(i18n.t('themes.title'), style: Brand.serif(30, weight: 500)),
-        const SizedBox(height: 6),
-        Text(i18n.t('themes.subtitle'), style: tx(14, c: Tw.gray500, h: relaxed)),
-        const SizedBox(height: 20),
         AppearanceCard(theme: theme),
         const SizedBox(height: 28),
-        Text('VURGU RENGİ', style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
-        const SizedBox(height: 10),
+        SectionLabel(brandCaps(i18n.t('mobileThemes.accent'), i18n.lang)),
         for (var i = 0; i < themes.length; i += 2) ...[
           if (i > 0) const SizedBox(height: 10),
           IntrinsicHeight(
@@ -73,20 +75,22 @@ class ThemesScreen extends StatelessWidget {
             alignment: WrapAlignment.center,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text('Rebi Plus için ', style: tx(12, c: Tw.gray500)),
-              TextLink('abonelik sayfası',
+              Text(i18n.t('mobileThemes.plusPrefix'), style: tx(12, c: Tw.gray500)),
+              TextLink(i18n.t('mobileThemes.plusLink'),
                   onTap: () => context.go('/dashboard/subscribe'), style: tx(12, w: 6, c: theme.fg)),
               Text('.', style: tx(12, c: Tw.gray500)),
             ],
           ),
         const SizedBox(height: 28),
-        Text('ÖNİZLEME', style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
-        const SizedBox(height: 10),
+        SectionLabel(brandCaps(i18n.t('mobileThemes.preview'), i18n.lang)),
         _Preview(theme: theme),
       ],
     );
   }
 }
+
+/// Temanın görünen adı (uygulama dilinde); çeviri yoksa kayıtlı ad.
+String themeLabel(RebiTheme t) => I18n.instance.t('mobileThemes.names.${t.id}', const {}, t.label);
 
 /// Renk örneği kartı: dolu daire, ad ve seçili işareti.
 class _SwatchCard extends StatelessWidget {
@@ -102,7 +106,7 @@ class _SwatchCard extends StatelessWidget {
     return Semantics(
       button: true,
       selected: active,
-      label: t.label,
+      label: themeLabel(t),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -147,7 +151,7 @@ class _SwatchCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(t.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: 7)),
+                      Text(themeLabel(t), maxLines: 1, overflow: TextOverflow.ellipsis, style: tx(14, w: 7)),
                       if (t.premium) ...[
                         const SizedBox(height: 2),
                         Row(
@@ -197,20 +201,20 @@ class _Preview extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(child: Text('Sabah rutini', style: Brand.serif(20, weight: 500))),
+              Expanded(child: Text(I18n.instance.t('mobileThemes.sample.title'), style: Brand.serif(20, weight: 500))),
               Text('2 / 3', style: tx(12, w: 7, c: theme.fg)),
             ],
           ),
           const SizedBox(height: 4),
-          Text('Bugün için üç adım', style: tx(12, c: Tw.gray500)),
+          Text(I18n.instance.t('mobileThemes.sample.hint'), style: tx(12, c: Tw.gray600)),
           const SizedBox(height: 14),
-          step(LucideIcons.droplets, 'Temizleyici', true),
+          step(LucideIcons.droplets, I18n.instance.t('mobileThemes.sample.cleanser'), true),
           const SizedBox(height: 8),
-          step(LucideIcons.sparkles, 'Serum', true),
+          step(LucideIcons.sparkles, I18n.instance.t('mobileThemes.sample.serum'), true),
           const SizedBox(height: 8),
-          step(LucideIcons.sun, 'Güneş kremi', false),
+          step(LucideIcons.sun, I18n.instance.t('mobileThemes.sample.sunscreen'), false),
           const SizedBox(height: 16),
-          PrimaryButton(onPressed: () {}, color: theme.primary, label: 'Sabah rutinini yaptım'),
+          PrimaryButton(onPressed: () {}, color: theme.primary, label: I18n.instance.t('mobileThemes.sample.done')),
         ],
       ),
     );

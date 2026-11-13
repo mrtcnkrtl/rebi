@@ -79,7 +79,10 @@ class _RoutineHeroState extends State<RoutineHero> {
         final items = block == 'morning' ? widget.morning : widget.evening;
         final notes = block == 'morning' ? widget.morningNotes : widget.eveningNotes;
         // Biten (Rafım) ürünlerin adımı rutinin ilerlemesine ve tamamlanmasına sayılmaz.
-        final live = [for (final it in items) if (!_isOut(plan, it)) it];
+        final live = [
+          for (final it in items)
+            if (!_isOut(plan, it)) it,
+        ];
         final steps = [for (final it in live) stepOrder(it).round()];
         final blockDone = progress.blockDone(block);
         final checked = steps.where((s) => blockDone || progress.stepsOf(block).contains(s)).length;
@@ -107,10 +110,9 @@ class _RoutineHeroState extends State<RoutineHero> {
                       child: Text(i18n.t('dashboard.noPlannedSteps'), style: tx(13, c: Tw.gray500)),
                     )
                   else
-                    for (var i = 0; i < items.length; i++) ...[
-                      if (i > 0) const Hairline(indent: 40),
+                    for (var i = 0; i < items.length; i++)
                       if (_isOut(plan, items[i]))
-                        _outStep(i18n, items[i])
+                        _outStep(i18n, items[i], last: i == items.length - 1)
                       else
                         _step(
                           i18n,
@@ -120,8 +122,8 @@ class _RoutineHeroState extends State<RoutineHero> {
                           step: stepOrder(items[i]).round(),
                           checked: blockDone || progress.stepsOf(block).contains(stepOrder(items[i]).round()),
                           allSteps: steps,
+                          last: i == items.length - 1,
                         ),
-                    ],
                 ],
                 if (notes.isNotEmpty) _notes(i18n, notes),
                 const SizedBox(height: 8),
@@ -168,7 +170,10 @@ class _RoutineHeroState extends State<RoutineHero> {
     final theme = widget.theme;
     final current = widget.actions.blockAt(todayPanelClock());
     Widget segment(String b) {
-      final items = [for (final it in (b == 'morning' ? widget.morning : widget.evening)) if (!_isOut(plan, it)) it];
+      final items = [
+        for (final it in (b == 'morning' ? widget.morning : widget.evening))
+          if (!_isOut(plan, it)) it,
+      ];
       final done = progress.blockDone(b);
       final count = items.where((it) => done || progress.stepsOf(b).contains(stepOrder(it).round())).length;
       final selected = b == current;
@@ -188,26 +193,26 @@ class _RoutineHeroState extends State<RoutineHero> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(minHeight: 48),
                 child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                child: Center(
-                  child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(b == 'morning' ? LucideIcons.sun : LucideIcons.moon, size: 15, color: fg),
-                      const SizedBox(width: 6),
-                      Text(label, style: tx(13, w: 6, c: fg)),
-                      const SizedBox(width: 6),
-                      if (done)
-                        Icon(LucideIcons.circleCheck, size: 14, color: selected ? Colors.white : Tw.emerald700)
-                      else if (items.isNotEmpty)
-                        Text('$count/${items.length}', style: tx(11, w: 6, c: selected ? Colors.white70 : Tw.gray500)),
-                    ],
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  child: Center(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(b == 'morning' ? LucideIcons.sun : LucideIcons.moon, size: 15, color: fg),
+                          const SizedBox(width: 6),
+                          Text(label, style: tx(13, w: 6, c: fg)),
+                          const SizedBox(width: 6),
+                          if (done)
+                            Icon(LucideIcons.circleCheck, size: 14, color: selected ? Colors.white : Tw.emerald700)
+                          else if (items.isNotEmpty)
+                            Text('$count/${items.length}', style: tx(11, w: 6, c: selected ? Colors.white70 : Tw.gray500)),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-                ),
-              ),
               ),
             ),
           ),
@@ -217,7 +222,10 @@ class _RoutineHeroState extends State<RoutineHero> {
 
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(color: theme.primaryLight.withValues(alpha: Tw.dark ? .35 : .55), borderRadius: BorderRadius.circular(999)),
+      decoration: BoxDecoration(
+        color: theme.primaryLight.withValues(alpha: Tw.dark ? .35 : .55),
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Row(children: [for (final b in routineBlocks) segment(b)]),
     );
   }
@@ -258,7 +266,10 @@ class _RoutineHeroState extends State<RoutineHero> {
                     children: [
                       Text(i18n.t('mobileToday.hero.doneTitle.$block'), style: heading(20, c: Tw.emerald800)),
                       const SizedBox(height: 2),
-                      Text(i18n.t('mobileToday.hero.doneBody'), style: tx(12.5, c: Tw.emerald800, h: relaxed)),
+                      Text(
+                        i18n.t('mobileToday.hero.doneBody'),
+                        style: tx(12.5, c: Tw.emerald800, h: relaxed),
+                      ),
                     ],
                   ),
                 ),
@@ -294,6 +305,7 @@ class _RoutineHeroState extends State<RoutineHero> {
     required int step,
     required bool checked,
     required List<int> allSteps,
+    required bool last,
   }) {
     final theme = widget.theme;
     final key = '$block-$index';
@@ -312,96 +324,129 @@ class _RoutineHeroState extends State<RoutineHero> {
         borderRadius: BorderRadius.circular(12),
         onTap: _busy ? null : () => _guard(() => widget.actions.toggleStep(block: block, step: step, allSteps: allSteps)),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _CheckCircle(checked: checked, color: theme.primary),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(
-                        title,
-                        style: tx(15, w: 6, c: checked ? Tw.gray400 : Tw.gray900, h: snug).copyWith(
-                          decoration: checked ? TextDecoration.lineThrough : null,
-                          decorationColor: Tw.gray400,
-                        ),
-                      ),
-                    ),
-                    StructuredBadges(item: item),
-                    if (hasMore) ...[
-                      const SizedBox(height: 4),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(8),
-                        onTap: () => setState(() => open ? _expanded.remove(key) : _expanded.add(key)),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(minHeight: 48),
-                          child: Align(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: 1,
-                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+          padding: const EdgeInsets.only(top: 6),
+          child: _rail(
+            node: _CheckCircle(checked: checked, color: theme.primary),
+            last: last,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 3),
+                  // Yapılan adım soluklaşır ama okunur kalır (üstü çizilmez): sakin bir "tamam" hissi.
+                  child: Text(title, style: tx(16, w: 6, c: checked ? Tw.gray500 : Tw.gray900, h: 1.3)),
+                ),
+                StructuredBadges(item: item),
+                if (hasMore) ...[
+                  const SizedBox(height: 4),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () => setState(() => open ? _expanded.remove(key) : _expanded.add(key)),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        widthFactor: 1,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Flexible(
                               child: Text(
                                 open
                                     ? i18n.t('common.hide')
                                     : skincare
-                                        ? i18n.t('dashboard.whySkincareButton')
-                                        : i18n.t('common.details'),
+                                    ? i18n.t('dashboard.whySkincareButton')
+                                    : i18n.t('common.details'),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: tx(12, w: 5, c: theme.fg),
                               ),
                             ),
                             Icon(open ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 14, color: theme.fg),
-                          ]),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                if (open) ...[
+                  const SizedBox(height: 4),
+                  if (detail.isNotEmpty)
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: i18n.t('dashboard.shortWhy'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
                           ),
-                        ),
+                          TextSpan(text: ' $detail'),
+                        ],
                       ),
-                    ],
-                    if (open) ...[
-                      const SizedBox(height: 4),
-                      if (detail.isNotEmpty)
-                        Text.rich(
-                          TextSpan(children: [
-                            TextSpan(text: i18n.t('dashboard.shortWhy'), style: const TextStyle(fontWeight: FontWeight.w700)),
-                            TextSpan(text: ' $detail'),
-                          ]),
-                          style: tx(12, c: Tw.gray600, h: relaxed),
-                        ),
-                      if (usage.isNotEmpty) ...[
-                        if (detail.isNotEmpty) const SizedBox(height: 6),
-                        Text.rich(
-                          TextSpan(children: [
-                            TextSpan(
-                              text: skincare ? i18n.t('dashboard.howToApply') : i18n.t('dashboard.howToDo'),
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            TextSpan(text: ' $usage'),
-                          ]),
-                          style: tx(12, c: Tw.gray600, h: relaxed),
-                        ),
-                      ],
-                      const SizedBox(height: 2),
-                      TextLink(
-                        i18n.t('mobileRoutine.askRebi'),
-                        onTap: () => askRebiAboutStep(
-                          context,
-                          item,
-                          RoutineCtx(i18n: i18n, theme: theme, localized: widget.localized, weekDays: const []),
-                        ),
-                        style: tx(12, w: 7, c: theme.fg),
+                      style: tx(12, c: Tw.gray600, h: relaxed),
+                    ),
+                  if (usage.isNotEmpty) ...[
+                    if (detail.isNotEmpty) const SizedBox(height: 6),
+                    Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: skincare ? i18n.t('dashboard.howToApply') : i18n.t('dashboard.howToDo'),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          TextSpan(text: ' $usage'),
+                        ],
                       ),
-                    ],
+                      style: tx(12, c: Tw.gray600, h: relaxed),
+                    ),
                   ],
-                ),
-              ),
-            ],
+                  const SizedBox(height: 2),
+                  TextLink(
+                    i18n.t('mobileRoutine.askRebi'),
+                    onTap: () =>
+                        askRebiAboutStep(context, item, RoutineCtx(i18n: i18n, theme: theme, localized: widget.localized, weekDays: const [])),
+                    style: tx(12, w: 7, c: theme.fg),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Zaman çizelgesi satırı: solda düğüm ve bir sonraki adıma inen ince çizgi, sağda içerik.
+  Widget _rail({required Widget node, required Widget child, required bool last}) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Column(
+              children: [
+                node,
+                if (!last)
+                  Expanded(
+                    child: Center(
+                      child: Container(
+                        width: 2,
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        decoration: BoxDecoration(color: widget.theme.primary.withValues(alpha: .18), borderRadius: BorderRadius.circular(1)),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: last ? 6 : 12),
+              child: child,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -409,62 +454,60 @@ class _RoutineHeroState extends State<RoutineHero> {
   bool _isOut(TodayPlan? plan, RoutineItem item) => plan?.isOut(str(item['action'])) ?? false;
 
   /// Bitti işaretli ürünün adımı: soluk, "Bitti" rozeti ve "Aldım"; rutinin ilerlemesine sayılmaz.
-  Widget _outStep(I18n i18n, RoutineItem item) {
+  Widget _outStep(I18n i18n, RoutineItem item, {required bool last}) {
     final name = str(item['action']).trim();
     final step = stepOrder(item).round();
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 14),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Tw.amber100),
-            child: Icon(LucideIcons.packageX, size: 15, color: Tw.amber800),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.only(top: 6),
+      child: _rail(
+        node: Container(
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(shape: BoxShape.circle, color: Tw.amber100),
+          child: Icon(LucideIcons.packageX, size: 15, color: Tw.amber800),
+        ),
+        last: last,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 3),
+              child: Text(
+                pickAction(item, localized: widget.localized),
+                style: tx(16, w: 6, c: Tw.gray500, h: 1.3),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 12,
+              runSpacing: 4,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(pickAction(item, localized: widget.localized), style: tx(15, w: 6, c: Tw.gray500, h: snug)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: Tw.amber100, borderRadius: BorderRadius.circular(999)),
+                  child: Text(i18n.t('mobileToday.hero.outBadge'), style: tx(11, w: 7, c: Tw.amber800)),
                 ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 4,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(color: Tw.amber100, borderRadius: BorderRadius.circular(999)),
-                      child: Text(i18n.t('mobileToday.hero.outBadge'), style: tx(11, w: 7, c: Tw.amber800)),
-                    ),
-                    Text(i18n.t('mobileToday.hero.outHint'), style: tx(11.5, c: Tw.gray500)),
-                    TextLink(
-                      i18n.t('mobileToday.hero.restock'),
-                      onTap: _busy
-                          ? () {}
-                          : () => _guard(() async {
-                                await widget.actions.record(
-                                  shelfRestockedEvent,
-                                  {'product': shelfName(name), 'step_order': step},
-                                  message: i18n.t('mobileToday.toast.restocked', {'product': name}),
-                                  undoPayload: {'product': shelfName(name), 'step_order': step},
-                                  undoType: shelfFinishedEvent,
-                                );
-                              }),
-                      style: tx(12.5, w: 7, c: widget.theme.fg),
-                    ),
-                  ],
+                Text(i18n.t('mobileToday.hero.outHint'), style: tx(11.5, c: Tw.gray500)),
+                TextLink(
+                  i18n.t('mobileToday.hero.restock'),
+                  onTap: _busy
+                      ? () {}
+                      : () => _guard(() async {
+                          await widget.actions.record(
+                            shelfRestockedEvent,
+                            {'product': shelfName(name), 'step_order': step},
+                            message: i18n.t('mobileToday.toast.restocked', {'product': name}),
+                            undoPayload: {'product': shelfName(name), 'step_order': step},
+                            undoType: shelfFinishedEvent,
+                          );
+                        }),
+                  style: tx(12.5, w: 7, c: widget.theme.fg),
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -483,13 +526,16 @@ class _RoutineHeroState extends State<RoutineHero> {
               children: [
                 Icon(LucideIcons.leaf, size: 16, color: Tw.gray600),
                 const SizedBox(width: 8),
-                Expanded(child: Text('${i18n.t('mobileToday.checklist.notes')} (${notes.length})', style: tx(13, w: 6, c: Tw.gray700))),
+                Expanded(
+                  child: Text('${i18n.t('mobileToday.checklist.notes')} (${notes.length})', style: tx(13, w: 6, c: Tw.gray700)),
+                ),
                 Icon(_notesOpen ? LucideIcons.chevronUp : LucideIcons.chevronDown, size: 16, color: Tw.gray500),
               ],
             ),
           ),
         ),
-        if (_notesOpen) for (final n in notes) _note(n),
+        if (_notesOpen)
+          for (final n in notes) _note(n),
       ],
     );
   }
@@ -507,9 +553,17 @@ class _RoutineHeroState extends State<RoutineHero> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(pickAction(item, localized: widget.localized), style: tx(12.5, w: 6, c: Tw.gray700, h: snug)),
+                Text(
+                  pickAction(item, localized: widget.localized),
+                  style: tx(12.5, w: 6, c: Tw.gray700, h: snug),
+                ),
                 if (detail.isNotEmpty)
-                  Text(detail, maxLines: 3, overflow: TextOverflow.ellipsis, style: tx(11.5, c: Tw.gray500, h: relaxed)),
+                  Text(
+                    detail,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: tx(11.5, c: Tw.gray500, h: relaxed),
+                  ),
               ],
             ),
           ),
@@ -528,21 +582,22 @@ class _CheckCircle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        width: 28,
-        height: 28,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: checked ? color : Colors.transparent,
-          border: Border.all(color: checked ? color : Tw.gray300, width: 2),
-        ),
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 220),
-          transitionBuilder: (child, anim) => ScaleTransition(scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack), child: child),
-          child: checked
-              ? const Icon(LucideIcons.check, key: ValueKey('on'), size: 16, color: Colors.white)
-              : const SizedBox(key: ValueKey('off')),
-        ),
-      );
+    duration: const Duration(milliseconds: 200),
+    curve: Curves.easeOut,
+    width: 28,
+    height: 28,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: checked ? color : Colors.transparent,
+      border: Border.all(color: checked ? color : Tw.gray300, width: 2),
+    ),
+    child: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      transitionBuilder: (child, anim) => ScaleTransition(
+        scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+        child: child,
+      ),
+      child: checked ? const Icon(LucideIcons.check, key: ValueKey('on'), size: 16, color: Colors.white) : const SizedBox(key: ValueKey('off')),
+    ),
+  );
 }

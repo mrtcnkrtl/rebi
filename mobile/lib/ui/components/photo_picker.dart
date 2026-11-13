@@ -125,9 +125,9 @@ class PhotoPickerCard extends StatelessWidget {
             Expanded(
               child: _SourceButton(
                 icon: LucideIcons.imagePlus,
-                iconColor: Tw.gray500,
+                iconColor: Tw.gray700,
                 label: pack.s('step4.galleryFile'),
-                labelColor: Tw.gray600,
+                labelColor: Tw.gray800,
                 border: Tw.gray200,
                 bg: Tw.surface,
                 onTap: () => onPick(ImageSource.gallery, CameraDevice.rear),
@@ -137,11 +137,11 @@ class PhotoPickerCard extends StatelessWidget {
             Expanded(
               child: _SourceButton(
                 icon: LucideIcons.camera,
-                iconColor: Tw.teal600,
+                iconColor: Tw.gray700,
                 label: pack.s('step4.cameraFront'),
-                labelColor: Tw.teal800,
-                border: Tw.teal200,
-                bg: Tw.teal50.withValues(alpha: .5),
+                labelColor: Tw.gray800,
+                border: Tw.gray200,
+                bg: Tw.surface,
                 onTap: () => onPick(ImageSource.camera, CameraDevice.front),
               ),
             ),
@@ -149,11 +149,11 @@ class PhotoPickerCard extends StatelessWidget {
             Expanded(
               child: _SourceButton(
                 icon: LucideIcons.camera,
-                iconColor: Tw.teal500,
+                iconColor: Tw.gray700,
                 label: pack.s('step4.cameraRear'),
-                labelColor: Tw.teal800,
-                border: Tw.teal100,
-                bg: Tw.teal50.withValues(alpha: .3),
+                labelColor: Tw.gray800,
+                border: Tw.gray200,
+                bg: Tw.surface,
                 onTap: () => onPick(ImageSource.camera, CameraDevice.rear),
               ),
             ),
@@ -189,19 +189,19 @@ class _SourceButton extends StatelessWidget {
       color: bg,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: border, width: 2),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: border, width: 1.4),
           ),
           child: Column(
             children: [
-              Icon(icon, size: 24, color: iconColor),
+              Icon(icon, size: 26, color: iconColor),
               const SizedBox(height: 8),
-              Text(label, textAlign: TextAlign.center, style: tx(10, w: 5, c: labelColor, h: tight)),
+              Text(label, textAlign: TextAlign.center, style: tx(13, w: 6, c: labelColor, h: tight)),
             ],
           ),
         ),

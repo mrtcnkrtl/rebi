@@ -18,10 +18,13 @@ import '../core/today_plan.dart';
 import '../state/auth_controller.dart';
 import '../state/home_sync_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/components/modals.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
+import '../ui/brand/motion.dart';
 import '../ui/brand/palette.dart';
 import 'chat/chat_composer.dart';
+import 'chat/chat_gate.dart';
 import 'chat/chat_limit_card.dart';
 import 'chat/chat_parts.dart';
 
@@ -74,7 +77,10 @@ class _Usage {
   }
 }
 
-/// Rebi sohbeti (web: `pages/Chat.jsx`). `/rebi` (anonim) ve `/dashboard/chat` aynı ekranı kullanır.
+/// Rebi sohbeti (web: `pages/Chat.jsx`). `/rebi` (karşılamadan açılan) ve `/dashboard/chat` (sekme) aynı ekranı kullanır.
+///
+/// Sohbet bir hesap ister (sunucu `/chat_general` için oturum ve yapay zekâ rızası arar). Oturum yokken ekran hiç istek
+/// atmaz ve yazı alanı yerine bir davet ([ChatGate]: Kayıt ol · Giriş yap) gösterir; oturum açılınca aynı ekran sohbete döner.
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, this.initialPrompt});
 
@@ -85,7 +91,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final _input = TextEditingController();
   final _focus = FocusNode();
   final _scroll = ScrollController();
@@ -106,6 +112,13 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _edgeOpen = false;
   int _generation = 0;
 
+  /// Bu indeksten itibaren eklenen mesajlar süzülerek gelir (yalnızca ekran açıkken eklenenler; kaydırınca yeniden oynamaz).
+  int _enterFrom = 1 << 30;
+
+  /// Ekran klavyesi açık mı: açıkken kota notu ve yapay zekâ beyanı gizlenir (yer açılsın). Kabuk gövdede klavye boşluğunu
+  /// `MediaQuery`den düştüğü için pencere metrikleri dinlenir.
+  bool _keyboardOpen = false;
+
   /// Bugünün planı; öneri çipleri ve "Rebi bugünü biliyor" şeridi buradan çıkar. Plan yoksa genel sorular gösterilir.
   TodayPlan? _plan;
 
@@ -116,6 +129,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _input.addListener(() => setState(() {}));
     _effectiveUserId = _auth.user?.id ?? demoUserId;
     _history = loadChatHistory(_effectiveUserId);
@@ -131,7 +145,15 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   @override
+  void didChangeMetrics() {
+    if (!mounted) return;
+    final open = View.of(context).viewInsets.bottom > 0;
+    if (open != _keyboardOpen) setState(() => _keyboardOpen = open);
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _auth.removeListener(_onAuthChanged);
     _input.dispose();
     _focus.dispose();
@@ -163,6 +185,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _loadForUser() {
     final gen = ++_generation;
+    // Oturumsuz davette geçmiş, kota ve öneri yok: sunucuya (demo kimliğiyle) boşuna istek atılmaz.
+    if (_auth.user == null) return;
     _loadServerHistory(gen);
     _loadUsage(gen);
     _loadSuggestions(gen);
@@ -270,15 +294,26 @@ class _ChatScreenState extends State<ChatScreen> {
     if (next != null && uid != null) LocalStore.instance.setJson(_usageKey(uid), next.toJson());
   }
 
+  /// Mesaj Google Gemini'ye gider: izin yoksa önce sorulur, verilmezse gönderilmez (yazı alanı korunur).
+  Future<bool> _aiAllowed() async {
+    if (await ensureAiSharing(context)) return mounted;
+    if (mounted) {
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text(I18n.instance.t('mobileAiSharing.declined'))));
+    }
+    return false;
+  }
+
   /// Öneri çipine dokunulursa [preset] gönderilir (yazı alanına dokunulmaz).
   Future<void> _send([String? preset]) async {
     final msg = (preset ?? _input.text).trim();
     if (msg.isEmpty || _loading || _paywallOpen) return;
+    if (!await _aiAllowed()) return;
     if (preset == null) _input.clear();
     _sentThisSession = true;
     setState(() {
       _failure = null;
       _failureStatus = null;
+      _enterFrom = _history.length;
     });
     _setHistory([..._history, {'role': 'user', 'content': msg}]);
     await _deliver();
@@ -287,6 +322,7 @@ class _ChatScreenState extends State<ChatScreen> {
   /// Hata kartındaki "Tekrar dene": son kullanıcı mesajı zaten geçmişte; yeniden gönderilir.
   Future<void> _retry() async {
     if (_loading || _history.isEmpty || _history.last['role'] != 'user') return;
+    if (!await _aiAllowed()) return;
     setState(() {
       _failure = null;
       _failureStatus = null;
@@ -347,6 +383,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _clearChat() async {
     _setHistory([]);
     setState(() {
+      _enterFrom = 1 << 30;
       _paywallOpen = false;
       _failure = null;
       _failureStatus = null;
@@ -368,26 +405,26 @@ class _ChatScreenState extends State<ChatScreen> {
     final theme = context.watch<ThemeController>().theme;
     final user = context.watch<AuthController>().user;
     final hasConversation = _history.any((m) => m['role'] == 'user');
-    final subscribeHref = user != null ? '/dashboard/subscribe' : '/auth?next=${Uri.encodeComponent('/dashboard/subscribe')}';
-    final wide = MediaQuery.of(context).size.width >= 640;
+    // Köşe sayacı ve rutin kenar düğmesi sohbet sütununun (672) iki yanındaki boşluğa yerleşir; boşluk yoksa
+    // (iPhone Duo dış ekranı yatay, küçük tablet) mesajların üstüne binmesinler diye gösterilmez.
+    final wide = MediaQuery.of(context).size.width >= 920;
+    if (user == null) return _gate(i18n, theme);
 
     final routineItems = _routineSnap?['routine'];
     final routineHasItems = routineItems is List && routineItems.isNotEmpty;
-    final routineCorner = user == null
-        ? null
-        : routineHasItems
-            ? (
-                i18n.t('chat.cornerRoutineReadyTitle'),
-                _routineAccepted ? i18n.t('chat.cornerRoutineAcceptedBody') : i18n.t('chat.cornerRoutineDraftBody'),
-                '/dashboard',
-                i18n.t('chat.cornerRoutineCta'),
-              )
-            : (
-                i18n.t('chat.cornerRoutineMissingTitle'),
-                i18n.t('chat.cornerRoutineMissingBody'),
-                '/dashboard/analyze',
-                i18n.t('chat.cornerRoutineMissingCta'),
-              );
+    final routineCorner = routineHasItems
+        ? (
+            i18n.t('chat.cornerRoutineReadyTitle'),
+            _routineAccepted ? i18n.t('chat.cornerRoutineAcceptedBody') : i18n.t('chat.cornerRoutineDraftBody'),
+            '/dashboard',
+            i18n.t('chat.cornerRoutineCta'),
+          )
+        : (
+            i18n.t('chat.cornerRoutineMissingTitle'),
+            i18n.t('chat.cornerRoutineMissingBody'),
+            '/dashboard/analyze',
+            i18n.t('chat.cornerRoutineMissingCta'),
+          );
 
     final u = _usage;
     String? usageLabel;
@@ -400,59 +437,104 @@ class _ChatScreenState extends State<ChatScreen> {
     }
 
     final canSend = !_loading && !_paywallOpen && _input.text.trim().isNotEmpty;
+    // Dar yükseklikte (<700 dp), büyük yazıda (>%130) ya da klavye açıkken büyük sahne sığmaz: sahne ince çubukta kalır;
+    // karşılama sorusu klavye yokken kaydırılabilir gövdede (öneri listesinin başında) görünür.
+    final tight = MediaQuery.sizeOf(context).height < 700 || MediaQuery.textScalerOf(context).scale(16) / 16 > 1.3;
+    final bigStage = !hasConversation && !tight && !_keyboardOpen;
+    final title = i18n.t('chat.emptyTitle');
     return ThemedBackground(
       theme: theme,
-      child: Stack(
+      child: Column(
         children: [
-          CenteredBox(
-            maxWidth: 672,
-            child: Column(
+          // Üst sahne tam genişlikte; kabuğun logo çubuğu yoktur.
+          ChatStage(
+            theme: theme,
+            title: title,
+            usageLabel: usageLabel,
+            canClear: hasConversation,
+            onClear: _clearChat,
+            expanded: bigStage,
+            thinking: _loading,
+            contextItems: chatContext(_plan, i18n),
+            onContextTap: () => context.go('/dashboard'),
+          ),
+          Expanded(
+            child: Stack(
               children: [
-                ChatHeader(theme: theme, usageLabel: usageLabel, canClear: hasConversation, onClear: _clearChat),
-                ChatContextStrip(
-                  items: chatContext(_plan, i18n),
-                  theme: theme,
-                  onTap: () => context.go('/dashboard'),
+                CenteredBox(
+                  maxWidth: 672,
+                  child: Column(
+                    children: [
+                      Expanded(child: hasConversation ? _messages(i18n, theme) : _empty(i18n, theme, title: tight && !_keyboardOpen ? title : null)),
+                      if (_paywallOpen)
+                        _limitCard(theme)
+                      else if (hasConversation)
+                        _suggestionStrip(i18n, theme),
+                      ChatComposer(
+                        theme: theme,
+                        controller: _input,
+                        focusNode: _focus,
+                        locked: _loading || _paywallOpen,
+                        canSend: canSend,
+                        onSend: _send,
+                        footer: _footer(i18n, theme),
+                        compact: _paywallOpen || _keyboardOpen,
+                      ),
+                    ],
+                  ),
                 ),
-                Expanded(child: hasConversation ? _messages(i18n, theme) : _empty(i18n, theme)),
-                if (_paywallOpen)
-                  _limitCard(theme, user != null, subscribeHref)
-                else if (hasConversation)
-                  _suggestionStrip(i18n, theme),
-                ChatComposer(
-                  theme: theme,
-                  controller: _input,
-                  focusNode: _focus,
-                  locked: _loading || _paywallOpen,
-                  canSend: canSend,
-                  onSend: _send,
-                  footer: _footer(i18n, theme),
-                  compact: _paywallOpen,
-                ),
+                // Geniş ekranda (tablet) rutin kenar çekmecesi.
+                if (wide) ...[
+                  Positioned(top: 24, left: 0, child: _edgeHandle(i18n, theme, routineCorner.$1)),
+                  if (_edgeOpen) Positioned.fill(child: _edgePanel(i18n, theme, routineCorner)),
+                ],
               ],
             ),
           ),
-          // Geniş ekranda (tablet) köşe sayacı ve rutin kenar çekmecesi.
-          if (usageLabel != null && wide)
-            Positioned(
-              top: 76,
-              right: 16,
-              child: IgnorePointer(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Tw.surface.withValues(alpha: .9),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: Tw.gray200.withValues(alpha: .8)),
-                  ),
-                  child: Text(usageLabel, style: tx(11, w: 6, c: Tw.gray800)),
-                ),
+        ],
+      ),
+    );
+  }
+
+  /// Girişe ya da kayda bir üst sayfa olarak gider: geri dönünce kullanıcı bu davette kalır, girişten sonra sekmeli sohbete geçer.
+  void _openAuth({required bool signup}) {
+    final next = Uri.encodeComponent('/dashboard/chat');
+    context.push('/auth?next=$next${signup ? '&mode=signup' : ''}');
+  }
+
+  /// Oturumsuz görünüm: üst sahne ("Önce tanışalım") + davet. Sahne ince kalırsa (kısa ekran, büyük yazı) başlık gövdeye iner.
+  Widget _gate(I18n i18n, RebiTheme theme) {
+    final tight = MediaQuery.sizeOf(context).height < 700 || MediaQuery.textScalerOf(context).scale(16) / 16 > 1.3;
+    final title = i18n.t('mobileChat.gate.title');
+    // Uzun ekranda sahne yükselir (girişin sahnesi gibi): davet altta, mesajlar ortada; arada boş şerit kalmaz.
+    final lift = tight ? 0.0 : ((MediaQuery.sizeOf(context).height - 700) * .9).clamp(0.0, 130.0);
+    return ThemedBackground(
+      theme: theme,
+      child: Column(
+        children: [
+          ChatStage(
+            theme: theme,
+            title: title,
+            usageLabel: null,
+            canClear: false,
+            onClear: () {},
+            expanded: !tight,
+            thinking: false,
+            introducing: true,
+            heroLift: lift,
+            onBack: () => context.go('/'),
+          ),
+          Expanded(
+            child: CenteredBox(
+              maxWidth: 672,
+              child: ChatGate(
+                theme: theme,
+                title: tight ? title : null,
+                onSignUp: () => _openAuth(signup: true),
+                onSignIn: () => _openAuth(signup: false),
               ),
             ),
-          if (routineCorner != null && wide) ...[
-            Positioned(top: 140, left: 0, child: _edgeHandle(i18n, theme, routineCorner.$1)),
-            if (_edgeOpen) Positioned.fill(child: _edgePanel(i18n, theme, routineCorner)),
-          ],
+          ),
         ],
       ),
     );
@@ -468,7 +550,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           if (plusPurchasable) ...[
             GestureDetector(
-              onTap: () => context.go(_auth.user != null ? '/dashboard/subscribe' : '/auth?next=${Uri.encodeComponent('/dashboard/subscribe')}'),
+              onTap: () => context.go('/dashboard/subscribe'),
               child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(11, w: 6, c: theme.fg)),
             ),
             Text(' · ', style: tx(11, c: Tw.gray500)),
@@ -494,7 +576,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /// Sohbet hakkı doldu kartı; sohbetin altında, kısa ekranda kayar.
-  Widget _limitCard(RebiTheme theme, bool loggedIn, String subscribeHref) {
+  Widget _limitCard(RebiTheme theme) {
     return Flexible(
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -502,10 +584,8 @@ class _ChatScreenState extends State<ChatScreen> {
           theme: theme,
           month: _paywallKind == 'plus_monthly',
           offer: plusPurchasable,
-          loggedIn: loggedIn,
           onClose: () => setState(() => _paywallOpen = false),
-          onSignIn: () => context.go('/auth?next=${Uri.encodeComponent('/dashboard/chat')}'),
-          onPlus: () => context.go(loggedIn ? '/dashboard/subscribe' : subscribeHref),
+          onPlus: () => context.go('/dashboard/subscribe'),
         ),
       ),
     );
@@ -589,27 +669,32 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _empty(I18n i18n, RebiTheme theme) {
+  /// Boş sohbet: büyük karşılama sorusu üst sahnededir; burada yalnızca sırayla beliren öneriler ve tek satırlık dürüstlük notu.
+  Widget _empty(I18n i18n, RebiTheme theme, {String? title}) {
+    final items = _currentSuggestions(i18n);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(i18n.t('chat.emptyTitle'), textAlign: TextAlign.center, style: heading(28, h: 1.2)),
-              const SizedBox(height: 10),
-              Text(i18n.t('chat.emptySubtitle'), textAlign: TextAlign.center, style: tx(15, c: Tw.gray600, h: relaxed)),
-              const SizedBox(height: 26),
-              Text(i18n.t('mobileChat.suggestionsTitle'), style: tx(11, w: 7, c: Tw.gray500, ls: 1.2)),
-              const SizedBox(height: 10),
-              for (final s in _currentSuggestions(i18n)) ...[
-                _suggestionRow(theme, s),
-                const SizedBox(height: 8),
-              ],
-              const SizedBox(height: 14),
-              Text(i18n.t('chat.dataHint'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500, h: relaxed)),
+              // Sığmayan durumlarda (dar ekran, büyük yazı) sahnedeki karşılama sorusu buraya iner.
+              if (title != null) Padding(padding: const EdgeInsets.only(bottom: 16), child: Text(title, style: heading(26, h: 1.18))),
+              for (var i = 0; i < items.length; i++)
+                Reveal(
+                  key: ValueKey('suggestion-${items[i].text}'),
+                  delay: Duration(milliseconds: 220 + i * 90),
+                  offset: const Offset(0, 16),
+                  child: Padding(padding: const EdgeInsets.only(bottom: 10), child: _suggestionRow(theme, items[i])),
+                ),
+              const SizedBox(height: 6),
+              Reveal(
+                delay: Duration(milliseconds: 220 + items.length * 90),
+                offset: const Offset(0, 8),
+                child: Text(i18n.t('chat.dataHint'), textAlign: TextAlign.center, style: tx(12, c: Tw.gray500, h: relaxed)),
+              ),
             ],
           ),
         ),
@@ -628,11 +713,12 @@ class _ChatScreenState extends State<ChatScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, i) {
         if (i >= _history.length) {
-          if (_loading) return TypingBubble(theme: theme);
+          if (_loading) return MessageEnter(key: const ValueKey('typing'), child: TypingBubble(theme: theme));
           return ChatErrorCard(failure: failure!, theme: theme, status: _failureStatus, onRetry: _retry);
         }
         final m = _history[i];
-        return ChatBubble(text: m['content'] ?? '', mine: m['role'] == 'user', theme: theme);
+        final bubble = ChatBubble(text: m['content'] ?? '', mine: m['role'] == 'user', theme: theme);
+        return i >= _enterFrom ? MessageEnter(key: ValueKey('message-$i'), child: bubble) : bubble;
       },
     );
   }

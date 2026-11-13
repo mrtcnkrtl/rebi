@@ -18,6 +18,10 @@ class Env {
 
   static const productionApiUrl = 'https://rebiovil.com/api';
 
+  /// Destek e-postası ve sayfası (mağazalardaki destek URL'si de bu sayfadır; web: `pages/Support.jsx`).
+  static const supportEmail = 'mertkartal48.mck@gmail.com';
+  static const supportPageUrl = 'https://rebiovil.com/destek';
+
   static bool get supabaseConfigured => supabaseUrl.trim().isNotEmpty;
 
   static String get apiUrl {
