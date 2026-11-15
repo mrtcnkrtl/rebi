@@ -32,7 +32,7 @@ export default function BottomNav() {
     ?? (location.pathname === "/dashboard" ? "/dashboard" : null);
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200/60 bg-white/95 backdrop-blur-xl safe-area-bottom">
+    <nav className="bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200/60 bg-white/95 backdrop-blur-xl safe-area-bottom">
       <div className="max-w-lg mx-auto grid grid-cols-5 h-16 px-1">
         {tabs.map((tab) => {
           const isActive = active === tab.id;

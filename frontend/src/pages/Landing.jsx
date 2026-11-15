@@ -128,9 +128,8 @@ export default function Landing() {
   const rebiHref = isAuthed ? "/dashboard/chat" : "/rebi";
   const routineHref = isAuthed ? nextAnalyze : `/auth?next=${encodeURIComponent(nextAnalyze)}`;
   const platform = useMemo(() => detectPlatform(), []);
+  // İki mağaza her ekranda birlikte durur; telefonda ziyaretçinin kendi mağazası üstte.
   const stores = useMemo(() => orderedStores(platform), [platform]);
-  // Telefonda ilk ekranda yalnız ziyaretçinin kendi mağazası durur; iki mağaza birlikte sayfanın sonunda.
-  const heroStores = platform === "desktop" ? stores : stores.slice(0, 1);
   // Telefonda /indir ziyaretçiyi kendi mağazasına gönderir; masaüstünde sayfanın sonundaki indirme bölümüne iner.
   const getAppHref = platform === "desktop" ? "#indir" : "/indir";
 
@@ -157,8 +156,8 @@ export default function Landing() {
             </h1>
             <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-ink-soft lg:mx-0">{t("landing.heroSub")}</p>
 
-            <div className="mt-9 flex flex-col items-stretch justify-center gap-5 sm:flex-row sm:items-center lg:justify-start">
-              {heroStores.map((s) => (
+            <div className="mt-9 flex flex-col items-stretch justify-center gap-4 sm:flex-row sm:items-center sm:gap-5 lg:justify-start">
+              {stores.map((s) => (
                 <StoreButton key={s.id} store={s} className="sm:min-w-[272px]" />
               ))}
             </div>

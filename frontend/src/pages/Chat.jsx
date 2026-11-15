@@ -44,7 +44,97 @@ function isCoarsePointer() {
 
 const URL_SPLIT = /(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"])/g;
 
+/**
+ * Sohbet kabuğunun yüksekliğini ölçer ve `--chat-h` olarak yazar: görünen alan eksi üst menü ve (varsa) alt menü.
+ * Klavye açıldığında kabuk klavyenin üstünde biter. Telefon tarayıcıları klavye açılınca sayfayı yukarı iter;
+ * kabuk zaten görünen alana sığdığı için sayfa başa alınır. `onChange(klavyeAçık)`: yükseklik değiştiğinde çağrılır.
+ */
+function useChatViewport(shellRef, layoutKey, onChange) {
+  const onChangeRef = useRef(onChange);
+  useEffect(() => {
+    onChangeRef.current = onChange;
+  });
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return undefined;
+    const root = document.documentElement;
+    let width = vv.width;
+    let tallest = vv.height;
+    const apply = () => {
+      if (vv.scale > 1.01) return;
+      // Ekran döndüyse en yüksek hâl baştan ölçülür.
+      if (Math.abs(vv.width - width) > 1) {
+        width = vv.width;
+        tallest = vv.height;
+      }
+      tallest = Math.max(tallest, vv.height);
+      const typing = /^(TEXTAREA|INPUT)$/.test(document.activeElement?.tagName || "");
+      const keyboard = isCoarsePointer() && typing && tallest - vv.height > 120;
+      root.classList.toggle("kb-open", keyboard);
+      const shell = shellRef.current;
+      if (shell) {
+        // Üst menünün gerçek yüksekliği: kabuğun sayfadaki başlangıcı. Alt menü klavye açıkken gizlidir (0).
+        const top = shell.getBoundingClientRect().top + window.scrollY;
+        const bottom = document.querySelector(".bottom-nav")?.offsetHeight || 0;
+        root.style.setProperty("--chat-h", `${Math.max(240, Math.floor(vv.height - top - bottom))}px`);
+        root.classList.add("chat-measured");
+      }
+      if (keyboard && (vv.offsetTop > 0 || window.scrollY > 0)) {
+        window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+      }
+      onChangeRef.current?.(keyboard);
+    };
+    apply();
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    // Odak değişince klavye durumu da değişir; görünen alan olayı gecikirse alt menü yanlış hâlde kalmasın.
+    document.addEventListener("focusin", apply);
+    document.addEventListener("focusout", apply);
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+      document.removeEventListener("focusin", apply);
+      document.removeEventListener("focusout", apply);
+      root.classList.remove("chat-measured", "kb-open");
+      root.style.removeProperty("--chat-h");
+    };
+    // layoutKey: alt menü görünür/gizli olduğunda ölçüm yenilenir.
+  }, [shellRef, layoutKey]);
+}
+
+const BULLET = /^[•·▪◦*-]\s+/;
+
+/** Mesajı satır satır yazar: baştaki boşluklar atılır, madde işaretli satırlar asılı girintiyle hizalanır. */
 function MessageText({ text, linkColor }) {
+  const lines = String(text || "")
+    .replace(/\r\n?/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim()
+    .split("\n");
+  return lines.map((raw, i) => {
+    const line = raw.trim();
+    if (!line) return <div key={i} className="h-2.5" aria-hidden="true" />;
+    if (BULLET.test(line)) {
+      return (
+        <div key={i} className="flex gap-2">
+          <span aria-hidden="true" className="shrink-0">
+            •
+          </span>
+          <span className="min-w-0 flex-1">
+            <LinkedText text={line.replace(BULLET, "")} linkColor={linkColor} />
+          </span>
+        </div>
+      );
+    }
+    return (
+      <div key={i}>
+        <LinkedText text={line} linkColor={linkColor} />
+      </div>
+    );
+  });
+}
+
+function LinkedText({ text, linkColor }) {
   const parts = String(text || "").split(URL_SPLIT);
   return parts.map((part, i) =>
     i % 2 === 1 && (part.startsWith("https://") || part.startsWith("http://")) ? (
@@ -98,7 +188,8 @@ export default function Chat() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const chatEndRef = useRef(null);
+  const shellRef = useRef(null);
+  const scrollRef = useRef(null);
   const lastReplyRef = useRef(null);
   const inputRef = useRef(null);
   const effectiveUserId = user?.id || DEMO_USER_ID;
@@ -124,14 +215,25 @@ export default function Chat() {
   const hasConversation = history.some((m) => m.role === "user");
 
   // Yeni cevap gelince cevabın başını göster; uzun cevapta en alta atlayıp başını kaçırmasın.
+  // Kaydırma yalnız mesaj alanının içinde yapılır; sayfanın kendisi kayarsa başlık ve yazı kutusu yerinden oynar.
   useEffect(() => {
+    const box = scrollRef.current;
+    if (!box) return;
     const last = history[history.length - 1];
-    if (!loading && last?.role === "assistant" && lastReplyRef.current) {
-      lastReplyRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    const reply = lastReplyRef.current;
+    if (!loading && last?.role === "assistant" && reply) {
+      const top = box.scrollTop + reply.getBoundingClientRect().top - box.getBoundingClientRect().top - 12;
+      box.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
       return;
     }
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    box.scrollTo({ top: box.scrollHeight, behavior: "smooth" });
   }, [history, loading]);
+
+  // Klavye açılınca mesaj alanı kısalır; son mesaj görünür kalsın.
+  useChatViewport(shellRef, withBottomNav, (keyboard) => {
+    const box = scrollRef.current;
+    if (keyboard && box) box.scrollTop = box.scrollHeight;
+  });
 
   useEffect(() => {
     if (!loading && !isCoarsePointer()) inputRef.current?.focus();
@@ -149,8 +251,19 @@ export default function Chat() {
   useEffect(() => {
     const el = inputRef.current;
     if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+    // Kutu büyüyünce mesaj alanı kısalır; kullanıcı en alttaysa son mesaj görünür kalsın.
+    const box = scrollRef.current;
+    const pinned = box ? box.scrollHeight - box.clientHeight - box.scrollTop < 40 : false;
+    if (!input) {
+      // Boşken tek satır: tarayıcı sığmayan ipucu yazısını da yüksekliğe sayar ve kutu gönder düğmesinden uzun kalır.
+      el.style.height = "";
+    } else {
+      el.style.height = "auto";
+      // scrollHeight kenarlığı saymaz; eklenmezse kutu yazıdan kısa kalır ve içi kayar.
+      const border = el.offsetHeight - el.clientHeight;
+      el.style.height = `${Math.max(48, Math.min(el.scrollHeight + border, 132))}px`;
+    }
+    if (pinned) box.scrollTop = box.scrollHeight;
   }, [input]);
 
   useEffect(() => {
@@ -559,6 +672,7 @@ export default function Chat() {
       )}
 
       <div
+        ref={shellRef}
         className={`max-w-2xl mx-auto flex flex-col relative z-[1] w-full ${withBottomNav ? "chat-shell--with-nav" : "chat-shell"}`}
       >
         {/* Header */}
@@ -648,7 +762,7 @@ export default function Chat() {
             )}
           </div>
         ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
+          <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 space-y-3">
             {history.map((msg, i) => {
               const isUser = msg.role === "user";
               const isLast = i === history.length - 1;
@@ -659,7 +773,7 @@ export default function Chat() {
                   className={`flex flex-col ${isUser ? "items-end" : "items-start"} scroll-mt-3`}
                 >
                   <div
-                    className={`max-w-[88%] px-4 py-3 rounded-2xl text-[15px] sm:text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                    className={`max-w-[88%] px-4 py-3 rounded-2xl text-left text-[15px] sm:text-sm leading-relaxed break-words ${
                       isUser
                         ? "text-white rounded-br-md"
                         : msg.error
@@ -693,7 +807,6 @@ export default function Chat() {
                 </div>
               </div>
             )}
-            <div ref={chatEndRef} />
           </div>
         )}
 
@@ -715,7 +828,7 @@ export default function Chat() {
               placeholder={t("chat.placeholder")}
               enterKeyHint="send"
               aria-label={t("chat.placeholder")}
-              className="flex-1 input-field !py-3 text-base sm:text-sm resize-none leading-snug max-h-[132px]"
+              className="flex-1 min-w-0 input-field !py-[11px] h-12 text-base sm:text-sm resize-none leading-snug max-h-[132px] placeholder:truncate"
               disabled={loading || paywallOpen}
             />
             <button

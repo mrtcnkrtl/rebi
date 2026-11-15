@@ -157,6 +157,15 @@
     height: calc(100vh - 8rem - env(safe-area-inset-bottom, 0px));
     height: calc(100dvh - 8rem - env(safe-area-inset-bottom, 0px));
   }
+  /* Sohbet açıkken kabuğun yüksekliği ölçülür (--chat-h): görünen alan eksi üst ve alt menü. Klavye açılınca kabuk
+     klavyenin üstünde biter, yazı kutusu klavyeye yaslanır ve sayfa yukarı kaymaz. Klavye açıkken alt menü yer tutmaz. */
+  .chat-measured .chat-shell,
+  .chat-measured .chat-shell--with-nav {
+    height: var(--chat-h);
+  }
+  .kb-open .bottom-nav {
+    display: none;
+  }
 }
 
 @layer components {

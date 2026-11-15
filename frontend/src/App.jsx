@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigationType } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider, ThemePremiumGate } from "./context/ThemeContext";
 import ErrorBoundary from "./components/ErrorBoundary";
@@ -44,16 +44,32 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+/**
+ * Yeni bir sayfaya geçildiğinde en üstten başlar; tarayıcının geri/ileri tuşunda eski konum korunur.
+ * Adreste "#bölüm" varsa o bölüme inmek sayfanın kendi işidir.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  const navigationType = useNavigationType();
+  useEffect(() => {
+    if (navigationType === "POP" || window.location.hash) return;
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [pathname, navigationType]);
+  return null;
+}
+
 function AppRoutes() {
   const { user } = useAuth();
   const location = useLocation();
   const isDashboard = location.pathname.startsWith("/dashboard");
   const isAiSurface = isDashboard || location.pathname.startsWith("/rebi");
+  const isChat = location.pathname.startsWith("/rebi") || location.pathname.startsWith("/dashboard/chat");
   const nextParam = new URLSearchParams(location.search || "").get("next");
   const next = safeNext(nextParam);
 
   return (
     <>
+      <ScrollToTop />
       <Navbar />
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -99,7 +115,8 @@ function AppRoutes() {
       {user && isDashboard && <BottomNav />}
       {isAiSurface && <AiDisclaimerModal />}
       {user && <ConsentRecoveryModal />}
-      <CookieNotice raised={isAiSurface} />
+      {/* Sohbet ekranı tam yüksekliktir; bildirim orada yazı kutusunu örter, öteki sayfalarda gösterilir. */}
+      {!isChat && <CookieNotice raised={Boolean(user) && isDashboard} />}
     </>
   );
 }
