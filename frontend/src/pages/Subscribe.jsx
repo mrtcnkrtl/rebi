@@ -145,12 +145,6 @@ export default function Subscribe() {
         </div>
 
         <div className="rounded-[2rem] border border-white/10 bg-white/5 backdrop-blur-xl p-6 md:p-7 space-y-3 shadow-2xl shadow-black/20">
-          <p className="text-xs text-white/70 leading-relaxed">
-            Ödeme bağlantısı hazır olduğunda buraya yönlendirileceksin. Şimdilik ödeme altyapısı
-            (Stripe, iyzico vb.) projeye eklendiğinde{" "}
-            <code className="text-[11px] bg-white/10 px-1 rounded">VITE_REBI_PLUS_CHECKOUT_URL</code>{" "}
-            ortam değişkeni ile ödeme sayfası açılır.
-          </p>
           {CHECKOUT_URL ? (
             <div className="space-y-3">
               <p className="text-xs text-white/80 leading-relaxed">
@@ -196,10 +190,8 @@ export default function Subscribe() {
             </div>
           ) : (
             <div className="rounded-2xl border border-amber-300/20 bg-amber-500/10 px-4 py-3 text-xs text-amber-100/90">
-              Ödeme URL’si tanımlı değil. Stripe/iyzico linkini alıp frontend ortamına ekleyin.
-              <div className="mt-1 text-[11px] text-amber-100/70">
-                (Dev: <code className="bg-white/10 px-1 rounded">VITE_REBI_PLUS_CHECKOUT_URL</code>)
-              </div>
+              Rebi Plus şu an satışa açık değil. Satışa açıldığında fiyat, dönem ve vergiler ödeme adımından önce burada
+              gösterilir; gösterilen tutar dışında ücret alınmaz.
             </div>
           )}
         </div>

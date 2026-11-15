@@ -1,15 +1,21 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Leaf, Menu, X, LogOut, Crown } from "lucide-react";
+import { Leaf, Menu, X, LogOut, Crown, Smartphone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSelect from "./LanguageSelect";
+import { detectPlatform } from "../lib/storeLinks";
 
 export default function Navbar() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
+  // Ana sayfada üst çubukta hep görünen indirme bağlantısı: telefonda /indir ziyaretçiyi kendi mağazasına gönderir,
+  // masaüstünde sayfa yeniden kurulmadan indirme bölümüne iner.
+  const showGetApp = pathname === "/";
+  const getAppHref = detectPlatform() === "desktop" ? "#indir" : "/indir";
 
   const handleSignOut = async () => {
     await signOut();
@@ -29,6 +35,15 @@ export default function Navbar() {
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-4">
           <LanguageSelect />
+          {showGetApp && (
+            <a
+              href={getAppHref}
+              className="inline-flex min-h-[40px] items-center gap-2 rounded-2xl bg-ink px-4 py-2 text-sm font-semibold text-paper hover:bg-ink-deep transition-colors"
+            >
+              <Smartphone className="w-4 h-4" />
+              {t("nav.getApp")}
+            </a>
+          )}
           {user ? (
             <>
               <Link
@@ -85,6 +100,16 @@ export default function Navbar() {
           <div className="pb-2">
             <LanguageSelect />
           </div>
+          {showGetApp && (
+            <a
+              href={getAppHref}
+              onClick={() => setMenuOpen(false)}
+              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-2xl bg-ink px-4 py-3 font-semibold text-paper"
+            >
+              <Smartphone className="w-5 h-5" />
+              {t("nav.getApp")}
+            </a>
+          )}
           {user ? (
             <>
               <Link

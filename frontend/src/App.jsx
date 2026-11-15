@@ -20,6 +20,8 @@ import Profile from "./pages/Profile";
 import Legal from "./pages/Legal";
 import { safeNext } from "./lib/safeNext";
 import Support from "./pages/Support";
+import GetApp from "./pages/GetApp";
+import CookieNotice from "./components/CookieNotice";
 
 const RoutineChoicePreview = import.meta.env.DEV
   ? lazy(() => import("./pages/RoutineChoicePreview.jsx"))
@@ -64,8 +66,16 @@ function AppRoutes() {
         <Route path="/riza" element={<Legal />} />
         <Route path="/on-bilgilendirme" element={<Legal />} />
         <Route path="/mesafeli-satis" element={<Legal />} />
+        <Route path="/gizlilik" element={<Legal />} />
+        <Route path="/cerez" element={<Legal />} />
+        <Route path="/kullanim-kosullari" element={<Legal />} />
+        <Route path="/terms" element={<Legal />} />
+        <Route path="/iade" element={<Legal />} />
+        <Route path="/sirket" element={<Legal />} />
         <Route path="/destek" element={<Support />} />
         <Route path="/support" element={<Support />} />
+        {/* Tek indirme adresi: telefonda mağazaya, masaüstünde ana sayfanın indirme bölümüne götürür. */}
+        <Route path="/indir" element={<GetApp />} />
         <Route path="/rebi" element={<Chat />} />
         {RoutineChoicePreview && (
           <Route
@@ -89,6 +99,7 @@ function AppRoutes() {
       {user && isDashboard && <BottomNav />}
       {isAiSurface && <AiDisclaimerModal />}
       {user && <ConsentRecoveryModal />}
+      <CookieNotice raised={isAiSurface} />
     </>
   );
 }

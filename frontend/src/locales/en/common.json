@@ -33,7 +33,8 @@
     "chat": "Rebi AI",
     "analyze": "Analyze",
     "reanalyze": "Again",
-    "theme": "Themes"
+    "theme": "Themes",
+    "getApp": "Get the app"
   },
   "landing": {
     "heroBadge": "Dermocosmetic AI",
@@ -121,7 +122,73 @@
       "premiumThemesDesc": "Exclusive looks like sunset, ocean, and night city.",
       "deepTrackingTitle": "Deeper tracking",
       "deepTrackingDesc": "Daily check-ins adapt your routine to your skin's response."
-    }
+    },
+    "eyebrow": "Rebiovil · dermocosmetic AI",
+    "heroTitle": "Today's skincare, ready on your phone.",
+    "heroSub": "Rebi reads your skin, sleep, stress and the day's weather together, then tells you which step to take morning and evening. Get the app and keep your plan with you every day.",
+    "storeIosTop": "Download for iPhone",
+    "storeAndroidTop": "Download for Android",
+    "storeNote": "Free to download. Same account as the web.",
+    "webEntry": "You can also start in the browser:",
+    "webChat": "Ask Rebi",
+    "webRoutine": "Build my routine",
+    "mock": {
+      "today": "Today",
+      "greeting": "Good morning",
+      "morning": "Morning routine",
+      "step1": "Cleanser",
+      "step2": "Moisturiser",
+      "step3": "Sunscreen",
+      "uvTitle": "UV is high",
+      "uvDesc": "Wear sunscreen today",
+      "water": "Water · 5 / 8 glasses",
+      "reminderLabel": "Reminder",
+      "reminderValue": "Evening routine · 21:30",
+      "shelfLabel": "My Shelf",
+      "shelfValue": "Your products live here",
+      "chatLabel": "Rebi chat",
+      "chatValue": "Can I use niacinamide in the morning?"
+    },
+    "ecoEyebrow": "The Rebiovil ecosystem",
+    "ecoTitle": "One account, three ways in.",
+    "ecoSub": "Ask your question in the browser, build your routine on the web, keep every day going on your phone. Wherever you start, your account and routine come with you.",
+    "ecoAppTag": "On your phone",
+    "ecoAppTitle": "The Rebi mobile app",
+    "ecoAppDesc": "This is where your routine settles into daily life.",
+    "ecoAppF1": "Today screen: your morning and evening steps in order",
+    "ecoAppF2": "Weather-aware decisions: UV and humidity for sunscreen, moisturiser, lip balm",
+    "ecoAppF3": "Reminders inside the time window you choose",
+    "ecoAppF4": "My Shelf, water tracking and daily check-in",
+    "ecoWebTag": "In the browser",
+    "ecoChatTitle": "Rebi chat",
+    "ecoChatCta": "Open chat",
+    "ecoRoutineTitle": "Routine analysis",
+    "ecoRoutineCta": "Build my routine",
+    "ecoAccountTitle": "One account",
+    "ecoAccountDesc": "The routine you build on the web opens on your phone when you sign in with the same account.",
+    "dayEyebrow": "A day with the app",
+    "dayTitle": "Open it in the morning, Rebi stays with you all day.",
+    "dayMorning": "Morning",
+    "dayMorningDesc": "The Today screen lines up your morning steps. It checks UV and humidity and tells you about sunscreen, moisturiser and lip balm.",
+    "dayNoon": "During the day",
+    "dayNoonDesc": "Log water, makeup and meals in a few taps. Reminders arrive inside the time window you choose.",
+    "dayEvening": "Evening",
+    "dayEveningDesc": "Finish your evening steps and record how your skin is today with the daily check-in.",
+    "dayShelf": "When a product runs out",
+    "dayShelfDesc": "The products you use live in My Shelf; mark a finished one with a single tap.",
+    "dayExtras": "Also in the app:",
+    "dayExtra1": "Rebi chat",
+    "dayExtra2": "History charts",
+    "dayExtra3": "Offline logging",
+    "dayExtra4": "Dark mode",
+    "dlEyebrow": "iPhone and Android",
+    "dlTitle": "Get Rebi on your phone.",
+    "dlSub": "Sign in with your account; your routine, reminders and Today screen will be waiting.",
+    "dlQrTitle": "Scan with your phone camera",
+    "dlQrDesc": "The code takes you to your own store.",
+    "dlQrAlt": "QR code that opens rebiovil.com/indir",
+    "getAppRedirect": "Taking you to the store…",
+    "getAppBack": "Back to home"
   },
   "auth": {
     "google": "Continue with Google",
@@ -182,7 +249,12 @@
     "distanceTitle": "Distance Sales Contract",
     "updated": "Last updated: {{date}}",
     "backToAuth": "Back to sign in",
-    "back": "Back"
+    "back": "Back",
+    "privacyTitle": "Privacy Policy",
+    "cookieTitle": "Cookie Policy",
+    "termsTitle": "Terms of Use",
+    "refundTitle": "Withdrawal and Refund Policy",
+    "companyTitle": "Company Information"
   },
   "lang": {
     "label": "Language",
@@ -446,6 +518,13 @@
     "deleteInApp": "In the app: Me → Account and privacy → Delete account permanently. Your profile, routines, daily logs and skin photos are permanently deleted.",
     "deleteByEmail": "If you can't access the app, email the address above from your account's email address with the subject \"Account deletion request\" and your account and data will be deleted.",
     "medicalTitle": "Important",
-    "medicalBody": "Rebi offers general information for cosmetic skincare and daily routines; it does not diagnose or treat medical conditions. See a dermatologist for serious or persistent skin concerns."
+    "medicalBody": "Rebi offers general information for cosmetic skincare and daily routines; it does not diagnose or treat medical conditions. See a dermatologist for serious or persistent skin concerns.",
+    "companyTitle": "Company",
+    "companyBody": "Rebi is operated by {{name}}."
+  },
+  "cookie": {
+    "label": "Cookie notice",
+    "body": "Rebi keeps only the records the service needs in your browser; it uses no analytics or advertising cookies.",
+    "ok": "Got it"
   }
 }

@@ -1,655 +1,454 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useEffect, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import MouseDepthBackground from "../components/MouseDepthBackground";
-import AiDisclaimer from "../components/AiDisclaimer";
-import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Leaf,
-  Camera,
-  Brain,
-  CloudSun,
-  ArrowRight,
-  Shield,
-  Heart,
-  Sparkles,
-  Star,
-  ChevronRight,
-  Crown,
-  MessageCircle,
-  Palette,
-  ClipboardCheck,
-  Lock,
   AlertTriangle,
+  ArrowRight,
+  Brain,
+  Camera,
+  Check,
+  ClipboardCheck,
+  Crown,
+  Droplets,
+  Globe,
+  Leaf,
+  Lock,
+  MessageCircle,
+  Moon,
+  Package,
+  Palette,
+  Shield,
+  Smartphone,
+  Sparkles,
+  Sun,
+  UserRound,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import AiDisclaimer from "../components/AiDisclaimer";
+import TiltStage from "../components/landing/TiltStage";
+import PhoneScene from "../components/landing/PhoneScene";
+import StoreButton from "../components/landing/StoreButton";
+import { Slab, Symbol3D } from "../components/landing/Slab";
+import { BrandMark } from "../components/landing/StoreGlyphs";
+import { detectPlatform, orderedStores } from "../lib/storeLinks";
+import { COMPANY } from "../lib/company";
+import LegalLinks from "../components/LegalLinks";
 
-const features = [
-  {
-    icon: Camera,
-    titleKey: "landing.features.cameraTitle",
-    descKey: "landing.features.cameraDesc",
-    color: "from-pink-500 to-rose-500",
-    bg: "bg-pink-50",
-  },
-  {
-    icon: Brain,
-    titleKey: "landing.features.holisticTitle",
-    descKey: "landing.features.holisticDesc",
-    color: "from-purple-500 to-indigo-500",
-    bg: "bg-purple-50",
-  },
-  {
-    icon: CloudSun,
-    titleKey: "landing.features.weatherTitle",
-    descKey: "landing.features.weatherDesc",
-    color: "from-blue-500 to-cyan-500",
-    bg: "bg-blue-50",
-  },
+/** Uygulamanın bir günü; renkler mobildeki anlamlarıyla (bal = güneş, su mavisi, lavanta = akşam, pudra = raf). */
+const DAY = [
+  { icon: Sun, tone: "honey", titleKey: "landing.dayMorning", descKey: "landing.dayMorningDesc" },
+  { icon: Droplets, tone: "water", titleKey: "landing.dayNoon", descKey: "landing.dayNoonDesc" },
+  { icon: Moon, tone: "lilac", titleKey: "landing.dayEvening", descKey: "landing.dayEveningDesc" },
+  { icon: Package, tone: "blush", titleKey: "landing.dayShelf", descKey: "landing.dayShelfDesc" },
 ];
 
-const steps = [
-  { num: "01", titleKey: "landing.steps.s1Title", descKey: "landing.steps.s1Desc" },
-  { num: "02", titleKey: "landing.steps.s2Title", descKey: "landing.steps.s2Desc" },
-  { num: "03", titleKey: "landing.steps.s3Title", descKey: "landing.steps.s3Desc" },
+const DAY_EXTRAS = ["landing.dayExtra1", "landing.dayExtra2", "landing.dayExtra3", "landing.dayExtra4"];
+
+const APP_FEATURES = ["landing.ecoAppF1", "landing.ecoAppF2", "landing.ecoAppF3", "landing.ecoAppF4"];
+
+const PLUS = [
+  { icon: MessageCircle, titleKey: "landing.plus.unlimitedAiTitle", descKey: "landing.plus.unlimitedAiDesc" },
+  { icon: Palette, titleKey: "landing.plus.premiumThemesTitle", descKey: "landing.plus.premiumThemesDesc" },
+  { icon: ClipboardCheck, titleKey: "landing.plus.deepTrackingTitle", descKey: "landing.plus.deepTrackingDesc" },
 ];
 
-const plusHighlights = [
-  {
-    icon: MessageCircle,
-    titleKey: "landing.plus.unlimitedAiTitle",
-    descKey: "landing.plus.unlimitedAiDesc",
-    gradient: "from-violet-500 to-fuchsia-500",
-    glow: "shadow-fuchsia-500/20",
-  },
-  {
-    icon: Palette,
-    titleKey: "landing.plus.premiumThemesTitle",
-    descKey: "landing.plus.premiumThemesDesc",
-    gradient: "from-cyan-500 to-blue-600",
-    glow: "shadow-cyan-500/20",
-  },
-  {
-    icon: ClipboardCheck,
-    titleKey: "landing.plus.deepTrackingTitle",
-    descKey: "landing.plus.deepTrackingDesc",
-    gradient: "from-amber-500 to-orange-600",
-    glow: "shadow-amber-500/25",
-  },
+const OTHERS = [
+  { icon: Camera, key: "landing.differenceSchemaOthersS1" },
+  { icon: AlertTriangle, key: "landing.differenceSchemaOthersS2" },
+  { icon: Shield, key: "landing.differenceSchemaOthersS3" },
 ];
+
+const OURS = [
+  { icon: Brain, key: "landing.differenceSchemaUsS1" },
+  { icon: ClipboardCheck, key: "landing.differenceSchemaUsS2" },
+  { icon: Sparkles, key: "landing.differenceSchemaUsS3" },
+];
+
+/** Tarayıcıdaki iki giriş için giriş bölümündeki düğme. */
+const WEB_BTN =
+  "group inline-flex min-h-[58px] items-center gap-3 rounded-2xl border-2 border-ink bg-white px-5 text-[17px] font-semibold text-ink transition-colors hover:bg-ink hover:text-paper sm:min-w-[214px]";
+
+const EYEBROW = "text-[12px] font-semibold uppercase tracking-[0.12em] sm:text-[13px] sm:tracking-[0.16em]";
+const H2 = "font-display text-[2.1rem] font-medium leading-[1.08] tracking-[-0.015em] text-balance sm:text-5xl";
+
+/** Mağazadaki uygulama ikonu, kalınlığı olan bir levha olarak. Üst öğede `.scene-3d` bulunmalı. */
+function AppIcon3D({ size = 96, rotate = "rotateY(-22deg) rotateX(14deg)" }) {
+  return (
+    <span className="pose-3d" style={{ width: size, height: size, transform: rotate }} aria-hidden="true">
+      <Slab
+        tone="app"
+        depth={Math.round(size / 6)}
+        radius={Math.round(size * 0.24)}
+        lift={Math.round(size / 8)}
+        style={{ width: size, height: size }}
+      >
+        <BrandMark style={{ width: size * 0.74, height: size * 0.74 }} />
+      </Slab>
+    </span>
+  );
+}
+
+function SchemaCard({ title, steps, ours }) {
+  const { t } = useTranslation();
+  return (
+    <div
+      className={`rounded-[1.75rem] p-5 md:p-7 ${
+        ours ? "border-2 border-teal-700 bg-white" : "border border-rule bg-paper-deep"
+      }`}
+    >
+      <div className={`mb-4 text-sm font-bold ${ours ? "text-teal-700" : "text-ink-soft"}`}>{title}</div>
+      <ol className="space-y-2">
+        {steps.map((s, i) => (
+          <li key={s.key}>
+            <div
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3.5 text-[15px] ${
+                ours ? "bg-teal-50 font-medium text-ink" : "bg-white text-ink-soft"
+              }`}
+            >
+              <s.icon className={`h-5 w-5 shrink-0 ${ours ? "text-teal-700" : "text-ink-soft"}`} />
+              {t(s.key)}
+            </div>
+            {i < steps.length - 1 ? (
+              <div className={`pt-2 text-center text-lg leading-none ${ours ? "text-teal-700" : "text-ink-soft/50"}`} aria-hidden="true">
+                ↓
+              </div>
+            ) : null}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 export default function Landing() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const { t } = useTranslation();
-  const [choice, setChoice] = useState(null); // "rebi" | "routine" | null
-  const [phase, setPhase] = useState("choice"); // "choice" | "reveal"
-  const revealRef = useRef(null);
   const isAuthed = Boolean(user);
   const nextAnalyze = "/dashboard/analyze";
   const rebiHref = isAuthed ? "/dashboard/chat" : "/rebi";
   const routineHref = isAuthed ? nextAnalyze : `/auth?next=${encodeURIComponent(nextAnalyze)}`;
+  const platform = useMemo(() => detectPlatform(), []);
+  const stores = useMemo(() => orderedStores(platform), [platform]);
+  // Telefonda ilk ekranda yalnız ziyaretçinin kendi mağazası durur; iki mağaza birlikte sayfanın sonunda.
+  const heroStores = platform === "desktop" ? stores : stores.slice(0, 1);
+  // Telefonda /indir ziyaretçiyi kendi mağazasına gönderir; masaüstünde sayfanın sonundaki indirme bölümüne iner.
+  const getAppHref = platform === "desktop" ? "#indir" : "/indir";
 
-  const cta = useMemo(() => {
-    if (choice === "routine") {
-      return {
-        href: isAuthed ? nextAnalyze : `/auth?next=${encodeURIComponent(nextAnalyze)}`,
-        label: t("landing.ctaBuildRoutine"),
-        sub: t("nav.newAnalyze"),
-        icon: Sparkles,
-      };
-    }
-    return {
-      href: rebiHref,
-      label: t("landing.ctaChat"),
-      sub: t("nav.chat"),
-      icon: MessageCircle,
-    };
-  }, [choice, isAuthed, nextAnalyze, rebiHref, t]);
-
+  // /indir masaüstünde buraya "#indir" ile döner; sayfa ilk kurulduğunda doğrudan o bölümde açılır.
+  // (Sayfa içindeki "#indir" bağlantılarını tarayıcı kendisi kaydırır; burası yalnız ilk açılış içindir.)
   useEffect(() => {
-    if (phase !== "reveal") return;
+    const hash = window.location.hash;
+    if (!hash) return undefined;
     const id = window.setTimeout(() => {
-      revealRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 450);
+      document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start", behavior: "instant" });
+    }, 60);
     return () => window.clearTimeout(id);
-  }, [phase]);
-
-  const pick = (next) => {
-    navigate(next === "routine" ? routineHref : rebiHref);
-  };
+  }, []);
 
   return (
-    <div className="relative z-0 min-h-screen">
-      <MouseDepthBackground />
-      <div className="relative z-10">
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 pt-7 pb-8 md:pt-10 md:pb-10">
-          <div className="text-center max-w-6xl mx-auto w-full">
-            <div
-              className={`transition-all duration-700 ${
-                phase === "choice" ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-3 pointer-events-none select-none"
-              }`}
-            >
-              <div className="inline-flex items-center gap-2 bg-teal-50 text-teal-700 px-4 py-2 rounded-full text-sm font-medium mb-6 border border-teal-100">
-                <Sparkles className="w-4 h-4" />
-                {t("landing.heroBadge")}
-              </div>
+    <div className="min-h-screen bg-paper text-ink">
+      {/* Giriş: uygulama + mağaza düğmeleri */}
+      <section className="overflow-x-clip">
+        <TiltStage className="mx-auto grid w-full max-w-7xl items-center gap-12 px-4 pb-16 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] lg:gap-6 lg:pb-20 lg:pt-14">
+          <div className="text-center lg:text-left">
+            <p className={`${EYEBROW} text-teal-700`}>{t("landing.eyebrow")}</p>
+            <h1 className="mt-4 font-display text-[2.7rem] font-medium leading-[1.04] tracking-[-0.02em] text-balance sm:text-6xl lg:text-[4.3rem]">
+              {t("landing.heroTitle")}
+            </h1>
+            <p className="mx-auto mt-5 max-w-xl text-lg leading-relaxed text-ink-soft lg:mx-0">{t("landing.heroSub")}</p>
 
-              <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold text-gray-900 leading-[1.05] mb-5 tracking-tight drop-shadow-sm">
-                {t("landing.choiceTitle")}
-              </h1>
-              <p className="text-lg md:text-xl text-gray-700 mb-3 md:mb-4 max-w-2xl mx-auto">
-                {t("landing.choiceSubtitle")}
-              </p>
-              <AiDisclaimer className="mb-6 md:mb-7 max-w-xl mx-auto" />
+            <div className="mt-9 flex flex-col items-stretch justify-center gap-5 sm:flex-row sm:items-center lg:justify-start">
+              {heroStores.map((s) => (
+                <StoreButton key={s.id} store={s} className="sm:min-w-[272px]" />
+              ))}
+            </div>
+            <p className="mt-6 text-sm font-medium text-ink-soft">{t("landing.storeNote")}</p>
 
-              <div className="grid md:grid-cols-2 gap-5 md:gap-8 text-left">
-                <button
-                  type="button"
-                  onClick={() => pick("rebi")}
-                  className="group relative min-h-[178px] md:min-h-[205px] rounded-[2rem] border-2 border-teal-200/90 bg-white/75 backdrop-blur-md hover:bg-white/90 px-6 md:px-8 py-6 md:py-7 shadow-md hover:shadow-2xl hover:shadow-teal-500/10 transition-all"
-                >
-                  <div className="absolute -top-16 -right-16 w-56 h-56 bg-teal-300/30 rounded-full blur-3xl" />
-                  <div className="relative flex items-start justify-between gap-5">
-                    <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-teal-600 flex items-center justify-center shadow-xl shadow-teal-600/25 shrink-0">
-                        <MessageCircle className="w-7 h-7 md:w-8 md:h-8 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-xl md:text-2xl font-black text-gray-900">{t("appName")}</div>
-                        <div className="text-base md:text-lg text-gray-600 mt-2 leading-relaxed">
-                          {t("landing.choiceRebiDesc")}
-                        </div>
-                      </div>
-                    </div>
-                    <ArrowRight className="w-7 h-7 text-teal-700 shrink-0 group-hover:translate-x-1 transition-transform mt-1" />
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => pick("routine")}
-                  className="group relative min-h-[178px] md:min-h-[205px] rounded-[2rem] border-2 border-gray-200 bg-white/90 hover:bg-white px-6 md:px-8 py-6 md:py-7 shadow-md hover:shadow-2xl transition-all"
-                >
-                  <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-purple-300/20 rounded-full blur-3xl" />
-                  <div className="relative flex items-start justify-between gap-5">
-                    <div className="flex items-start gap-4">
-                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-xl shadow-emerald-600/20 shrink-0">
-                        <Sparkles className="w-7 h-7 md:w-8 md:h-8 text-white" />
-                      </div>
-                      <div>
-                        <div className="text-xl md:text-2xl font-black text-gray-900">
-                          {t("landing.choiceRoutineName")}
-                        </div>
-                        <div className="text-base md:text-lg text-gray-600 mt-2 leading-relaxed">
-                          {t("landing.choiceRoutineDesc")}
-                        </div>
-                      </div>
-                    </div>
-                    <ArrowRight className="w-7 h-7 text-gray-700 shrink-0 group-hover:translate-x-1 transition-transform mt-1" />
-                  </div>
-                </button>
-              </div>
-
-              {/* subtle wave footer (absolute, no extra layout height) */}
-              <div className="pointer-events-none absolute left-0 right-0 -bottom-10 md:-bottom-12 opacity-70">
-                <svg viewBox="0 0 1440 120" className="w-full h-20 md:h-24">
-                  <path
-                    fill="rgba(20,184,166,0.12)"
-                    d="M0,64L80,58.7C160,53,320,43,480,48C640,53,800,75,960,80C1120,85,1280,75,1360,69.3L1440,64L1440,120L1360,120C1280,120,1120,120,960,120C800,120,640,120,480,120C320,120,160,120,80,120L0,120Z"
-                  >
-                    <animate
-                      attributeName="d"
-                      dur="6s"
-                      repeatCount="indefinite"
-                      values="
-                        M0,64L80,58.7C160,53,320,43,480,48C640,53,800,75,960,80C1120,85,1280,75,1360,69.3L1440,64L1440,120L0,120Z;
-                        M0,70L80,80C160,90,320,110,480,96C640,82,800,34,960,26C1120,18,1280,50,1360,66L1440,82L1440,120L0,120Z;
-                        M0,64L80,58.7C160,53,320,43,480,48C640,53,800,75,960,80C1120,85,1280,75,1360,69.3L1440,64L1440,120L0,120Z
-                      "
-                    />
-                  </path>
-                </svg>
+            <div className="mt-9">
+              <p className="text-[15px] font-medium text-ink-soft">{t("landing.webEntry")}</p>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:justify-center lg:justify-start">
+                <Link to={rebiHref} className={WEB_BTN}>
+                  <MessageCircle className="h-5 w-5 shrink-0 text-teal-700 group-hover:text-paper" />
+                  {t("landing.webChat")}
+                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </Link>
+                <Link to={routineHref} className={WEB_BTN}>
+                  <Sparkles className="h-5 w-5 shrink-0 text-teal-700 group-hover:text-paper" />
+                  {t("landing.webRoutine")}
+                  <ArrowRight className="ml-auto h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" />
+                </Link>
               </div>
             </div>
 
-            <div
-              ref={revealRef}
-              className={`transition-all duration-700 ${
-                phase === "reveal"
-                  ? "opacity-100 translate-y-0"
-                  : "hidden opacity-0 translate-y-3 pointer-events-none select-none"
-              }`}
-            >
-              <div className="inline-flex items-center gap-2 bg-white/70 backdrop-blur px-4 py-2 rounded-full text-sm font-bold mb-6 border border-gray-200">
-                <Leaf className="w-4 h-4 text-teal-600" />
-                {t("landing.choicePicked")}{" "}
-                <span className="text-teal-700">
-                  {choice === "routine" ? t("landing.choiceRoutineName") : t("appName")}
+            <AiDisclaimer className="mx-auto mt-6 max-w-xl lg:mx-0" />
+          </div>
+
+          <div className="relative mx-auto h-[410px] w-[304px] -translate-x-2 sm:h-[540px] sm:w-[400px] sm:translate-x-0 lg:h-[620px] lg:w-[460px]">
+            {/* Günün ışığı: uygulamanın açılışındaki güneş diski. Fareyle çok az kayar; sayfanın tek arka plan süsü. */}
+            <span className="pointer-events-none absolute left-1/2 top-[47%] block aspect-square w-[150%] -translate-x-1/2 -translate-y-1/2" aria-hidden="true">
+              <span className="hero-light hero-light--far absolute inset-0 rounded-full border border-ink/[0.07]" />
+              <span className="hero-light hero-light--far absolute inset-[12%] rounded-full border border-ink/[0.09]" />
+              <span className="hero-light hero-sun absolute inset-[24%] rounded-full" />
+            </span>
+            <PhoneScene className="h-[620px] w-[460px] origin-top-left scale-[0.66] sm:scale-[0.87] lg:scale-100" />
+          </div>
+        </TiltStage>
+      </section>
+
+      {/* Ekosistem: üç giriş, tek hesap */}
+      <section id="ekosistem" className="scroll-mt-20 px-4 pb-16 sm:px-6 md:pb-24">
+        <div className="mx-auto max-w-6xl">
+          <header className="max-w-2xl">
+            <p className={`${EYEBROW} text-teal-700`}>{t("landing.ecoEyebrow")}</p>
+            <h2 className={`${H2} mt-3`}>{t("landing.ecoTitle")}</h2>
+            <p className="mt-4 text-lg leading-relaxed text-ink-soft">{t("landing.ecoSub")}</p>
+          </header>
+
+          <TiltStage className="mt-10">
+            <div className="grid gap-5 md:grid-cols-2">
+              {[
+                {
+                  to: rebiHref,
+                  icon: MessageCircle,
+                  tone: "cream",
+                  bg: "bg-teal-700",
+                  title: t("landing.ecoChatTitle"),
+                  desc: t("landing.choiceRebiDesc"),
+                  cta: t("landing.ecoChatCta"),
+                },
+                {
+                  to: routineHref,
+                  icon: Sparkles,
+                  tone: "honey",
+                  bg: "bg-ink",
+                  title: t("landing.ecoRoutineTitle"),
+                  desc: t("landing.choiceRoutineDesc"),
+                  cta: t("landing.ecoRoutineCta"),
+                },
+              ].map((d) => (
+                <Link
+                  key={d.title}
+                  to={d.to}
+                  className={`group relative flex flex-col overflow-hidden rounded-[2rem] p-7 text-paper shadow-[0_28px_50px_-30px_rgba(6,43,39,0.7)] transition-transform hover:-translate-y-1 md:p-10 ${d.bg}`}
+                >
+                  <d.icon
+                    className="pointer-events-none absolute -bottom-12 -right-10 h-64 w-64 text-paper opacity-[0.07]"
+                    strokeWidth={1.1}
+                    aria-hidden="true"
+                  />
+                  <span className="scene-3d relative block w-fit">
+                    <span className="scene-3d__tilt">
+                      <Symbol3D icon={d.icon} tone={d.tone} size={84} />
+                    </span>
+                  </span>
+                  <span className={`${EYEBROW} relative mt-9 text-paper/70`}>{t("landing.ecoWebTag")}</span>
+                  <span className="relative mt-2 font-display text-4xl font-medium leading-tight md:text-[2.75rem]">
+                    {d.title}
+                  </span>
+                  <span className="relative mb-8 mt-3 max-w-md text-lg leading-relaxed text-paper/85">{d.desc}</span>
+                  <span className="relative mt-auto inline-flex min-h-[56px] w-fit items-center gap-2.5 rounded-2xl bg-paper px-6 text-[17px] font-semibold text-ink">
+                    {d.cta}
+                    <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-5 flex flex-col gap-6 rounded-[2rem] border border-rule bg-white p-6 md:p-8 lg:flex-row lg:items-center lg:gap-10">
+              <div className="flex shrink-0 items-center gap-5 lg:w-[310px]">
+                <span className="scene-3d block shrink-0">
+                  <span className="scene-3d__tilt">
+                    <AppIcon3D size={76} />
+                  </span>
                 </span>
-              </div>
-
-              <div className="rounded-[2rem] border border-gray-200/90 bg-white/85 backdrop-blur-xl shadow-lg p-6 md:p-10 lg:p-12 text-left">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-teal-50 border border-teal-100 flex items-center justify-center shrink-0">
-                    <Leaf className="w-6 h-6 text-teal-600" />
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-xl md:text-2xl font-bold text-gray-900">{t("landing.differenceTitle")}</h3>
-                    <p className="text-base text-gray-600 mt-2 leading-relaxed">{t("landing.differenceSubtitle")}</p>
-                  </div>
-                </div>
-
-                {/* Schema: Others vs Rebi */}
-                <div className="mt-8 grid lg:grid-cols-2 gap-5 md:gap-6">
-                  <div className="rounded-3xl border border-gray-200 bg-white/95 p-5 md:p-7 shadow-sm">
-                    <div className="text-sm font-bold text-gray-700 mb-4">{t("landing.differenceSchemaOthers")}</div>
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
-                        <Camera className="w-5 h-5 text-gray-600 shrink-0" />
-                        {t("landing.differenceSchemaOthersS1")}
-                      </div>
-                      <div className="flex justify-center text-gray-300 text-lg">↓</div>
-                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
-                        <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-                        {t("landing.differenceSchemaOthersS2")}
-                      </div>
-                      <div className="flex justify-center text-gray-300 text-lg">↓</div>
-                      <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5 text-base text-gray-800">
-                        <Shield className="w-5 h-5 text-gray-600 shrink-0" />
-                        {t("landing.differenceSchemaOthersS3")}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="relative rounded-3xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-5 md:p-7 overflow-hidden shadow-md">
-                    <div className="absolute -top-10 -right-10 w-40 h-40 bg-teal-300/25 rounded-full blur-3xl" />
-                    <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-emerald-300/20 rounded-full blur-3xl" />
-                    <div className="absolute inset-0 opacity-50">
-                      <svg viewBox="0 0 600 220" className="w-full h-full">
-                        <defs>
-                          <linearGradient id="revealWave" x1="0" x2="1" y1="0" y2="1">
-                            <stop offset="0" stopColor="rgba(20,184,166,0.25)" />
-                            <stop offset="1" stopColor="rgba(16,185,129,0.18)" />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          fill="url(#revealWave)"
-                          d="M0,160 C120,120 240,200 360,160 C480,120 540,120 600,140 L600,220 L0,220 Z"
-                        >
-                          <animate
-                            attributeName="d"
-                            dur="5s"
-                            repeatCount="indefinite"
-                            values="
-                              M0,160 C120,120 240,200 360,160 C480,120 540,120 600,140 L600,220 L0,220 Z;
-                              M0,150 C130,190 240,110 360,150 C480,190 540,170 600,150 L600,220 L0,220 Z;
-                              M0,160 C120,120 240,200 360,160 C480,120 540,120 600,140 L600,220 L0,220 Z
-                            "
-                          />
-                        </path>
-                      </svg>
-                    </div>
-                    <div className="relative">
-                      <div className="text-sm font-bold text-teal-900 mb-4">{t("landing.differenceSchemaUs")}</div>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
-                          <Brain className="w-5 h-5 text-teal-700 shrink-0" />
-                          {t("landing.differenceSchemaUsS1")}
-                        </div>
-                        <div className="flex justify-center text-teal-500/70 font-bold text-lg">↓</div>
-                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
-                          <ClipboardCheck className="w-5 h-5 text-teal-700 shrink-0" />
-                          {t("landing.differenceSchemaUsS2")}
-                        </div>
-                        <div className="flex justify-center text-teal-500/70 font-bold text-lg">↓</div>
-                        <div className="flex items-center gap-3 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-4 py-3.5 text-base text-gray-900 shadow-sm">
-                          <Sparkles className="w-5 h-5 text-teal-700 shrink-0" />
-                          {t("landing.differenceSchemaUsS3")}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid sm:grid-cols-2 gap-4 mt-8">
-                  <Link
-                    to={choice === "rebi" ? rebiHref : cta.href}
-                    className="group rounded-[1.25rem] border-2 border-teal-200 bg-teal-50/70 hover:bg-teal-50 px-6 py-5 md:py-6 flex items-center justify-between transition-colors min-h-[88px]"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white border border-teal-100 flex items-center justify-center shrink-0">
-                        <cta.icon className="w-6 h-6 text-teal-700" />
-                      </div>
-                      <div className="text-left">
-                        <div className="text-base font-bold text-gray-900">
-                          {choice === "rebi" ? t("landing.rebiOk") : cta.label}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {choice === "rebi" ? t("landing.rebiOkSub") : cta.sub}
-                        </div>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-6 h-6 text-teal-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPhase("choice");
-                      setChoice(null);
-                      window.scrollTo({ top: 0, behavior: "smooth" });
-                    }}
-                    className="group rounded-[1.25rem] border-2 border-gray-200 bg-white hover:bg-gray-50 px-6 py-5 md:py-6 flex items-center justify-between transition-colors min-h-[88px]"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-gray-900 flex items-center justify-center shadow-sm shrink-0">
-                        <ChevronRight className="w-6 h-6 text-white rotate-180" />
-                      </div>
-                      <div className="text-left">
-                        <div className="text-base font-bold text-gray-900">{t("landing.changeChoice")}</div>
-                        <div className="text-sm text-gray-600">{t("landing.changeChoiceSub")}</div>
-                      </div>
-                    </div>
-                    <ArrowRight className="w-6 h-6 text-gray-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-10 flex items-center justify-center gap-6 text-sm text-gray-400">
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-4 h-4 text-teal-500" />
-                  {t("landing.badgeFree")}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Heart className="w-4 h-4 text-rose-400" />
-                  {t("landing.badgeScientific")}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-amber-400" />
-                  {t("landing.badgePersonal")}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Differences (horizontal section) */}
-      <section className="mt-8 md:mt-10 py-6 md:py-8 relative z-[1]">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-end justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-xl md:text-2xl font-black text-gray-900">{t("landing.differenceTitle")}</h2>
-              <p className="text-sm text-gray-600 mt-1">{t("landing.differenceSubtitle")}</p>
-            </div>
-            <a
-              href="#"
-              onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-              className="hidden md:inline-flex text-sm font-semibold text-teal-700 hover:text-teal-800 underline-offset-2 hover:underline"
-            >
-              {t("landing.entryHint")}
-            </a>
-          </div>
-
-          {/* Mobile: snap carousel */}
-          <div className="md:hidden -mx-4 px-4 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex gap-3 snap-x snap-mandatory">
-              <div className="snap-start shrink-0 w-[86vw] max-w-[360px] rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="text-sm font-bold text-gray-700 mb-4">{t("landing.differenceSchemaOthers")}</div>
-                <div className="space-y-2.5">
-                  <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
-                    <Camera className="w-4 h-4 text-gray-600 shrink-0" />
-                    <span className="min-w-0">{t("landing.differenceSchemaOthersS1")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span className="min-w-0">{t("landing.differenceSchemaOthersS2")}</span>
-                  </div>
-                  <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
-                    <Shield className="w-4 h-4 text-gray-600 shrink-0" />
-                    <span className="min-w-0">{t("landing.differenceSchemaOthersS3")}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="snap-start shrink-0 w-[86vw] max-w-[360px] relative rounded-3xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-5 shadow-sm overflow-hidden">
-                <div className="absolute -top-10 -right-10 w-44 h-44 bg-teal-300/25 rounded-full blur-3xl" />
-                <div className="absolute -bottom-12 -left-12 w-56 h-56 bg-emerald-300/20 rounded-full blur-3xl" />
-                <div className="relative">
-                  <div className="text-sm font-bold text-teal-900 mb-4">{t("landing.differenceSchemaUs")}</div>
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
-                      <Brain className="w-4 h-4 text-teal-700 shrink-0" />
-                      <span className="min-w-0">{t("landing.differenceSchemaUsS1")}</span>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
-                      <ClipboardCheck className="w-4 h-4 text-teal-700 shrink-0" />
-                      <span className="min-w-0">{t("landing.differenceSchemaUsS2")}</span>
-                    </div>
-                    <div className="flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
-                      <Sparkles className="w-4 h-4 text-teal-700 shrink-0" />
-                      <span className="min-w-0">{t("landing.differenceSchemaUsS3")}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Desktop: single-line schema */}
-          <div className="hidden md:block overflow-x-auto pb-2 -mx-4 px-4">
-            <div className="min-w-[900px] grid grid-cols-9 gap-3 items-stretch">
-              <div className="col-span-4 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm">
-                <div className="text-sm font-bold text-gray-700 mb-4">{t("landing.differenceSchemaOthers")}</div>
-                <div className="grid grid-cols-5 gap-2 items-center">
-                  <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
-                    <Camera className="w-4 h-4 text-gray-600 shrink-0" />
-                    <span className="min-w-0">{t("landing.differenceSchemaOthersS1")}</span>
-                  </div>
-                  <div className="col-span-1 flex justify-center text-gray-300 font-black">→</div>
-                  <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                    <span className="min-w-0">{t("landing.differenceSchemaOthersS2")}</span>
-                  </div>
-                  <div className="col-span-5 flex items-center gap-2 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-3 text-sm text-gray-800">
-                    <Shield className="w-4 h-4 text-gray-600 shrink-0" />
-                    <span className="min-w-0">{t("landing.differenceSchemaOthersS3")}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-1 flex items-center justify-center">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-teal-600 to-emerald-500 text-white flex items-center justify-center shadow-lg shadow-teal-600/20">
-                  <ArrowRight className="w-6 h-6" />
-                </div>
-              </div>
-
-              <div className="col-span-4 relative rounded-3xl border-2 border-teal-300 bg-gradient-to-br from-teal-50 via-emerald-50/70 to-cyan-50 p-5 shadow-sm overflow-hidden">
-                <div className="absolute -top-10 -right-10 w-44 h-44 bg-teal-300/25 rounded-full blur-3xl" />
-                <div className="absolute -bottom-12 -left-12 w-56 h-56 bg-emerald-300/20 rounded-full blur-3xl" />
-                <div className="relative">
-                  <div className="text-sm font-bold text-teal-900 mb-4">{t("landing.differenceSchemaUs")}</div>
-                  <div className="grid grid-cols-5 gap-2 items-center">
-                    <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
-                      <Brain className="w-4 h-4 text-teal-700 shrink-0" />
-                      <span className="min-w-0">{t("landing.differenceSchemaUsS1")}</span>
-                    </div>
-                    <div className="col-span-1 flex justify-center text-teal-500/70 font-black">→</div>
-                    <div className="col-span-2 flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
-                      <ClipboardCheck className="w-4 h-4 text-teal-700 shrink-0" />
-                      <span className="min-w-0">{t("landing.differenceSchemaUsS2")}</span>
-                    </div>
-                    <div className="col-span-5 flex items-center gap-2 rounded-2xl border border-teal-200/70 bg-white/90 backdrop-blur px-3 py-3 text-sm text-gray-900 shadow-sm">
-                      <Sparkles className="w-4 h-4 text-teal-700 shrink-0" />
-                      <span className="min-w-0">{t("landing.differenceSchemaUsS3")}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3 text-[11px] text-gray-500 md:hidden">
-            Kaydırarak devam et.
-          </div>
-        </div>
-      </section>
-
-      {/* Rebi Plus — premium görsel blok */}
-      <section className="py-10 md:py-12 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-900 via-violet-950/95 to-slate-900" />
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{
-            backgroundImage:
-              "radial-gradient(circle at 20% 30%, rgba(167,139,250,0.35) 0%, transparent 45%), radial-gradient(circle at 80% 70%, rgba(244,114,182,0.25) 0%, transparent 40%)",
-          }}
-        />
-        <div className="relative max-w-6xl mx-auto px-4">
-          <div className="text-center mb-12 md:mb-14">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/15 px-4 py-2 text-sm font-medium text-amber-200 mb-6">
-              <Crown className="w-4 h-4 text-amber-300" />
-              {t("landing.plusBadge")}
-            </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4 tracking-tight">
-              {t("landing.plusTitle")}
-            </h2>
-            <p className="text-violet-200/90 text-lg max-w-2xl mx-auto leading-relaxed">
-              {t("landing.plusDesc")}
-            </p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5 md:gap-6">
-            {plusHighlights.map((item, i) => (
-              <div
-                key={i}
-                className={`group relative rounded-3xl border border-white/10 bg-white/5 backdrop-blur-md p-6 md:p-7 shadow-xl ${item.glow} hover:bg-white/10 transition-all duration-300`}
-              >
-                <div
-                  className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${item.gradient} flex items-center justify-center mb-5 shadow-lg group-hover:scale-105 transition-transform`}
-                >
-                  <item.icon className="w-7 h-7 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">{t(item.titleKey)}</h3>
-                <p className="text-sm text-violet-100/85 leading-relaxed">{t(item.descKey)}</p>
-                <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-amber-200/90">
-                  <Lock className="w-3.5 h-3.5" />
-                  {t("landing.plusUnlockHint")}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="text-center mt-10">
-            <Link
-              to={user ? "/dashboard/subscribe" : "/auth"}
-              className="inline-flex items-center gap-2 rounded-2xl bg-white text-violet-950 font-bold px-8 py-4 text-base shadow-lg shadow-black/20 hover:bg-violet-50 transition-colors"
-            >
-              <Crown className="w-5 h-5 text-amber-600" />
-              {t("landing.plusCta")}
-              <ArrowRight className="w-5 h-5" />
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="features" className="py-12 md:py-16">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center mb-10 md:mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">{t("landing.featuresTitle")}</h2>
-            <p className="text-gray-500 text-lg max-w-xl mx-auto">{t("landing.featuresSubtitle")}</p>
-            <p className="text-gray-600 text-sm max-w-2xl mx-auto mt-4 leading-relaxed">{t("landing.disclaimer")}</p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6 md:gap-8">
-            {features.map((f, i) => (
-              <div
-                key={i}
-                className="card hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group"
-              >
-                <div
-                  className={`w-14 h-14 ${f.bg} rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}
-                >
-                  <f.icon className={`w-7 h-7 bg-gradient-to-br ${f.color} bg-clip-text`} style={{color: f.color.includes('pink') ? '#ec4899' : f.color.includes('purple') ? '#8b5cf6' : '#3b82f6'}} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{t(f.titleKey)}</h3>
-                <p className="text-gray-500 leading-relaxed">{t(f.descKey)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works */}
-      <section className="py-12 md:py-16 bg-gradient-to-b from-white to-teal-50/50">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="text-center mb-10 md:mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              {t("landing.howItWorksTitle")}
-            </h2>
-          </div>
-
-          <div className="space-y-6">
-            {steps.map((s, i) => (
-              <div
-                key={i}
-                className="flex items-start gap-6 p-6 rounded-3xl bg-white border border-gray-100 hover:shadow-lg transition-shadow group"
-              >
-                <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-teal-600 rounded-2xl flex items-center justify-center text-white font-bold text-lg shrink-0 group-hover:scale-110 transition-transform shadow-lg shadow-teal-500/20">
-                  {s.num}
-                </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-1">
-                    {t(s.titleKey)}
-                  </h3>
-                  <p className="text-gray-500">{t(s.descKey)}</p>
+                  <p className={`${EYEBROW} text-teal-700`}>{t("landing.ecoAppTag")}</p>
+                  <h3 className="mt-1 font-display text-2xl font-medium leading-tight">{t("landing.ecoAppTitle")}</h3>
+                  <p className="mt-1 text-sm text-ink-soft">{t("landing.ecoAppDesc")}</p>
                 </div>
-                <ChevronRight className="w-5 h-5 text-gray-300 shrink-0 mt-1 ml-auto" />
               </div>
-            ))}
-          </div>
+              <ul className="grid flex-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
+                {APP_FEATURES.map((k) => (
+                  <li key={k} className="flex items-start gap-2.5 text-sm leading-snug text-ink-soft">
+                    <span className="mt-0.5 flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-700">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    </span>
+                    {t(k)}
+                  </li>
+                ))}
+              </ul>
+              <a
+                href={getAppHref}
+                className="inline-flex min-h-[52px] shrink-0 items-center justify-center gap-2 rounded-2xl bg-ink px-6 font-semibold text-paper transition-colors hover:bg-ink-deep"
+              >
+                <Smartphone className="h-5 w-5" />
+                {t("nav.getApp")}
+              </a>
+            </div>
+          </TiltStage>
 
-          <div className="text-center mt-10">
-            <Link
-              to={user ? "/dashboard/analyze" : "/auth"}
-              className="btn-primary !px-8 !py-4 !text-lg inline-flex group"
-            >
-              {t("landing.ctaStartNow")}
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </Link>
+          <div className="mt-6 flex flex-col items-start gap-4 px-2 sm:flex-row sm:items-center">
+            <div className="flex shrink-0 items-center gap-2 text-teal-700" aria-hidden="true">
+              <Globe className="h-5 w-5" />
+              <span className="h-px w-5 bg-teal-700/40" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-teal-700 text-paper">
+                <UserRound className="h-[18px] w-[18px]" />
+              </span>
+              <span className="h-px w-5 bg-teal-700/40" />
+              <Smartphone className="h-5 w-5" />
+            </div>
+            <p className="text-[15px] leading-relaxed text-ink-soft">
+              <span className="font-semibold text-ink">{t("landing.ecoAccountTitle")}.</span> {t("landing.ecoAccountDesc")}
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-10 border-t border-gray-100">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center">
-              <Leaf className="w-4 h-4 text-white" />
+      {/* Yükselen panel: uygulamayla bir gün, fark, Plus */}
+      <div className="rounded-t-[2.5rem] border-t border-rule bg-white">
+        <section className="px-4 py-16 sm:px-6 md:py-24">
+          <div className="mx-auto max-w-6xl">
+            <header className="max-w-3xl">
+              <p className={`${EYEBROW} text-teal-700`}>{t("landing.dayEyebrow")}</p>
+              <h2 className={`${H2} mt-3`}>{t("landing.dayTitle")}</h2>
+            </header>
+
+            <TiltStage className="relative mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+              <span className="absolute left-0 right-0 top-8 hidden h-px bg-rule lg:block" aria-hidden="true" />
+              {DAY.map((d) => (
+                <div key={d.titleKey} className="relative">
+                  <span className="scene-3d block w-fit">
+                    <span className="scene-3d__tilt">
+                      <Symbol3D icon={d.icon} tone={d.tone} size={64} />
+                    </span>
+                  </span>
+                  <h3 className="mt-6 font-display text-2xl font-medium">{t(d.titleKey)}</h3>
+                  <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">{t(d.descKey)}</p>
+                </div>
+              ))}
+            </TiltStage>
+
+            <div className="mt-12 flex flex-wrap items-center gap-2.5 border-t border-rule pt-6">
+              <span className="mr-1 text-sm font-semibold">{t("landing.dayExtras")}</span>
+              {DAY_EXTRAS.map((k) => (
+                <span key={k} className="rounded-full border border-rule bg-paper px-3.5 py-1.5 text-sm text-ink-soft">
+                  {t(k)}
+                </span>
+              ))}
             </div>
-            <span className="font-bold text-gray-900">Rebi</span>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <p className="text-sm text-gray-400">
-              {t("landing.footer")}
-            </p>
-            <p className="text-xs text-gray-400 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
-              <Link to="/kvkk" className="hover:text-teal-700 underline underline-offset-2">
-                {t("legal.kvkkTitle")}
-              </Link>
-              <Link to="/riza" className="hover:text-teal-700 underline underline-offset-2">
-                {t("legal.rizaTitle")}
-              </Link>
-              <Link to="/destek" className="hover:text-teal-700 underline underline-offset-2">
-                {t("support.link")}
-              </Link>
-            </p>
+        </section>
+
+        <section className="border-t border-rule px-4 py-16 sm:px-6 md:py-20">
+          <div className="mx-auto max-w-6xl">
+            <header className="max-w-2xl">
+              <h2 className={H2}>{t("landing.differenceTitle")}</h2>
+              <p className="mt-4 text-lg leading-relaxed text-ink-soft">{t("landing.differenceSubtitle")}</p>
+            </header>
+            <div className="mt-10 grid gap-5 md:grid-cols-2">
+              <SchemaCard title={t("landing.differenceSchemaOthers")} steps={OTHERS} />
+              <SchemaCard title={t("landing.differenceSchemaUs")} steps={OURS} ours />
+            </div>
+            <p className="mt-8 max-w-3xl text-sm leading-relaxed text-ink-soft">{t("landing.disclaimer")}</p>
           </div>
+        </section>
+
+        <section className="border-t border-rule px-4 py-16 sm:px-6 md:py-20">
+          <div className="mx-auto grid max-w-6xl gap-10 rounded-[2rem] border border-rule bg-paper p-7 md:p-10 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-14">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full bg-honey-tint px-3.5 py-1.5 text-sm font-semibold text-honey">
+                <Crown className="h-4 w-4" />
+                {t("landing.plusBadge")}
+              </div>
+              <h2 className="mt-5 font-display text-3xl font-medium leading-tight text-balance md:text-4xl">
+                {t("landing.plusTitle")}
+              </h2>
+              <p className="mt-4 leading-relaxed text-ink-soft">{t("landing.plusDesc")}</p>
+              <Link
+                to={user ? "/dashboard/subscribe" : "/auth"}
+                className="group mt-7 inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-ink px-6 py-3 font-semibold text-paper transition-colors hover:bg-ink-deep"
+              >
+                {t("landing.plusCta")}
+                <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+            <div>
+              <ul className="divide-y divide-rule">
+                {PLUS.map((p) => (
+                  <li key={p.titleKey} className="flex items-start gap-4 py-4 first:pt-0">
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-honey-tint text-honey">
+                      <p.icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h3 className="text-lg font-semibold">{t(p.titleKey)}</h3>
+                      <p className="mt-0.5 text-[15px] leading-relaxed text-ink-soft">{t(p.descKey)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-honey">
+                <Lock className="h-3.5 w-3.5" />
+                {t("landing.plusUnlockHint")}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* İndirme sahnesi */}
+        <section id="indir" className="relative scroll-mt-16 overflow-hidden rounded-t-[2.5rem] bg-ink text-paper">
+          <BrandMark className="pointer-events-none absolute -right-24 -top-24 h-[520px] w-[520px] text-paper opacity-[0.05]" />
+          <TiltStage className="relative mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:px-6 md:py-24 lg:grid-cols-[auto_minmax(0,1fr)_auto] lg:gap-14">
+            <span className="scene-3d mx-auto block lg:mx-0">
+              <span className="scene-3d__tilt">
+                <span className="sway-3d">
+                  <AppIcon3D size={148} rotate="rotateY(-20deg) rotateX(12deg) rotateZ(-3deg)" />
+                </span>
+              </span>
+            </span>
+
+            <div className="text-center lg:text-left">
+              <p className={`${EYEBROW} text-teal-300`}>{t("landing.dlEyebrow")}</p>
+              <h2 className="mt-3 font-display text-[2.4rem] font-medium leading-[1.05] tracking-[-0.02em] text-balance sm:text-6xl">
+                {t("landing.dlTitle")}
+              </h2>
+              <p className="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-paper/75 lg:mx-0">{t("landing.dlSub")}</p>
+              <div className="mt-9 flex flex-col items-stretch justify-center gap-5 pb-2 sm:flex-row sm:items-center lg:justify-start">
+                {stores.map((s) => (
+                  <StoreButton key={s.id} store={s} tone="cream" className="sm:min-w-[272px]" />
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden w-[212px] rounded-[1.75rem] bg-paper p-5 text-center text-ink lg:block">
+              <img src="/qr-indir.svg" alt={t("landing.dlQrAlt")} width="172" height="172" className="mx-auto h-[172px] w-[172px]" />
+              <p className="mt-3 text-sm font-semibold leading-snug">{t("landing.dlQrTitle")}</p>
+              <p className="mt-1 text-xs leading-snug text-ink-soft">{t("landing.dlQrDesc")}</p>
+            </div>
+          </TiltStage>
+        </section>
+      </div>
+
+      <footer className="bg-ink-deep px-4 py-10 text-paper/70 sm:px-6">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-col items-center gap-7 text-center md:flex-row md:items-start md:justify-between md:text-left">
+            <div className="shrink-0">
+              <div className="flex items-center justify-center gap-2.5 text-paper md:justify-start">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 text-white">
+                  <Leaf className="h-4 w-4" />
+                </span>
+                <span className="font-display text-lg font-medium">Rebi</span>
+              </div>
+              <p className="mt-3 text-sm text-paper/85">{COMPANY.legalName}</p>
+              {COMPANY.address ? <p className="mt-1 max-w-xs text-xs leading-relaxed">{COMPANY.address}</p> : null}
+              <a href={`mailto:${COMPANY.email}`} className="mt-1 inline-block text-sm underline underline-offset-4 hover:text-paper">
+                {COMPANY.email}
+              </a>
+            </div>
+            <LegalLinks className="max-w-2xl text-sm md:justify-end" linkClassName="hover:text-paper" />
+          </div>
+          <p className="mt-8 border-t border-paper/10 pt-5 text-center text-xs text-paper/55 md:text-left">{t("landing.footer")}</p>
         </div>
       </footer>
-      </div>
     </div>
   );
 }

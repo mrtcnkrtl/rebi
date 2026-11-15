@@ -33,7 +33,8 @@
     "chat": "Rebi AI",
     "analyze": "Analiz",
     "reanalyze": "Yeniden",
-    "theme": "Tema"
+    "theme": "Tema",
+    "getApp": "Uygulamayı indir"
   },
   "landing": {
     "heroBadge": "Dermokozmetik yapay zekası",
@@ -121,7 +122,73 @@
       "premiumThemesDesc": "Gün batımı, okyanus ve gece şehir gibi özel görünümler.",
       "deepTrackingTitle": "Derin takip",
       "deepTrackingDesc": "Günlük check-in ile rutinin cildinin cevabına göre uyarlanır."
-    }
+    },
+    "eyebrow": "Rebiovil · dermokozmetik yapay zekası",
+    "heroTitle": "Bugünkü cilt bakımın telefonunda hazır.",
+    "heroSub": "Rebi cildini, uykunu, stresini ve o günün havasını birlikte okur; sabah ve akşam hangi adımı atacağını söyler. Uygulamayı indir, planın her gün yanında olsun.",
+    "storeIosTop": "iPhone için indir",
+    "storeAndroidTop": "Android için indir",
+    "storeNote": "İndirmesi ücretsiz. Webdeki hesabınla aynı.",
+    "webEntry": "Tarayıcıdan da başlayabilirsin:",
+    "webChat": "Rebi'ye sor",
+    "webRoutine": "Rutinimi oluştur",
+    "mock": {
+      "today": "Bugün",
+      "greeting": "Günaydın",
+      "morning": "Sabah rutini",
+      "step1": "Temizleyici",
+      "step2": "Nemlendirici",
+      "step3": "Güneş kremi",
+      "uvTitle": "UV yüksek",
+      "uvDesc": "Bugün güneş kremi sür",
+      "water": "Su · 5 / 8 bardak",
+      "reminderLabel": "Hatırlatıcı",
+      "reminderValue": "Akşam rutini · 21:30",
+      "shelfLabel": "Rafım",
+      "shelfValue": "Ürünlerin burada",
+      "chatLabel": "Rebi sohbet",
+      "chatValue": "Niasinamid sabah sürülür mü?"
+    },
+    "ecoEyebrow": "Rebiovil ekosistemi",
+    "ecoTitle": "Tek hesap, üç giriş.",
+    "ecoSub": "Sorunu tarayıcıda sor, rutinini webde kur, her günü telefonda sürdür. Hangi girişten başlarsan başla, hesabın ve rutinin seninle gelir.",
+    "ecoAppTag": "Telefonda",
+    "ecoAppTitle": "Rebi mobil uygulaması",
+    "ecoAppDesc": "Rutinin günlük hayata burada yerleşir.",
+    "ecoAppF1": "Bugün ekranı: sabah ve akşam adımların sırayla",
+    "ecoAppF2": "Havaya göre karar: UV ve neme bakar; güneş kremi, nemlendirici, dudak balsamı",
+    "ecoAppF3": "Hatırlatıcılar senin seçtiğin saat aralığında",
+    "ecoAppF4": "Rafım, su takibi ve günlük check-in",
+    "ecoWebTag": "Tarayıcıda",
+    "ecoChatTitle": "Rebi sohbet",
+    "ecoChatCta": "Sohbeti aç",
+    "ecoRoutineTitle": "Rutin analizi",
+    "ecoRoutineCta": "Rutinimi oluştur",
+    "ecoAccountTitle": "Tek hesap",
+    "ecoAccountDesc": "Webde kurduğun rutin, aynı hesapla giriş yaptığında telefonunda açılır.",
+    "dayEyebrow": "Uygulamayla bir gün",
+    "dayTitle": "Sabah açarsın, gün boyu Rebi yanında.",
+    "dayMorning": "Sabah",
+    "dayMorningDesc": "Bugün ekranı sabah adımlarını sıralar. UV ve neme bakar; güneş kremi, nemlendirici ve dudak balsamı kararını söyler.",
+    "dayNoon": "Gün içi",
+    "dayNoonDesc": "Su, makyaj ve beslenme kaydı birkaç dokunuş. Hatırlatıcılar senin seçtiğin saat aralığında gelir.",
+    "dayEvening": "Akşam",
+    "dayEveningDesc": "Akşam adımlarını tamamlar, günlük check-in ile cildinin bugünkü halini kaydedersin.",
+    "dayShelf": "Ürün bitince",
+    "dayShelfDesc": "Kullandığın ürünler Rafım'da durur; biten ürünü tek dokunuşla işaretlersin.",
+    "dayExtras": "Uygulamada ayrıca:",
+    "dayExtra1": "Rebi sohbet",
+    "dayExtra2": "Geçmiş grafikleri",
+    "dayExtra3": "Çevrimdışı kayıt",
+    "dayExtra4": "Karanlık mod",
+    "dlEyebrow": "iPhone ve Android",
+    "dlTitle": "Rebi'yi telefonuna indir.",
+    "dlSub": "Hesabınla giriş yap; rutinin, hatırlatıcıların ve Bugün ekranın seni beklesin.",
+    "dlQrTitle": "Telefonunun kamerasıyla okut",
+    "dlQrDesc": "Kod seni kendi mağazana götürür.",
+    "dlQrAlt": "rebiovil.com/indir adresine giden karekod",
+    "getAppRedirect": "Mağazaya yönlendiriliyorsun…",
+    "getAppBack": "Ana sayfaya dön"
   },
   "auth": {
     "google": "Google ile devam et",
@@ -182,7 +249,12 @@
     "distanceTitle": "Mesafeli Satış Sözleşmesi",
     "updated": "Son güncelleme: {{date}}",
     "backToAuth": "Girişe dön",
-    "back": "Geri"
+    "back": "Geri",
+    "privacyTitle": "Gizlilik Politikası",
+    "cookieTitle": "Çerez Politikası",
+    "termsTitle": "Kullanım Koşulları",
+    "refundTitle": "Cayma ve İade Politikası",
+    "companyTitle": "Şirket Bilgileri"
   },
   "lang": {
     "label": "Dil",
@@ -446,6 +518,13 @@
     "deleteInApp": "Uygulamada: Ben → Hesap ve gizlilik → Hesabı kalıcı olarak sil. Profilin, rutinlerin, günlük kayıtların ve cilt fotoğrafların kalıcı olarak silinir.",
     "deleteByEmail": "Uygulamaya erişemiyorsan, hesabına kayıtlı e-posta adresinden yukarıdaki adrese \"Hesap silme talebi\" konulu bir e-posta gönder; hesabın ve verilerin silinir.",
     "medicalTitle": "Önemli",
-    "medicalBody": "Rebi kozmetik cilt bakımı ve günlük düzen için genel bilgi sunar; tıbbi tanı koymaz ve tedavi önermez. Ciddi ya da süren cilt sorunlarında bir dermatoloğa danış."
+    "medicalBody": "Rebi kozmetik cilt bakımı ve günlük düzen için genel bilgi sunar; tıbbi tanı koymaz ve tedavi önermez. Ciddi ya da süren cilt sorunlarında bir dermatoloğa danış.",
+    "companyTitle": "Şirket bilgileri",
+    "companyBody": "Rebi, {{name}} tarafından işletilir."
+  },
+  "cookie": {
+    "label": "Çerez bildirimi",
+    "body": "Rebi yalnızca hizmetin çalışması için gerekli kayıtları tarayıcında tutar; analitik ya da reklam çerezi kullanmaz.",
+    "ok": "Anladım"
   }
 }

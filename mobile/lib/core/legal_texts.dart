@@ -3,7 +3,7 @@
 /// `test/legal_texts_sync_test.dart` farkı yakalar.
 library;
 
-const legalUpdated = '04.11.2026';
+const legalUpdated = '15.11.2026';
 
 class LegalSection {
   const LegalSection(this.title, this.body);
@@ -15,7 +15,7 @@ class LegalSection {
 const _trKvkk = [
   LegalSection(
     '1. Veri sorumlusu',
-    'Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında Rebi cilt bakımı platformunun (“Rebi”) kullanıcılarına yöneliktir. Veri sorumlusu, Rebi’yi işleten A3 Biyoteknoloji’dir. Başvurularınızı uygulama içi Profil ekranı ve hesap e-postanız üzerinden iletebilirsiniz.',
+    'Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) kapsamında Rebi cilt bakımı platformunun (“Rebi”) kullanıcılarına yöneliktir. Veri sorumlusu, Rebi’yi işleten A3 Biyoteknoloji A.Ş.’dir; şirket künyesi rebiovil.com/sirket sayfasındadır. Başvurularınızı sosyal@rebiovil.com adresine hesap e-postanızdan ya da uygulama içi Profil ekranı üzerinden iletebilirsiniz.',
   ),
   LegalSection(
     '2. İşlenen kişisel veriler',
@@ -27,7 +27,7 @@ const _trKvkk = [
   ),
   LegalSection(
     '4. Aktarım',
-    'Rutin ve sohbet için yapay zekâ işlemesi A3 Biyoteknoloji tarafından, Google Gemini AI altyapısı kullanılarak gerçekleştirilir. Barındırma ve veritabanı için veriler Supabase’e aktarılabilir. Konum izni verirseniz kesin koordinatlar Open-Meteo’ya (yedek olarak OpenWeather’a) iletilir. Fotoğraf izni verirseniz görüntüler private Supabase Storage alanında saklanır. Zorunlu hallerde yetkili kamu kurumlarına aktarım yapılabilir; yurt dışı aktarımlarda KVKK usulleri uygulanır.',
+    'Rutin ve sohbet için yapay zekâ işlemesi A3 Biyoteknoloji tarafından, Google Gemini AI altyapısı kullanılarak gerçekleştirilir. Barındırma ve veritabanı için veriler Supabase’e aktarılabilir. Konum izni verirseniz kesin koordinatlar Open-Meteo’ya (yedek olarak OpenWeather’a) iletilir. Fotoğraf izni verirseniz görüntüler private Supabase Storage alanında saklanır. Mobil uygulamada bildirim izni verirseniz cihazınızın bildirim anahtarı ve bildirim metni Google Firebase Cloud Messaging üzerinden iletilir. Zorunlu hallerde yetkili kamu kurumlarına aktarım yapılabilir; yurt dışı aktarımlarda KVKK usulleri uygulanır.',
   ),
   LegalSection(
     '5. Üçüncü taraf yapay zekâ hizmeti (Google Gemini)',
@@ -43,14 +43,14 @@ const _trKvkk = [
   ),
   LegalSection(
     '8. Çerez ve yerel depolama',
-    'Oturum, dil, rutin takibi ve bu metinlere verdiğiniz onay tarayıcınızda (ör. localStorage) tutulabilir. Zorunlu olanlar hizmetin çalışması içindir.',
+    'Oturum, dil, rutin takibi ve bu metinlere verdiğiniz onay tarayıcınızda (ör. localStorage) tutulabilir. Zorunlu olanlar hizmetin çalışması içindir. Site analitik ya da reklam çerezi kullanmaz; ayrıntı Çerez Politikası’ndadır (rebiovil.com/cerez).',
   ),
 ];
 
 const _enKvkk = [
   LegalSection(
     '1. Data controller',
-    'This notice is provided under Türkiye’s Personal Data Protection Law No. 6698 (KVKK) for the Rebi skincare platform. The controller is A3 Biyoteknoloji, which operates Rebi. You can reach us via the in-app Profile screen and your account email.',
+    'This notice is provided under Türkiye’s Personal Data Protection Law No. 6698 (KVKK) for the Rebi skincare platform. The controller is A3 Biyoteknoloji A.Ş., which operates Rebi; company details are at rebiovil.com/sirket. You can send requests to sosyal@rebiovil.com from your account email, or through the in-app Profile screen.',
   ),
   LegalSection(
     '2. Data we process',
@@ -62,7 +62,7 @@ const _enKvkk = [
   ),
   LegalSection(
     '4. Recipients',
-    'AI processing for routines and chat is performed by A3 Biyoteknoloji using Google Gemini AI infrastructure. Data may also be shared with Supabase for hosting and database services. If location permission is granted, precise coordinates are sent to Open-Meteo (or OpenWeather as fallback). If photo permission is granted, images are stored in private Supabase Storage. Transfers abroad follow applicable KVKK procedures.',
+    'AI processing for routines and chat is performed by A3 Biyoteknoloji using Google Gemini AI infrastructure. Data may also be shared with Supabase for hosting and database services. If location permission is granted, precise coordinates are sent to Open-Meteo (or OpenWeather as fallback). If photo permission is granted, images are stored in private Supabase Storage. If you allow notifications in the mobile app, your device’s notification token and the notification text are delivered through Google Firebase Cloud Messaging. Transfers abroad follow applicable KVKK procedures.',
   ),
   LegalSection(
     '5. Third-party AI service (Google Gemini)',
@@ -78,7 +78,7 @@ const _enKvkk = [
   ),
   LegalSection(
     '8. Cookies and local storage',
-    'Session, language, routine tracking and this consent may be stored in your browser (e.g. localStorage). Strictly necessary items are required for the service to work.',
+    'Session, language, routine tracking and this consent may be stored in your browser (e.g. localStorage). Strictly necessary items are required for the service to work. The site uses no analytics or advertising cookies; see the Cookie Policy (rebiovil.com/cerez).',
   ),
 ];
 
