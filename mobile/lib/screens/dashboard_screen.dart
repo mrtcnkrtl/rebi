@@ -35,6 +35,7 @@ import 'today/empty_start.dart';
 import 'today/more_list.dart';
 import 'today/today_widgets.dart';
 import 'today/today_action_bar.dart';
+import 'today/today_clock.dart';
 import 'today/today_header.dart';
 import 'today/today_sheets.dart';
 import 'today/tracking_tiles.dart';
@@ -447,7 +448,8 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
   Widget _tracking(RoutineCtx c, RoutineView v, Map<String, dynamic> merged, String dateLine, String userName) {
     final i18n = c.i18n;
     final theme = c.theme;
-    final todayIdx = getTurkeyWeekdayIndex();
+    // Gün ve günün bloğu aynı saatten okunur; gün ayrı bir saatten gelirse ikisi gece yarısında ayrışır.
+    final todayIdx = getTurkeyWeekdayIndex(todayPanelClock());
     final today = v.routineByDay[todayIdx] ?? const DayPlan([], []);
     final checkinResult = merged['checkinResult'];
     final weather = merged['weather'];
