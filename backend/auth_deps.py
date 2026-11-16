@@ -12,8 +12,12 @@ API_ALLOW_INSECURE_AUTH=1 verilerek JWT'siz çalışmaya izin verilebilir.
 from __future__ import annotations
 
 import os
+from typing import Optional
+
 import jwt
 from fastapi import HTTPException, Request
+
+from store_subscription import active_store_tier, tier_daily_limit
 
 _jwks_client = None
 _jwks_client_uri = ""
@@ -193,6 +197,8 @@ def user_is_rebi_plus(request: Request, user_id: str) -> bool:
     meta = payload.get("app_metadata") or {}
     if meta.get("rebi_plus") is True:
         return True
+    if active_store_tier(meta):
+        return True
     if str(meta.get("subscription_tier", "")).lower() in (
         "plus",
         "pro",
@@ -212,6 +218,30 @@ def jwt_app_metadata(request: Request) -> dict:
     if not payload:
         return {}
     return dict(payload.get("app_metadata") or {})
+
+
+def user_has_legacy_unlimited_plus(request: Request, user_id: str) -> bool:
+    """Elle verilmiş (mağaza dışı) sınırsız Plus: REBI_PLUS_USER_IDS ya da app_metadata'daki eski bayraklar."""
+    if not jwt_auth_enabled():
+        return True
+    uid = (user_id or "").strip()
+    if uid in _rebi_plus_user_ids_env() or (insecure_auth_allowed() and uid in _bypass_user_ids()):
+        return True
+    meta = jwt_app_metadata(request)
+    legacy = meta.get("rebi_plus") is True or str(meta.get("subscription_tier", "")).strip().lower() in (
+        "plus", "pro", "premium",
+    )
+    return legacy and not user_plus_chat_is_monthly_capped(request, user_id)
+
+
+def user_store_daily_limit(request: Request, user_id: str) -> tuple[Optional[str], Optional[int]]:
+    """Etkin mağaza aboneliği: (kademe, günlük sınır). Elle verilmiş sınırsız Plus öncelikli: (None, None)."""
+    if not jwt_auth_enabled():
+        return None, None
+    tier = active_store_tier(jwt_app_metadata(request))
+    if not tier or user_has_legacy_unlimited_plus(request, user_id):
+        return None, None
+    return tier, tier_daily_limit(tier)
 
 
 def user_plus_chat_is_monthly_capped(request: Request, user_id: str) -> bool:

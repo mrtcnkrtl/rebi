@@ -11,6 +11,7 @@ import 'core/i18n.dart';
 import 'core/notification_ports.dart';
 import 'router.dart';
 import 'state/auth_controller.dart';
+import 'state/store_controller.dart';
 import 'state/home_sync_controller.dart';
 import 'state/notifications_controller.dart';
 import 'state/outbox_sync_controller.dart';
@@ -34,6 +35,7 @@ class _RebiAppState extends State<RebiApp> with WidgetsBindingObserver {
   late final AuthController _auth = AuthController();
   late final ThemeController _theme = ThemeController(_auth);
   late final HomeSyncController _sync = HomeSyncController(_auth);
+  late final StoreController _store = StoreController(_auth);
   late final OutboxSyncController _outbox = OutboxSyncController(_auth);
   late final NotificationsController _notifications = NotificationsController(
     _auth,
@@ -82,6 +84,7 @@ class _RebiAppState extends State<RebiApp> with WidgetsBindingObserver {
     _notifications.dispose();
     _outbox.dispose();
     _sync.dispose();
+    _store.dispose();
     _theme.dispose();
     _auth.dispose();
     super.dispose();
@@ -94,6 +97,7 @@ class _RebiAppState extends State<RebiApp> with WidgetsBindingObserver {
         ChangeNotifierProvider<I18n>.value(value: I18n.instance),
         ChangeNotifierProvider<AuthController>.value(value: _auth),
         ChangeNotifierProvider<ThemeController>.value(value: _theme),
+        ChangeNotifierProvider<StoreController>.value(value: _store),
         ChangeNotifierProvider<HomeSyncController>.value(value: _sync),
         ChangeNotifierProvider<OutboxSyncController>.value(value: _outbox),
         ChangeNotifierProvider<NotificationsController>.value(value: _notifications),

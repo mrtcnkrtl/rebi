@@ -683,7 +683,7 @@
     },
     "plus": {
       "title": "Rebi Plus",
-      "hint": "Unlimited chat and premium themes",
+      "hint": "More Rebi AI, premium themes, no ads",
       "active": "Rebi Plus is active"
     },
     "plusBadge": "Plus",
@@ -750,7 +750,14 @@
       "plusSwitch": "Go Plus",
       "notNow": "Close for now",
       "bulletData": "More consistent advice from your tracking and check-ins",
-      "bulletThemes": "Premium themes and new features"
+      "bulletThemes": "Premium themes and new features",
+      "offerBodyDay": "Rebi gathers your data, tracks it and re-tunes every day. With Plus plans you can ask up to 120 questions a day.",
+      "bulletMore": "50–120 Rebi AI questions a day depending on the plan",
+      "bulletAdFree": "Ad-free use",
+      "titlePlan": "You've used today's questions",
+      "bodyPlan": "Your questions reset tomorrow. Upgrade for more questions a day.",
+      "bodyPlanTop": "Your questions reset tomorrow. You can keep using your routine, tracking and check-in today.",
+      "upgrade": "See plans"
     },
     "gate": {
       "title": "Let's meet first.",
@@ -1013,6 +1020,7 @@
     }
   },
   "mobileSubscribe": {
+    "subtitle": "Up to 120 Rebi AI questions a day, premium themes and no ads",
     "unavailable": "Rebi Plus can't be purchased in the app right now. It will show up here once it's active on your account.",
     "active": "Plus is active",
     "activeBody": "Rebi Plus shows on your account. Thank you.",
@@ -1023,10 +1031,42 @@
     "distance": "I have read the distance sales contract and I want the digital service to start as soon as payment is confirmed.",
     "payError": "The approval could not be saved. The payment page did not open.",
     "backToChat": "Back to chat",
+    "store": {
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "perMonth": "/mo",
+      "perYear": "/yr",
+      "dailyQuestions": "{{count}} questions a day",
+      "tiers": {
+        "plus": "Plus",
+        "pro": "Pro",
+        "max": "Max"
+      },
+      "popular": "Most popular",
+      "current": "Your current plan",
+      "subscribe": "Continue with {{tier}}",
+      "upgrade": "Switch to {{tier}}",
+      "restore": "Restore purchases",
+      "restored": "Your subscription has been restored.",
+      "nothingToRestore": "No subscription to restore was found for this account.",
+      "success": "Thank you! Your subscription is active.",
+      "pending": "Your payment is pending. Your subscription will start automatically once it is approved.",
+      "failed": "The purchase could not be completed. Please try again.",
+      "loading": "Loading plans…",
+      "noPlans": "Plans could not be loaded right now. Check your connection and try again.",
+      "retry": "Try again",
+      "renewNoteIos": "Subscriptions renew automatically at the same price unless cancelled at least 24 hours before the end of the current period. Payment is charged to your Apple ID. You can manage or cancel your subscription in your App Store account settings.",
+      "renewNoteAndroid": "Subscriptions renew automatically at the same price at the end of each period unless cancelled. Payment is charged to your Google Play account. You can manage or cancel your subscription in Google Play > Payments & subscriptions.",
+      "terms": "Terms of Use (EULA)",
+      "privacy": "Privacy notice",
+      "manage": "Manage subscription"
+    },
+    "activeTier": "{{tier}} active",
+    "activeTierBody": "{{count}} Rebi AI questions a day, premium themes and ad-free use are active on your account.",
     "benefits": {
       "chat": {
-        "title": "Unlimited Rebi AI",
-        "body": "The daily free message limit goes away; the conversation never stops."
+        "title": "More Rebi AI",
+        "body": "Instead of the free daily allowance, up to 50 questions a day depending on the plan, and 120 on the top plan."
       },
       "themes": {
         "title": "Premium themes",
@@ -1039,6 +1079,10 @@
       "tracking": {
         "title": "Deeper tracking",
         "body": "The check-in flow works harder and adapts your routine better."
+      },
+      "adFree": {
+        "title": "Ad-free",
+        "body": "No ads anywhere in the app."
       }
     }
   },
@@ -1644,5 +1688,9 @@
     "share": "Share",
     "shareText": "This week I finished my skincare routine on {{n}} of 7 days. rebiovil.com",
     "failed": "Couldn't share, try again."
+  },
+  "mobileAds": {
+    "label": "Ad",
+    "removeAds": "Remove ads"
   }
 }

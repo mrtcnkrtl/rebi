@@ -1,5 +1,5 @@
 """
-Sohbet turu için kota rezervasyonu: ücretsiz günlük ve Plus aylık kotayı tek arayüzde toplar.
+Sohbet turu için kota rezervasyonu: ücretsiz günlük, mağaza aboneliği günlük ve Plus aylık kotayı tek arayüzde toplar.
 
 Kullanım (uç noktada):
 
@@ -60,13 +60,23 @@ class QuotaHold:
 @dataclass(frozen=True)
 class QuotaReservation:
     hold: Optional[QuotaHold] = None
-    # None: hak alındı (ya da kota yok). "free_daily" / "plus_monthly": kota doldu, hiçbir şey harcanmadı.
+    # None: hak alındı (ya da kota yok). "free_daily" / "plan_daily" / "plus_monthly": kota doldu, hiçbir şey harcanmadı.
     exceeded: Optional[str] = None
 
 
-def reserve_chat_turn(user_id: str, *, plus: bool, plus_capped: bool) -> QuotaReservation:
-    """Kullanıcının planına göre bir sohbet hakkı rezerve eder."""
+def reserve_chat_turn(
+    user_id: str, *, plus: bool, plus_capped: bool, daily_limit: Optional[int] = None
+) -> QuotaReservation:
+    """Kullanıcının planına göre bir sohbet hakkı rezerve eder.
+
+    `daily_limit`: mağaza aboneliğinin (plus/pro/max) günlük sınırı; verilirse diğer bayraklardan önce gelir.
+    """
     uid = (user_id or "").strip()
+    if daily_limit is not None:
+        ticket = free_chat_reserve(uid, daily_limit)
+        if ticket is None:
+            return QuotaReservation(exceeded="plan_daily")
+        return QuotaReservation(hold=QuotaHold(lambda: free_chat_release(uid, ticket)))
     if not plus:
         ticket = free_chat_reserve(uid)
         if ticket is None:

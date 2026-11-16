@@ -34,6 +34,12 @@ android {
         // Sürüm numaraları pubspec.yaml'daki `version: 1.0.0+1` değerinden gelir (+ sonrası versionCode).
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // AdMob uygulama kimliği (Rebi Android). `-PADMOB_APP_ID_ANDROID=...` ya da aynı adlı ortam değişkeniyle
+        // değiştirilebilir. Reklamları açan, Dart tarafındaki banner birim kimliğidir (env: ADMOB_BANNER_ANDROID).
+        manifestPlaceholders["admobAppId"] =
+            (project.findProperty("ADMOB_APP_ID_ANDROID") as String?)
+                ?: System.getenv("ADMOB_APP_ID_ANDROID")
+                ?: "ca-app-pub-2703087426574328~7153628835"
     }
 
     signingConfigs {

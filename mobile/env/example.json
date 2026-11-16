@@ -3,5 +3,9 @@
   "SUPABASE_ANON_KEY": "eyJ...",
   "API_URL": "https://rebiovil.com/api",
   "REBI_PLUS_CHECKOUT_URL": "",
-  "FIREBASE_ENABLED": false
+  "FIREBASE_ENABLED": false,
+  "REVENUECAT_APPLE_KEY": "appl_...",
+  "REVENUECAT_GOOGLE_KEY": "goog_...",
+  "ADMOB_BANNER_IOS": "",
+  "ADMOB_BANNER_ANDROID": ""
 }

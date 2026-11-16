@@ -19,6 +19,15 @@ class Env {
   /// Web `VITE_REBI_PLUS_CHECKOUT_URL`.
   static const rebiPlusCheckoutUrl = String.fromEnvironment('REBI_PLUS_CHECKOUT_URL');
 
+  /// RevenueCat herkese açık SDK anahtarları (`appl_…` / `goog_…`). Boşsa uygulama içi satın alma kapalıdır.
+  static const revenueCatAppleKey = String.fromEnvironment('REVENUECAT_APPLE_KEY');
+  static const revenueCatGoogleKey = String.fromEnvironment('REVENUECAT_GOOGLE_KEY');
+
+  /// AdMob banner birim kimlikleri (`ca-app-pub-…/…`). Boşsa reklam gösterilmez. Uygulama kimlikleri
+  /// `Info.plist` (GADApplicationIdentifier) ve `AndroidManifest.xml` içindedir.
+  static const admobBannerIos = String.fromEnvironment('ADMOB_BANNER_IOS');
+  static const admobBannerAndroid = String.fromEnvironment('ADMOB_BANNER_ANDROID');
+
   /// Firebase proje dosyaları (`google-services.json`, `GoogleService-Info.plist`) eklendiğinde
   /// `true` verilir; sunucudan push almak için gerekir. Kapalıyken yerel bildirim kullanılır.
   static const firebaseEnabled = bool.fromEnvironment('FIREBASE_ENABLED');

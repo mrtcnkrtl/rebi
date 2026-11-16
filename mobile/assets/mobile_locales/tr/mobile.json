@@ -683,7 +683,7 @@
     },
     "plus": {
       "title": "Rebi Plus",
-      "hint": "Sınırsız sohbet ve premium temalar",
+      "hint": "Daha fazla Rebi AI, premium temalar, reklamsız",
       "active": "Rebi Plus aktif"
     },
     "plusBadge": "Plus",
@@ -750,7 +750,14 @@
       "plusSwitch": "Plus’a geç",
       "notNow": "Şimdilik kapat",
       "bulletData": "Takip + check-in verisiyle daha tutarlı öneriler",
-      "bulletThemes": "Premium temalar ve yeni özellikler"
+      "bulletThemes": "Premium temalar ve yeni özellikler",
+      "offerBodyDay": "Rebi verini toplar, takip eder ve her gün yeniden ayarlar. Plus paketleriyle günde 120’ye kadar soru sorabilirsin.",
+      "bulletMore": "Pakete göre günde 50–120 Rebi AI sorusu",
+      "bulletAdFree": "Reklamsız kullanım",
+      "titlePlan": "Bugünkü soru hakkın doldu",
+      "bodyPlan": "Hakların yarın yenilenir. Daha fazla soru için üst pakete geçebilirsin.",
+      "bodyPlanTop": "Hakların yarın yenilenir. Bugün rutinini, takibini ve check-in'ini kullanmaya devam edebilirsin.",
+      "upgrade": "Paketleri gör"
     },
     "gate": {
       "title": "Önce tanışalım.",
@@ -1013,6 +1020,7 @@
     }
   },
   "mobileSubscribe": {
+    "subtitle": "Günde 120’ye kadar Rebi AI sorusu, premium temalar ve reklamsız kullanım",
     "unavailable": "Rebi Plus şu an uygulama içinden satın alınamıyor. Hesabında etkinleştirildiğinde burada görünür.",
     "active": "Plus aktif",
     "activeBody": "Hesabında Rebi Plus görünüyor. Teşekkürler.",
@@ -1023,10 +1031,42 @@
     "distance": "Mesafeli satış sözleşmesini okudum ve dijital hizmetin ödeme onayından hemen sonra başlamasını istiyorum.",
     "payError": "Onay kaydedilemedi. Ödeme sayfası açılmadı.",
     "backToChat": "Sohbete dön",
+    "store": {
+      "monthly": "Aylık",
+      "yearly": "Yıllık",
+      "perMonth": "/ay",
+      "perYear": "/yıl",
+      "dailyQuestions": "Günde {{count}} soru",
+      "tiers": {
+        "plus": "Plus",
+        "pro": "Pro",
+        "max": "Max"
+      },
+      "popular": "En çok tercih edilen",
+      "current": "Mevcut paketin",
+      "subscribe": "{{tier}} ile devam et",
+      "upgrade": "{{tier}} paketine geç",
+      "restore": "Satın alımları geri yükle",
+      "restored": "Aboneliğin geri yüklendi.",
+      "nothingToRestore": "Bu hesapta geri yüklenecek bir abonelik bulunamadı.",
+      "success": "Teşekkürler! Aboneliğin etkin.",
+      "pending": "Ödemen onay bekliyor. Onaylanınca aboneliğin kendiliğinden açılır.",
+      "failed": "Satın alma tamamlanamadı. Tekrar dene.",
+      "loading": "Paketler yükleniyor…",
+      "noPlans": "Paketler şu an yüklenemedi. Bağlantını kontrol edip tekrar dene.",
+      "retry": "Tekrar dene",
+      "renewNoteIos": "Abonelik, dönem bitmeden en az 24 saat önce iptal edilmezse aynı ücretle otomatik yenilenir. Ödeme Apple Kimliğinden alınır. Aboneliği App Store hesap ayarlarından yönetebilir veya iptal edebilirsin.",
+      "renewNoteAndroid": "Abonelik, iptal edilmedikçe her dönem sonunda aynı ücretle otomatik yenilenir. Ödeme Google Play hesabından alınır. Aboneliği Google Play > Ödemeler ve abonelikler bölümünden yönetebilir veya iptal edebilirsin.",
+      "terms": "Kullanım Koşulları (EULA)",
+      "privacy": "Gizlilik / KVKK",
+      "manage": "Aboneliği yönet"
+    },
+    "activeTier": "{{tier}} aktif",
+    "activeTierBody": "Günde {{count}} Rebi AI sorusu, premium temalar ve reklamsız kullanım hesabında açık.",
     "benefits": {
       "chat": {
-        "title": "Sınırsız Rebi AI",
-        "body": "Günlük ücretsiz mesaj limiti kalkar; sohbet kesilmez."
+        "title": "Daha fazla Rebi AI",
+        "body": "Ücretsiz günlük hak yerine pakete göre günde 50’ye kadar, en üst pakette 120 soru."
       },
       "themes": {
         "title": "Premium temalar",
@@ -1039,6 +1079,10 @@
       "tracking": {
         "title": "Daha derin takip",
         "body": "Check-in akışı daha güçlü çalışır; rutinin daha iyi uyarlanır."
+      },
+      "adFree": {
+        "title": "Reklamsız kullanım",
+        "body": "Uygulamanın hiçbir yerinde reklam görmezsin."
       }
     }
   },
@@ -1644,5 +1688,9 @@
     "share": "Paylaş",
     "shareText": "Bu hafta cildim için 7 günün {{n}} gününde rutinimi tamamladım. rebiovil.com",
     "failed": "Paylaşılamadı, tekrar dene."
+  },
+  "mobileAds": {
+    "label": "Reklam",
+    "removeAds": "Reklamları kaldır"
   }
 }

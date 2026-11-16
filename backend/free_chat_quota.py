@@ -131,9 +131,11 @@ def free_chat_limit() -> int:
     return _limit()
 
 
-def free_chat_remaining(user_id: str) -> int:
+def free_chat_remaining(user_id: str, limit: Optional[int] = None) -> int:
+    """`limit` verilirse (ücretli günlük kademe) o sınıra göre. Sayaç kademeden bağımsız aynı günlük sayaçtır:
+    gün içinde paket yükselten kullanıcının o güne kadar kullandığı hak yeni sınırdan düşülür."""
     used = _get_backend().count_today(user_id)
-    return max(0, _limit() - used)
+    return max(0, (limit or _limit()) - used)
 
 
 def free_chat_quota_exceeded(user_id: str) -> bool:
@@ -141,9 +143,10 @@ def free_chat_quota_exceeded(user_id: str) -> bool:
     return _get_backend().count_today(user_id) >= _limit()
 
 
-def free_chat_reserve(user_id: str) -> Optional[str]:
-    """Bugünün kotasından bir hakkı atomik olarak alır. Dönen bilet iade için gerekir; hak kalmadıysa None."""
-    return _get_backend().reserve(user_id, _limit())
+def free_chat_reserve(user_id: str, limit: Optional[int] = None) -> Optional[str]:
+    """Bugünün kotasından bir hakkı atomik olarak alır. Dönen bilet iade için gerekir; hak kalmadıysa None.
+    `limit` verilmezse ücretsiz günlük sınır kullanılır."""
+    return _get_backend().reserve(user_id, limit or _limit())
 
 
 def free_chat_release(user_id: str, ticket: str) -> None:

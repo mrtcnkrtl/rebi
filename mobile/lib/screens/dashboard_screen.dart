@@ -24,6 +24,7 @@ import '../state/outbox_sync_controller.dart';
 import '../state/theme_controller.dart';
 import '../state/today_actions.dart';
 import '../state/today_plan_controller.dart';
+import '../ui/components/ad_banner.dart';
 import '../ui/components/location_widgets.dart';
 import '../ui/components/weather_place_sheet.dart';
 import '../ui/tw.dart';
@@ -508,6 +509,8 @@ class _DashboardScreenState extends State<DashboardScreen> with WidgetsBindingOb
         const SizedBox(height: 14),
       ],
       _withPlan((plan) => TodayMoreList(theme: theme, checkinDone: plan?.checkinDone == true, shelfCount: plan?.productsOut.length ?? 0)),
+      // Ücretsiz kullanıcıya sayfa sonunda tek banner; abonede yer kaplamaz.
+      const AdBanner(),
       const AiDisclaimer(padding: EdgeInsets.only(top: 20)),
     ];
     final page = ThemedPage(

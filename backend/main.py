@@ -8,7 +8,7 @@ Yeni: /daily_checkin endpoint, adaptif rutin sistemi, risk skoru
 import asyncio
 import httpx
 import json
-from fastapi import FastAPI, HTTPException, UploadFile, File, Depends, Request, Query
+from fastapi import Body, FastAPI, HTTPException, UploadFile, File, Depends, Request, Query
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -100,6 +100,7 @@ from auth_deps import (
     jwt_auth_enabled,
     user_is_rebi_plus,
     user_plus_chat_is_monthly_capped,
+    user_store_daily_limit,
 )
 from free_chat_quota import (
     free_chat_limit,
@@ -110,6 +111,12 @@ from plus_chat_quota import (
     plus_chat_remaining,
 )
 from chat_quota import reserve_chat_turn
+from store_subscription import (
+    STORE_TIERS,
+    revenuecat_configured,
+    sync_user_from_revenuecat,
+    webhook_authorized,
+)
 from redis_client import redis_status
 import shared_state
 from db_integrity import get_integrity, refresh_in_background as _refresh_db_integrity, summary_nowait
@@ -142,6 +149,7 @@ from rate_limit import (
     LIMIT_PUSH_RESPOND,
     LIMIT_UPLOAD_PHOTO,
     LIMIT_ACCOUNT_DELETE,
+    LIMIT_SUBSCRIPTION_SYNC,
     LIMIT_SALES_CONSENT,
     LIMIT_PRIVACY_INCIDENT,
     LIMIT_INTRO_SEEN,
@@ -1194,7 +1202,7 @@ class AssessmentChatResponse(BaseModel):
     free_chat_remaining: Optional[int] = None
     free_chat_limit: Optional[int] = None
     chat_quota_exceeded: bool = False
-    # Birleşik kullanım (UI): free_daily | plus_monthly | plus_unlimited
+    # Birleşik kullanım (UI): free_daily | plan_daily | plus_monthly | plus_unlimited
     usage_kind: Optional[str] = None
     usage_remaining: Optional[int] = None
     usage_limit: Optional[int] = None
@@ -1296,6 +1304,15 @@ class ChatUsageResponse(BaseModel):
     period: Optional[str] = None  # "day" | "month"
 
 
+def _plan_daily_exceeded_text(tier: Optional[str]) -> str:
+    if tier == STORE_TIERS[-1]:
+        return "Bugünkü Rebi AI soru hakkın doldu. Hakların yarın yenilenir."
+    return (
+        "Bugünkü Rebi AI soru hakkın doldu. Hakların yarın yenilenir; daha fazla soru için "
+        "uygulamadaki «Abonelik» bölümünden üst pakete geçebilirsin."
+    )
+
+
 def _chat_usage_row(request: Request, user_id: str) -> tuple[Optional[str], Optional[int], Optional[int], Optional[str]]:
     """(kind, remaining, limit, period)."""
     if not jwt_auth_enabled():
@@ -1303,6 +1320,9 @@ def _chat_usage_row(request: Request, user_id: str) -> tuple[Optional[str], Opti
     uid = (user_id or "").strip()
     if not uid:
         return None, None, None, None
+    _tier, daily = user_store_daily_limit(request, user_id)
+    if daily is not None:
+        return "plan_daily", free_chat_remaining(uid, daily), daily, "day"
     plus = user_is_rebi_plus(request, user_id)
     if not plus:
         return "free_daily", free_chat_remaining(uid), free_chat_limit(), "day"
@@ -3900,11 +3920,14 @@ def chat_assessment(request: Request, req: AssessmentChatRequest):
     plus = user_is_rebi_plus(request, req.user_id)
     plus_chat_capped = plus and user_plus_chat_is_monthly_capped(request, req.user_id)
     plim = plus_chat_monthly_cap()
+    store_tier, store_daily = user_store_daily_limit(request, req.user_id)
 
     # Hak, model çağrısından önce atomik olarak alınır (paralel isteklerle kota aşılamaz); başarısız tur iade edilir.
     hold = None
     if is_free and jwt_auth_enabled():
-        reservation = reserve_chat_turn(req.user_id, plus=plus, plus_capped=plus_chat_capped)
+        reservation = reserve_chat_turn(
+            req.user_id, plus=plus, plus_capped=plus_chat_capped, daily_limit=store_daily
+        )
         if reservation.exceeded == "free_daily":
             uk, ur, ul, _ = _chat_usage_row(request, req.user_id)
             return AssessmentChatResponse(
@@ -3921,6 +3944,16 @@ def chat_assessment(request: Request, req: AssessmentChatRequest):
                 usage_kind=uk,
                 usage_remaining=ur,
                 usage_limit=ul,
+            )
+        if reservation.exceeded == "plan_daily":
+            return AssessmentChatResponse(
+                reply=_plan_daily_exceeded_text(store_tier),
+                is_complete=False,
+                extracted_data=None,
+                chat_quota_exceeded=True,
+                usage_kind="plan_daily",
+                usage_remaining=0,
+                usage_limit=store_daily,
             )
         if reservation.exceeded == "plus_monthly":
             return AssessmentChatResponse(
@@ -4094,11 +4127,14 @@ def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
     plus = user_is_rebi_plus(request, req.user_id)
     plus_chat_capped = plus and user_plus_chat_is_monthly_capped(request, req.user_id)
     plim = plus_chat_monthly_cap()
+    store_tier, store_daily = user_store_daily_limit(request, req.user_id)
 
     # Hak, model çağrısından önce atomik olarak alınır (paralel isteklerle kota aşılamaz); başarısız tur iade edilir.
     hold = None
     if jwt_auth_enabled():
-        reservation = reserve_chat_turn(req.user_id, plus=plus, plus_capped=plus_chat_capped)
+        reservation = reserve_chat_turn(
+            req.user_id, plus=plus, plus_capped=plus_chat_capped, daily_limit=store_daily
+        )
         if reservation.exceeded == "free_daily":
             uk, ur, ul, _ = _chat_usage_row(request, req.user_id)
             return ChatGeneralResponse(
@@ -4110,6 +4146,14 @@ def chat_general_endpoint(request: Request, req: ChatGeneralRequest):
                 usage_kind=uk,
                 usage_remaining=ur,
                 usage_limit=ul,
+            )
+        if reservation.exceeded == "plan_daily":
+            return ChatGeneralResponse(
+                reply=_plan_daily_exceeded_text(store_tier),
+                chat_quota_exceeded=True,
+                usage_kind="plan_daily",
+                usage_remaining=0,
+                usage_limit=store_daily,
             )
         if reservation.exceeded == "plus_monthly":
             return ChatGeneralResponse(
@@ -4174,6 +4218,71 @@ def chat_usage(request: Request, user_id: str = Query(..., min_length=1)):
     if not kind:
         return ChatUsageResponse(kind="none", remaining=None, limit=None, period=None)
     return ChatUsageResponse(kind=kind, remaining=rem, limit=lim, period=period)
+
+
+class SubscriptionSyncRequest(BaseModel):
+    user_id: str
+
+
+class SubscriptionSyncResponse(BaseModel):
+    tier: Optional[str] = None
+    expires_at_ms: Optional[int] = None
+    # True: app_metadata değişti; istemci yeni JWT almak için oturumu yenilemeli.
+    refresh_session: bool = True
+
+
+_UUID_RE = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
+@app.post(
+    "/subscription/sync",
+    response_model=SubscriptionSyncResponse,
+    tags=["subscription"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_SUBSCRIPTION_SYNC))],
+)
+def subscription_sync(request: Request, req: SubscriptionSyncRequest):
+    """Satın alma / geri yükleme sonrası: RevenueCat'teki güncel hak Supabase app_metadata'ya yazılır."""
+    enforce_supabase_user(request, req.user_id)
+    if not revenuecat_configured():
+        raise HTTPException(status_code=503, detail="Abonelik sistemi şu an kullanılamıyor.")
+    try:
+        ent = run_async(sync_user_from_revenuecat, req.user_id)
+    except Exception as e:
+        log.error("Abonelik eşitlenemedi: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Abonelik durumu alınamadı, biraz sonra tekrar dene.")
+    return SubscriptionSyncResponse(
+        tier=ent.tier if ent else None,
+        expires_at_ms=ent.expires_at_ms if ent else None,
+    )
+
+
+@app.post("/webhooks/revenuecat", tags=["subscription"], include_in_schema=False)
+def revenuecat_webhook(request: Request, payload: dict = Body(default_factory=dict)):
+    """
+    RevenueCat olay bildirimi. Olayın içeriğine güvenilmez; yalnızca hangi kullanıcıların etkilendiği alınır
+    ve her biri RevenueCat API'den yeniden okunur. Hata olursa 5xx döner, RevenueCat yeniden dener.
+    """
+    if not webhook_authorized(request.headers.get("authorization")):
+        raise HTTPException(status_code=401, detail="unauthorized")
+    event = (payload or {}).get("event") or {}
+    if not isinstance(event, dict):
+        raise HTTPException(status_code=400, detail="invalid event")
+    ids: set[str] = set()
+    for key in ("app_user_id", "original_app_user_id"):
+        if event.get(key):
+            ids.add(str(event[key]))
+    for key in ("aliases", "transferred_from", "transferred_to"):
+        for v in event.get(key) or []:
+            ids.add(str(v))
+    # Anonim RevenueCat kimlikleri ($RCAnonymousID:…) Supabase kullanıcısı değildir.
+    user_ids = sorted(i for i in ids if _UUID_RE.match(i))
+    for uid in user_ids:
+        try:
+            run_async(sync_user_from_revenuecat, uid)
+        except Exception as e:
+            log.error("RevenueCat webhook eşitlemesi başarısız: type=%s err=%s", event.get("type"), type(e).__name__)
+            raise HTTPException(status_code=502, detail="sync failed")
+    return {"ok": True, "synced": len(user_ids)}
 
 
 @app.post(
