@@ -6,9 +6,11 @@ import 'package:rebi/core/local_store.dart';
 import 'package:rebi/screens/landing_screen.dart';
 import 'package:rebi/ui/brand/beta_badge.dart';
 import 'package:rebi/ui/components/beta_notice.dart';
-import 'package:rebi/ui/components/modals.dart';
+
+import 'package:rebi/ui/tw.dart';
 
 import 'helpers/app_harness.dart';
+import 'helpers/visual.dart';
 
 /// Beta sürüm bilgilendirmesi: giriş ekranlarındaki "BETA" etiketi ve ilk açılışta bir kez çıkan "hata çıkabilir" uyarısı.
 void main() {
@@ -89,7 +91,10 @@ void main() {
       expect(find.text(tr('mobileBeta.title')), findsOneWidget);
       expect(find.text(tr('mobileBeta.body')), findsOneWidget);
       expect(find.text(tr('mobileBeta.report')), findsOneWidget);
-      expect(find.byType(BetaBadge), findsOneWidget, reason: 'kartta da etiket');
+      expect(find.text('ERKEN ERİŞİM'), findsOneWidget, reason: 'editoryal etiket; kartta ayrıca BETA rozeti yok');
+      expect(find.byType(BetaBadge), findsNothing);
+      expect(find.text(tr('mobileBeta.updatesTitle')), findsOneWidget);
+      expect(find.text(tr('mobileBeta.teamTitle')), findsOneWidget);
       expect(hasSeenBetaNotice(), isTrue, reason: 'gösterilir gösterilmez görüldü yazılır');
 
       await tester.tap(find.text(tr('mobileBeta.ok')));
@@ -176,10 +181,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 1000));
       await tester.pump(const Duration(milliseconds: 600));
 
-      expect(find.text('Rebi is in beta for now'), findsOneWidget);
-      expect(find.text('Got it'), findsOneWidget);
+      expect(find.text('You’re one of Rebi’s first users'), findsOneWidget);
+      expect(find.text('EARLY ACCESS'), findsOneWidget);
       expect(tester.takeException(), isNull);
-      expect(find.byType(ModalFrame), findsOneWidget);
+      // Uzun içerik sayfanın içinde kaydırılır; en alttaki eylemlere ulaşılabilir.
+      await tester.scrollUntilVisible(
+        find.text('Send feedback'),
+        200,
+        scrollable: find.ancestor(of: panel, matching: find.byType(Scrollable)).first,
+      );
+      expect(find.text('Start exploring'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     });
 
     testWidgets('Rebi sohbetinin yapay zekâ izni kutusu ve beta uyarısı birbirini bozmaz', (tester) async {
@@ -194,5 +206,34 @@ void main() {
       expect(panel, findsNothing);
       expect(tester.takeException(), isNull);
     });
+  });
+
+  group('görsel', () {
+    setUpAll(() async {
+      if (screenshotsEnabled) await loadBrandFonts();
+    });
+    for (final dark in [false, true]) {
+      for (final where in ['/', '/dashboard']) {
+        for (final lang in ['tr', 'en']) {
+          final name = 'beta-${where == '/' ? 'karsilama' : 'bugun'}-${dark ? 'koyu' : 'acik'}-$lang';
+          testWidgets(name, (tester) async {
+            if (!screenshotsEnabled) return;
+            Tw.dark = dark;
+            addTearDown(() => Tw.dark = false);
+            debugDisableShadows = false;
+            try {
+              betaNoticePending = true;
+              await pumpApp(tester, location: where, loggedIn: where != '/', settleAfter: false, realFonts: true, lang: lang);
+              await tester.pump(const Duration(milliseconds: 1000));
+              await tester.pump(const Duration(milliseconds: 600));
+              await tester.pump(const Duration(milliseconds: 600));
+              await shoot(tester, name);
+            } finally {
+              debugDisableShadows = true;
+            }
+          });
+        }
+      }
+    }
   });
 }

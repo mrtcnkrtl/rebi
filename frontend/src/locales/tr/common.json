@@ -605,5 +605,18 @@
     "relatedBlurb": "Konsantrasyon arttıkça kart tonu biraz daha koyulaşır.",
     "salesClosed": "Satış henüz açık değil. Fiyat ve ödeme, ticaret altyapısı bağlanınca burada görünür.",
     "link": "Mağaza"
+  },
+  "mobileBeta": {
+    "eyebrow": "Erken erişim",
+    "badge": "Beta",
+    "badgeLabel": "Beta sürüm",
+    "title": "Rebi’yi ilk kullananlardansın",
+    "body": "Uygulama hâlâ şekilleniyor; bazı köşeleri henüz pürüzlü olabilir. Senin deneyimin, Rebi’nin bundan sonraki hâlini belirleyecek.",
+    "updatesTitle": "Sık güncellenir",
+    "updatesBody": "Yeni özellikler ve düzeltmeler düzenli olarak gelir.",
+    "teamTitle": "Ekip seni okur",
+    "teamBody": "Gönderdiğin her not doğrudan bize ulaşır.",
+    "ok": "Keşfetmeye başla",
+    "report": "Geri bildirim gönder"
   }
 }

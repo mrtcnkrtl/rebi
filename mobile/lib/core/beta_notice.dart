@@ -8,7 +8,7 @@ import 'local_store.dart';
 /// `--dart-define=REBI_BETA=false` verilmesi yeter.
 ///
 /// Uyarı cihaz başına ve sürümlüdür: metin anlamca değişirse [betaNoticeVersion] artırılıp yeniden gösterilir.
-const betaNoticeVersion = 'v1';
+const betaNoticeVersion = 'v2';
 
 const betaNoticeKey = 'rebi-beta-notice-$betaNoticeVersion';
 

@@ -605,5 +605,18 @@
     "relatedBlurb": "Higher concentration gently deepens the card tone.",
     "salesClosed": "Sales are not open yet. Price and checkout appear here once commerce is connected.",
     "link": "Store"
+  },
+  "mobileBeta": {
+    "eyebrow": "Early access",
+    "badge": "Beta",
+    "badgeLabel": "Beta version",
+    "title": "You’re one of Rebi’s first users",
+    "body": "The app is still taking shape, so a few corners may be rough. What you experience will shape what Rebi becomes next.",
+    "updatesTitle": "Updated often",
+    "updatesBody": "New features and fixes arrive regularly.",
+    "teamTitle": "Read by the team",
+    "teamBody": "Every note you send reaches us directly.",
+    "ok": "Start exploring",
+    "report": "Send feedback"
   }
 }
