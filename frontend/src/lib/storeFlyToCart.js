@@ -1,5 +1,5 @@
 /**
- * Ürün görselini “paketleyip” sepet hedefine uçurur.
+ * Ürün görselini kutuya paketler, mühürler, sepete uçar.
  * prefers-reduced-motion ise kısa fade ile biter.
  */
 export function flyProductToCart({ fromEl, toEl, imageUrl }) {
@@ -17,8 +17,8 @@ export function flyProductToCart({ fromEl, toEl, imageUrl }) {
   ghost.setAttribute("aria-hidden", "true");
   ghost.style.left = `${from.left + from.width / 2}px`;
   ghost.style.top = `${from.top + from.height / 2}px`;
-  ghost.style.width = `${Math.min(120, from.width)}px`;
-  ghost.style.height = `${Math.min(140, from.height)}px`;
+  ghost.style.width = `${Math.max(110, Math.min(150, from.width))}px`;
+  ghost.style.height = `${Math.max(130, Math.min(180, from.height))}px`;
 
   const inner = document.createElement("div");
   inner.className = "store-fly__pack";
@@ -29,9 +29,16 @@ export function flyProductToCart({ fromEl, toEl, imageUrl }) {
     img.draggable = false;
     inner.appendChild(img);
   }
+  const wrap = document.createElement("span");
+  wrap.className = "store-fly__wrap";
+  inner.appendChild(wrap);
   const lid = document.createElement("span");
   lid.className = "store-fly__lid";
   inner.appendChild(lid);
+  const seal = document.createElement("span");
+  seal.className = "store-fly__seal";
+  seal.textContent = "Rebi";
+  inner.appendChild(seal);
   ghost.appendChild(inner);
   document.body.appendChild(ghost);
 
@@ -41,23 +48,28 @@ export function flyProductToCart({ fromEl, toEl, imageUrl }) {
   return new Promise((resolve) => {
     const cleanup = () => {
       ghost.remove();
+      toEl.classList.remove("store-cart--catch");
       resolve();
     };
 
     if (reduce) {
       ghost.classList.add("store-fly--done");
-      window.setTimeout(cleanup, 180);
+      window.setTimeout(cleanup, 200);
       return;
     }
 
     requestAnimationFrame(() => {
       ghost.classList.add("store-fly--packing");
       window.setTimeout(() => {
-        ghost.style.setProperty("--fly-x", `${dx}px`);
-        ghost.style.setProperty("--fly-y", `${dy}px`);
-        ghost.classList.add("store-fly--flying");
-        window.setTimeout(cleanup, 720);
-      }, 320);
+        ghost.classList.add("store-fly--sealed");
+        window.setTimeout(() => {
+          ghost.style.setProperty("--fly-x", `${dx}px`);
+          ghost.style.setProperty("--fly-y", `${dy}px`);
+          ghost.classList.add("store-fly--flying");
+          toEl.classList.add("store-cart--catch");
+          window.setTimeout(cleanup, 900);
+        }, 280);
+      }, 520);
     });
   });
 }

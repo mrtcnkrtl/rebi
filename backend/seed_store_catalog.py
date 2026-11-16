@@ -283,16 +283,11 @@ def _row(
         "slug": slug,
         "name_tr": full_tr,
         "name_en": full_en,
-        "summary_tr": f"{name_tr} · {pct}. Yakında.",
-        "summary_en": f"{name_en} · {pct}. Coming soon.",
-        "description_tr": (
-            f"{name_tr} konsantrasyon bandı: {pct}. "
-            "Dermokozmetik ürün; satış açıldığında fiyat burada görünür."
-        ),
-        "description_en": (
-            f"{name_en} concentration band: {pct}. "
-            "Dermocosmetic product; price appears here when sales open."
-        ),
+        # Özet/açıklama yalnız gerçek ürün metni varsa doldurulur; şablon cümle yazılmaz.
+        "summary_tr": None,
+        "summary_en": None,
+        "description_tr": None,
+        "description_en": None,
         "usage_tr": usage_tr,
         "usage_en": usage_en,
         "inci": None,

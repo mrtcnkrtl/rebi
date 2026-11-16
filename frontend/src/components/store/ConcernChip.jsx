@@ -69,3 +69,37 @@ export function ConcernSymbolRow({ ids, t }) {
     </div>
   );
 }
+
+/** Detay sayfası: sorun başına 3D sembol + kısa açıklama. */
+export function ConcernDetailList({ ids, t }) {
+  const list = (ids || []).filter(Boolean);
+  if (!list.length) return null;
+  return (
+    <ul className="space-y-3">
+      {list.map((id) => {
+        const meta = concernMeta(id);
+        return (
+          <li
+            key={id}
+            className="flex items-start gap-4 rounded-2xl border px-4 py-3"
+            style={{ borderColor: `${meta.solid}55`, background: meta.soft }}
+          >
+            <span className="scene-3d shrink-0 pt-0.5">
+              <span className="scene-3d__tilt">
+                <Symbol3D icon={meta.icon} tone={meta.tone} size={52} rotate="rotateY(-14deg) rotateX(10deg)" />
+              </span>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className={`inline-flex rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${meta.chip}`}>
+                {t(`store.concern.${id}`, { defaultValue: id })}
+              </p>
+              <p className="mt-1.5 text-sm leading-relaxed text-ink">
+                {t(`store.concernHelp.${id}`, { defaultValue: "" })}
+              </p>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}

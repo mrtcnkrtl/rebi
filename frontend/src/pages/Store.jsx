@@ -17,7 +17,7 @@ import {
 import LegalLinks from "../components/LegalLinks";
 import TiltStage from "../components/landing/TiltStage";
 import { Symbol3D } from "../components/landing/Slab";
-import { ConcernBadge, ConcernFilterButton, ConcernSymbolRow } from "../components/store/ConcernChip";
+import { ConcernBadge, ConcernDetailList, ConcernFilterButton } from "../components/store/ConcernChip";
 import { useAuth } from "../context/AuthContext";
 import { getRoutineSnapshot } from "../lib/routineTracking";
 import {
@@ -28,6 +28,7 @@ import {
   removeFromCart,
   setCartQuantity,
 } from "../lib/storeCart";
+import { activeInfoText } from "../lib/storeActiveInfo";
 import { flyProductToCart } from "../lib/storeFlyToCart";
 import {
   buildStrengthIndex,
@@ -186,9 +187,18 @@ function PriceBlock({ product, lang, t, className = "" }) {
   );
 }
 
+function isPublicCopy(text) {
+  const value = String(text || "").trim();
+  if (!value) return false;
+  // Eski katalog şablonları / iç sistem cümleleri vitrine çıkmaz.
+  return !/(konsantrasyon bandı|concentration band|dermokozmetik ürün; satış|dermocosmetic product; price|rebi[’']nin önerdiği|sistemin önerdiği|rebi recommends|rebi’s recommended|rebi's recommended)/i.test(
+    value,
+  );
+}
+
 function MetaGrid({ product, t }) {
   return (
-    <dl className="grid grid-cols-2 gap-3 text-sm">
+    <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
       <div className="rounded-2xl bg-paper px-3 py-2">
         <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">{t("store.metaConcentration")}</dt>
         <dd className="mt-0.5 font-semibold text-ink">{product.size_label || "—"}</dd>
@@ -196,10 +206,6 @@ function MetaGrid({ product, t }) {
       <div className="rounded-2xl bg-paper px-3 py-2">
         <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">{t("store.metaType")}</dt>
         <dd className="mt-0.5 font-semibold text-ink">{t(TYPE_I18N[product.product_type] || TYPE_I18N.other)}</dd>
-      </div>
-      <div className="rounded-2xl bg-paper px-3 py-2">
-        <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">{t("store.metaStep")}</dt>
-        <dd className="mt-0.5 font-semibold text-ink">{product.step_order != null ? product.step_order : "—"}</dd>
       </div>
       <div className="rounded-2xl bg-paper px-3 py-2">
         <dt className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">{t("store.metaStatus")}</dt>
@@ -761,8 +767,12 @@ function StoreDetail() {
     );
   }
 
-  const description = en ? product.description_en || product.description_tr : product.description_tr;
-  const usage = en ? product.usage_en || product.usage_tr : product.usage_tr;
+  const descriptionRaw = en ? product.description_en || product.description_tr : product.description_tr;
+  const description = isPublicCopy(descriptionRaw) ? descriptionRaw : null;
+  const activeBlurb = activeInfoText(t, product.dose_key);
+  const aboutText = activeBlurb || description;
+  const usageRaw = en ? product.usage_en || product.usage_tr : product.usage_tr;
+  const usage = isPublicCopy(usageRaw) ? usageRaw : null;
   const img = productImage(product, lang);
   const strength = strengthFor(product, strengthIndex);
   const tint = tintFor(product, strength);
@@ -833,17 +843,17 @@ function StoreDetail() {
               {(product.concerns || []).length ? (
                 <div className="mt-8">
                   <h2 className="font-display text-xl font-medium text-ink">{t("store.detailConcerns")}</h2>
-                  <p className="mt-1 text-sm text-ink-soft">{t("store.detailConcernsBlurb")}</p>
+                  <p className="mt-1 text-sm text-ink-soft">{t("store.detailConcernsIntro")}</p>
                   <div className="mt-4">
-                    <ConcernSymbolRow ids={product.concerns} t={t} />
+                    <ConcernDetailList ids={product.concerns} t={t} />
                   </div>
                 </div>
               ) : null}
 
-              {description ? (
+              {aboutText ? (
                 <div className="mt-8">
                   <h2 className="font-display text-xl font-medium text-ink">{t("store.detailAbout")}</h2>
-                  <p className="mt-2 text-sm leading-relaxed text-ink">{description}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-ink">{aboutText}</p>
                 </div>
               ) : null}
               {usage ? (
@@ -868,8 +878,6 @@ function StoreDetail() {
                 <ShoppingBag className="h-5 w-5" />
                 {t("store.addToCart")}
               </button>
-              <p className="mt-3 text-xs text-ink-soft">{t("store.cartPreviewNote")}</p>
-              <p className="mt-1 text-xs text-ink-soft">{t("store.salesClosed")}</p>
             </div>
           </div>
 
