@@ -145,6 +145,100 @@ _TYPE = {
     "hyaluronik_asit": "serum",
 }
 
+# Görsel aileleri (frontend/public/store/*.svg) ve sorun etiketleri.
+_VISUAL = {
+    "retinol": "serum",
+    "vitamin_c": "brightening",
+    "niacinamid": "serum",
+    "salisilik_asit": "acid",
+    "benzoil_peroksit": "acid",
+    "hyaluronik_asit": "serum",
+    "seramidler": "barrier",
+    "azelaik_asit": "acid",
+    "traneksamik_asit": "brightening",
+    "kojik_asit": "brightening",
+    "alfa_arbutin": "brightening",
+    "centella_panthenol": "barrier",
+    "mineral_spf": "sunscreen",
+    "cay_agaci": "acid",
+    "licorice": "brightening",
+    "green_tea": "serum",
+    "hexylresorcinol": "brightening",
+    "mandelic": "acid",
+    "pha": "acid",
+    "sulfur": "acid",
+    "nag": "brightening",
+    "caffeine_eye": "eye",
+    "dimethicone": "barrier",
+    "gla": "barrier",
+    "linoleic": "barrier",
+    "undereye_vitc": "eye",
+    "undereye_niacinamide": "eye",
+    "spf_mineral": "sunscreen",
+    "spf_chemical": "sunscreen",
+    "spf_hybrid": "sunscreen",
+    "spf_tinted": "sunscreen",
+}
+
+_CONCERNS = {
+    "retinol": ("aging",),
+    "vitamin_c": ("aging", "pigmentation"),
+    "niacinamid": ("acne", "aging", "sensitivity"),
+    "salisilik_asit": ("acne",),
+    "benzoil_peroksit": ("acne",),
+    "hyaluronik_asit": ("dryness",),
+    "seramidler": ("dryness", "sensitivity"),
+    "azelaik_asit": ("acne", "pigmentation"),
+    "traneksamik_asit": ("pigmentation",),
+    "kojik_asit": ("pigmentation",),
+    "alfa_arbutin": ("pigmentation",),
+    "centella_panthenol": ("sensitivity", "dryness"),
+    "mineral_spf": ("aging", "pigmentation"),
+    "cay_agaci": ("acne",),
+    "licorice": ("pigmentation",),
+    "green_tea": ("acne", "sensitivity"),
+    "hexylresorcinol": ("pigmentation",),
+    "mandelic": ("pigmentation", "aging"),
+    "pha": ("aging", "sensitivity"),
+    "sulfur": ("acne",),
+    "nag": ("pigmentation",),
+    "caffeine_eye": ("undereye",),
+    "dimethicone": ("dryness", "sensitivity"),
+    "gla": ("dryness",),
+    "linoleic": ("dryness", "acne"),
+    "undereye_vitc": ("undereye", "pigmentation"),
+    "undereye_niacinamide": ("undereye",),
+    "spf_mineral": ("aging", "pigmentation", "sensitivity"),
+    "spf_chemical": ("aging", "pigmentation"),
+    "spf_hybrid": ("aging", "pigmentation"),
+    "spf_tinted": ("pigmentation", "aging"),
+}
+
+
+def visual_for(dose_key: str, product_type: str | None = None) -> str:
+    if dose_key in _VISUAL:
+        return _VISUAL[dose_key]
+    if product_type == "sunscreen":
+        return "sunscreen"
+    if product_type == "moisturizer":
+        return "barrier"
+    return "serum"
+
+
+def concerns_for(dose_key: str) -> list[str]:
+    return list(_CONCERNS.get(dose_key) or ())
+
+
+def image_for(dose_key: str, product_type: str | None, name_tr: str) -> list[dict]:
+    visual = visual_for(dose_key, product_type)
+    return [{
+        "url": f"/store/{visual}.svg",
+        "alt_tr": name_tr,
+        "alt_en": name_tr,
+        "visual": visual,
+    }]
+
+
 
 def slugify_pct(pct: str) -> str:
     """Konsantrasyon etiketini slug parçasına çevirir."""
@@ -181,18 +275,22 @@ def _row(
         return None
     ptype = product_type or _TYPE.get(dose_key, "serum")
     step = step_order if step_order is not None else _STEP.get(dose_key)
+    full_tr = f"{name_tr} · {pct}"
+    full_en = f"{name_en} · {pct}"
+    concerns = concerns_for(dose_key)
+    visual = visual_for(dose_key, ptype)
     return {
         "slug": slug,
-        "name_tr": f"{name_tr} · {pct}",
-        "name_en": f"{name_en} · {pct}",
-        "summary_tr": f"Rebi’nin önerdiği {name_tr} · {pct}. Yakında.",
-        "summary_en": f"Rebi’s recommended {name_en} · {pct}. Coming soon.",
+        "name_tr": full_tr,
+        "name_en": full_en,
+        "summary_tr": f"{name_tr} · {pct}. Yakında.",
+        "summary_en": f"{name_en} · {pct}. Coming soon.",
         "description_tr": (
-            f"{name_tr} için sistemin önerdiği konsantrasyon bandı: {pct}. "
+            f"{name_tr} konsantrasyon bandı: {pct}. "
             "Dermokozmetik ürün; satış açıldığında fiyat burada görünür."
         ),
         "description_en": (
-            f"Concentration band Rebi recommends for {name_en}: {pct}. "
+            f"{name_en} concentration band: {pct}. "
             "Dermocosmetic product; price appears here when sales open."
         ),
         "usage_tr": usage_tr,
@@ -205,11 +303,11 @@ def _row(
         "price_minor": None,
         "currency": "TRY",
         "vat_rate": None,
-        "images": [],
+        "images": image_for(dose_key, ptype, full_tr),
         "status": "coming_soon",
         "in_stock": True,
         "sort_order": sort_order,
-        "external_ref": {"dose_key": dose_key, "pct": pct},
+        "external_ref": {"dose_key": dose_key, "pct": pct, "concerns": concerns, "visual": visual},
     }
 
 

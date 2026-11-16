@@ -1832,14 +1832,23 @@ def store_status():
 def store_products_list(
     step_order: Optional[int] = Query(None, ge=1, le=99),
     product_type: Optional[str] = Query(None, max_length=32),
+    concern: Optional[str] = Query(None, max_length=32),
+    step_band: Optional[str] = Query(None, max_length=16),
     q: Optional[str] = Query(None, max_length=80),
     match: Optional[str] = Query(None, max_length=120),
     match_step: Optional[int] = Query(None, ge=1, le=99),
 ):
-    """Vitrin listesi. `match` Rafım serbest metin ürün adıyla en yakın SKU'yu da döndürebilir."""
+    """Vitrin listesi. Sorun (`concern`), rutin bandı (`step_band`) ve Rafım `match` destekler."""
     rows = _load_store_product_rows()
     products = visible_products(rows)
-    filtered = filter_products(products, step_order=step_order, product_type=product_type, q=q)
+    filtered = filter_products(
+        products,
+        step_order=step_order,
+        product_type=product_type,
+        concern=concern,
+        step_band=step_band,
+        q=q,
+    )
     out: dict = {"products": filtered, "open": store_open()}
     if match:
         hit = match_shelf_product(match, match_step if match_step is not None else step_order, products)

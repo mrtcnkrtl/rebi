@@ -72,15 +72,39 @@ def public_product(row: dict) -> dict:
     """İstemciye giden ürün kaydı. Yönetim alanları (`external_ref`, `id`) dışarı çıkmaz."""
     step = row.get("step_order")
     ingredients = row.get("ingredient_ids")
+    ref = row.get("external_ref") if isinstance(row.get("external_ref"), dict) else {}
+    dose_key = str(ref.get("dose_key") or "").strip() or None
+    concerns = [str(c) for c in (ref.get("concerns") or []) if c]
+    visual = str(ref.get("visual") or "").strip() or None
+    images = _images(row)
+    if dose_key and (not concerns or not visual or not images):
+        try:
+            from seed_store_catalog import concerns_for, image_for, visual_for
+
+            if not concerns:
+                concerns = concerns_for(dose_key)
+            if not visual:
+                visual = visual_for(dose_key, row.get("product_type"))
+            if not images:
+                images = image_for(dose_key, row.get("product_type"), str(row.get("name_tr") or dose_key))
+        except Exception:
+            pass
+    if not visual and images:
+        url = str(images[0].get("url") or "")
+        if "/store/" in url and url.endswith(".svg"):
+            visual = url.rsplit("/", 1)[-1][:-4] if url.endswith(".svg") else None
     out = {field: (str(row.get(field)).strip() if row.get(field) else None) for field in _TEXT_FIELDS}
     out.update({
         "slug": row.get("slug"),
         "product_type": row.get("product_type") or "other",
         "step_order": step if isinstance(step, int) and not isinstance(step, bool) else None,
         "ingredient_ids": [str(i) for i in ingredients if i] if isinstance(ingredients, list) else [],
+        "dose_key": dose_key,
+        "concerns": concerns,
+        "visual": visual,
         "price_minor": _price_minor(row),
         "currency": row.get("currency") or "TRY",
-        "images": _images(row),
+        "images": images,
         "status": row.get("status"),
         "in_stock": row.get("in_stock") is not False,
         "purchasable": is_purchasable(row),
@@ -216,22 +240,44 @@ def filter_products(
     *,
     step_order: Optional[int] = None,
     product_type: Optional[str] = None,
+    concern: Optional[str] = None,
+    step_band: Optional[str] = None,
     q: Optional[str] = None,
 ) -> list[dict]:
-    """Vitrin listesini isteğe bağlı adım, tür ve metin aramasıyla daraltır."""
+    """Vitrin listesini sorun, rutin bandı, tür ve metin aramasıyla daraltır."""
     out = list(products)
     if isinstance(step_order, int) and not isinstance(step_order, bool):
         out = [p for p in out if p.get("step_order") == step_order]
     if product_type:
         want = str(product_type).strip().lower()
         out = [p for p in out if str(p.get("product_type") or "").lower() == want]
+    if concern:
+        want_c = str(concern).strip().lower()
+        out = [p for p in out if want_c in [str(c).lower() for c in (p.get("concerns") or [])]]
+    if step_band:
+        band = str(step_band).strip().lower()
+        # 10 temizlik, 20–28 serum/aktif, 30 nem, 40 SPF
+        def in_band(step: object) -> bool:
+            if not isinstance(step, int) or isinstance(step, bool):
+                return False
+            if band == "cleanse":
+                return step <= 15
+            if band == "treat":
+                return 16 <= step <= 28
+            if band == "moisturize":
+                return 29 <= step <= 35
+            if band == "spf":
+                return step >= 36
+            return True
+
+        out = [p for p in out if in_band(p.get("step_order"))]
     needle = (q or "").strip().casefold()
     if needle:
         out = [
             p
             for p in out
             if needle in " ".join(
-                str(p.get(k) or "") for k in ("name_tr", "name_en", "summary_tr", "summary_en", "size_label", "slug")
+                str(p.get(k) or "") for k in ("name_tr", "name_en", "summary_tr", "summary_en", "size_label", "slug", "dose_key")
             ).casefold()
         ]
     return out

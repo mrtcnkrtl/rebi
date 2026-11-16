@@ -354,6 +354,95 @@
 }
 }
 
+/* Mağaza: sepete uçuş — paketle, sonra hedefe git */
+.store-fly {
+  position: fixed;
+  z-index: 80;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  will-change: transform, opacity;
+}
+.store-fly__pack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #f7f3ec;
+  box-shadow:
+    0 10px 0 #cfc6b3,
+    0 22px 36px -14px rgba(6, 43, 39, 0.45);
+  transform-origin: center center;
+}
+.store-fly__pack img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.store-fly__lid {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #0b3d38, #135a52);
+  opacity: 0;
+  transform: scaleY(0);
+  transform-origin: top center;
+}
+.store-fly--packing .store-fly__pack {
+  animation: store-pack 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.store-fly--packing .store-fly__lid {
+  animation: store-lid 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+.store-fly--flying {
+  transition:
+    transform 0.7s cubic-bezier(0.45, 0.05, 0.55, 0.95),
+    opacity 0.7s ease;
+  transform: translate(calc(-50% + var(--fly-x, 0px)), calc(-50% + var(--fly-y, 0px))) scale(0.22);
+  opacity: 0.15;
+}
+.store-fly--done {
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+@keyframes store-pack {
+  0% {
+    transform: scale(1) rotate(0deg);
+    border-radius: 18px;
+  }
+  55% {
+    transform: scale(0.78) rotate(-8deg);
+    border-radius: 14px;
+  }
+  100% {
+    transform: scale(0.55) rotate(10deg);
+    border-radius: 12px;
+    box-shadow:
+      0 6px 0 #062b27,
+      0 14px 22px -10px rgba(6, 43, 39, 0.5);
+  }
+}
+@keyframes store-lid {
+  0% {
+    opacity: 0;
+    transform: scaleY(0);
+  }
+  60% {
+    opacity: 0.55;
+    transform: scaleY(0.65);
+  }
+  100% {
+    opacity: 0.92;
+    transform: scaleY(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .store-fly--packing .store-fly__pack,
+  .store-fly--packing .store-fly__lid {
+    animation: none !important;
+  }
+}
+
 @keyframes hero-video-drift {
   0%,
   100% {

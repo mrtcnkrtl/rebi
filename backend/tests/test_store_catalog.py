@@ -68,6 +68,22 @@ def test_visible_products_hides_draft_and_filter_works():
     assert serums and all(p["product_type"] == "serum" for p in serums)
     hit = filter_products(shown, q="niasinamid")
     assert hit and all("niasinamid" in (p["name_tr"] or "").casefold() or "niacinamide" in (p["name_en"] or "").casefold() for p in hit)
+    acne = filter_products(shown, concern="acne")
+    assert acne and all("acne" in (p.get("concerns") or []) for p in acne)
+    spf = filter_products(shown, step_band="spf")
+    assert spf and all(isinstance(p.get("step_order"), int) and p["step_order"] >= 36 for p in spf)
+
+
+def test_catalog_exposes_stock_images_and_concerns():
+    rows = build_catalog_rows()
+    shown = visible_products(rows)
+    assert shown
+    for p in shown:
+        assert p.get("visual")
+        assert p.get("images") and p["images"][0]["url"].startswith("/store/")
+        assert p["images"][0]["url"].endswith(".svg")
+    nia = next(p for p in shown if p.get("dose_key") == "niacinamid")
+    assert "acne" in (nia.get("concerns") or [])
 
 
 def test_match_shelf_product_prefers_step_and_label():
