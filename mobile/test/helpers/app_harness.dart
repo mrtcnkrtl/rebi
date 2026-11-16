@@ -24,6 +24,7 @@ import 'package:rebi/app.dart';
 import 'package:rebi/router.dart';
 import 'package:rebi/ui/tw.dart';
 import 'package:rebi/state/auth_controller.dart';
+import 'package:rebi/state/store_controller.dart';
 import 'package:rebi/state/home_sync_controller.dart';
 import 'package:rebi/state/notifications_controller.dart';
 import 'package:rebi/state/outbox_sync_controller.dart';
@@ -44,6 +45,9 @@ class FakeBackend {
   final List<http.Request> requests = [];
   int chatCalls = 0;
   int quotaAfter = 999;
+
+  /// Sohbet yanıtındaki kota türü (`free_daily` | `plan_daily` | …).
+  String usageKind = 'free_daily';
 
   /// `POST /chat_general` bu kadar çağrı boyunca başarısız olur (sonra normal yanıt verir): [chatFailOffline] ise
   /// bağlantı hatası, değilse [chatFailStatus] durum koduyla.
@@ -386,7 +390,7 @@ class FakeBackend {
               return ok({
                 'reply': 'Bugünkü ücretsiz Rebi AI mesaj hakkın doldu.',
                 'chat_quota_exceeded': true,
-                'usage_kind': 'free_daily',
+                'usage_kind': usageKind,
                 'usage_remaining': 0,
                 'usage_limit': 5,
               });
@@ -394,7 +398,7 @@ class FakeBackend {
             return ok({
               'reply': chatReply ?? 'Niasinamid bariyeri destekler.\nGünde 1-2 kez kullanılabilir.',
               'chat_quota_exceeded': false,
-              'usage_kind': 'free_daily',
+              'usage_kind': usageKind,
               'usage_remaining': 3,
               'usage_limit': 5,
             });
@@ -560,6 +564,7 @@ Future<Harness> pumpApp(
 
   /// Giriş/kayıt çağrılarını Supabase'siz yanıtlayan sahte denetleyici (`AuthController`'ı genişletir).
   AuthController? authController,
+  StoreController? storeController,
 
   /// false: ilk kare çizilir çizilmez döner (açılış sekansının ilk karesi gibi, zamanla değişen ilk anları denetlemek için).
   bool settleAfter = true,
@@ -616,6 +621,8 @@ Future<Harness> pumpApp(
   );
   addTearDown(notifications.dispose);
   final router = buildRouter(auth);
+  final store = storeController ?? StoreController(auth);
+  addTearDown(store.dispose);
 
   await tester.pumpWidget(MultiProvider(
     providers: [
@@ -625,6 +632,7 @@ Future<Harness> pumpApp(
       ChangeNotifierProvider<HomeSyncController>.value(value: sync),
       ChangeNotifierProvider<OutboxSyncController>.value(value: outbox),
       ChangeNotifierProvider<NotificationsController>.value(value: notifications),
+      ChangeNotifierProvider<StoreController>.value(value: store),
     ],
     child: Consumer<I18n>(
       builder: (context, i18n, _) => MaterialApp.router(

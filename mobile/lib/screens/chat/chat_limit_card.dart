@@ -16,6 +16,7 @@ class ChatLimitCard extends StatelessWidget {
     super.key,
     required this.theme,
     required this.month,
+    this.plan = false,
     required this.offer,
     required this.onClose,
     required this.onPlus,
@@ -25,6 +26,9 @@ class ChatLimitCard extends StatelessWidget {
 
   /// true: aylık Plus kotası doldu; false: günlük ücretsiz hak doldu.
   final bool month;
+
+  /// true: ücretli paketin günlük hakkı doldu ([offer] üst paket varsa true).
+  final bool plan;
   final bool offer;
   final VoidCallback onClose;
   final VoidCallback onPlus;
@@ -32,12 +36,17 @@ class ChatLimitCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final i18n = I18n.instance;
-    final title = offer
-        ? i18n.t(month ? 'chat.paywallTitleMonth' : 'chat.paywallTitleDay')
-        : i18n.t(month ? 'mobileChat.limit.titleMonth' : 'mobileChat.limit.titleDay');
-    final body = offer
-        ? i18n.t(month ? 'chat.paywallBodyMonth' : 'chat.paywallBodyDay')
-        : i18n.t(month ? 'mobileChat.limit.bodyMonth' : 'mobileChat.limit.bodyDay');
+    final title = plan
+        ? i18n.t('mobileChat.limit.titlePlan')
+        : offer
+            ? i18n.t(month ? 'chat.paywallTitleMonth' : 'chat.paywallTitleDay')
+            : i18n.t(month ? 'mobileChat.limit.titleMonth' : 'mobileChat.limit.titleDay');
+    final body = plan
+        ? i18n.t(offer ? 'mobileChat.limit.bodyPlan' : 'mobileChat.limit.bodyPlanTop')
+        : offer
+            ? i18n.t(month ? 'chat.paywallBodyMonth' : 'mobileChat.limit.offerBodyDay')
+            : i18n.t(month ? 'mobileChat.limit.bodyMonth' : 'mobileChat.limit.bodyDay');
+    final bullets = offer && !plan;
 
     Widget bullet(String text) => Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -92,9 +101,9 @@ class ChatLimitCard extends StatelessWidget {
               ),
             ],
           ),
-          if (offer) bullet(i18n.t('chat.paywallBulletUnlimited')),
-          if (offer) bullet(i18n.t('mobileChat.limit.bulletData')),
-          if (offer) bullet(i18n.t('mobileChat.limit.bulletThemes')),
+          if (bullets) bullet(i18n.t('mobileChat.limit.bulletMore')),
+          if (bullets) bullet(i18n.t('mobileChat.limit.bulletThemes')),
+          if (bullets) bullet(i18n.t('mobileChat.limit.bulletAdFree')),
           const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.only(right: 8),
@@ -126,7 +135,7 @@ class ChatLimitCard extends StatelessWidget {
 
     if (offer) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        primary(i18n.t('mobileChat.limit.plusOpen'), LucideIcons.crown, onPlus),
+        primary(i18n.t(plan ? 'mobileChat.limit.upgrade' : 'mobileChat.limit.plusOpen'), LucideIcons.crown, onPlus),
         const SizedBox(height: 8),
         secondary(i18n.t('mobileChat.limit.notNow'), onClose),
       ]);

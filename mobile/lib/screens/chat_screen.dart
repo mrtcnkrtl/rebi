@@ -285,7 +285,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         kind,
         data['usage_remaining'],
         data['usage_limit'],
-        kind == 'plus_monthly' ? 'month' : (kind == 'free_daily' ? 'day' : null),
+        kind == 'plus_monthly' ? 'month' : (kind == 'free_daily' || kind == 'plan_daily' ? 'day' : null),
       );
     } else if (data['free_chat_remaining'] != null && data['free_chat_limit'] != null) {
       next = _Usage('free_daily', data['free_chat_remaining'], data['free_chat_limit'], 'day');
@@ -365,7 +365,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
       _applyUsage(data);
       if (data['chat_quota_exceeded'] == true) {
         setState(() {
-          _paywallKind = data['usage_kind'] == 'plus_monthly' ? 'plus_monthly' : 'free_daily';
+          final k = data['usage_kind'];
+          _paywallKind = k == 'plus_monthly' || k == 'plan_daily' ? k as String : 'free_daily';
           _paywallOpen = true;
         });
       }
@@ -428,7 +429,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     final u = _usage;
     String? usageLabel;
-    if (u?.kind == 'free_daily' && u?.remaining != null && u?.limit != null) {
+    if ((u?.kind == 'free_daily' || u?.kind == 'plan_daily') && u?.remaining != null && u?.limit != null) {
       usageLabel = i18n.t('chat.usageBadgeDay', {'rem': u!.remaining, 'lim': u.limit});
     } else if (u?.kind == 'plus_monthly' && u?.remaining != null && u?.limit != null) {
       usageLabel = i18n.t('chat.usageBadgeMonth', {'rem': u!.remaining, 'lim': u.limit});
@@ -559,6 +560,16 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         ],
       );
     }
+    if (u?.kind == 'plan_daily') {
+      final tier = activeStoreTier(_auth.user);
+      if (plusPurchasable && tier != null && tier != storeTiers.last) {
+        return GestureDetector(
+          onTap: () => context.go('/dashboard/subscribe'),
+          child: Text(i18n.t('mobileChat.limit.upgrade'), textAlign: TextAlign.center, style: tx(11, w: 6, c: theme.fg)),
+        );
+      }
+      return Text(i18n.t('chat.footerHintShort'), textAlign: TextAlign.center, style: tx(11, c: Tw.gray500));
+    }
     if (u?.kind == 'plus_monthly') {
       return Text(i18n.t('chat.plusPack1000Footer'), textAlign: TextAlign.center, style: tx(11, c: Tw.gray500));
     }
@@ -583,7 +594,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
         child: ChatLimitCard(
           theme: theme,
           month: _paywallKind == 'plus_monthly',
-          offer: plusPurchasable,
+          plan: _paywallKind == 'plan_daily',
+          // En üst paketteki kullanıcıya satılacak bir şey yok: yalnızca "yarın yenilenir".
+          offer: plusPurchasable && !(_paywallKind == 'plan_daily' && activeStoreTier(_auth.user) == storeTiers.last),
           onClose: () => setState(() => _paywallOpen = false),
           onPlus: () => context.go('/dashboard/subscribe'),
         ),

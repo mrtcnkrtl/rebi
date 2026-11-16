@@ -240,7 +240,8 @@ void main() {
       expect(find.text(tr('chat.paywallTitleDay')), findsOneWidget);
       expect(find.text('Open Rebi Plus'), findsOneWidget);
       expect(find.text('Close for now'), findsOneWidget);
-      expect(find.text(tr('mobileChat.limit.bulletData')), findsOneWidget);
+      expect(find.text(tr('mobileChat.limit.bulletMore')), findsOneWidget);
+      expect(find.text(tr('mobileChat.limit.bulletAdFree')), findsOneWidget);
       expect(find.text('Açık'), findsNothing);
     });
 

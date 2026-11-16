@@ -11,6 +11,7 @@ import '../core/i18n.dart';
 import '../core/user_history.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
+import '../ui/components/ad_banner.dart';
 import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
@@ -130,6 +131,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ],
         ] else
           _emptyCard(i18n),
+        const AdBanner(),
       ],
     );
   }
