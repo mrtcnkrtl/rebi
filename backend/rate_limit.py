@@ -146,6 +146,8 @@ LIMIT_ACCOUNT_DELETE = _make_limiter(3, 3600.0, "account_delete", scale=False)
 LIMIT_SALES_CONSENT = _make_limiter(20, 3600.0, "sales_consent", scale=False)
 LIMIT_PRIVACY_INCIDENT = _make_limiter(20, 3600.0, "privacy_incident", scale=False)
 LIMIT_INTRO_SEEN = _make_limiter(60, 60.0, "intro_seen", scale=False)
+LIMIT_STORE = _make_limiter(90, 60.0, "store", scale=False)
+LIMIT_STORE_CHECKOUT = _make_limiter(20, 3600.0, "store_checkout", scale=False)
 
 
 def _int_env(name: str, default: int) -> int:

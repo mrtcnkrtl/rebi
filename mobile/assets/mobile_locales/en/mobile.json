@@ -917,11 +917,26 @@
     },
     "skin": {
       "question": "How does your skin feel today?",
-      "iyi": { "title": "Good", "desc": "Feels normal" },
-      "kuru": { "title": "Dry", "desc": "Tightness, rough patches" },
-      "yagli": { "title": "Oily", "desc": "Shine, greasiness" },
-      "kirik": { "title": "Sensitive", "desc": "Redness, peeling" },
-      "irritasyon": { "title": "Irritated", "desc": "Burning, stinging" }
+      "iyi": {
+        "title": "Good",
+        "desc": "Feels normal"
+      },
+      "kuru": {
+        "title": "Dry",
+        "desc": "Tightness, rough patches"
+      },
+      "yagli": {
+        "title": "Oily",
+        "desc": "Shine, greasiness"
+      },
+      "kirik": {
+        "title": "Sensitive",
+        "desc": "Redness, peeling"
+      },
+      "irritasyon": {
+        "title": "Irritated",
+        "desc": "Burning, stinging"
+      }
     },
     "routineQuestion": "Did you follow yesterday's routine?",
     "concernIntro": {
@@ -961,15 +976,40 @@
       "dryness": "For dryness",
       "sensitivity": "For sensitivity",
       "active": "Active ingredients",
-      "picked_skin_today": { "q": "Did you pick at pimples or blackheads?", "d": "Mechanical irritation weakens the barrier and shows up in the risk summary." },
-      "high_glycemic_intake_today": { "q": "A meal today that spiked your blood sugar?", "d": "Like white flour, sweets or sugary drinks." },
-      "heavy_dairy_today": { "q": "Did you have a lot of dairy (milk, yogurt, cheese)?", "d": "Can be a trigger for some acne-prone skin." },
-      "long_sun_exposure_today": { "q": "Did you spend a long time in direct sun?", "d": "30+ minutes of open sun, or a high-UV day." },
-      "spf_applied_today": { "q": "Did you apply sunscreen to your face?", "d": "Answer Yes if you completed the SPF step of your routine." },
-      "very_dry_environment_today": { "q": "Was your home or office very dry? (heating, A/C, wind)" },
-      "long_hot_shower_today": { "q": "Did you take a long or very hot shower?", "d": "It can increase barrier dryness." },
-      "fragrance_new_product_today": { "q": "Did you use a new perfume or strongly scented product?" },
-      "tried_new_active_today": { "q": "Did you try a new strong active or a peel?", "d": "E.g. retinol, AHA/BHA, high-concentration serums." }
+      "picked_skin_today": {
+        "q": "Did you pick at pimples or blackheads?",
+        "d": "Mechanical irritation weakens the barrier and shows up in the risk summary."
+      },
+      "high_glycemic_intake_today": {
+        "q": "A meal today that spiked your blood sugar?",
+        "d": "Like white flour, sweets or sugary drinks."
+      },
+      "heavy_dairy_today": {
+        "q": "Did you have a lot of dairy (milk, yogurt, cheese)?",
+        "d": "Can be a trigger for some acne-prone skin."
+      },
+      "long_sun_exposure_today": {
+        "q": "Did you spend a long time in direct sun?",
+        "d": "30+ minutes of open sun, or a high-UV day."
+      },
+      "spf_applied_today": {
+        "q": "Did you apply sunscreen to your face?",
+        "d": "Answer Yes if you completed the SPF step of your routine."
+      },
+      "very_dry_environment_today": {
+        "q": "Was your home or office very dry? (heating, A/C, wind)"
+      },
+      "long_hot_shower_today": {
+        "q": "Did you take a long or very hot shower?",
+        "d": "It can increase barrier dryness."
+      },
+      "fragrance_new_product_today": {
+        "q": "Did you use a new perfume or strongly scented product?"
+      },
+      "tried_new_active_today": {
+        "q": "Did you try a new strong active or a peel?",
+        "d": "E.g. retinol, AHA/BHA, high-concentration serums."
+      }
     }
   },
   "mobileSubscribe": {
@@ -1256,7 +1296,10 @@
     "emptyHint": "Keep track of finished products",
     "loadFailed": "Couldn't load your shelf. Check your connection.",
     "retry": "Try again",
-    "pending": "{{count}} entries waiting to be sent"
+    "pending": "{{count}} entries waiting to be sent",
+    "storeView": "View in store",
+    "storeEmptyHint": "When it runs out, you can pick a replacement in the Rebi store.",
+    "storeOpen": "Open store"
   },
   "mobileRoutine": {
     "askRebi": "Ask Rebi",

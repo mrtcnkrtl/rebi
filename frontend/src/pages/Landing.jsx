@@ -1,28 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import {
-  AlertTriangle,
-  ArrowRight,
-  Brain,
-  Camera,
-  Check,
-  ClipboardCheck,
-  Crown,
-  Droplets,
-  Globe,
-  Leaf,
-  Lock,
-  MessageCircle,
-  Moon,
-  Package,
-  Palette,
-  Shield,
-  Smartphone,
-  Sparkles,
-  Sun,
-  UserRound,
-} from "lucide-react";
+import { AlertTriangle, ArrowRight, Brain, Camera, Check, ClipboardCheck, Crown, Droplets, Globe, Leaf, Lock, MessageCircle, Moon, Package, Palette, Shield, Smartphone, Sparkles, Sun, UserRound, ShoppingBag } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import AiDisclaimer from "../components/AiDisclaimer";
 import TiltStage from "../components/landing/TiltStage";
@@ -286,6 +265,25 @@ export default function Landing() {
             </div>
           </TiltStage>
 
+            <Link
+              to="/magaza"
+              className="mt-5 flex flex-col gap-4 rounded-[2rem] border border-rule bg-honey-tint/40 p-6 transition hover:border-honey md:flex-row md:items-center md:justify-between md:p-8"
+            >
+              <div className="flex items-start gap-4">
+                <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-ink text-paper">
+                  <ShoppingBag className="h-6 w-6" />
+                </span>
+                <div>
+                  <h3 className="font-display text-2xl font-medium text-ink">{t("landing.ecoStoreTitle")}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-ink-soft">{t("landing.ecoStoreDesc")}</p>
+                </div>
+              </div>
+              <span className="inline-flex min-h-[48px] items-center gap-2 self-start rounded-2xl bg-ink px-5 text-sm font-semibold text-paper md:self-center">
+                {t("landing.ecoStoreCta")}
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            </Link>
+
           <div className="mt-6 flex flex-col items-start gap-4 px-2 sm:flex-row sm:items-center">
             <div className="flex shrink-0 items-center gap-2 text-teal-700" aria-hidden="true">
               <Globe className="h-5 w-5" />
@@ -442,6 +440,9 @@ export default function Landing() {
               <a href={`mailto:${COMPANY.email}`} className="mt-1 inline-block text-sm underline underline-offset-4 hover:text-paper">
                 {COMPANY.email}
               </a>
+              <Link to="/magaza" className="mt-3 inline-block text-sm underline underline-offset-4 hover:text-paper">
+                {t("store.link")}
+              </Link>
             </div>
             <LegalLinks className="max-w-2xl text-sm md:justify-end" linkClassName="hover:text-paper" />
           </div>

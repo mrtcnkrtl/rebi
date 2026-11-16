@@ -21,6 +21,7 @@ import Legal from "./pages/Legal";
 import { safeNext } from "./lib/safeNext";
 import Support from "./pages/Support";
 import GetApp from "./pages/GetApp";
+import Store from "./pages/Store";
 import CookieNotice from "./components/CookieNotice";
 
 const RoutineChoicePreview = import.meta.env.DEV
@@ -92,6 +93,8 @@ function AppRoutes() {
         <Route path="/support" element={<Support />} />
         {/* Tek indirme adresi: telefonda mağazaya, masaüstünde ana sayfanın indirme bölümüne götürür. */}
         <Route path="/indir" element={<GetApp />} />
+        <Route path="/magaza" element={<Store />} />
+        <Route path="/magaza/:slug" element={<Store />} />
         <Route path="/rebi" element={<Chat />} />
         {RoutineChoicePreview && (
           <Route

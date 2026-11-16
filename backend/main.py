@@ -54,6 +54,19 @@ from today_plan import (
 from push_service import push_configured, send_push
 from chat_context import build_today_summary
 from shelf import SHELF_EVENT_TYPES, SHELF_LOOKBACK_DAYS, derive_products_out
+from store import (
+    checkout_lines,
+    filter_products,
+    get_provider,
+    is_safe_redirect,
+    is_valid_slug,
+    match_shelf_product,
+    public_product,
+    quote_cart,
+    store_open,
+    visible_products,
+)
+from seed_store_catalog import build_catalog_rows
 from flow_engine import (
     run_flow,
     adapt_existing_routine,
@@ -132,6 +145,8 @@ from rate_limit import (
     LIMIT_SALES_CONSENT,
     LIMIT_PRIVACY_INCIDENT,
     LIMIT_INTRO_SEEN,
+    LIMIT_STORE,
+    LIMIT_STORE_CHECKOUT,
     get_client_ip,
     enforce_ai_user_limit,
     enforce_ingest_user_limit,
@@ -1708,6 +1723,10 @@ async def root():
             "/devices/register",
             "/upload_photo",
             "/account/delete",
+            "/store/status",
+            "/store/products",
+            "/store/quote",
+            "/store/checkout",
             "/health",
         ],
     }
@@ -1764,6 +1783,129 @@ def intro_seen_post(request: Request):
 
     mark_intro_seen(get_client_ip(request))
     return {"ok": True, "seen": True}
+
+
+def _load_store_product_rows() -> list[dict]:
+    """Supabase'te vitrin satırı varsa onu, yoksa doz kaynaklı yedek kataloğu döndürür."""
+    supabase = get_supabase()
+    if supabase:
+        try:
+            res = (
+                supabase.table("store_products")
+                .select("*")
+                .in_("status", ["coming_soon", "active"])
+                .execute()
+            )
+            rows = list(res.data or [])
+            if rows:
+                return rows
+        except Exception as e:
+            log.warning("store_products okunamadı: %s", type(e).__name__)
+    return build_catalog_rows()
+
+
+class StoreQuoteRequest(BaseModel):
+    items: list[dict] = Field(default_factory=list)
+
+
+class StoreCheckoutRequest(BaseModel):
+    user_id: Optional[str] = None
+    items: list[dict] = Field(default_factory=list)
+    return_url: str = Field(min_length=8, max_length=2000)
+
+
+@app.get(
+    "/store/status",
+    tags=["store"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_STORE))],
+)
+def store_status():
+    """Ödeme bağdaştırıcısı kayıtlı mı? Vitrin her zaman açık; satış bu bayrağa bağlıdır."""
+    return {"open": store_open()}
+
+
+@app.get(
+    "/store/products",
+    tags=["store"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_STORE))],
+)
+def store_products_list(
+    step_order: Optional[int] = Query(None, ge=1, le=99),
+    product_type: Optional[str] = Query(None, max_length=32),
+    q: Optional[str] = Query(None, max_length=80),
+    match: Optional[str] = Query(None, max_length=120),
+    match_step: Optional[int] = Query(None, ge=1, le=99),
+):
+    """Vitrin listesi. `match` Rafım serbest metin ürün adıyla en yakın SKU'yu da döndürebilir."""
+    rows = _load_store_product_rows()
+    products = visible_products(rows)
+    filtered = filter_products(products, step_order=step_order, product_type=product_type, q=q)
+    out: dict = {"products": filtered, "open": store_open()}
+    if match:
+        hit = match_shelf_product(match, match_step if match_step is not None else step_order, products)
+        out["match"] = hit
+    return out
+
+
+@app.get(
+    "/store/products/{slug}",
+    tags=["store"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_STORE))],
+)
+def store_product_detail(slug: str):
+    if not is_valid_slug(slug):
+        raise HTTPException(status_code=404, detail="Ürün bulunamadı.")
+    rows = _load_store_product_rows()
+    for row in rows:
+        if row.get("slug") == slug and row.get("status") in ("coming_soon", "active"):
+            return {"product": public_product(row), "open": store_open()}
+    raise HTTPException(status_code=404, detail="Ürün bulunamadı.")
+
+
+@app.post(
+    "/store/quote",
+    tags=["store"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_STORE))],
+)
+def store_quote(req: StoreQuoteRequest):
+    """Sepeti katalog fiyatıyla doğrular. Satış kapalıyken satırlar `unavailable` döner."""
+    rows = _load_store_product_rows()
+    quote = quote_cart(req.items, rows)
+    return {**quote, "open": store_open()}
+
+
+@app.post(
+    "/store/checkout",
+    tags=["store"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_STORE_CHECKOUT))],
+)
+def store_checkout(request: Request, req: StoreCheckoutRequest):
+    """Ödeme oturumu açar. Bağdaştırıcı yoksa 503; uydurma ödeme yok."""
+    if req.user_id:
+        enforce_supabase_user(request, req.user_id)
+    provider = get_provider()
+    if provider is None:
+        raise HTTPException(status_code=503, detail="Mağaza satışı henüz açık değil.")
+    if not is_safe_redirect(req.return_url):
+        raise HTTPException(status_code=400, detail="Geçersiz dönüş adresi.")
+    rows = _load_store_product_rows()
+    quote = quote_cart(req.items, rows)
+    if not quote["lines"] or quote["unavailable"]:
+        raise HTTPException(status_code=400, detail="Sepette satın alınabilir ürün yok.")
+    lines = checkout_lines(quote, rows)
+    try:
+        url = provider.create_checkout(
+            lines,
+            currency=quote["currency"],
+            user_id=req.user_id,
+            return_url=req.return_url,
+        )
+    except Exception as e:
+        log.error("Mağaza ödeme oturumu açılamadı: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Ödeme sayfası açılamadı.")
+    if not is_safe_redirect(url):
+        raise HTTPException(status_code=502, detail="Ödeme sayfası geçersiz.")
+    return {"checkout_url": url, "open": True}
 
 
 @app.get("/health", tags=["health"])

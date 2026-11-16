@@ -53,6 +53,12 @@ export default function Navbar() {
                 {t("nav.dashboard")}
               </Link>
               <Link
+                to="/magaza"
+                className="text-gray-600 hover:text-teal-600 font-medium transition-colors"
+              >
+                {t("nav.store")}
+              </Link>
+              <Link
                 to="/dashboard/profile"
                 className="text-gray-600 hover:text-teal-600 font-medium text-sm"
               >
@@ -79,9 +85,17 @@ export default function Navbar() {
               </button>
             </>
           ) : (
-            <Link to="/auth" className="btn-primary !py-2 !px-5 !text-sm">
-              {t("nav.login")}
-            </Link>
+            <>
+              <Link
+                to="/magaza"
+                className="text-gray-600 hover:text-teal-600 font-medium transition-colors"
+              >
+                {t("nav.store")}
+              </Link>
+              <Link to="/auth" className="btn-primary !py-2 !px-5 !text-sm">
+                {t("nav.login")}
+              </Link>
+            </>
           )}
         </div>
 
@@ -100,6 +114,13 @@ export default function Navbar() {
           <div className="pb-2">
             <LanguageSelect />
           </div>
+          <Link
+            to="/magaza"
+            onClick={() => setMenuOpen(false)}
+            className="block py-2 text-gray-700 font-medium"
+          >
+            {t("nav.store")}
+          </Link>
           {showGetApp && (
             <a
               href={getAppHref}

@@ -917,11 +917,26 @@
     },
     "skin": {
       "question": "Cildin bugün nasıl hissediyor?",
-      "iyi": { "title": "İyi", "desc": "Normal hissediyorum" },
-      "kuru": { "title": "Kuru", "desc": "Sıkışma, gerginlik" },
-      "yagli": { "title": "Yağlı", "desc": "Parlaklık, yağlanma" },
-      "kirik": { "title": "Hassas", "desc": "Kızarıklık, soyulma" },
-      "irritasyon": { "title": "İrritasyon", "desc": "Yanma, batma" }
+      "iyi": {
+        "title": "İyi",
+        "desc": "Normal hissediyorum"
+      },
+      "kuru": {
+        "title": "Kuru",
+        "desc": "Sıkışma, gerginlik"
+      },
+      "yagli": {
+        "title": "Yağlı",
+        "desc": "Parlaklık, yağlanma"
+      },
+      "kirik": {
+        "title": "Hassas",
+        "desc": "Kızarıklık, soyulma"
+      },
+      "irritasyon": {
+        "title": "İrritasyon",
+        "desc": "Yanma, batma"
+      }
     },
     "routineQuestion": "Dünkü rutini uyguladın mı?",
     "concernIntro": {
@@ -961,15 +976,40 @@
       "dryness": "Kuruluğa özel",
       "sensitivity": "Hassasiyete özel",
       "active": "Aktif madde",
-      "picked_skin_today": { "q": "Ciltte sivilce/komedon kurcaladın mı?", "d": "Mekanik irritasyon bariyeri zayıflatır; risk özetine yansır." },
-      "high_glycemic_intake_today": { "q": "Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?", "d": "Beyaz un, tatlı, şekerli içecek gibi." },
-      "heavy_dairy_today": { "q": "Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?", "d": "Bazı akne eğilimlerinde tetikleyici olabilir." },
-      "long_sun_exposure_today": { "q": "Uzun süre doğrudan güneş altında kaldın mı?", "d": "30 dk+ açık güneş veya yoğun UV günü." },
-      "spf_applied_today": { "q": "Yüz için güneş koruyucu uyguladın mı?", "d": "Rutindeki SPF adımını tamamladıysan Evet." },
-      "very_dry_environment_today": { "q": "Ev/iş ortamı çok kuru muydu? (ısıtma, klima, rüzgâr)" },
-      "long_hot_shower_today": { "q": "Uzun veya çok sıcak duş aldın mı?", "d": "Bariyer kuruluğunu artırabilir." },
-      "fragrance_new_product_today": { "q": "Yeni parfüm veya yoğun kokulu ürün kullandın mı?" },
-      "tried_new_active_today": { "q": "Yeni güçlü madde veya peeling denedin mi?", "d": "Örn. retinol, AHA/BHA, yüksek konsantrasyon serum." }
+      "picked_skin_today": {
+        "q": "Ciltte sivilce/komedon kurcaladın mı?",
+        "d": "Mekanik irritasyon bariyeri zayıflatır; risk özetine yansır."
+      },
+      "high_glycemic_intake_today": {
+        "q": "Bugün belirgin şeker / hızlı yükselen kan şekerine yol açan öğün?",
+        "d": "Beyaz un, tatlı, şekerli içecek gibi."
+      },
+      "heavy_dairy_today": {
+        "q": "Belirgin süt ürünü (süt, yoğurt, peynir bol) tükettin mi?",
+        "d": "Bazı akne eğilimlerinde tetikleyici olabilir."
+      },
+      "long_sun_exposure_today": {
+        "q": "Uzun süre doğrudan güneş altında kaldın mı?",
+        "d": "30 dk+ açık güneş veya yoğun UV günü."
+      },
+      "spf_applied_today": {
+        "q": "Yüz için güneş koruyucu uyguladın mı?",
+        "d": "Rutindeki SPF adımını tamamladıysan Evet."
+      },
+      "very_dry_environment_today": {
+        "q": "Ev/iş ortamı çok kuru muydu? (ısıtma, klima, rüzgâr)"
+      },
+      "long_hot_shower_today": {
+        "q": "Uzun veya çok sıcak duş aldın mı?",
+        "d": "Bariyer kuruluğunu artırabilir."
+      },
+      "fragrance_new_product_today": {
+        "q": "Yeni parfüm veya yoğun kokulu ürün kullandın mı?"
+      },
+      "tried_new_active_today": {
+        "q": "Yeni güçlü madde veya peeling denedin mi?",
+        "d": "Örn. retinol, AHA/BHA, yüksek konsantrasyon serum."
+      }
     }
   },
   "mobileSubscribe": {
@@ -1256,7 +1296,10 @@
     "emptyHint": "Biten ürünlerini takip et",
     "loadFailed": "Rafın yüklenemedi. Bağlantını kontrol et.",
     "retry": "Tekrar dene",
-    "pending": "{{count}} kayıt gönderilmeyi bekliyor"
+    "pending": "{{count}} kayıt gönderilmeyi bekliyor",
+    "storeView": "Mağazada gör",
+    "storeEmptyHint": "Bitince yenisini Rebi mağazasından seçebileceksin.",
+    "storeOpen": "Mağazayı aç"
   },
   "mobileRoutine": {
     "askRebi": "Rebi'ye sor",

@@ -34,7 +34,8 @@
     "analyze": "Analyze",
     "reanalyze": "Again",
     "theme": "Themes",
-    "getApp": "Get the app"
+    "getApp": "Get the app",
+    "store": "Store"
   },
   "landing": {
     "heroBadge": "Dermocosmetic AI",
@@ -188,7 +189,10 @@
     "dlQrDesc": "The code takes you to your own store.",
     "dlQrAlt": "QR code that opens rebiovil.com/indir",
     "getAppRedirect": "Taking you to the store…",
-    "getAppBack": "Back to home"
+    "getAppBack": "Back to home",
+    "ecoStoreTitle": "Rebi store",
+    "ecoStoreDesc": "Recommended actives and concentrations. Sales coming soon.",
+    "ecoStoreCta": "Browse showcase"
   },
   "auth": {
     "google": "Continue with Google",
@@ -526,5 +530,31 @@
     "label": "Cookie notice",
     "body": "Rebi keeps only the records the service needs in your browser; it uses no analytics or advertising cookies.",
     "ok": "Got it"
+  },
+  "store": {
+    "eyebrow": "Rebi store",
+    "title": "Recommended actives, soon as products.",
+    "subtitle": "Every active and concentration band Rebi can recommend is listed here. When sales open, you can add them to your cart.",
+    "back": "Home",
+    "backToStore": "Back to store",
+    "comingSoon": "Coming soon",
+    "view": "View",
+    "searchPlaceholder": "Search active or concentration",
+    "filterAll": "All",
+    "typeCleanser": "Cleanser",
+    "typeToner": "Toner",
+    "typeSerum": "Serum",
+    "typeMoisturizer": "Moisturizer",
+    "typeSunscreen": "Sunscreen",
+    "typeMask": "Mask",
+    "typeOther": "Other",
+    "empty": "No products for this filter.",
+    "error": "The store could not be loaded. Try again shortly.",
+    "notFound": "Product not found.",
+    "usage": "How to use",
+    "stepOrder": "Routine step: {{n}}",
+    "addToCartDisabled": "Add to cart (coming soon)",
+    "salesClosed": "Sales are not open yet. Price and checkout appear here once commerce is connected.",
+    "link": "Store"
   }
 }

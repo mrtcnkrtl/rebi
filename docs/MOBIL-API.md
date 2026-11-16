@@ -178,6 +178,10 @@ fark yaratmaz, ilk 120 karakter) bir sayılır. Bu yüzden web/mobil, çevrimdı
 Hatırlatma: ürün bittikten tam 3 gün sonra, yenisi hâlâ alınmadıysa `restock_check` (tek seferlik). Aynı gün birden çok ürün
 varsa ilk ürün adıyla ve "+N ürün daha" ile tek bildirim gider. Push dağıtımı Rafım'ı yalnızca bu pencere açıkken sorgular.
 
+Rafım, biten ürün adını `GET /store/products?match=…&match_step=…` ile vitrin SKU'suna yaklaştırabilir; eşleşme varsa
+uygulama `https://rebiovil.com/magaza/{slug}` adresini açar. Vitrin herkese açıktır (`coming_soon` / `active`);
+`POST /store/checkout` ödeme bağdaştırıcısı yokken 503 döner.
+
 ### Hatırlatıcı kimlikleri
 
 | id | pencere (varsayılan düzen) | koşul |

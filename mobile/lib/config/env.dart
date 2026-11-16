@@ -21,10 +21,12 @@ class Env {
   static const betaBuild = bool.fromEnvironment('REBI_BETA', defaultValue: true);
 
   static const productionApiUrl = 'https://rebiovil.com/api';
+  static const siteUrl = 'https://rebiovil.com';
 
   /// Destek e-postası ve sayfası (mağazalardaki destek URL'si de bu sayfadır; web: `pages/Support.jsx`).
   static const supportEmail = 'sosyal@rebiovil.com';
   static const supportPageUrl = 'https://rebiovil.com/destek';
+  static const storePageUrl = 'https://rebiovil.com/magaza';
 
   static bool get supabaseConfigured => supabaseUrl.trim().isNotEmpty;
 

@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
+import '../config/env.dart';
 import '../core/demo_user.dart';
 import '../core/i18n.dart';
 import '../core/shelf.dart';
+import '../core/store_catalog.dart';
 import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../state/today_plan_controller.dart';
@@ -29,6 +32,8 @@ class ShelfScreen extends StatefulWidget {
 class _ShelfScreenState extends State<ShelfScreen> {
   TodayPlanController? _controller;
   bool _busy = false;
+  List<StoreProduct> _store = const [];
+  bool _storeLoaded = false;
 
   @override
   void didChangeDependencies() {
@@ -37,6 +42,12 @@ class _ShelfScreenState extends State<ShelfScreen> {
     // Demo oturumunda sunucu verisi yok: boş raf gösterilir.
     if (_controller == null && uid != null && uid != demoUserId) {
       _controller = TodayPlanController(userId: uid)..load(useLocation: false);
+    }
+    if (!_storeLoaded) {
+      _storeLoaded = true;
+      fetchStoreProducts().then((list) {
+        if (mounted) setState(() => _store = list);
+      });
     }
   }
 
@@ -86,6 +97,11 @@ class _ShelfScreenState extends State<ShelfScreen> {
   void _askForAlternative(ShelfItem item) {
     final prompt = I18n.instance.t('mobileShelf.alternativePrompt', {'product': item.product});
     context.go('/dashboard/chat', extra: {'prompt': prompt});
+  }
+
+  Future<void> _openStore([StoreProduct? product]) async {
+    final url = Uri.parse(product?.pageUrl ?? Env.storePageUrl);
+    await launchUrl(url, mode: LaunchMode.externalApplication);
   }
 
   @override
@@ -141,6 +157,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
 
   Widget _itemCard(I18n i18n, RebiTheme theme, ShelfItem item) {
     final age = shelfAge(item);
+    final storeHit = matchShelfProduct(item.product, item.stepOrder, _store);
     return RCard(
       padding: const EdgeInsets.all(18),
       radius: 22,
@@ -182,6 +199,13 @@ class _ShelfScreenState extends State<ShelfScreen> {
                 color: theme.fg,
                 onTap: () => _askForAlternative(item),
               ),
+              if (storeHit != null)
+                TodayPill(
+                  label: i18n.t('mobileShelf.storeView'),
+                  icon: LucideIcons.shoppingBag,
+                  color: Tw.teal700,
+                  onTap: () => _openStore(storeHit),
+                ),
             ],
           ),
         ],
@@ -199,6 +223,10 @@ class _ShelfScreenState extends State<ShelfScreen> {
             Text(i18n.t('mobileShelf.emptyTitle'), textAlign: TextAlign.center, style: heading(22)),
             const SizedBox(height: 8),
             Text(i18n.t('mobileShelf.emptyBody'), textAlign: TextAlign.center, style: tx(13, c: Tw.gray600, h: relaxed)),
+            const SizedBox(height: 10),
+            Text(i18n.t('mobileShelf.storeEmptyHint'), textAlign: TextAlign.center, style: tx(12.5, c: Tw.gray500, h: relaxed)),
+            const SizedBox(height: 14),
+            TextLink(i18n.t('mobileShelf.storeOpen'), onTap: () => _openStore(), style: tx(13, w: 6, c: Tw.teal700)),
           ],
         ),
       );

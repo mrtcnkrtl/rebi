@@ -34,7 +34,8 @@
     "analyze": "Analiz",
     "reanalyze": "Yeniden",
     "theme": "Tema",
-    "getApp": "Uygulamayı indir"
+    "getApp": "Uygulamayı indir",
+    "store": "Mağaza"
   },
   "landing": {
     "heroBadge": "Dermokozmetik yapay zekası",
@@ -188,7 +189,10 @@
     "dlQrDesc": "Kod seni kendi mağazana götürür.",
     "dlQrAlt": "rebiovil.com/indir adresine giden karekod",
     "getAppRedirect": "Mağazaya yönlendiriliyorsun…",
-    "getAppBack": "Ana sayfaya dön"
+    "getAppBack": "Ana sayfaya dön",
+    "ecoStoreTitle": "Rebi mağazası",
+    "ecoStoreDesc": "Önerilen maddeler ve konsantrasyonlar. Satış yakında.",
+    "ecoStoreCta": "Vitrini gör"
   },
   "auth": {
     "google": "Google ile devam et",
@@ -526,5 +530,31 @@
     "label": "Çerez bildirimi",
     "body": "Rebi yalnızca hizmetin çalışması için gerekli kayıtları tarayıcında tutar; analitik ya da reklam çerezi kullanmaz.",
     "ok": "Anladım"
+  },
+  "store": {
+    "eyebrow": "Rebi mağazası",
+    "title": "Önerilen maddeler, yakında ürün olarak.",
+    "subtitle": "Sistemin önerdiği her madde ve konsantrasyon bandı burada listelenir. Satış açılınca sepete ekleyebilirsin.",
+    "back": "Ana sayfa",
+    "backToStore": "Mağazaya dön",
+    "comingSoon": "Yakında",
+    "view": "İncele",
+    "searchPlaceholder": "Madde veya konsantrasyon ara",
+    "filterAll": "Tümü",
+    "typeCleanser": "Temizleyici",
+    "typeToner": "Tonik",
+    "typeSerum": "Serum",
+    "typeMoisturizer": "Nemlendirici",
+    "typeSunscreen": "Güneş kremi",
+    "typeMask": "Maske",
+    "typeOther": "Diğer",
+    "empty": "Bu filtrede ürün yok.",
+    "error": "Mağaza şu an açılamadı. Biraz sonra yeniden dene.",
+    "notFound": "Ürün bulunamadı.",
+    "usage": "Kullanım",
+    "stepOrder": "Rutin adımı: {{n}}",
+    "addToCartDisabled": "Sepete ekle (yakında)",
+    "salesClosed": "Satış henüz açık değil. Fiyat ve ödeme, ticaret altyapısı bağlanınca burada görünür.",
+    "link": "Mağaza"
   }
 }
