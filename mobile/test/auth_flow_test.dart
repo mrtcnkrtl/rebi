@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart' show AppLifecycleState, Checkbox, Key, TextFormField;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:rebi/core/auth_errors.dart';
 import 'package:rebi/core/legal_consent.dart';
 import 'package:rebi/state/auth_controller.dart';
@@ -678,6 +680,38 @@ void main() {
       await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
       await tapFinder(tester, google());
       expect(find.text(tr('mobileAuth.googleFailed')), findsOneWidget);
+    });
+
+    testWidgets('Supabase panelinde Google kapalıysa tarayıcı açılmaz, "şu an kullanılamıyor" denir', (tester) async {
+      final fake = FakeAuth()
+        ..googleResult = const AuthActionResult(error: googleProviderDisabledError, kind: AuthErrorKind.providerDisabled);
+      await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
+      await tapFinder(tester, google());
+      expect(find.text(tr('mobileAuth.googleUnavailable')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.googleFailed')), findsNothing);
+    });
+
+    testWidgets('Google hesap seçicisi kapatılırsa hata gösterilmez, düğme yeniden kullanılabilir', (tester) async {
+      final fake = FakeAuth()..googleResult = const AuthActionResult(error: googleCanceledError, kind: AuthErrorKind.canceled);
+      await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
+      await tapFinder(tester, google());
+      expect(find.text(tr('mobileAuth.googleFailed')), findsNothing);
+      expect(find.text(tr('mobileAuth.googleUnavailable')), findsNothing);
+      await tapFinder(tester, google());
+      expect(fake.calls, ['google', 'google']);
+    });
+
+    test('Google sağlayıcı durumu /auth/v1/settings yanıtından okunur', () async {
+      MockClient reply(int code, String body) => MockClient((req) async {
+            expect(req.url.toString(), 'https://x.supabase.co/auth/v1/settings');
+            return http.Response(body, code);
+          });
+      const base = 'https://x.supabase.co';
+      expect(await fetchGoogleProviderEnabled(client: reply(200, '{"external":{"google":false}}'), baseUrl: base), isFalse);
+      expect(await fetchGoogleProviderEnabled(client: reply(200, '{"external":{"google":true}}'), baseUrl: base), isTrue);
+      expect(await fetchGoogleProviderEnabled(client: reply(500, ''), baseUrl: base), isNull, reason: 'sunucu hatası denemeyi engellemez');
+      expect(await fetchGoogleProviderEnabled(client: reply(200, 'not json'), baseUrl: base), isNull);
+      expect(await fetchGoogleProviderEnabled(baseUrl: ''), isNull);
     });
 
     testWidgets('Google sayfasında vazgeçilip hatayla dönülürse e-posta bağlantısı mesajı yerine Google mesajı çıkar', (tester) async {

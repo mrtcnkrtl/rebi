@@ -9,6 +9,13 @@ class Env {
   /// Web `VITE_API_URL`. Boşsa canlı API kullanılır (webdeki `${origin}/api` karşılığı).
   static const _apiUrlRaw = String.fromEnvironment('API_URL');
 
+  /// Google Cloud'daki "Rebi Supabase" Web client kimliği (gizli değildir; secret Supabase panelindedir).
+  /// Yerel Google girişinde kimlik belgesinin alıcısı (aud) budur; Supabase Google ayarındaki Client IDs'te olmalı.
+  static const googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+    defaultValue: '298921260735-4eon5rievvv859s5lksqs4au2iav0vvl.apps.googleusercontent.com',
+  );
+
   /// Web `VITE_REBI_PLUS_CHECKOUT_URL`.
   static const rebiPlusCheckoutUrl = String.fromEnvironment('REBI_PLUS_CHECKOUT_URL');
 

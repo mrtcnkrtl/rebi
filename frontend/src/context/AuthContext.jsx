@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 import { flushPendingConsent } from "../lib/legalConsent";
+import { promptGoogleIdToken } from "../lib/googleIdentity";
 
 const AuthContext = createContext({});
 
@@ -52,9 +53,23 @@ export function AuthProvider({ children }) {
     return { data, error };
   };
 
-  /** Google hesabıyla giriş ya da kayıt: sayfa Google'a gider, oturumla `/auth?next=…` adresine döner. */
+  /**
+   * Google hesabıyla giriş ya da kayıt. Önce sitede açılan Google penceresi (GIS) denenir: "rebiovil.com" ve
+   * uygulama adı görünür, oturum sayfadan ayrılmadan açılır (`signedIn: true`). Pencere kapatılırsa
+   * `canceled: true`. Pencere gösterilemezse eski yol: sayfa Google'a gider, oturumla `/auth?next=…` adresine döner.
+   */
   const signInWithGoogle = async (next = "/dashboard") => {
     if (!supabase) return { error: { message: "Supabase not configured" } };
+    const gis = await promptGoogleIdToken();
+    if (gis.canceled) return { canceled: true };
+    if (gis.idToken) {
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: "google",
+        token: gis.idToken,
+        nonce: gis.nonce,
+      });
+      return { data, error, signedIn: !error };
+    }
     const redirectTo = `${window.location.origin}/auth?next=${encodeURIComponent(next)}`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",

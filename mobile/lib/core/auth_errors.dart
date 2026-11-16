@@ -15,6 +15,12 @@ enum AuthErrorKind {
   codeInvalid,
   network,
   notConfigured,
+
+  /// Supabase panelinde Google sağlayıcısı kapalı: tarayıcı açılırsa ham "provider is not enabled" sayfası görünür.
+  providerDisabled,
+
+  /// Kullanıcı Google hesap seçicisini kapattı: hata değildir, mesaj gösterilmez.
+  canceled,
   other,
 }
 

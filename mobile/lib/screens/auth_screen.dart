@@ -158,6 +158,8 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         return I18n.instance.t('mobileMisc.authNotConfigured');
       case AuthErrorKind.network:
         return _t('mobileAuth.errNetwork');
+      case AuthErrorKind.providerDisabled:
+        return _t('mobileAuth.googleUnavailable');
       case AuthErrorKind.invalidCredentials:
         return _t('mobileAuth.errInvalidCredentials');
       case AuthErrorKind.emailNotConfirmed:
@@ -176,6 +178,8 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         return _t('mobileAuth.errLinkInvalid');
       case AuthErrorKind.codeInvalid:
         return _t('mobileAuth.errCodeInvalid');
+      case AuthErrorKind.canceled:
+        return '';
       case AuthErrorKind.other:
         return raw.isEmpty ? (_en ? 'Something went wrong.' : 'Bir hata oluştu') : raw;
     }
@@ -424,7 +428,9 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     setState(() => _googleBusy = false);
     if (r.ok) return;
     _googleStarted = false;
-    if (r.networkError || r.kind == AuthErrorKind.notConfigured) return _showAuthError(r.error ?? '', r.kind);
+    // Hesap seçici kapatıldı: kullanıcı vazgeçti, hata değil.
+    if (r.kind == AuthErrorKind.canceled) return;
+    if (r.networkError || r.kind == AuthErrorKind.notConfigured || r.kind == AuthErrorKind.providerDisabled) return _showAuthError(r.error ?? '', r.kind);
     _showGoogleFailed();
   }
 
