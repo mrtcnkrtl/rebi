@@ -56,12 +56,22 @@ export default function Auth() {
     }
     setGoogleLoading(true);
     stashPendingConsent({ location: locationOk, photo: photoOk });
-    const { error: oauthError } = await signInWithGoogle(next);
+    const { error: oauthError, canceled, signedIn } = await signInWithGoogle(next);
     if (oauthError) {
       setError(t("auth.googleFailed"));
       setGoogleLoading(false);
+      return;
     }
-    // Başarılıysa sayfa Google'a gider; yükleniyor durumu ayrılana kadar kalır.
+    if (canceled) {
+      setGoogleLoading(false);
+      return;
+    }
+    // Sitedeki Google penceresiyle oturum açıldı; onaylar AuthContext'te sunucuya yazılır.
+    if (signedIn) {
+      navigate(next);
+      return;
+    }
+    // Yönlendirmeli akış: sayfa Google'a gider; yükleniyor durumu ayrılana kadar kalır.
   };
 
   const handleSubmit = async (e) => {

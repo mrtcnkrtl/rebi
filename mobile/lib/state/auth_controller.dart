@@ -1,11 +1,16 @@
 import 'dart:async';
 
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../config/env.dart';
 import '../core/api.dart';
 import '../core/auth_errors.dart';
 import '../core/legal_consent.dart';
+import '../core/native_google_sign_in.dart';
 
 /// Parola sıfırlama, Google girişi (ve eski e-posta onayı) dönüşlerinin uygulamayı açtığı adres (Android `intent-filter`,
 /// iOS `CFBundleURLTypes`). Supabase panelinde Authentication → URL Configuration → Redirect URLs listesinde
@@ -65,11 +70,40 @@ class AuthActionResult {
 /// Uygulama `SUPABASE_URL` olmadan derlendiğinde giriş/kayıt bu hatayla döner.
 const supabaseNotConfiguredError = 'Supabase not configured';
 
+/// Supabase panelinde Google sağlayıcısı kapalıyken `signInWithGoogle` bu hatayla döner (tarayıcı açılmaz).
+const googleProviderDisabledError = 'Google provider is not enabled';
+
+/// Yerel Google hesap seçicisi kapatıldı.
+const googleCanceledError = 'Google sign-in canceled';
+
+/// Supabase'in herkese açık `/auth/v1/settings` yanıtına göre Google sağlayıcısı açık mı.
+/// `false` yalnızca sunucu açıkça "kapalı" dediğinde döner; ağ hatası/zaman aşımında `null` (deneme engellenmez).
+Future<bool?> fetchGoogleProviderEnabled({http.Client? client, String? baseUrl}) async {
+  final base = (baseUrl ?? Env.supabaseUrl).trim();
+  if (base.isEmpty) return null;
+  final c = client ?? http.Client();
+  try {
+    final res = await c
+        .get(Uri.parse('$base/auth/v1/settings'), headers: {'apikey': Env.supabaseAnonKey})
+        .timeout(const Duration(seconds: 6));
+    if (res.statusCode != 200) return null;
+    final body = jsonDecode(res.body);
+    final google = body is Map ? (body['external'] is Map ? body['external']['google'] : null) : null;
+    return google is bool ? google : null;
+  } catch (_) {
+    return null;
+  } finally {
+    if (client == null) c.close();
+  }
+}
+
 /// Webdeki "Failed to fetch" karşılığı: sunucuya hiç ulaşılamadı.
 bool _isNetwork(Object e) => e is AuthRetryableFetchException || isNetworkError(e);
 
 AuthErrorKind _kindOf(Object e, String message, bool network) {
   if (message == supabaseNotConfiguredError) return AuthErrorKind.notConfigured;
+  if (message.contains(googleProviderDisabledError)) return AuthErrorKind.providerDisabled;
+  if (message.contains(googleCanceledError)) return AuthErrorKind.canceled;
   return classifyAuthError(message, code: e is AuthException ? e.code : null, network: network);
 }
 
@@ -245,11 +279,32 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  /// Google hesabıyla giriş ya da kayıt (aynı düğme). Google hesabı tarayıcıda seçilir (SDK Android'de harici
-  /// tarayıcı açar); oturum [authCallbackUrl] derin bağlantısıyla uygulamaya döner ve `signedIn` olayıyla açılır.
-  /// Sonuç yalnızca tarayıcının açılıp açılmadığını söyler. Google'dan gelen kullanıcının e-postası Google'ca
-  /// doğrulanmıştır (onay kodu gerekmez); KVKK / açık rıza kaydı yoksa açılış paketi rıza kutusunu gösterir.
+  /// Yerel Google hesap seçicisi (testlerde sahtelenir).
+  @visibleForTesting
+  NativeGoogleSignIn nativeGoogle = NativeGoogleSignIn();
+
+  /// Google hesabıyla giriş ya da kayıt (aynı düğme). Önce Android'in yerel hesap seçicisi denenir: ekranın altında
+  /// açılır ve uygulama adını ("Rebi") gösterir; seçilen hesabın kimlik belgesiyle Supabase oturumu hemen açılır
+  /// (`signedIn` olayı). Yerel yol kullanılamazsa (Play hizmetleri yok, Android client'ı/SHA-1 tanımsız) tarayıcıdaki
+  /// Supabase OAuth akışına düşülür: oturum [authCallbackUrl] derin bağlantısıyla döner; sonuç yalnızca tarayıcının
+  /// açılıp açılmadığını söyler. Google'dan gelen e-posta doğrulanmıştır (onay kodu gerekmez); KVKK / açık rıza
+  /// kaydı yoksa açılış paketi rıza kutusunu gösterir.
+  /// Supabase'de Google sağlayıcısı kapalıysa hiçbir şey açılmaz ([googleProviderDisabledError]); yoksa kullanıcı
+  /// tarayıcıda ham `{"error_code":"validation_failed","msg":"Unsupported provider…"}` sayfasında kalırdı.
   Future<AuthActionResult> signInWithGoogle() => _action((auth) async {
+        if (await fetchGoogleProviderEnabled() == false) throw StateError(googleProviderDisabledError);
+        if (nativeGoogle.available) {
+          final r = await nativeGoogle.obtainIdToken();
+          switch (r) {
+            case NativeGoogleToken(:final idToken):
+              await auth.signInWithIdToken(provider: OAuthProvider.google, idToken: idToken);
+              return;
+            case NativeGoogleCanceled():
+              throw StateError(googleCanceledError);
+            case NativeGoogleUnavailable(:final reason):
+              debugPrint('Yerel Google girişi kullanılamadı ($reason); tarayıcı akışına geçiliyor.');
+          }
+        }
         final opened = await auth.signInWithOAuth(
           OAuthProvider.google,
           redirectTo: authCallbackUrl,
@@ -287,6 +342,7 @@ class AuthController extends ChangeNotifier {
     } catch (_) {
       /* ağ yoksa yerel oturum yine silinir */
     }
+    await nativeGoogle.signOut();
     user = null;
     recoveryPending = false;
     notifyListeners();

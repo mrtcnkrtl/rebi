@@ -154,8 +154,23 @@ Rıza: web'de onay kutuları Google düğmesinden önce işaretlenir ve dönüş
    Telefonda: yeni derlemeyle giriş ekranı → Google ile devam et → tarayıcıda hesabı seç → uygulama açılmalı ve
    ilk açılışta KVKK/açık rıza kutusu gelmeli.
 
-Bilinen görünüm: Google hesap seçme sayfasında "`<proje-kimliği>.supabase.co` uygulamasına devam et" yazar. Bunu
-"rebiovil.com" yapmak Supabase'in ücretli özel alan adı (Custom Domain) eklentisini gerektirir; işlevi etkilemez.
+**Kurulum durumu (2026-11-16):** Google Cloud projesi `mynewapp-f5620` (faturalandırmaya bağlı değil; ücretli servis açılmaz).
+Onay ekranı "Rebi", In production. Client'lar: Web `Rebi Supabase` (`298921260735-4eon5…`, secret yalnız Supabase'de) ve
+`com.rebiovil.mobile` için üç Android client: **Play** (Play Console → Uygulama imzalama, SHA-1 `54:D4:A8:…:B1:F6`),
+**upload** (`C5:21:05:…:18:B9`) ve **debug** (`8D:B1:16:…:3B:43`). Web client'ın JavaScript origin'leri: `https://rebiovil.com`,
+`https://www.rebiovil.com`, `http://localhost:5173`, `http://localhost`.
+
+**Hesap seçme ekranında görünen ad.** Tarayıcıdaki Supabase OAuth akışında Google "`<proje-kimliği>.supabase.co` uygulamasına
+devam et" yazar (dönüş adresi Supabase'tir; değiştirmek ücretli Custom Domain ister). Bunu önlemek için iki yerde yerel yol vardır:
+- **Android**: `google_sign_in` (Credential Manager) alttan açılan Google seçicisini gösterir, başlıkta "Rebi" yazar; kimlik belgesi
+  `signInWithIdToken` ile Supabase'e verilir (`lib/core/native_google_sign_in.dart`). Belgenin alıcısı Web client'tır
+  (`Env.googleWebClientId`); Supabase'in Google ayarındaki Client IDs'te bulunur. Yeni bir imza anahtarı gelirse (ör. Play anahtar
+  yükseltmesi) o anahtarın SHA-1'iyle yeni bir Android client açılmalıdır; yoksa yerel seçici `clientConfigurationError` verir ve
+  uygulama sessizce eski tarayıcı akışına düşer.
+- **Web**: Google Identity Services penceresi (`frontend/src/lib/googleIdentity.js`) "rebiovil.com" gösterir; nonce'lu belge
+  `signInWithIdToken` ile verilir. Pencere gösterilemezse (FedCM/üçüncü taraf çerezleri kapalı, Google'ın bekleme süresi) eski
+  yönlendirmeli akış kullanılır. CSP'de `accounts.google.com/gsi/` izinleri gerekir (`deploy/nginx/*.conf`, `frontend/nginx.conf`).
+
 Aynı e-postayla önceden e-posta/parola hesabı açmış kullanıcı Google ile girince Supabase iki girişi aynı hesapta birleştirir.
 
 ## 3. Telefonda doğrulama (cihaz testi)
