@@ -114,6 +114,7 @@ from chat_quota import reserve_chat_turn
 from store_subscription import (
     STORE_TIERS,
     revenuecat_configured,
+    StoreUserNotFound,
     sync_user_from_revenuecat,
     webhook_authorized,
 )
@@ -4276,13 +4277,18 @@ def revenuecat_webhook(request: Request, payload: dict = Body(default_factory=di
             ids.add(str(v))
     # Anonim RevenueCat kimlikleri ($RCAnonymousID:…) Supabase kullanıcısı değildir.
     user_ids = sorted(i for i in ids if _UUID_RE.match(i))
+    synced = 0
     for uid in user_ids:
         try:
             run_async(sync_user_from_revenuecat, uid)
+            synced += 1
+        except StoreUserNotFound:
+            # Silinmiş hesap ya da RevenueCat'in test olayı: yeniden denemenin anlamı yok.
+            log.warning("RevenueCat webhook: Supabase'de olmayan kullanıcı atlandı (type=%s)", event.get("type"))
         except Exception as e:
             log.error("RevenueCat webhook eşitlemesi başarısız: type=%s err=%s", event.get("type"), type(e).__name__)
             raise HTTPException(status_code=502, detail="sync failed")
-    return {"ok": True, "synced": len(user_ids)}
+    return {"ok": True, "synced": synced}
 
 
 @app.post(

@@ -167,8 +167,14 @@ def webhook_authorized(header_value: Optional[str]) -> bool:
 # --- Supabase app_metadata ---------------------------------------------------------------------------
 
 
+class StoreUserNotFound(Exception):
+    """RevenueCat'teki kimlik Supabase'de yok (silinmiş hesap ya da RevenueCat test olayı)."""
+
+
 async def write_store_metadata(user_id: str, ent: Optional[StoreEntitlement]) -> None:
-    """`app_metadata.rebi_store`'u yazar (GoTrue app_metadata'yı birleştirir; diğer anahtarlar korunur)."""
+    """`app_metadata.rebi_store`'u yazar (GoTrue app_metadata'yı birleştirir; diğer anahtarlar korunur).
+
+    Kullanıcı Supabase'de yoksa `StoreUserNotFound` fırlatır."""
     from config import SUPABASE_SERVICE_KEY, SUPABASE_URL
 
     base = (SUPABASE_URL or "").rstrip("/")
@@ -182,6 +188,8 @@ async def write_store_metadata(user_id: str, ent: Optional[StoreEntitlement]) ->
             headers={"apikey": key, "Authorization": f"Bearer {key}"},
             json=body,
         )
+    if r.status_code == 404:
+        raise StoreUserNotFound(user_id)
     if r.status_code not in (200, 204):
         log.error("app_metadata yazılamadı: status=%s", r.status_code)
         r.raise_for_status()

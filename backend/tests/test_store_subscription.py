@@ -228,3 +228,22 @@ def test_webhook_failure_asks_revenuecat_to_retry(monkeypatch, client, jwt_env):
         headers={"Authorization": "hook-secret"},
     )
     assert r.status_code == 502
+
+
+def test_webhook_skips_users_missing_in_supabase(monkeypatch, client, jwt_env):
+    """RevenueCat test olayı ya da silinmiş hesap: 200 döner, RevenueCat boşuna yeniden denemez."""
+    monkeypatch.setenv("REVENUECAT_WEBHOOK_AUTH", "hook-secret")
+    other = "11111111-1111-4111-8111-111111111111"
+
+    async def sync(uid):
+        if uid == other:
+            raise store_subscription.StoreUserNotFound(uid)
+        return None
+
+    monkeypatch.setattr(main, "sync_user_from_revenuecat", sync)
+    r = client.post(
+        "/webhooks/revenuecat",
+        json={"event": {"type": "TEST", "app_user_id": other, "aliases": [USER_ID]}},
+        headers={"Authorization": "hook-secret"},
+    )
+    assert r.status_code == 200 and r.json() == {"ok": True, "synced": 1}
