@@ -83,7 +83,9 @@ Veritabanı migration'ı yok; yalnızca `app_metadata` kullanılır.
 
 ## Ortam değişkenleri
 
-Sunucu (`deploy/.env.api` / `backend/.env`):
+Sunucu (`deploy/.env.api` / `backend/.env`). İlk iki değer GitHub Secrets'a (`REVENUECAT_SECRET_API_KEY`,
+`REVENUECAT_WEBHOOK_AUTH`) konursa "Deploy rebiovil" her deploy'da bunları sunucudaki `deploy/.env.api`'ye yazar
+(root şifresi gerekmez):
 
 ```
 REVENUECAT_SECRET_API_KEY=sk_...

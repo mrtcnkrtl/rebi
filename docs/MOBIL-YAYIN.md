@@ -82,7 +82,10 @@ paketlemesi doğrulanır).
    `GoogleService-Info.plist`'i `ios/Runner` içine ekleyip `FIREBASE_ENABLED=true` verin. Yetenek eklenmeden
    `aps-environment` yazmayın: imzalama profili uyuşmayıp derleme bozulur. Yerel bildirimler bunlar olmadan çalışır.
 5. `PrivacyInfo.xcprivacy` toplanan veri türlerini bildirir (bölüm 8); App Store Connect "Uygulama Gizliliği"
-   anketiyle **aynı** olmalı. Uygulama izleme (tracking) yapmaz, reklam kimliği kullanmaz.
+   anketiyle **aynı** olmalı. 1.2.0 ile ücretsiz kullanıcıya AdMob reklamı geldi: ATT izni verilirse reklam kimliği
+   üçüncü taraf reklam için kullanılır; App Store Connect'te izleme = evet. `PrivacyInfo.xcprivacy`'de ise
+   `NSPrivacyTracking` false kalır (izlemeyi Google SDK'sı yapar ve kendi dosyasında bildirir; true + boş alan adı
+   listesi ITMS-91064 ile reddedilir).
 6. Uygulama iPhone + iPad (`TARGETED_DEVICE_FAMILY = 1,2`). iPhone'da dikey; iPad her yönde. iPhone Duo için ayrı
    ayar yoktur: iOS 27.1 SDK ile derlendiğinde iç ekranda tam ekran çalışır, iç ekran dikey kilidine her zaman uymayabildiği
    için düzenler yatayda da test edilir (iç ekran 951×669, dış ekran 466×678 mantıksal). Sohbetteki köşe sayacı ve rutin

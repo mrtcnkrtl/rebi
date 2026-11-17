@@ -101,18 +101,36 @@ jobs:
 
       - name: SSH — pull + docker compose
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          # Mağaza abonelikleri (docs/MOBIL-ABONELIK.md). GitHub Secrets'ta tanımlıysa sunucudaki deploy/.env.api'ye
+          # yazılır; tanımsızsa dosyadaki mevcut değer olduğu gibi kalır.
+          REVENUECAT_SECRET_API_KEY: ${{ secrets.REVENUECAT_SECRET_API_KEY }}
+          REVENUECAT_WEBHOOK_AUTH: ${{ secrets.REVENUECAT_WEBHOOK_AUTH }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key_path: ${{ runner.temp }}/deploy_key
           command_timeout: 45m
           script_stop: true
+          envs: REVENUECAT_SECRET_API_KEY,REVENUECAT_WEBHOOK_AUTH
           script: |
             set -euo pipefail
             export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
             cd /opt/rebi
             git fetch origin main
             git reset --hard origin/main
+            # GitHub Secrets'tan gelen değerleri .env.api'ye yaz (boşsa dokunma). Değerler loga basılmaz.
+            set_env() {
+              local key="$1" value="$2" file=deploy/.env.api
+              if [ -z "$value" ]; then return 0; fi
+              touch "$file"
+              if [ -s "$file" ] && [ -n "$(tail -c1 "$file")" ]; then echo >> "$file"; fi
+              sed -i "/^${key}=/d" "$file"
+              printf '%s=%s\n' "$key" "$value" >> "$file"
+              echo "$key .env.api'ye yazıldı"
+            }
+            set_env REVENUECAT_SECRET_API_KEY "${REVENUECAT_SECRET_API_KEY:-}"
+            set_env REVENUECAT_WEBHOOK_AUTH "${REVENUECAT_WEBHOOK_AUTH:-}"
             compose=(docker compose -f docker-compose.yml -f docker-compose.https.yml)
             if ! "${compose[@]}" up -d --build; then
               "${compose[@]}" ps

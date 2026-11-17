@@ -66,6 +66,8 @@
 			<string>cstr6suwn9.skadnetwork</string>
 		</dict>
 	</array>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Rutinini hava durumu ve UV indeksine göre uyarlamak için konumun kullanılır.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Rutinini hava durumu ve UV indeksine göre uyarlamak için konumun kullanılır.</string>
 	<key>NSAppTransportSecurity</key>
