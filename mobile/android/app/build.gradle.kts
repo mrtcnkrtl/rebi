@@ -59,6 +59,8 @@ android {
             if (!hasReleaseKey && System.getenv("REBI_REQUIRE_RELEASE_SIGNING") == "true") {
                 throw GradleException("android/key.properties yok: release derlemesi imzalanamaz.")
             }
+            // R8 kuralları: AdMob'un getirdiği WorkManager açılışta çökmesin (proguard-rules.pro).
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = if (hasReleaseKey) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
     }
