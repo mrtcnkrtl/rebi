@@ -148,12 +148,15 @@ void main() {
   });
 
   group('reminderActions', () {
-    test('rutin blokları sabah / akşam ayrımını taşır', () {
-      final morning = reminderActions(reminder('routine_morning', '07:30', '09:30')).single;
-      expect(morning.type, 'routine_completed_block');
-      expect(morning.payload, {'morning': true});
-      final evening = reminderActions(reminder('routine_evening', '21:00', '23:00')).single;
-      expect(evening.payload, {'evening': true});
+    test('rutin blokları sabah / akşam ayrımını taşır; "Yaptım" ve "Bugün atla" ikisi de sunulur', () {
+      final morning = reminderActions(reminder('routine_morning', '07:30', '09:30'));
+      expect(morning.first.type, 'routine_completed_block');
+      expect(morning.first.payload, {'morning': true});
+      expect(morning.last.type, 'routine_skipped');
+      expect(morning.last.payload, {'block': 'morning'});
+      final evening = reminderActions(reminder('routine_evening', '21:00', '23:00'));
+      expect(evening.first.payload, {'evening': true});
+      expect(evening.last.payload, {'block': 'evening'});
     });
 
     test('makyaj, su ve beslenme olay yükleri sözleşmeye uyar', () {
@@ -162,17 +165,19 @@ void main() {
         {'used': true},
         {'used': false},
       ]);
-      final removal = reminderActions(reminder('makeup_removal', '21:00', '23:00')).single;
-      expect(removal.sheet, DaySheet.cleansing, reason: 'nasıl temizlendiği sorulur, yöntem varsayılmaz');
-      expect(removal.type, isNull);
+      final removal = reminderActions(reminder('makeup_removal', '21:00', '23:00'));
+      expect(removal.first.sheet, DaySheet.cleansing, reason: 'uygulamada nasıl temizlendiği sorulur');
+      expect(removal.first.payload, {'removed': true}, reason: 'bildirimde yalnızca temizlendi yazılır, yöntem varsayılmaz');
+      expect(removal.last.payload, {'method': 'none'}, reason: '"Temizlemedim" de bir cevap');
       expect(reminderActions(reminder('water_intake', '09:00', '21:00')).map((a) => a.payload), [
         {'ml': 250},
         {'ml': 500},
       ]);
       final nutrition = reminderActions(reminder('nutrition_log', '20:00', '20:30'));
-      expect(nutrition.first.sheet, DaySheet.nutrition, reason: '"yedim" ne yendiğini sorar');
+      expect(nutrition.first.sheet, DaySheet.nutrition, reason: 'uygulamada "yedim" ne yendiğini sorar');
+      expect(nutrition.first.payload, {'junk_food': true}, reason: 'bildirimde kısa cevap');
       expect(nutrition.last.payload, {'junk_food': false});
-      expect(reminderActions(reminder('spf_refresh', '11:00', '16:00')).single.type, 'spf_refresh');
+      expect([for (final a in reminderActions(reminder('spf_refresh', '11:00', '16:00'))) a.type], ['spf_refresh', 'spf_skipped']);
     });
 
     test('check-in ekrana gider, dudak balsamı eylemsizdir', () {
@@ -182,7 +187,7 @@ void main() {
     });
 
     test('kayıt eylemlerinin hepsi geçerli bir olay tipi taşır', () {
-      const known = {'routine_completed_block', 'makeup', 'water_intake', 'nutrition', 'spf_refresh'};
+      const known = {'routine_completed_block', 'routine_skipped', 'makeup', 'water_intake', 'nutrition', 'spf_refresh', 'spf_skipped'};
       for (final id in [
         'routine_morning',
         'routine_evening',
@@ -193,8 +198,7 @@ void main() {
         'nutrition_log',
       ]) {
         for (final a in reminderActions(reminder(id, '00:00', '23:59'))) {
-          if (a.sheet != null) continue;
-          expect(known, contains(a.type), reason: id);
+          expect(known, contains(a.type), reason: '$id: ${a.labelKey} (sayfa açan cevap da bildirimde kayıt yazar)');
         }
       }
     });

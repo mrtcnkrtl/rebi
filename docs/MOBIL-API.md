@@ -232,15 +232,30 @@ Olay tipleri ve yükleri:
 | `product_finished` | `{ "product": "SPF 50", "step_order": 40 }` | "ürün bitti" butonu; günde en fazla 20 kayıt; ürün Rafım'a girer |
 | `product_restocked` | `{ "product": "SPF 50", "step_order": 40 }` | "Aldım": ürün Rafım'dan çıkar |
 | `routine_completed_block` | `{ "morning": true }` / `{ "evening": true }` | "yaptım" butonu. `false` bloğu yeniden açar (son olay geçerli) |
+| `routine_skipped` | `{ "block": "evening" }` | bildirimdeki **"Bugün atla"**: o bloğun o günkü hatırlatması susar (`progress.routine_morning_skipped` / `routine_evening_skipped`); rutin yapılmış sayılmaz, sonradan "yaptım" yine geçerlidir |
 | `routine_step` | `{ "done": true, "block": "morning", "step_order": 20 }` | adım adım işaretleme; `block`: `morning` / `evening`. Aynı adım için son olay geçerlidir, `done: false` işareti kaldırır. `progress.routine_steps` işaretli adımları döndürür |
 | `spf_refresh` | `{}` | güneş kremi tazelendi |
+| `spf_skipped` | `{}` | bildirimdeki **"Bugün gerek yok"**: o günün tazeleme hatırlatmaları susar (`progress.spf_skipped`) |
 | `stress` / `sleep` | `{ "value": 3 }` / `{ "hours": 7 }` | |
 | `location` | `{ "lat": 41.0, "lon": 29.0 }` | sunucu hava durumu anlık görüntüsü ekler; **konum izni yoksa 403** |
 | `photo_meta` | serbest | fotoğraf üst verisi |
 | `checkin_feedback` | serbest | |
 
 Bir yöntemle (`method`) gelen makyaj kaydı, makyajın yapıldığı **ve** temizlendiği
-anlamına gelir (`none` hariç).
+anlamına gelir (`none` hariç). `{ "method": "none" }` ("Temizlemedim") da bir cevaptır: temizleme hatırlatması susar.
+
+Bildirim cevapları: her soruda olası her cevap vardır, kullanıcı tek cevaba zorlanmaz; her cevap o günün aynı
+hatırlatmasını susturur (su hedefe, güneş kremi günlük sınıra kadar sürer). Rutin bildirimindeki **"30 dk sonra"**
+kayıt yazmaz; telefonda bildirimi erteler (`/push/respond` bunu kabul etmez, `/push/actions` etiketini listeler).
+
+| Hatırlatıcı | Düğmeler |
+| --- | --- |
+| `routine_morning` / `routine_evening` | Yaptım · 30 dk sonra · Bugün atla |
+| `makeup_log` | Evet, yaptım · Hayır |
+| `makeup_removal` | Temizledim · Temizlemedim |
+| `water_intake` | İçtim · İçmedim |
+| `spf_refresh` | Yaptım · Bugün gerek yok |
+| `nutrition_log` | Evet, yedim · Hayır |
 
 ### `GET /daily_tracking/today?user_id=...&log_date=`
 

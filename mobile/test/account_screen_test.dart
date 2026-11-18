@@ -97,7 +97,7 @@ void main() {
       await settle(tester, 3);
       expect(h.backend.calls('/account/delete'), isEmpty);
 
-      await tester.enterText(find.widgetWithText(TextField, accountDeletePhrase), 'YANLIS');
+      await tester.enterText(find.widgetWithText(TextField, typedDeletePhrase), 'YANLIS');
       await settle(tester, 2);
       await tester.tap(find.text(tr('mobileAccount.delete.button')));
       await settle(tester, 3);
@@ -109,7 +109,7 @@ void main() {
       final h = await pumpApp(tester, location: '/dashboard/account', size: const Size(390, 4200), notifier: notifier);
       await reveal(tester, find.text(tr('mobileAccount.delete.button')));
 
-      await tester.enterText(find.widgetWithText(TextField, accountDeletePhrase), accountDeletePhrase);
+      await tester.enterText(find.widgetWithText(TextField, typedDeletePhrase), accountDeletePhrase);
       await settle(tester, 2);
       final cancelsBefore = notifier.cancelCalls;
       await tester.tap(find.text(tr('mobileAccount.delete.button')));
@@ -122,12 +122,51 @@ void main() {
       expect(h.router.routeInformationProvider.value.uri.path, '/');
     });
 
+    testWidgets('Türkçe klavyenin büyük harfte yazdığı "HESABİMİ SİL" (noktalı İ) düğmeyi açar ve hesap silinir', (tester) async {
+      final h = await pumpApp(tester, location: '/dashboard/account', size: const Size(390, 4200));
+      await reveal(tester, find.text(tr('mobileAccount.delete.button')));
+
+      await tester.enterText(find.widgetWithText(TextField, typedDeletePhrase), 'HESABİMİ SİL');
+      await settle(tester, 2);
+      await tester.tap(find.text(tr('mobileAccount.delete.button')));
+      await settle(tester, 12);
+
+      expect(h.backend.bodyOf('/account/delete')['confirm_text'], accountDeletePhrase, reason: 'sunucuya hep sabit metin gider');
+      expect(h.router.routeInformationProvider.value.uri.path, '/');
+    });
+
+    testWidgets('mağaza abonesine: hesabı silmek aboneliği iptal etmez uyarısı ve "Aboneliği yönet"', (tester) async {
+      final user = fakeUser(appMetadata: {
+        'rebi_store': {'tier': 'pro', 'expires_at_ms': DateTime.now().add(const Duration(days: 10)).millisecondsSinceEpoch},
+      });
+      await pumpApp(tester, location: '/dashboard/account', size: const Size(390, 4200), user: user);
+      await reveal(tester, find.text(tr('mobileAccount.delete.button')));
+
+      expect(find.text(tr('mobileAccount.delete.subscriptionTitle', {'tier': 'Pro'})), findsOneWidget);
+      expect(find.text(tr('mobileAccount.delete.subscriptionBodyAndroid')), findsOneWidget);
+      expect(find.text(tr('mobileSubscribe.store.manage')), findsOneWidget);
+    });
+
+    for (final (name, meta) in [
+      ('aboneliği olmayan', <String, dynamic>{}),
+      ('aboneliğinin süresi dolmuş', <String, dynamic>{
+        'rebi_store': {'tier': 'pro', 'expires_at_ms': DateTime(2020).millisecondsSinceEpoch},
+      }),
+    ]) {
+      testWidgets('$name hesapta abonelik uyarısı yok', (tester) async {
+        await pumpApp(tester, location: '/dashboard/account', size: const Size(390, 4200), user: fakeUser(appMetadata: meta));
+        await reveal(tester, find.text(tr('mobileAccount.delete.button')));
+        expect(find.text(tr('mobileAccount.delete.subscriptionBodyAndroid')), findsNothing);
+        expect(find.text(tr('mobileSubscribe.store.manage')), findsNothing);
+      });
+    }
+
     testWidgets('sunucu reddederse ekranda kalır ve nedeni gösterir', (tester) async {
       final backend = FakeBackend()..accountDeleteStatus = 500;
       final h = await pumpApp(tester, location: '/dashboard/account', size: const Size(390, 4200), backend: backend);
       await reveal(tester, find.text(tr('mobileAccount.delete.button')));
 
-      await tester.enterText(find.widgetWithText(TextField, accountDeletePhrase), accountDeletePhrase);
+      await tester.enterText(find.widgetWithText(TextField, typedDeletePhrase), accountDeletePhrase);
       await settle(tester, 2);
       await tester.tap(find.text(tr('mobileAccount.delete.button')));
       await settle(tester, 12);

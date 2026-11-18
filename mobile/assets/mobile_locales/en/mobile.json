@@ -44,7 +44,11 @@
       "waterMore": "More…",
       "change": "Change",
       "edit": "Edit",
-      "openShelf": "Open my shelf"
+      "openShelf": "Open my shelf",
+      "skip": "Skip today",
+      "later": "In 30 min",
+      "notNeeded": "Not needed today",
+      "notRemoved": "Didn't remove"
     },
     "advice": {
       "title": "For today's weather",
@@ -833,11 +837,14 @@
     },
     "delete": {
       "title": "Permanently delete account",
-      "body": "Your profile, routines, daily records and analysis data are deleted from the database. Your skin photos are removed from storage. This can't be undone; if Rebi Plus or other membership details remain in the billing system, you may need to cancel them there too.",
+      "body": "Your profile, routines, daily logs and analysis data are deleted from the database. Your skin photos are removed from storage. This can't be undone.",
       "confirm": "To confirm, type exactly: ",
       "phraseMismatch": "To delete permanently, type exactly {{phrase}} in the box.",
       "requestFailed": "Request failed",
       "failed": "Couldn't delete the account.",
+      "subscriptionTitle": "You have an active {{tier}} subscription",
+      "subscriptionBodyAndroid": "Deleting your account doesn't cancel your subscription; Google Play will keep charging you. Cancel it first in Google Play > Payments & subscriptions.",
+      "subscriptionBodyIos": "Deleting your account doesn't cancel your subscription; the App Store will keep charging you. Cancel it first in Settings > Apple ID > Subscriptions.",
       "button": "Delete my account permanently"
     },
     "photos": {
@@ -1020,6 +1027,23 @@
     }
   },
   "mobileSubscribe": {
+    "premium": {
+      "tagline": "All of Rebi, for your skin.",
+      "cardLabel": "Rebi AI",
+      "cardValue": "Up to 120 questions a day",
+      "memberLabel": "Your membership",
+      "compareTitle": "What changes with Plus",
+      "free": "Free",
+      "limited": "Limited",
+      "chatPlus": "Up to 120 a day",
+      "included": "Included",
+      "notIncluded": "Not included",
+      "choose": "Choose your plan",
+      "save": "Save {{pct}}%",
+      "trustCancel": "Cancel anytime",
+      "trustAndroid": "Secure payment via Google Play",
+      "trustIos": "Secure payment via App Store"
+    },
     "subtitle": "Up to 120 Rebi AI questions a day, premium themes and no ads",
     "unavailable": "Rebi Plus can't be purchased in the app right now. It will show up here once it's active on your account.",
     "active": "Plus is active",
@@ -1050,6 +1074,7 @@
       "restored": "Your subscription has been restored.",
       "nothingToRestore": "No subscription to restore was found for this account.",
       "success": "Thank you! Your subscription is active.",
+      "activating": "Purchase complete. Your subscription will activate on its own in a few minutes.",
       "pending": "Your payment is pending. Your subscription will start automatically once it is approved.",
       "failed": "The purchase could not be completed. Please try again.",
       "loading": "Loading plans…",
@@ -1528,13 +1553,16 @@
     "percent": "{{n}}%"
   },
   "mobileAiSharing": {
+    "eyebrow": "Privacy permission",
     "title": "Sharing data with AI",
     "intro": "To build your routine, interpret your daily check-ins and answer in chat, Rebi sends the information below to a third-party AI service. Nothing is sent until you allow it.",
     "whatTitle": "Data that is sent",
     "items": "Profile details: your name, age and gender\nYour skin type, skin concerns and analysis answers\nHealth and lifestyle answers: pregnancy, cycle phase, smoking, alcohol, sleep, stress and water intake\nYour daily check-ins and the products in your routine\nMessages you write in chat\nIf location permission is on, weather and UV information for your area",
     "whoTitle": "Who receives it",
     "who": "Google LLC (Gemini API). Data is sent over an encrypted connection and used only to generate responses for you. Under the paid Gemini API terms, Google does not use this data to train its models, and it applies protection at least equal to ours.",
+    "notSentTitle": "Never sent",
     "notSent": "Your skin photos, email address and password are never sent to the AI.",
+    "controlTitle": "You stay in control",
     "control": "You can withdraw this permission at any time in Account > Privacy permissions. Without it, routine creation, check-in insights and chat won't work; you can keep using the other features.",
     "privacyLink": "Privacy policy (KVKK Privacy Notice)",
     "allow": "Allow and continue",

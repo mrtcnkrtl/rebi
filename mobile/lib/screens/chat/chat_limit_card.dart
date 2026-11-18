@@ -5,6 +5,7 @@ import '../../core/i18n.dart';
 import '../../state/theme_controller.dart';
 import '../../ui/tw.dart';
 import '../../ui/brand/palette.dart';
+import '../../ui/brand/plus_style.dart';
 import '../../ui/widgets/common.dart';
 
 /// Sohbet hakkı doldu: sohbetin altında sakin bir bilgi kartı (eskiden ekranı karartan koyu panel).
@@ -62,19 +63,22 @@ class ChatLimitCard extends StatelessWidget {
     return RCard(
       padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
       radius: 20,
-      borderColor: theme.primaryLight,
+      borderColor: offer ? PlusPalette.line : theme.primaryLight,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(color: theme.primary.withValues(alpha: .12), borderRadius: BorderRadius.circular(12)),
-                child: Icon(offer ? LucideIcons.crown : LucideIcons.messageCircle, size: 18, color: theme.fg),
-              ),
+              if (offer)
+                const PlusMark(size: 36)
+              else
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(color: theme.primary.withValues(alpha: .12), borderRadius: BorderRadius.circular(12)),
+                  child: Icon(LucideIcons.messageCircle, size: 18, color: theme.fg),
+                ),
               const SizedBox(width: 12),
               Expanded(
                 child: Padding(
@@ -84,7 +88,7 @@ class ChatLimitCard extends StatelessWidget {
                     children: [
                       Text(
                         offer ? 'REBI PLUS' : i18n.t('mobileChat.limit.label'),
-                        style: tx(11, w: 7, c: Tw.gray500, ls: 1.2),
+                        style: tx(11, w: 7, c: offer ? PlusPalette.text : Tw.gray500, ls: 1.2),
                       ),
                       const SizedBox(height: 2),
                       Text(title, style: heading(20, h: 1.2)),
@@ -115,14 +119,6 @@ class ChatLimitCard extends StatelessWidget {
   }
 
   Widget _actions(I18n i18n) {
-    Widget primary(String label, IconData icon, VoidCallback onTap) => PrimaryButton(
-          onPressed: onTap,
-          color: theme.primary,
-          icon: icon,
-          label: label,
-          minHeight: 46,
-          fontSize: 14,
-        );
     Widget secondary(String label, VoidCallback onTap, {IconData? icon}) => SecondaryButton(
           onPressed: onTap,
           minHeight: 46,
@@ -135,7 +131,12 @@ class ChatLimitCard extends StatelessWidget {
 
     if (offer) {
       return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        primary(i18n.t(plan ? 'mobileChat.limit.upgrade' : 'mobileChat.limit.plusOpen'), LucideIcons.crown, onPlus),
+        PlusButton(
+          onPressed: onPlus,
+          label: i18n.t(plan ? 'mobileChat.limit.upgrade' : 'mobileChat.limit.plusOpen'),
+          height: 48,
+          shimmer: false,
+        ),
         const SizedBox(height: 8),
         secondary(i18n.t('mobileChat.limit.notNow'), onClose),
       ]);

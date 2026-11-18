@@ -301,6 +301,37 @@ void main() {
       expect(ids(planWith(all, progress: {'makeup': {'logged': true, 'used': false}})), isNot(contains('makeup_removal')));
     });
 
+    test('"Bugün atla" yalnızca o bloğun hatırlatmasını düşürür; atlamak yapmak sayılmaz', () {
+      final skipped = planWith(all, progress: {'routine_evening_skipped': true});
+      expect(ids(skipped), isNot(contains('routine_evening')));
+      expect(ids(skipped), contains('routine_morning'));
+      expect(skipped.progress.eveningDone, isFalse);
+      expect(ids(planWith(all, progress: {'routine_morning_skipped': true})), isNot(contains('routine_morning')));
+    });
+
+    test('güneş kremine "Bugün gerek yok" denince tazeleme hatırlatması düşer', () {
+      expect(ids(planWith(all, progress: {'spf_skipped': true})), isNot(contains('spf_refresh')));
+    });
+
+    test('"Temizlemedim" de bir cevaptır: temizleme hatırlatması gelmez', () {
+      final notCleaned = {'makeup': {'logged': true, 'used': true, 'removed': false, 'removal_method': 'none'}};
+      expect(ids(planWith(all, progress: notCleaned)), isNot(contains('makeup_removal')));
+      final fromServer = [...all, r('makeup_removal', '21:00', '23:00')];
+      expect(ids(planWith(fromServer, progress: notCleaned)), isNot(contains('makeup_removal')),
+          reason: 'sunucu eski kuralla getirse de cihazda cevap geçerli');
+    });
+
+    test('henüz sunucuya gitmemiş cevaplar da hatırlatmayı hemen düşürür', () {
+      final base = planWith([...all, r('makeup_removal', '21:00', '23:00')], progress: {'makeup': {'logged': true, 'used': true}});
+      TodayPlan after(String type, Map<String, dynamic> payload) => base.withProgress(base.progress.withEvent(type, payload));
+      expect(ids(after('routine_skipped', {'block': 'evening'})), isNot(contains('routine_evening')));
+      expect(ids(after('routine_skipped', {'block': 'noon'})), contains('routine_evening'), reason: 'bilinmeyen blok yok sayılır');
+      expect(ids(after('spf_skipped', {})), isNot(contains('spf_refresh')));
+      expect(ids(after('makeup', {'method': 'none'})), isNot(contains('makeup_removal')));
+      expect(ids(after('makeup', {'removed': true})), isNot(contains('makeup_removal')));
+      expect(ids(after('nutrition', {'junk_food': true})), isNot(contains('nutrition_log')));
+    });
+
     test('makyaj kategorisi kapalıysa temizleme hatırlatıcısı eklenmez; sunucunun getirdiği tekrar eklenmez', () {
       final off = {'enabled': {'makeup': false}};
       expect(ids(planWith(all, progress: {'makeup': {'logged': true, 'used': true}}, settings: off)), isNot(contains('makeup_removal')));

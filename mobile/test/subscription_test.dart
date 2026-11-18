@@ -78,6 +78,26 @@ void main() {
       expect(classifyPackage('premium', 'rebi_premium'), isNull, reason: 'pro ≠ premium; bilinmeyen paket atlanır');
     });
 
+    test('dönem sonunda oturum tazelenir: bitişten 90 sn sonra, sonra tolerans dolmadan bir kez daha', () {
+      final exp = DateTime(2026, 12, 1, 9);
+      final user = fakeUser(appMetadata: storeMeta('pro', expires: exp));
+      expect(storeExpiry(user), exp);
+      expect(nextEntitlementCheck(user, exp.subtract(const Duration(days: 3))), exp.add(const Duration(seconds: 90)));
+      expect(nextEntitlementCheck(user, exp.add(const Duration(minutes: 2))), exp.add(const Duration(minutes: 8)),
+          reason: 'webhook gecikti: tolerans (10 dk) bitmeden yeniden bak');
+      expect(nextEntitlementCheck(user, exp.add(const Duration(minutes: 9))), isNull, reason: 'süre çoktan doldu');
+      // Yenilenen süre token'a gelince bir sonraki dönemin sonuna kurulur.
+      final renewed = fakeUser(appMetadata: storeMeta('pro', expires: exp.add(const Duration(days: 30))));
+      expect(nextEntitlementCheck(renewed, exp.add(const Duration(minutes: 2))), exp.add(const Duration(days: 30, seconds: 90)));
+    });
+
+    test('süresiz ya da mağaza aboneliği olmayan hesapta bakılacak an yok', () {
+      expect(nextEntitlementCheck(fakeUser(), DateTime.now()), isNull);
+      expect(nextEntitlementCheck(fakeUser(appMetadata: {'rebi_store': {'tier': 'max', 'expires_at_ms': null}}), DateTime.now()), isNull);
+      expect(nextEntitlementCheck(fakeUser(appMetadata: {'subscription_tier': 'plus'}), DateTime.now()), isNull);
+      expect(nextEntitlementCheck(null, DateTime.now()), isNull);
+    });
+
     test('mağaza anahtarı yoksa satın alma kapalı; anahtar varsa Plus girişi görünür', () {
       expect(storePurchasesEnabled, isFalse);
       expect(plusPurchasable, isFalse);

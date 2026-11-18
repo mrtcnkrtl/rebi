@@ -22,7 +22,8 @@ class StorePlan {
   String get productId => package.storeProduct.identifier;
 }
 
-enum PurchaseOutcome { success, cancelled, pending, failed }
+/// [activating]: mağaza ödemeyi aldı ama sunucu hakkı henüz hesaba yazmadı (webhook yolda); birazdan açılır.
+enum PurchaseOutcome { success, activating, cancelled, pending, failed }
 
 /// RevenueCat paket kimliği → (kademe, yıllık mı). Panelde paketler `plus_monthly`, `pro_yearly`… diye adlandırılır;
 /// adlandırma tutmazsa ürün kimliğinden (`rebi_pro_yearly`) çıkarılır.
@@ -76,6 +77,9 @@ class StoreController extends ChangeNotifier {
       _loggedInAs = _auth.user?.id;
       // Yenileme/iptal uygulama açıkken gelirse sunucu webhook'la zaten günceller; JWT'yi tazelemek yeter.
       Purchases.addCustomerInfoUpdateListener((_) => _scheduleSessionRefresh());
+      // Dönem sonunda oturumu tazele (mağaza yenilediğinde yeni süre token'a gelsin).
+      _auth.addListener(_armExpiryCheck);
+      _armExpiryCheck();
       await loadPlans();
     } catch (e, st) {
       CrashReporting.report(e, st, fatal: false, library: 'revenuecat configure');
@@ -133,9 +137,12 @@ class StoreController extends ChangeNotifier {
     _notify();
     try {
       final change = await _androidUpgradeFrom(plan);
-      await Purchases.purchase(PurchaseParams.package(plan.package, productChangeInfo: change));
+      final result = await Purchases.purchase(PurchaseParams.package(plan.package, productChangeInfo: change));
       await _syncWithServer();
-      return PurchaseOutcome.success;
+      if (activeStoreTier(_auth.user) != null) return PurchaseOutcome.success;
+      // Mağaza tamam, sunucu henüz yazmadı: webhook birazdan yazar; oturumu birkaç kez tazeleyerek bekle.
+      _retryRefresh();
+      return result.customerInfo.entitlements.active.isNotEmpty ? PurchaseOutcome.activating : PurchaseOutcome.pending;
     } on PlatformException catch (e) {
       final code = PurchasesErrorHelper.getErrorCode(e);
       if (code == PurchasesErrorCode.purchaseCancelledError) return PurchaseOutcome.cancelled;
@@ -174,7 +181,9 @@ class StoreController extends ChangeNotifier {
     try {
       final info = await Purchases.restorePurchases();
       await _syncWithServer();
-      return info.entitlements.active.isNotEmpty;
+      final found = info.entitlements.active.isNotEmpty;
+      if (found && activeStoreTier(_auth.user) == null) _retryRefresh();
+      return found;
     } catch (e, st) {
       CrashReporting.report(e, st, fatal: false, library: 'revenuecat restore');
       return false;
@@ -198,6 +207,35 @@ class StoreController extends ChangeNotifier {
   }
 
   Timer? _refreshTimer;
+  Timer? _expiryTimer;
+  final List<Timer> _retryTimers = [];
+
+  /// Dönem bitince oturumu tazeler ([nextEntitlementCheck]); yenilenen süre token'a gelince yeniden kurulur.
+  void _armExpiryCheck() {
+    _expiryTimer?.cancel();
+    final at = nextEntitlementCheck(_auth.user, DateTime.now());
+    if (at == null) return;
+    _expiryTimer = Timer(at.difference(DateTime.now()), () async {
+      await _refreshSession();
+      // Webhook gecikmişse ve token değişmediyse dinleyici tetiklenmez: bir sonraki bakışı elle kur.
+      _armExpiryCheck();
+    });
+  }
+
+  /// Ödeme sonrası hak sunucuda henüz görünmüyorsa oturumu artan aralıklarla birkaç kez tazeler.
+  void _retryRefresh() {
+    for (final t in _retryTimers) {
+      t.cancel();
+    }
+    _retryTimers
+      ..clear()
+      ..addAll([
+        for (final s in const [15, 45, 120])
+          Timer(Duration(seconds: s), () {
+            if (activeStoreTier(_auth.user) == null) unawaited(_syncWithServer());
+          }),
+      ]);
+  }
 
   void _scheduleSessionRefresh() {
     _refreshTimer?.cancel();
@@ -219,7 +257,12 @@ class StoreController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _refreshTimer?.cancel();
+    _expiryTimer?.cancel();
+    for (final t in _retryTimers) {
+      t.cancel();
+    }
     _auth.removeListener(_onAuth);
+    _auth.removeListener(_armExpiryCheck);
     super.dispose();
   }
 }

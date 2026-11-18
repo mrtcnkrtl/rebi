@@ -106,7 +106,11 @@ def test_actions_catalog_lists_categories(client):
         {"id": "waterYes", "label": "İçtim"},
         {"id": "waterNo", "label": "İçmedim"},
     ]
-    assert "makeup_removal" not in by_id
+    # Her soruda olası her cevap vardır; yalnızca uygulamada çalışan erteleme düğmesi de listelenir (etiketi için).
+    assert [a["id"] for a in by_id["makeup_removal"]["actions"]] == ["removed", "notRemoved"]
+    assert [a["id"] for a in by_id["nutrition_log"]["actions"]] == ["junkYes", "junkNo"]
+    assert [a["id"] for a in by_id["routine_evening"]["actions"]] == ["done", "skip", "later"]
+    assert [a["id"] for a in by_id["spf_refresh"]["actions"]] == ["done", "notNeeded"]
     # Yük istemciye gitmez; cevabı sunucu çözer.
     assert "payload" not in by_id["water_intake"]["actions"][0]
 
@@ -244,8 +248,8 @@ def test_respond_rejects_unknown_action(monkeypatch, client, headers):
 
     assert _respond(client, headers, reminder_id="water_intake", action_id="water9999").status_code == 422
     assert _respond(client, headers, reminder_id="daily_checkin", action_id="done").status_code == 422
-    # Uygulamada seçim ekranı açan cevaplar sunucuda düğme değildir.
-    assert _respond(client, headers, reminder_id="nutrition_log", action_id="junkYes").status_code == 422
+    # Erteleme ("30 dk sonra") kayıt yazmaz: telefonda çalışır, sunucuya cevap olarak gelmez.
+    assert _respond(client, headers, reminder_id="routine_evening", action_id="later").status_code == 422
     assert _respond(
         client, headers, reminder_id="water_intake", action_id="water_intake:done"
     ).status_code == 422

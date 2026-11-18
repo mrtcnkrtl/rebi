@@ -17,6 +17,9 @@ class DayProgress {
     this.nutrition = const {},
     this.morningDone = false,
     this.eveningDone = false,
+    this.morningSkipped = false,
+    this.eveningSkipped = false,
+    this.spfSkipped = false,
     this.stepsDone = const {},
     this.spfRefreshes = 0,
     this.waterSkips = 0,
@@ -38,6 +41,9 @@ class DayProgress {
       nutrition: j['nutrition'] is Map ? (j['nutrition'] as Map).cast<String, dynamic>() : const {},
       morningDone: j['routine_morning_done'] == true,
       eveningDone: j['routine_evening_done'] == true,
+      morningSkipped: j['routine_morning_skipped'] == true,
+      eveningSkipped: j['routine_evening_skipped'] == true,
+      spfSkipped: j['spf_skipped'] == true,
       stepsDone: {
         for (final block in routineBlocks)
           if (steps[block] is List) block: {for (final v in steps[block] as List) if (v is num) v.toInt()},
@@ -62,6 +68,13 @@ class DayProgress {
   final Map<String, dynamic> nutrition;
   final bool morningDone;
   final bool eveningDone;
+
+  /// Bildirimde "Bugün atla" denilen bloklar: hatırlatma susar, rutin yapılmamış sayılır.
+  final bool morningSkipped;
+  final bool eveningSkipped;
+
+  /// Güneş kremi tazelemeye "Bugün gerek yok" denildi.
+  final bool spfSkipped;
 
   /// İşaretli rutin adımları: blok (`morning` / `evening`) → `step_order` değerleri.
   final Map<String, Set<int>> stepsDone;
@@ -94,6 +107,9 @@ class DayProgress {
     Map<String, dynamic>? nutrition,
     bool? morningDone,
     bool? eveningDone,
+    bool? morningSkipped,
+    bool? eveningSkipped,
+    bool? spfSkipped,
     Map<String, Set<int>>? stepsDone,
     int? spfRefreshes,
     int? waterSkips,
@@ -109,6 +125,9 @@ class DayProgress {
         nutrition: nutrition ?? this.nutrition,
         morningDone: morningDone ?? this.morningDone,
         eveningDone: eveningDone ?? this.eveningDone,
+        morningSkipped: morningSkipped ?? this.morningSkipped,
+        eveningSkipped: eveningSkipped ?? this.eveningSkipped,
+        spfSkipped: spfSkipped ?? this.spfSkipped,
         stepsDone: stepsDone ?? this.stepsDone,
         spfRefreshes: spfRefreshes ?? this.spfRefreshes,
         waterSkips: waterSkips ?? this.waterSkips,
@@ -134,6 +153,13 @@ class DayProgress {
           morningDone: payload.containsKey('morning') ? payload['morning'] == true : morningDone,
           eveningDone: payload.containsKey('evening') ? payload['evening'] == true : eveningDone,
         );
+      case 'routine_skipped':
+        final block = '${payload['block'] ?? ''}'.trim().toLowerCase();
+        if (block == 'morning') return copyWith(morningSkipped: true);
+        if (block == 'evening') return copyWith(eveningSkipped: true);
+        return this;
+      case 'spf_skipped':
+        return copyWith(spfSkipped: true);
       case 'routine_step':
         final block = '${payload['block'] ?? ''}'.trim().toLowerCase();
         final step = payload['step_order'];
@@ -256,7 +282,7 @@ String? nextReminderSlot(Reminder r, DateTime now) {
 /// Hatırlatıcıya dokunulunca yapılacak iş: bir gün içi olay kaydı, bir ekrana gitme ya da
 /// bir seçim ekranı açma.
 class ReminderAction {
-  const ReminderAction(this.labelKey, {this.type, this.payload = const {}, this.route, this.sheet});
+  const ReminderAction(this.labelKey, {this.type, this.payload = const {}, this.route, this.sheet, this.snoozeMinutes});
 
   /// `mobileToday.actions.*` çeviri anahtarı.
   final String labelKey;
@@ -264,9 +290,16 @@ class ReminderAction {
   final Map<String, dynamic> payload;
   final String? route;
 
-  /// Bir seçim ekranı açar (ör. makyaj nasıl temizlendi); kayıt oradan gönderilir.
+  /// Bir seçim ekranı açar (ör. makyaj nasıl temizlendi); kayıt oradan gönderilir. Uygulamada [type]dan önce gelir:
+  /// bildirimde aynı düğme kısa cevabı ([type] + [payload]) yazar, ayrıntı sonra uygulamadan eklenir.
   final DaySheet? sheet;
+
+  /// Doluysa kayıt yazmaz; bildirimi bu kadar dakika sonra yeniden gösterir ("30 dk sonra"). Yalnızca bildirimde.
+  final int? snoozeMinutes;
 }
+
+/// "30 dk sonra" (bildirimde): rutin hatırlatmasını erteler; hiçbir şey kaydetmez.
+const snoozeAction = ReminderAction('later', snoozeMinutes: 30);
 
 /// "İçtim" (bildirimde): bir bardak = 250 ml su kaydı. Uygulama içindeki "+250 ml" ile aynı olayı yazar.
 const waterDrankAction = ReminderAction('waterYes', type: 'water_intake', payload: {'ml': 250});
@@ -280,22 +313,30 @@ const waterNotDrunkAction = ReminderAction('waterNo', type: 'water_skipped');
 List<ReminderAction> reminderActions(Reminder r) => switch (r.id) {
       'routine_morning' => const [
           ReminderAction('done', type: 'routine_completed_block', payload: {'morning': true}),
+          ReminderAction('skip', type: 'routine_skipped', payload: {'block': 'morning'}),
         ],
       'routine_evening' => const [
           ReminderAction('done', type: 'routine_completed_block', payload: {'evening': true}),
+          ReminderAction('skip', type: 'routine_skipped', payload: {'block': 'evening'}),
         ],
       'makeup_log' => const [
           ReminderAction('yes', type: 'makeup', payload: {'used': true}),
           ReminderAction('no', type: 'makeup', payload: {'used': false}),
         ],
-      'makeup_removal' => const [ReminderAction('removed', sheet: DaySheet.cleansing)],
+      'makeup_removal' => const [
+          ReminderAction('removed', type: 'makeup', payload: {'removed': true}, sheet: DaySheet.cleansing),
+          ReminderAction('notRemoved', type: 'makeup', payload: {'method': 'none'}),
+        ],
       'water_intake' => const [
           ReminderAction('water250', type: 'water_intake', payload: {'ml': 250}),
           ReminderAction('water500', type: 'water_intake', payload: {'ml': 500}),
         ],
-      'spf_refresh' => const [ReminderAction('done', type: 'spf_refresh')],
+      'spf_refresh' => const [
+          ReminderAction('done', type: 'spf_refresh'),
+          ReminderAction('notNeeded', type: 'spf_skipped'),
+        ],
       'nutrition_log' => const [
-          ReminderAction('junkYes', sheet: DaySheet.nutrition),
+          ReminderAction('junkYes', type: 'nutrition', payload: {'junk_food': true}, sheet: DaySheet.nutrition),
           ReminderAction('junkNo', type: 'nutrition', payload: {'junk_food': false}),
         ],
       'daily_checkin' => const [ReminderAction('open', route: '/dashboard/checkin')],

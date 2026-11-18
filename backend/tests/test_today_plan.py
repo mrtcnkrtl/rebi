@@ -109,6 +109,56 @@ def test_removed_makeup_needs_no_cleansing_reminder():
     assert "makeup_removal" not in _ids(build_reminders({}, agg))
 
 
+def test_not_cleaning_makeup_is_an_answer_and_silences_the_reminder():
+    """Bildirimde ya da Bugün'de "Temizlemedim" denince akşam temizlik hatırlatması bir daha gelmez."""
+    agg = _aggregate_daily_events([_event("makeup", {"used": True}), _event("makeup", {"method": "none"})])
+
+    assert agg["makeup"] == {"logged": True, "used": True, "removed": False, "removal_method": "none"}
+    assert "makeup_removal" not in _ids(build_reminders({}, agg))
+
+
+def test_skipping_a_routine_block_silences_only_that_block():
+    agg = _aggregate_daily_events([_event("routine_skipped", {"block": "evening"})])
+
+    assert agg["routine_evening_skipped"] is True
+    assert agg["routine_morning_skipped"] is False
+    assert agg["routine_evening_done"] is False, "atlamak yapmak sayılmaz"
+    ids = _ids(build_reminders({}, agg))
+    assert "routine_evening" not in ids
+    assert "routine_morning" in ids
+
+
+def test_routine_done_after_skip_still_counts_as_done():
+    agg = _aggregate_daily_events([
+        _event("routine_skipped", {"block": "morning"}),
+        _event("routine_completed_block", {"morning": True}),
+    ])
+
+    assert agg["routine_morning_done"] is True
+
+
+def test_unknown_skip_block_is_ignored():
+    agg = _aggregate_daily_events([_event("routine_skipped", {"block": "noon"}), _event("routine_skipped", {})])
+
+    assert agg["routine_morning_skipped"] is False and agg["routine_evening_skipped"] is False
+
+
+def test_spf_not_needed_today_silences_refresh_reminders():
+    high_uv = {"uv_index": 8, "humidity": 50, "temperature": 20}
+    agg = _aggregate_daily_events([_event("spf_skipped", {})])
+
+    assert agg["spf_skipped"] is True
+    assert agg["spf_refreshes"] == 0
+    assert "spf_refresh" not in _ids(build_reminders(high_uv, agg))
+
+
+def test_answering_yes_to_junk_food_silences_the_nutrition_question():
+    agg = _aggregate_daily_events([_event("nutrition", {"junk_food": True})])
+
+    assert agg["nutrition"] == {"junk_food": True}
+    assert "nutrition_log" not in _ids(build_reminders({}, agg))
+
+
 def test_spf_refresh_only_when_uv_is_high_and_not_done():
     high_uv = {"uv_index": 7, "humidity": 50, "temperature": 20}
 

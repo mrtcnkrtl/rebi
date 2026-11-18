@@ -54,10 +54,12 @@ void main() {
     expect(SilenceBudget.fromPlan('u1', plan(), now).after('spf_refresh', done).silenced, isEmpty, reason: 'ilk tazeleme: ikincisi kalır');
   });
 
-  test('diğer düğmeler hiçbir şeyi susturmaz', () {
+  test('soruyu kapatan cevaplar yalnızca kendi hatırlatıcısını susturur; özeti değiştirmez', () {
     final b = SilenceBudget.fromPlan('u1', plan(), now);
     for (final (id, action) in const [('routine_morning', 'done'), ('makeup_log', 'yes'), ('nutrition_log', 'junkNo')]) {
-      expect(b.after(id, resolveNotificationAction(id, '$id:$action')!).silenced, isEmpty, reason: id);
+      final r = b.after(id, resolveNotificationAction(id, '$id:$action')!);
+      expect(r.silenced, {id}, reason: id);
+      expect((r.budget.waterRemainingMl, r.budget.spfRemaining), (b.waterRemainingMl, b.spfRemaining), reason: id);
     }
   });
 
@@ -87,7 +89,16 @@ void main() {
       expect(SilenceBudget.read(userId: 'u1', day: '2026-10-10')!.waterRemainingMl, 0);
     });
 
-    test('özet yoksa, başka kullanıcı ya da gün için ise, düğme bilinmiyorsa hiçbir şeyi susturmaz', () async {
+    test('soruyu kapatan cevap o günün aynı hatırlatmasını susturur (özet olmasa da)', () async {
+      expect(await silenceAfterAction(tap('routine_evening', 'skip'), day: '2026-10-10'), {'routine_evening'});
+      expect(await silenceAfterAction(tap('spf_refresh', 'notNeeded'), day: '2026-10-10'), {'spf_refresh'});
+      expect(await silenceAfterAction(tap('makeup_removal', 'notRemoved'), day: '2026-10-10'), {'makeup_removal'});
+      expect(await silenceAfterAction(tap('nutrition_log', 'junkYes'), day: '2026-10-10'), {'nutrition_log'});
+      expect(await silenceAfterAction(tap('routine_evening', 'later'), day: '2026-10-10'), isEmpty, reason: 'erteleme susturmaz');
+      expect(await silenceAfterAction(tap('water_intake', 'waterNo'), day: '2026-10-10'), isEmpty, reason: 'içmedim: su hatırlatması sürer');
+    });
+
+    test('özet yoksa, başka kullanıcı ya da gün için ise, doldurulan sorularda hiçbir şeyi susturmaz', () async {
       expect(await silenceAfterAction(tap('water_intake', 'water500'), day: '2026-10-10'), isEmpty, reason: 'özet yok');
 
       await SilenceBudget.fromPlan('u1', plan(water: 1900), now).save();

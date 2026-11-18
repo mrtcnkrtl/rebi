@@ -44,7 +44,11 @@
       "waterMore": "Diğer…",
       "change": "Değiştir",
       "edit": "Düzenle",
-      "openShelf": "Rafım'a git"
+      "openShelf": "Rafım'a git",
+      "skip": "Bugün atla",
+      "later": "30 dk sonra",
+      "notNeeded": "Bugün gerek yok",
+      "notRemoved": "Temizlemedim"
     },
     "advice": {
       "title": "Bugünün havasına göre",
@@ -833,11 +837,14 @@
     },
     "delete": {
       "title": "Hesabı kalıcı olarak sil",
-      "body": "Profil, rutinler, günlük kayıtlar ve analiz verilerin veritabanından silinir. Cilt fotoğrafların depodan kaldırılır. Bu işlem geri alınamaz; Rebi Plus veya başka üyelik bilgisi ayrıca faturalandırma sisteminde kalıyorsa oradan da iptal etmen gerekebilir.",
+      "body": "Profil, rutinler, günlük kayıtlar ve analiz verilerin veritabanından silinir. Cilt fotoğrafların depodan kaldırılır. Bu işlem geri alınamaz.",
       "confirm": "Onay için tam yaz: ",
       "phraseMismatch": "Kalıcı silmek için kutuya tam olarak {{phrase}} yazmalısın.",
       "requestFailed": "İstek başarısız",
       "failed": "Hesap silinemedi.",
+      "subscriptionTitle": "Aktif {{tier}} aboneliğin var",
+      "subscriptionBodyAndroid": "Hesabını silmek aboneliği iptal etmez; Google Play ücret almaya devam eder. Önce Google Play > Ödemeler ve abonelikler bölümünden aboneliği iptal et.",
+      "subscriptionBodyIos": "Hesabını silmek aboneliği iptal etmez; App Store ücret almaya devam eder. Önce Ayarlar > Apple Kimliği > Abonelikler bölümünden aboneliği iptal et.",
       "button": "Hesabımı kalıcı sil"
     },
     "photos": {
@@ -892,7 +899,7 @@
     "noPhotos": "Henüz kayıtlı fotoğraf yok.",
     "noPreview": "Önizleme yok",
     "photosIntro": "Analizde yüklediğin görseller burada tarih sırasıyla listelenir (sunucudaki dosya tarihine göre).",
-    "deletePhrase": "HESABIMI_SIL"
+    "deletePhrase": "HESABIMI SİL"
   },
   "mobileCheckin": {
     "prefilled": "Bugünkü takip kayıtlarından {{n}} cevap dolduruldu. İstersen değiştir.",
@@ -1020,6 +1027,23 @@
     }
   },
   "mobileSubscribe": {
+    "premium": {
+      "tagline": "Rebi’nin tamamı, cildin için.",
+      "cardLabel": "Rebi AI",
+      "cardValue": "Günde 120 soruya kadar",
+      "memberLabel": "Üyeliğin",
+      "compareTitle": "Plus ile neler değişir?",
+      "free": "Ücretsiz",
+      "limited": "Sınırlı",
+      "chatPlus": "Günde 120’ye kadar",
+      "included": "Dahil",
+      "notIncluded": "Dahil değil",
+      "choose": "Paketini seç",
+      "save": "%{{pct}} tasarruf",
+      "trustCancel": "İstediğin an iptal",
+      "trustAndroid": "Google Play ile güvenli ödeme",
+      "trustIos": "App Store ile güvenli ödeme"
+    },
     "subtitle": "Günde 120’ye kadar Rebi AI sorusu, premium temalar ve reklamsız kullanım",
     "unavailable": "Rebi Plus şu an uygulama içinden satın alınamıyor. Hesabında etkinleştirildiğinde burada görünür.",
     "active": "Plus aktif",
@@ -1050,6 +1074,7 @@
       "restored": "Aboneliğin geri yüklendi.",
       "nothingToRestore": "Bu hesapta geri yüklenecek bir abonelik bulunamadı.",
       "success": "Teşekkürler! Aboneliğin etkin.",
+      "activating": "Satın alma tamamlandı. Aboneliğin birkaç dakika içinde kendiliğinden etkinleşir.",
       "pending": "Ödemen onay bekliyor. Onaylanınca aboneliğin kendiliğinden açılır.",
       "failed": "Satın alma tamamlanamadı. Tekrar dene.",
       "loading": "Paketler yükleniyor…",
@@ -1528,13 +1553,16 @@
     "percent": "%{{n}}"
   },
   "mobileAiSharing": {
+    "eyebrow": "Gizlilik izni",
     "title": "Yapay zekâ ile veri paylaşımı",
     "intro": "Rutinini oluşturmak, günlük kaydını yorumlamak ve sohbette yanıt vermek için Rebi aşağıdaki bilgileri üçüncü taraf bir yapay zekâ servisine gönderir. İzin vermeden hiçbir veri gönderilmez.",
     "whatTitle": "Gönderilen veriler",
     "items": "Profil bilgilerin: adın, yaşın ve cinsiyetin\nCilt tipin, cilt sorunların ve analiz cevapların\nSağlık ve yaşam tarzı cevapların: hamilelik, döngü evresi, sigara, alkol, uyku, stres ve su tüketimi\nGünlük kayıtların ve rutinindeki ürünler\nSohbette yazdığın mesajlar\nKonum iznin açıksa bulunduğun yerin hava ve UV bilgisi",
     "whoTitle": "Kime gönderilir",
     "who": "Google LLC (Gemini API). Veriler şifreli bağlantıyla iletilir ve yalnızca sana yanıt üretmek için kullanılır. Google, ücretli Gemini API kapsamında bu verileri kendi modellerini eğitmek için kullanmaz ve en az bizim sağladığımız düzeyde koruma uygular.",
+    "notSentTitle": "Asla gönderilmeyenler",
     "notSent": "Cilt fotoğrafların, e-posta adresin ve şifren yapay zekâya gönderilmez.",
+    "controlTitle": "Kontrol sende",
     "control": "Bu izni istediğin zaman Hesap > Gizlilik izinleri bölümünden geri alabilirsin. İzin vermezsen rutin oluşturma, günlük kayıt yorumu ve sohbet çalışmaz; diğer özellikleri kullanmaya devam edebilirsin.",
     "privacyLink": "Gizlilik politikası (KVKK Aydınlatma Metni)",
     "allow": "İzin ver ve devam et",

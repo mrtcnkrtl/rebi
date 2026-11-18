@@ -1,11 +1,14 @@
+import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/api.dart';
 import '../../core/i18n.dart';
 import '../../core/privacy_storage.dart';
+import '../../core/subscription.dart';
 import '../../state/auth_controller.dart';
 import '../../state/notifications_controller.dart';
 import '../../ui/tw.dart';
@@ -15,8 +18,25 @@ import 'account_parts.dart';
 /// Sunucunun beklediği onay metni (`/account/delete` → `confirm_text`); dilden bağımsız sabittir.
 const accountDeletePhrase = 'HESABIMI_SIL';
 
-/// Kullanıcının kutuya yazdığı onay kelimesi seçili dilde (EN: `DELETE`); sunucuya yine [accountDeletePhrase] gider.
+/// Kullanıcının kutuya yazdığı onay kelimesi seçili dilde (TR: `HESABIMI SİL`, EN: `DELETE`); sunucuya yine
+/// [accountDeletePhrase] gider.
 String get typedDeletePhrase => I18n.instance.t('mobileAccount.deletePhrase', const {}, accountDeletePhrase);
+
+/// Onay ifadesini karşılaştırmak için sadeleştirir: büyük/küçük harf, Türkçe i/ı/İ farkı, boşluk, alt çizgi ve tire
+/// önemsizdir. Türkçe klavye büyük harfte `i` tuşuyla noktalı **İ** yazar; eskiden "HESABIMI_SİL" hiç eşleşmediği için
+/// düğme hiç açılmıyordu.
+String foldDeletePhrase(String text) => text
+    .replaceAll(RegExp(r'[\s_\-]+'), '')
+    .replaceAll('İ', 'I')
+    .replaceAll('ı', 'I')
+    .replaceAll('i̇', 'I')
+    .toUpperCase();
+
+/// Kullanıcının yazdığı metin onay ifadesiyle eşleşiyor mu ([foldDeletePhrase]).
+bool deletePhraseMatches(String typed) {
+  final folded = foldDeletePhrase(typed);
+  return folded.isNotEmpty && folded == foldDeletePhrase(typedDeletePhrase);
+}
 
 /// Hesabı kalıcı silme ("tehlikeli bölge"): kullanıcı ifadeyi aynen yazınca düğme açılır. Sunucu silince cihazdaki kişisel veri
 /// ve planlı bildirimler de temizlenir (silinmiş hesabın hatırlatıcıları çalmaya devam etmesin), oturum kapanır, karşılamaya dönülür.
@@ -44,7 +64,7 @@ class _AccountDeleteCardState extends State<AccountDeleteCard> {
     super.dispose();
   }
 
-  bool get _phraseOk => _phrase.text.trim().toUpperCase() == typedDeletePhrase;
+  bool get _phraseOk => deletePhraseMatches(_phrase.text);
 
   Future<void> _delete() async {
     final auth = context.read<AuthController>();
@@ -96,6 +116,10 @@ class _AccountDeleteCardState extends State<AccountDeleteCard> {
           AccountSectionTitle(icon: LucideIcons.trash2, color: Tw.red900, text: i18n.t('mobileAccount.delete.title'), textColor: Tw.red900),
           const SizedBox(height: 10),
           Text(i18n.t('mobileAccount.delete.body'), style: tx(12.5, c: Tw.red900.withValues(alpha: .9), h: relaxed)),
+          if (activeStoreTier(context.watch<AuthController>().user) case final tier?) ...[
+            const SizedBox(height: 12),
+            _SubscriptionWarning(tier: tier),
+          ],
           const SizedBox(height: 14),
           Text.rich(
             TextSpan(children: [
@@ -144,6 +168,68 @@ class _AccountDeleteCardState extends State<AccountDeleteCard> {
                   ),
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Mağaza aboneliği olan kullanıcıya: hesabı silmek aboneliği iptal etmez (App Store / Google Play ücret almaya devam
+/// eder); önce mağazadan iptal etmesi gerekir. Apple abonelikli uygulamalarda bunun açıkça söylenmesini bekler.
+class _SubscriptionWarning extends StatelessWidget {
+  const _SubscriptionWarning({required this.tier});
+
+  final String tier;
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = context.i18n;
+    final ios = defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      decoration: BoxDecoration(
+        color: Tw.amber50,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Tw.amber200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 1),
+                child: ExcludeSemantics(child: Icon(LucideIcons.creditCard, size: 17, color: Tw.amber700)),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      i18n.t('mobileAccount.delete.subscriptionTitle', {'tier': i18n.t('mobileSubscribe.store.tiers.$tier')}),
+                      style: tx(13, w: 7, c: Tw.amber900, h: 1.3),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      i18n.t(ios ? 'mobileAccount.delete.subscriptionBodyIos' : 'mobileAccount.delete.subscriptionBodyAndroid'),
+                      style: tx(12.5, c: Tw.amber900, h: relaxed),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: TextLink(
+              i18n.t('mobileSubscribe.store.manage'),
+              onTap: () => launchUrl(Uri.parse(storeManageSubscriptionsUrl), mode: LaunchMode.externalApplication),
+              style: tx(13, w: 7, c: Tw.amber900),
+              underline: true,
             ),
           ),
         ],

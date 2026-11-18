@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/api.dart';
 import 'package:rebi/core/daily_tracking.dart';
+import 'package:rebi/core/day_log.dart';
 import 'package:rebi/core/demo_user.dart';
 import 'package:rebi/core/event_outbox.dart';
 import 'package:rebi/core/local_store.dart';
@@ -34,6 +35,24 @@ void main() {
       expect((back.route, back.reminderId, back.userId), ('/dashboard/checkin', 'daily_checkin', 'u1'));
     });
 
+    test('metni ve düğmeleri taşır: uygulama kapalıyken erteleme bildirimi bunlarla yeniden kurulur', () {
+      const payload = NotificationPayload(
+        route: '/dashboard',
+        reminderId: 'routine_evening',
+        userId: 'u1',
+        day: '2026-10-10',
+        title: 'Akşam rutini',
+        body: 'Gövde',
+        actions: [NotificationActionSpec('routine_evening:done', 'Yaptım'), NotificationActionSpec('routine_evening:later', '30 dk sonra')],
+      );
+      final back = NotificationPayload.decode(payload.encode())!;
+      expect((back.title, back.body, back.day), ('Akşam rutini', 'Gövde', '2026-10-10'));
+      expect([for (final a in back.actions) (a.id, a.label)], [('routine_evening:done', 'Yaptım'), ('routine_evening:later', '30 dk sonra')]);
+      final old = NotificationPayload.decode('{"route": "/dashboard", "reminder_id": "x"}')!;
+      expect(old.title, isEmpty);
+      expect(old.actions, isEmpty);
+    });
+
     test('eski biçim (yalnızca ekran yolu) hâlâ okunur', () {
       final back = NotificationPayload.decode('/dashboard')!;
       expect(back.route, '/dashboard');
@@ -52,17 +71,62 @@ void main() {
   group('bildirim düğmeleri', () {
     List<String> labels(String id) => [for (final a in notificationQuickActions(id)) a.labelKey];
 
-    test('yalnızca olay kaydeden eylemler düğme olur', () {
-      expect(labels('routine_morning'), ['done']);
-      expect(labels('routine_evening'), ['done']);
+    test('her soruda olası her cevap vardır; kullanıcı tek cevaba zorlanmaz', () {
+      expect(labels('routine_morning'), ['done', 'later', 'skip'], reason: 'Yaptım · 30 dk sonra · Bugün atla');
+      expect(labels('routine_evening'), ['done', 'later', 'skip']);
       expect(labels('makeup_log'), ['yes', 'no']);
+      expect(labels('makeup_removal'), ['removed', 'notRemoved'], reason: 'Temizledim · Temizlemedim');
       expect(labels('water_intake'), ['waterYes', 'waterNo'], reason: 'su bildirimi: "İçtim" ve "İçmedim"');
-      expect(labels('spf_refresh'), ['done']);
-      expect(labels('nutrition_log'), ['junkNo'], reason: '"yedim" ne yendiğini sorar, bildirimden yanıtlanmaz');
+      expect(labels('spf_refresh'), ['done', 'notNeeded'], reason: 'Yaptım · Bugün gerek yok');
+      expect(labels('nutrition_log'), ['junkYes', 'junkNo'], reason: 'Evet, yedim · Hayır');
+      for (final id in const ['routine_morning', 'routine_evening', 'makeup_log', 'makeup_removal', 'water_intake', 'spf_refresh', 'nutrition_log']) {
+        expect(notificationQuickActions(id).length, inInclusiveRange(2, maxNotificationActions), reason: id);
+      }
     });
 
-    test('ekran ya da seçim sayfası açan ve bilinmeyen hatırlatıcıların düğmesi yoktur', () {
-      expect(labels('makeup_removal'), isEmpty);
+    test('bildirimdeki cevaplar doğru kaydı yazar', () {
+      ReminderAction a(String id, String key) => resolveNotificationAction(id, '$id:$key')!;
+      expect(a('routine_evening', 'skip').type, 'routine_skipped');
+      expect(a('routine_evening', 'skip').payload, {'block': 'evening'});
+      expect(a('routine_morning', 'skip').type, 'routine_skipped');
+      expect(a('routine_morning', 'skip').payload, {'block': 'morning'});
+      expect(a('routine_evening', 'later').type, isNull, reason: 'erteleme kayıt yazmaz');
+      expect(a('routine_evening', 'later').snoozeMinutes, 30);
+      expect(a('nutrition_log', 'junkYes').type, 'nutrition');
+      expect(a('nutrition_log', 'junkYes').payload, {'junk_food': true});
+      expect(a('makeup_removal', 'removed').type, 'makeup');
+      expect(a('makeup_removal', 'removed').payload, {'removed': true});
+      expect(a('makeup_removal', 'notRemoved').type, 'makeup');
+      expect(a('makeup_removal', 'notRemoved').payload, {'method': 'none'});
+      expect(a('spf_refresh', 'notNeeded').type, 'spf_skipped');
+    });
+
+    test('uygulamada ayrıntı sayfası açan cevaplar bildirimde kısa cevabı yazar', () {
+      Reminder r(String id) => Reminder(id: id, title: '', body: '', start: '', end: '');
+      final yes = reminderActions(r('nutrition_log')).first;
+      expect((yes.sheet, yes.type), (DaySheet.nutrition, 'nutrition'));
+      final removed = reminderActions(r('makeup_removal')).first;
+      expect((removed.sheet, removed.type), (DaySheet.cleansing, 'makeup'));
+    });
+
+    test('cevap soruyu kapatır; doldurulan sorular (su, güneş kremi) ve erteleme kapatmaz', () {
+      ReminderAction a(String id, String key) => resolveNotificationAction(id, '$id:$key')!;
+      for (final (id, key) in const [
+        ('routine_morning', 'done'),
+        ('routine_evening', 'skip'),
+        ('makeup_log', 'no'),
+        ('makeup_removal', 'notRemoved'),
+        ('nutrition_log', 'junkYes'),
+        ('spf_refresh', 'notNeeded'),
+      ]) {
+        expect(actionClosesReminder(a(id, key)), isTrue, reason: '$id:$key');
+      }
+      for (final (id, key) in const [('water_intake', 'waterYes'), ('water_intake', 'waterNo'), ('spf_refresh', 'done'), ('routine_evening', 'later')]) {
+        expect(actionClosesReminder(a(id, key)), isFalse, reason: '$id:$key');
+      }
+    });
+
+    test('ekran açan ve bilinmeyen hatırlatıcıların düğmesi yoktur', () {
       expect(labels('daily_checkin'), isEmpty);
       expect(labels('lip_balm'), isEmpty);
       expect(labels('bilinmeyen'), isEmpty);
@@ -273,7 +337,7 @@ void main() {
       c.syncReminders(plan([rem('routine_evening', 'Akşam rutini', '21:00', '21:00')]));
       await flush();
       final evening = notifier.scheduled.firstWhere((n) => n.reminderId == 'routine_evening' && n.at.day == 10);
-      expect(evening.actions.single.label, 'Done');
+      expect([for (final a in evening.actions) a.label], ['Done', 'In 30 min', 'Skip today']);
     });
 
     test('planın gün düzeni yarının bildirimlerini kaydırır', () async {
@@ -315,13 +379,83 @@ void main() {
       expect(pending.payload, {'morning': true});
     });
 
+    test('"Evet, yedim" bildirimden yanıtlanır: abur cubur yendi kaydı', () async {
+      make();
+      notifier.tapAction(
+        const NotificationActionTap(reminderId: 'nutrition_log', actionId: 'nutrition_log:junkYes', userId: testUserId),
+      );
+      await flush();
+      final body = backend.bodyOf('/daily_tracking/ingest');
+      expect(body['type'], 'nutrition');
+      expect(body['payload'], {'junk_food': true});
+    });
+
+    test('akşam rutini "Bugün atla": kayıt yazılır, o günün akşam hatırlatması kalmaz', () async {
+      final c = make();
+      await c.enable();
+      c.syncReminders(plan([rem('routine_evening', 'Akşam rutini', '21:00', '21:00')]));
+      await flush();
+      expect(notifier.scheduled.where((n) => n.reminderId == 'routine_evening' && n.at.day == 10), hasLength(1));
+
+      notifier.tapAction(
+        const NotificationActionTap(reminderId: 'routine_evening', actionId: 'routine_evening:skip', userId: testUserId),
+      );
+      await flush();
+
+      final body = backend.bodyOf('/daily_tracking/ingest');
+      expect(body['type'], 'routine_skipped');
+      expect(body['payload'], {'block': 'evening'});
+      expect(notifier.scheduled.where((n) => n.reminderId == 'routine_evening' && n.at.day == 10), isEmpty);
+      expect(notifier.scheduled.where((n) => n.reminderId == 'routine_evening' && n.at.day == 11), isNotEmpty,
+          reason: 'yarın yine hatırlatılır');
+    });
+
+    test('"30 dk sonra": kayıt yazmaz, bildirim 30 dk sonraya yeniden kurulur ve plan yenilense de kalır', () async {
+      final c = make();
+      await c.enable();
+      final today = plan([rem('routine_evening', 'Akşam rutini', '15:00', '15:00')]);
+      c.syncReminders(today);
+      await flush();
+
+      notifier.tapAction(
+        const NotificationActionTap(reminderId: 'routine_evening', actionId: 'routine_evening:later', userId: testUserId),
+      );
+      await flush();
+
+      expect(backend.calls('/daily_tracking/ingest'), isEmpty);
+      final snoozed = notifier.scheduled.where((n) => n.reminderId == 'routine_evening' && n.at.day == 10).single;
+      expect(snoozed.at, now.add(const Duration(minutes: 30)));
+      expect([for (final a in snoozed.actions) a.id], contains('routine_evening:done'), reason: 'ertelenen bildirimde de tüm cevaplar');
+
+      // Plan yeniden gelir (bildirimler baştan kurulur): erteleme kaybolmaz.
+      c.syncReminders(plan([rem('routine_evening', 'Akşam rutini', '15:00', '15:00'), rem('water_intake', 'Su', '17:00', '17:00')]));
+      await flush();
+      expect(notifier.scheduled.where((n) => n.reminderId == 'routine_evening' && n.at == now.add(const Duration(minutes: 30))), hasLength(1));
+    });
+
+    test('ertelenen soru o arada cevaplanırsa ertelenen bildirim düşer', () async {
+      final c = make();
+      await c.enable();
+      c.syncReminders(plan([rem('routine_evening', 'Akşam rutini', '15:00', '15:00')]));
+      await flush();
+      notifier.tapAction(
+        const NotificationActionTap(reminderId: 'routine_evening', actionId: 'routine_evening:later', userId: testUserId),
+      );
+      await flush();
+      notifier.tapAction(
+        const NotificationActionTap(reminderId: 'routine_evening', actionId: 'routine_evening:done', userId: testUserId),
+      );
+      await flush();
+
+      expect(notifier.scheduled.where((n) => n.reminderId == 'routine_evening' && n.at.day == 10), isEmpty);
+    });
+
     test('başka hesap için kurulmuş bildirimin, bilinmeyen ve ekran açan eylemlerin düğmesi yok sayılır', () async {
       make();
       for (final tap in [
         const NotificationActionTap(reminderId: 'water_intake', actionId: 'water_intake:water250', userId: 'baska-hesap'),
         const NotificationActionTap(reminderId: 'water_intake', actionId: 'uydurma', userId: testUserId),
         const NotificationActionTap(reminderId: 'daily_checkin', actionId: 'daily_checkin:open', userId: testUserId),
-        const NotificationActionTap(reminderId: 'nutrition_log', actionId: 'nutrition_log:junkYes', userId: testUserId),
       ]) {
         notifier.tapAction(tap);
       }

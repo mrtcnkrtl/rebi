@@ -12,6 +12,7 @@ import '../core/notification_prefs.dart';
 import '../core/push_action_inbox.dart';
 import '../core/reminder_schedule.dart';
 import '../core/reminder_text.dart';
+import '../core/notification_snooze.dart';
 import '../core/silence_budget.dart';
 import '../core/today_plan.dart';
 import 'auth_controller.dart';
@@ -280,23 +281,28 @@ class NotificationsController extends ChangeNotifier {
   Future<void> _applySchedule() => _serialize(() async {
         final uid = _uid;
         if (uid == null || !supported) return;
-        if (!enabled || pushActive) {
-          // Kapalıysa ya da sunucu gönderiyorsa yerel bildirim kalmasın (çift bildirim olmaz).
+        final plan = _plan;
+        final now = _clock();
+        // Sunucu gönderiyorsa yerel hatırlatıcı kurulmaz (çift bildirim olmaz); yalnızca telefonda ertelenen ("30 dk
+        // sonra") hatırlatmalar kurulur, çünkü sunucu onları bilmez.
+        final snoozesOnly = enabled && pushActive && plan != null && SnoozeStore.pending(uid, now).isNotEmpty;
+        if (!enabled || (pushActive && !snoozesOnly)) {
+          // Kapalıysa ya da sunucu gönderiyorsa yerel bildirim kalmasın.
           if (_lastSignature != null) {
             _lastSignature = null;
             await _notifier.cancelAll();
           }
           return;
         }
-        final plan = _plan;
         if (plan == null) return;
         final i18n = I18n.instance;
-        final now = _clock();
         final items = planNotifications(
           today: remindersFor(plan),
           now: now,
           settings: plan.settings,
           userId: uid,
+          snoozes: SnoozeStore.pending(uid, now),
+          snoozesOnly: snoozesOnly,
           textFor: (r) => r.title.isNotEmpty
               ? (title: reminderTitle(i18n, r), body: reminderBody(i18n, r, plan.weather, waterTarget: plan.waterTarget))
               : (title: localReminderTitle(i18n, r.id), body: localReminderBody(i18n, r.id, waterTarget: plan.waterTarget)),
@@ -348,8 +354,20 @@ class NotificationsController extends ChangeNotifier {
     final uid = _uid;
     if (uid == null || tap.userId != uid || _disposed) return;
     final action = resolveNotificationAction(tap.reminderId, tap.actionId);
-    final type = action?.type;
-    if (action == null || type == null) return;
+    if (action == null) return;
+    if (action.snoozeMinutes case final minutes?) {
+      // "30 dk sonra": kayıt yok; erteleme diske yazılır ve bildirimler yeniden kurulur.
+      final now = _clock();
+      await SnoozeStore.add(
+        NotificationSnooze(userId: uid, reminderId: tap.reminderId, day: localDayKey(now), at: now.add(Duration(minutes: minutes))),
+        now: now,
+      );
+      if (!_disposed) unawaited(_applySchedule());
+      return;
+    }
+    final type = action.type;
+    if (type == null) return;
+    if (actionClosesReminder(action)) await SnoozeStore.remove(uid, tap.reminderId);
     final result = await ingestDailyTrackingEvent(uid, type, action.payload);
     if (_disposed || uid != _uid || result.skipped || !result.ok) return;
     // Akıllı susma: yapılan iş hemen plana işlenir; hedefi dolan su / bitirilen rutin için kalan

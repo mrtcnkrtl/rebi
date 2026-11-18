@@ -223,18 +223,25 @@ def _action(action_id: str, label: str, log_event: str, payload: dict) -> dict:
 # Bildirimin üzerindeki hazır cevaplar; mobil uygulamanın listesiyle aynıdır
 # (`mobile/lib/core/today_plan.dart` → `reminderActions`, yalnızca olay yazanlar).
 # Kimlikler uygulamanın çeviri anahtarları, etiketler Türkçe metinleridir.
-# Seçim ekranı açan cevaplar (makyaj temizliği, "Evet, yedim") buton değildir;
-# bildirime dokunmak o ekranı zaten açar. Android en fazla 3 buton gösterir.
+# Her soru için mümkün olan her makul cevap vardır (yalnızca "evet" sunup kullanıcıyı zorlamaz); her cevap o günün
+# aynı hatırlatmasını susturur. Ayrıntı isteyen cevaplar (beslenmede ne yedin, makyajı nasıl temizledin) bildirimde
+# kısa cevabı yazar, ayrıntı uygulamadaki sayfadan eklenir. Android en fazla 3 buton gösterir.
 REMINDER_ACTIONS: dict[str, list[dict]] = {
     "routine_morning": [
         _action("done", "Yaptım", "routine_completed_block", {"morning": True}),
+        _action("skip", "Bugün atla", "routine_skipped", {"block": "morning"}),
     ],
     "routine_evening": [
         _action("done", "Yaptım", "routine_completed_block", {"evening": True}),
+        _action("skip", "Bugün atla", "routine_skipped", {"block": "evening"}),
     ],
     "makeup_log": [
         _action("yes", "Evet, yaptım", "makeup", {"used": True}),
         _action("no", "Hayır", "makeup", {"used": False}),
+    ],
+    "makeup_removal": [
+        _action("removed", "Temizledim", "makeup", {"removed": True}),
+        _action("notRemoved", "Temizlemedim", "makeup", {"method": "none"}),
     ],
     # Su bildirimi: kullanıcı doğrudan içip içmediğini işaretler. "İçtim" bir bardak (250 ml) yazar; "İçmedim" su toplamını
     # değiştirmez, gün içindeki sayısı tutulur (`water_skipped` → `water_skips`).
@@ -244,10 +251,19 @@ REMINDER_ACTIONS: dict[str, list[dict]] = {
     ],
     "spf_refresh": [
         _action("done", "Yaptım", "spf_refresh", {}),
+        _action("notNeeded", "Bugün gerek yok", "spf_skipped", {}),
     ],
     "nutrition_log": [
+        _action("junkYes", "Evet, yedim", "nutrition", {"junk_food": True}),
         _action("junkNo", "Hayır", "nutrition", {"junk_food": False}),
     ],
+}
+
+# Kayıt yazmayan, yalnızca uygulamada çalışan düğmeler: "30 dk sonra" bildirimi telefonda erteler. Sunucu yalnızca
+# etiketini bildirime koyar (uygulama düğmeyi sunucunun etiketini gördüğü için gösterir); `/push/respond` bunları kabul etmez.
+CLIENT_ONLY_ACTIONS: dict[str, list[dict]] = {
+    "routine_morning": [{"id": "later", "label": "30 dk sonra", "log_event": None, "payload": {}}],
+    "routine_evening": [{"id": "later", "label": "30 dk sonra", "log_event": None, "payload": {}}],
 }
 
 # Önceki sürümlerin bildirim düğmeleri: o sürümlerle kurulmuş ve henüz gelmemiş bildirimlere dokunulunca da cevap geçerli sayılır.
@@ -265,7 +281,9 @@ DEFAULT_OPEN_PATH = "/dashboard"
 
 
 def reminder_actions(reminder_id: str) -> list[dict]:
-    return [dict(a, payload=dict(a["payload"])) for a in REMINDER_ACTIONS.get(reminder_id, [])]
+    """Bildirimdeki düğmeler: kayıt yazan cevaplar + yalnızca uygulamada çalışanlar (erteleme)."""
+    actions = [*REMINDER_ACTIONS.get(reminder_id, []), *CLIENT_ONLY_ACTIONS.get(reminder_id, [])]
+    return [dict(a, payload=dict(a["payload"])) for a in actions]
 
 
 def resolve_reminder_action(reminder_id: str, action_id: str) -> dict | None:
@@ -452,7 +470,7 @@ def build_reminders(
         start, end = window or windows[reminder_id]
         reminders.append(_reminder(reminder_id, title, body, start, end, log_event, every_minutes))
 
-    if not agg.get("routine_morning_done"):
+    if not agg.get("routine_morning_done") and not agg.get("routine_morning_skipped"):
         add(
             "routine_morning",
             "Sabah rutini",
@@ -478,7 +496,11 @@ def build_reminders(
             every_minutes=s["water_every_minutes"],
         )
 
-    if uv >= SPF_REFRESH_UV_THRESHOLD and int(agg.get("spf_refreshes") or 0) < SPF_REFRESH_MAX_PER_DAY:
+    if (
+        uv >= SPF_REFRESH_UV_THRESHOLD
+        and int(agg.get("spf_refreshes") or 0) < SPF_REFRESH_MAX_PER_DAY
+        and not agg.get("spf_skipped")
+    ):
         add(
             "spf_refresh",
             "Güneş kremini yenile",
@@ -505,7 +527,8 @@ def build_reminders(
             log_event="nutrition",
         )
 
-    if makeup.get("used") and not makeup.get("removed"):
+    # "Temizlemedim" (yöntem `none`) de bir cevaptır: hatırlatma susar, cevap kayda geçer.
+    if makeup.get("used") and not makeup.get("removed") and makeup.get("removal_method") != "none":
         add(
             "makeup_removal",
             "Makyaj temizliği",
@@ -513,7 +536,7 @@ def build_reminders(
             log_event="makeup",
         )
 
-    if not agg.get("routine_evening_done"):
+    if not agg.get("routine_evening_done") and not agg.get("routine_evening_skipped"):
         add(
             "routine_evening",
             "Akşam rutini",

@@ -49,6 +49,7 @@ from today_plan import (
     reminder_category,
     reminder_open_path,
     reminder_windows,
+    reminder_actions,
     resolve_reminder_action,
 )
 from push_service import push_configured, send_push
@@ -441,6 +442,9 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
     routine_steps_done = 0
     routine_morning_done = False
     routine_evening_done = False
+    # Bildirimde "bugün atla" denilen bloklar: o günün hatırlatması susar, rutin yapılmamış sayılır.
+    routine_skipped: set[str] = set()
+    spf_skipped = False
     routine_steps: dict[str, set[int]] = {block: set() for block in _ROUTINE_BLOCKS}
     spf_refreshes = 0
     water_skips = 0
@@ -504,11 +508,18 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
                 routine_evening_done = bool(payload.get("evening"))
                 if routine_evening_done:
                     routine_steps_done += 1
+        elif t == "routine_skipped":
+            block = str(payload.get("block") or "").strip().lower()
+            if block in _ROUTINE_BLOCKS:
+                routine_skipped.add(block)
         elif t == "water_skipped":
             # Su hatırlatmasına "içmedim" denildi: toplam su değişmez, yalnızca sayısı tutulur.
             water_skips += 1
         elif t == "spf_refresh":
             spf_refreshes += 1
+        elif t == "spf_skipped":
+            # "Bugün gerek yok" (dışarı çıkmıyorum): o günün güneş kremi tazeleme hatırlatmaları susar.
+            spf_skipped = True
         elif t == "photo_meta":
             if isinstance(payload, dict):
                 last_photo_meta = payload
@@ -551,8 +562,11 @@ def _aggregate_daily_events(events: list[dict]) -> dict:
         "routine_steps_done": routine_steps_done,
         "routine_morning_done": routine_morning_done,
         "routine_evening_done": routine_evening_done,
+        "routine_morning_skipped": "morning" in routine_skipped,
+        "routine_evening_skipped": "evening" in routine_skipped,
         "routine_steps": {block: sorted(steps) for block, steps in routine_steps.items()},
         "spf_refreshes": spf_refreshes,
+        "spf_skipped": spf_skipped,
         "water_skips": water_skips,
         "last_photo_meta": last_photo_meta,
         "checkin_feedback_events": checkin_feedback_events,
@@ -1427,6 +1441,8 @@ DailyTrackingClientEventType = Literal[
     "spf_refresh",
     "photo_meta",
     "routine_completed_block",
+    "routine_skipped",
+    "spf_skipped",
     "checkin_feedback",
     "makeup",
     "product_finished",
@@ -3287,10 +3303,10 @@ async def push_actions():
             {
                 "id": reminder_id,
                 "category": reminder_category(reminder_id),
-                "actions": [{"id": a["id"], "label": a["label"]} for a in actions],
+                "actions": [{"id": a["id"], "label": a["label"]} for a in reminder_actions(reminder_id)],
                 "open_path": reminder_open_path(reminder_id),
             }
-            for reminder_id, actions in REMINDER_ACTIONS.items()
+            for reminder_id in REMINDER_ACTIONS
         ],
     }
 

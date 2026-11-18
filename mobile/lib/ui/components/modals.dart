@@ -9,6 +9,10 @@ import '../../core/demo_user.dart';
 import '../../core/i18n.dart';
 import '../../core/legal_consent.dart';
 import '../../state/auth_controller.dart';
+import '../brand/brand_button.dart';
+import '../brand/brand_sheet.dart';
+import '../brand/motion.dart';
+import '../brand/palette.dart';
 import '../tw.dart';
 import '../widgets/common.dart';
 import 'legal_consent_fields.dart';
@@ -58,8 +62,144 @@ class ModalFrame extends StatelessWidget {
 /// Üçüncü taraf yapay zekâ ile veri paylaşımı izninin içeriği: ne gönderilir, kime, ne için, ne gönderilmez,
 /// nasıl geri alınır. Hem yapay zekâ ekranlarında kendiliğinden açılan kutuda hem de gönderimden hemen önce
 /// ([ensureAiSharing]) aynı metin gösterilir.
+///
+/// Uyarı kutusu değil, beta karşılamasıyla aynı editoryal dil: çizgili etiket, serif başlık, kısa giriş; gönderilen
+/// veriler ikonlu sakin bir listede, alıcı / gönderilmeyenler / kontrol ince çizgilerle ayrılmış üç vaat olarak.
+/// Eylemler ([AiSharingActions]) sayfanın altında sabit durur; içerik kaydırılsa da görünür kalır.
 class AiSharingPanel extends StatelessWidget {
-  const AiSharingPanel({super.key, required this.onAllow, required this.onDecline});
+  const AiSharingPanel({super.key});
+
+  /// Gönderilen veri satırlarının ikonları; metindeki sırayla eşleşir (fazlası varsa son ikon tekrarlanır).
+  static const _itemIcons = [
+    LucideIcons.user,
+    LucideIcons.scanFace,
+    LucideIcons.heartPulse,
+    LucideIcons.calendarCheck,
+    LucideIcons.messageCircle,
+    LucideIcons.cloudSun,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = context.i18n;
+    final items = i18n.t('mobileAiSharing.items').split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final hairline = Container(height: 1, color: Brand.inkFaint);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        BrandEyebrow(i18n.t('mobileAiSharing.eyebrow')),
+        const SizedBox(height: 18),
+        Semantics(
+          header: true,
+          child: Text(i18n.t('mobileAiSharing.title'), style: Brand.serif(28, color: Brand.ink, h: 1.12, ls: -.7)),
+        ),
+        const SizedBox(height: 12),
+        Text(i18n.t('mobileAiSharing.intro'), style: tx(15, c: Brand.inkSoft, h: 1.55)),
+        const SizedBox(height: 26),
+        Semantics(header: true, child: BrandEyebrow(i18n.t('mobileAiSharing.whatTitle'), rule: false)),
+        const SizedBox(height: 10),
+        Container(
+          decoration: BoxDecoration(
+            color: Tw.dark ? Tw.surfaceRaised : Brand.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Brand.inkFaint),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Column(
+            children: [
+              for (var i = 0; i < items.length; i++) ...[
+                if (i > 0) Padding(padding: const EdgeInsetsDirectional.only(start: 46), child: hairline),
+                _DataRow(icon: _itemIcons[i.clamp(0, _itemIcons.length - 1)], text: items[i]),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        hairline,
+        BrandPromiseRow(icon: LucideIcons.building2, title: i18n.t('mobileAiSharing.whoTitle'), body: i18n.t('mobileAiSharing.who')),
+        hairline,
+        BrandPromiseRow(icon: LucideIcons.eyeOff, title: i18n.t('mobileAiSharing.notSentTitle'), body: i18n.t('mobileAiSharing.notSent')),
+        hairline,
+        BrandPromiseRow(
+          icon: LucideIcons.slidersHorizontal,
+          title: i18n.t('mobileAiSharing.controlTitle'),
+          body: i18n.t('mobileAiSharing.control'),
+        ),
+        hairline,
+        const SizedBox(height: 10),
+        Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: Pressable(
+            onTap: () => context.push('/kvkk'),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      i18n.t('mobileAiSharing.privacyLink'),
+                      style: tx(
+                        13.5,
+                        w: 6,
+                        c: Tw.teal700,
+                        h: 1.35,
+                      ).copyWith(decoration: TextDecoration.underline, decorationColor: Tw.teal700.withValues(alpha: .35)),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  ExcludeSemantics(child: Icon(LucideIcons.arrowUpRight, size: 15, color: Tw.teal700)),
+                ],
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        AiDisclaimer(color: Brand.inkSoft),
+      ],
+    );
+  }
+}
+
+/// Gönderilen tek veri: yumuşak nane dairede ince ikon ve kısa açıklama.
+class _DataRow extends StatelessWidget {
+  const _DataRow({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 11),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(color: Brand.tint(0), shape: BoxShape.circle),
+              child: Icon(icon, size: 16, color: Tw.dark ? Brand.teal : Brand.tealDeep),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(text, style: tx(13.5, c: Brand.ink, h: 1.4)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Sayfanın altına sabitlenen eylemler: tek ana düğme, altında süssüz "Şimdi değil".
+class AiSharingActions extends StatelessWidget {
+  const AiSharingActions({super.key, required this.onAllow, required this.onDecline});
 
   final VoidCallback onAllow;
   final VoidCallback onDecline;
@@ -67,85 +207,40 @@ class AiSharingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final i18n = context.i18n;
-    final body = tx(13.5, c: Tw.gray600, h: relaxed);
-    final heading = tx(13.5, w: 8, c: Tw.gray700);
-    final items = i18n.t('mobileAiSharing.items').split('\n').where((e) => e.trim().isNotEmpty);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(color: Tw.teal600, borderRadius: BorderRadius.circular(16)),
-            child: const Icon(LucideIcons.sparkles, color: Colors.white, size: 24),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Semantics(header: true, child: Text(i18n.t('mobileAiSharing.title'), style: tx(18, w: 9))),
-        const SizedBox(height: 8),
-        Text(i18n.t('mobileAiSharing.intro'), style: body),
-        const SizedBox(height: 14),
-        Text(i18n.t('mobileAiSharing.whatTitle'), style: heading),
-        const SizedBox(height: 4),
-        for (final item in items)
-          Padding(
-            padding: const EdgeInsets.only(top: 3),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('•  ', style: body),
-                Expanded(child: Text(item, style: body)),
-              ],
-            ),
-          ),
-        const SizedBox(height: 14),
-        Text(i18n.t('mobileAiSharing.whoTitle'), style: heading),
-        const SizedBox(height: 4),
-        Text(i18n.t('mobileAiSharing.who'), style: body),
-        const SizedBox(height: 14),
-        Text(i18n.t('mobileAiSharing.notSent'), style: body),
-        const SizedBox(height: 8),
-        Text(i18n.t('mobileAiSharing.control'), style: body),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextLink(
-            i18n.t('mobileAiSharing.privacyLink'),
-            onTap: () => context.push('/kvkk'),
-            style: tx(13, w: 6, c: Tw.teal700),
-            underline: true,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const AiDisclaimer(),
-        const SizedBox(height: 20),
-        PrimaryButton(onPressed: onAllow, label: i18n.t('mobileAiSharing.allow')),
-        const SizedBox(height: 8),
-        SecondaryButton(onPressed: onDecline, label: i18n.t('mobileAiSharing.decline')),
+        BrandButton(onPressed: onAllow, label: i18n.t('mobileAiSharing.allow'), height: 54),
+        const SizedBox(height: 2),
+        BrandQuietAction(onTap: onDecline, label: i18n.t('mobileAiSharing.decline')),
       ],
     );
   }
+}
+
+/// İzin sayfası: içerik kayar, eylemler altta sabit.
+class AiSharingSheet extends StatelessWidget {
+  const AiSharingSheet({super.key, required this.onAllow, required this.onDecline});
+
+  final VoidCallback onAllow;
+  final VoidCallback onDecline;
+
+  @override
+  Widget build(BuildContext context) => BrandSheetFrame(
+    maxWidth: 480,
+    footer: AiSharingActions(onAllow: onAllow, onDecline: onDecline),
+    child: const AiSharingPanel(),
+  );
 }
 
 String _aiUserId(BuildContext context) => context.read<AuthController>().user?.id ?? demoUserId;
 
 /// İzin açıklamasını gösterir; kullanıcının seçimini döndürür (kaydetmez).
 Future<bool> showAiSharingDialog(BuildContext context) async {
-  final allowed = await showGeneralDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    barrierColor: Colors.transparent,
-    pageBuilder: (ctx, _, _) => ModalFrame(
-      maxWidth: 448,
-      scroll: true,
-      child: AiSharingPanel(
-        onAllow: () => Navigator.of(ctx).pop(true),
-        onDecline: () => Navigator.of(ctx).pop(false),
-      ),
-    ),
+  final allowed = await showBrandSheet<bool>(
+    context,
+    builder: (ctx) => AiSharingSheet(onAllow: () => Navigator.of(ctx).pop(true), onDecline: () => Navigator.of(ctx).pop(false)),
   );
   return allowed == true;
 }
@@ -192,14 +287,7 @@ class _AiSharingModalState extends State<AiSharingModal> {
   Widget build(BuildContext context) {
     final uid = context.watch<AuthController>().user?.id ?? demoUserId;
     if (_dismissed || hasAiSharingConsent(uid)) return const SizedBox.shrink();
-    return ModalFrame(
-      maxWidth: 448,
-      scroll: true,
-      child: AiSharingPanel(
-        onAllow: () => setAiSharingConsent(uid, true),
-        onDecline: () => setState(() => _dismissed = true),
-      ),
-    );
+    return AiSharingSheet(onAllow: () => setAiSharingConsent(uid, true), onDecline: () => setState(() => _dismissed = true));
   }
 }
 
@@ -281,7 +369,10 @@ class _ConsentRecoveryModalState extends State<ConsentRecoveryModal> {
           const SizedBox(height: 16),
           Text(i18n.t('common.consentRecoveryTitle'), style: tx(18, w: 9)),
           const SizedBox(height: 8),
-          Text(i18n.t('common.consentRecoveryBody'), style: tx(14, c: Tw.gray600, h: relaxed)),
+          Text(
+            i18n.t('common.consentRecoveryBody'),
+            style: tx(14, c: Tw.gray600, h: relaxed),
+          ),
           const SizedBox(height: 16),
           LegalConsentFields(
             kvkk: _kvkk,
@@ -293,10 +384,7 @@ class _ConsentRecoveryModalState extends State<ConsentRecoveryModal> {
             onLocation: (v) => setState(() => _location = v),
             onPhoto: (v) => setState(() => _photo = v),
           ),
-          if (_error.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Text(_error, style: tx(14, c: Tw.rose600)),
-          ],
+          if (_error.isNotEmpty) ...[const SizedBox(height: 12), Text(_error, style: tx(14, c: Tw.rose600))],
           const SizedBox(height: 20),
           PrimaryButton(
             onPressed: (!_kvkk || !_riza || _saving) ? null : _submit,
@@ -305,13 +393,11 @@ class _ConsentRecoveryModalState extends State<ConsentRecoveryModal> {
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      ),
+                      const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
                       const SizedBox(width: 8),
-                      Flexible(child: Text(i18n.t('common.consentRecoveryCta'), style: tx(16, w: 6, c: Colors.white))),
+                      Flexible(
+                        child: Text(i18n.t('common.consentRecoveryCta'), style: tx(16, w: 6, c: Colors.white)),
+                      ),
                     ],
                   )
                 : null,

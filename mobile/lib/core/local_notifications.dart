@@ -9,6 +9,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'i18n.dart';
 import 'local_store.dart';
 import 'notification_actions.dart';
+import 'notification_snooze.dart';
 import 'notification_ports.dart';
 import 'notification_sound.dart';
 import 'push_reminder.dart';
@@ -20,11 +21,16 @@ const _channelId = reminderChannelId;
 /// Test bildirimi: gerçek hatırlatıcı kimlikleriyle (1..56) çakışmaz.
 const _testNotificationId = 9001;
 
+/// Uygulama kapalıyken kurulan "30 dk sonra" bildirimleri (hatırlatıcı başına bir tane). Uygulama açılınca liste baştan
+/// kurulur ve erteleme normal kimlikle yeniden yer alır.
+int _snoozeNotificationId(String reminderId) => 9100 + (_actionReminderIds.indexOf(reminderId) + 1);
+
 /// Bildirimdeki eylem düğmeleri olan hatırlatıcılar (iOS'ta kategori olarak baştan tanıtılır).
 const _actionReminderIds = [
   'routine_morning',
   'routine_evening',
   'makeup_log',
+  'makeup_removal',
   'water_intake',
   'spf_refresh',
   'nutrition_log',
@@ -45,13 +51,50 @@ Future<void> rebiNotificationBackground(NotificationResponse response) async {
     DartPluginRegistrant.ensureInitialized();
     await LocalStore.init();
     final tap = NotificationActionTap(reminderId: payload.reminderId, actionId: actionId, userId: payload.userId);
+    final action = resolveNotificationAction(tap.reminderId, actionId);
+    if (action?.snoozeMinutes case final minutes?) {
+      await _snoozeInBackground(payload, minutes);
+      return;
+    }
     await queueNotificationAction(tap);
+    if (action != null && actionClosesReminder(action)) await SnoozeStore.remove(payload.userId, payload.reminderId);
     // Hedef doldu mu (su) ya da günlük sınıra ulaşıldı mı (güneş kremi)? O günün kalan bildirimleri gelmesin.
     final silenced = await silenceAfterAction(tap, day: payload.day);
     if (silenced.isNotEmpty) await _cancelPending(userId: payload.userId, day: payload.day, reminderIds: silenced);
   } catch (e) {
     debugPrint('Bildirim düğmesi kuyruğa alınamadı: $e');
   }
+}
+
+/// "30 dk sonra": ertelemeyi diske yazar (uygulama açılınca listeye geri eklenir) ve bildirimi hemen kurar. Eski sürümün
+/// bildiriminde metin yoksa yalnızca yazılır; uygulama bir sonraki açılışta kurar.
+Future<void> _snoozeInBackground(NotificationPayload payload, int minutes) async {
+  if (payload.userId.isEmpty || payload.reminderId.isEmpty) return;
+  final at = DateTime.now().add(Duration(minutes: minutes));
+  await SnoozeStore.add(NotificationSnooze(
+    userId: payload.userId,
+    reminderId: payload.reminderId,
+    day: payload.day,
+    at: at,
+    title: payload.title,
+    body: payload.body,
+    actions: payload.actions,
+  ));
+  if (payload.title.isEmpty || !Platform.isAndroid) return;
+  final plugin = FlutterLocalNotificationsPlugin();
+  await plugin.initialize(
+    settings: const InitializationSettings(android: AndroidInitializationSettings('@drawable/ic_stat_rebi')),
+    onDidReceiveBackgroundNotificationResponse: rebiNotificationBackground,
+  );
+  await plugin.zonedSchedule(
+    id: _snoozeNotificationId(payload.reminderId),
+    scheduledDate: tz.TZDateTime.from(at, tz.UTC),
+    notificationDetails: _notificationDetails(body: payload.body, reminderId: payload.reminderId, actions: payload.actions),
+    androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+    title: payload.title,
+    body: payload.body,
+    payload: payload.encode(),
+  );
 }
 
 /// Bekleyen bildirimlerden, verilen kullanıcının o günkü [reminderIds] hatırlatıcılarına ait olanları iptal eder.

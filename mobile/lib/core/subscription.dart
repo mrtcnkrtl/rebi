@@ -74,3 +74,31 @@ bool? plusPurchasableOverride;
 
 /// Plus girişi (menü satırı, abonelik sayfası bağlantısı) görünsün mü: satın alma varsa ya da hesap Plus ise.
 bool plusEntryVisible(User? user) => plusPurchasable || userHasRebiPlus(user);
+
+/// Mağaza aboneliğinin süresi (`app_metadata.rebi_store.expires_at_ms`); süresiz ya da yoksa null.
+DateTime? storeExpiry(User? user) {
+  final info = user?.appMetadata['rebi_store'];
+  if (info is! Map) return null;
+  final exp = info['expires_at_ms'];
+  if (exp == null) return null;
+  final ms = exp is num ? exp.toInt() : int.tryParse(exp.toString());
+  return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms);
+}
+
+/// Dönem sonunda oturumun (JWT) ne zaman tazelenmesi gerektiği. Mağaza yenilediğinde sunucu yeni süreyi webhook ile
+/// yazar, ama uygulamadaki token eski süreyi taşır; token kendiliğinden yenilenene (~1 saat) kadar kullanıcı ücretsiz
+/// görünmesin diye dönem bitiminden kısa süre sonra, sonra tolerans bitmeden bir kez daha bakılır.
+/// Bakılacak an kalmadıysa (süre yok, çoktan geçmiş) null.
+DateTime? nextEntitlementCheck(User? user, DateTime now) {
+  final exp = storeExpiry(user);
+  if (exp == null) return null;
+  for (final at in [exp.add(const Duration(seconds: 90)), exp.add(_expiryGrace - const Duration(minutes: 2))]) {
+    if (at.isAfter(now)) return at;
+  }
+  return null;
+}
+
+/// Mağazanın abonelik yönetimi sayfası (iptal burada yapılır; uygulama aboneliği kendisi iptal edemez).
+String get storeManageSubscriptionsUrl => defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS
+    ? 'https://apps.apple.com/account/subscriptions'
+    : 'https://play.google.com/store/account/subscriptions';

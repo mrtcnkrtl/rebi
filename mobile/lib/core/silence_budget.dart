@@ -49,11 +49,11 @@ class SilenceBudget {
       });
 
   /// Düğmenin etkisini düşer. Dönüş: yeni özet ve o günün kalan bildirimleri **susturulması gereken**
-  /// hatırlatıcı kimlikleri (hedef doldu / günlük sınıra ulaşıldı).
+  /// hatırlatıcı kimlikleri (hedef doldu / günlük sınıra ulaşıldı / soru cevaplandı).
   ({SilenceBudget budget, Set<String> silenced}) after(String reminderId, ReminderAction action) {
     var water = waterRemainingMl;
     var spf = spfRemaining;
-    final silenced = <String>{};
+    final silenced = <String>{if (actionClosesReminder(action)) reminderId};
     switch (action.type) {
       case 'water_intake':
         final ml = action.payload['ml'];
@@ -77,9 +77,11 @@ Future<Set<String>> silenceAfterAction(NotificationActionTap tap, {required Stri
   final action = resolveNotificationAction(tap.reminderId, tap.actionId);
   if (action == null) return const {};
   await LocalStore.instance.reload();
+  final closes = {if (actionClosesReminder(action)) tap.reminderId};
   final budget = SilenceBudget.read(userId: tap.userId, day: day);
-  if (budget == null) return const {};
+  // Özet yoksa (plan bu gün kurulmamış) yine de cevaplanan sorunun kalan bildirimleri susar.
+  if (budget == null) return closes;
   final next = budget.after(tap.reminderId, action);
   await next.budget.save();
-  return next.silenced;
+  return {...closes, ...next.silenced};
 }

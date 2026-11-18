@@ -1,4 +1,5 @@
 import 'notification_actions.dart';
+import 'notification_snooze.dart';
 import 'reminder_settings.dart';
 import 'today_plan.dart';
 
@@ -35,8 +36,17 @@ class PlannedNotification {
   /// Bildirimin düştüğü yerel gün (`2026-10-10`).
   String get day => localDayKey(at);
 
-  /// Bildirime iliştirilen yük: ekran, hatırlatıcı, kullanıcı ve gün.
-  NotificationPayload get payload => NotificationPayload(route: route, reminderId: reminderId, userId: userId, day: day);
+  /// Bildirime iliştirilen yük: ekran, hatırlatıcı, kullanıcı, gün; metin ve düğmeler de (uygulama kapalıyken
+  /// "30 dk sonra" bildirimi bunlarla yeniden kurar).
+  NotificationPayload get payload => NotificationPayload(
+        route: route,
+        reminderId: reminderId,
+        userId: userId,
+        day: day,
+        title: title,
+        body: body,
+        actions: actions,
+      );
 
   PlannedNotification withId(int next) => PlannedNotification(
         id: next,
@@ -91,18 +101,19 @@ List<Reminder> remindersFor(TodayPlan plan) {
   final p = plan.progress;
   final s = plan.settings;
   bool satisfied(String id) => switch (id) {
-        'routine_morning' => p.morningDone,
-        'routine_evening' => p.eveningDone,
+        'routine_morning' => p.morningDone || p.morningSkipped,
+        'routine_evening' => p.eveningDone || p.eveningSkipped,
         'makeup_log' => p.makeupLogged,
-        'makeup_removal' => !p.makeupUsed || p.makeupRemoved,
+        // "Temizlemedim" (yöntem `none`) de cevaptır: hatırlatma susar.
+        'makeup_removal' => !p.makeupUsed || p.makeupRemoved || p.removalMethod == 'none',
         'water_intake' => p.waterMl >= s.waterTargetMl,
-        'spf_refresh' => p.spfRefreshes >= spfRefreshMaxPerDay,
+        'spf_refresh' => p.spfRefreshes >= spfRefreshMaxPerDay || p.spfSkipped,
         'nutrition_log' => p.nutritionLogged,
         'daily_checkin' => plan.checkinDone,
         _ => false,
       };
   final kept = [for (final r in plan.reminders) if (!satisfied(r.id)) r];
-  if (p.makeupUsed && !p.makeupRemoved && s.isEnabled('makeup') && !kept.any((r) => r.id == 'makeup_removal')) {
+  if (p.makeupUsed && !p.makeupRemoved && p.removalMethod != 'none' && s.isEnabled('makeup') && !kept.any((r) => r.id == 'makeup_removal')) {
     final window = reminderWindow('makeup_removal', s)!;
     kept.add(Reminder(
       id: 'makeup_removal',
@@ -131,6 +142,9 @@ String routeForReminder(String? reminderId) => switch (reminderId) {
 /// temizliği uygulama açılınca bugünün gerçek planıyla kurulur. [settings]teki sessiz saatlere denk
 /// gelen bildirimler kurulmaz. En yakın [limit] bildirim kalır. [textFor] başlık/gövdeyi arayüz diline
 /// göre verir, [actionsFor] bildirimin altındaki düğmeleri.
+///
+/// [snoozes] "30 dk sonra" ile ertelenmiş hatırlatmalardır: soru hâlâ açıksa (hatırlatıcı [today]'de duruyorsa) ertelenen
+/// anda yeniden kurulur, cevaplandıysa düşer. [snoozesOnly] true ise yalnızca onlar kurulur (sunucu gönderirken).
 List<PlannedNotification> planNotifications({
   required List<Reminder> today,
   required DateTime now,
@@ -141,8 +155,27 @@ List<PlannedNotification> planNotifications({
   bool includeTomorrow = true,
   int futureDays = scheduleFutureDays,
   int limit = maxScheduledNotifications,
+  List<NotificationSnooze> snoozes = const [],
+  bool snoozesOnly = false,
 }) {
   final items = <PlannedNotification>[];
+
+  for (final snooze in snoozes) {
+    if (!snooze.at.isAfter(now) || (userId.isNotEmpty && snooze.userId != userId)) continue;
+    final r = today.where((r) => r.id == snooze.reminderId).firstOrNull;
+    if (r == null) continue; // soru o arada cevaplandı
+    final text = textFor(r);
+    items.add(PlannedNotification(
+      id: 0,
+      at: snooze.at,
+      title: text.title,
+      body: text.body,
+      reminderId: r.id,
+      route: routeForReminder(r.id),
+      userId: userId,
+      actions: actionsFor?.call(r) ?? const <NotificationActionSpec>[],
+    ));
+  }
 
   void addDay(DateTime day, Iterable<Reminder> reminders, {required bool onlyFuture}) {
     for (final r in reminders) {
@@ -165,8 +198,8 @@ List<PlannedNotification> planNotifications({
     }
   }
 
-  addDay(now, today, onlyFuture: true);
-  if (includeTomorrow) {
+  if (!snoozesOnly) addDay(now, today, onlyFuture: true);
+  if (includeTomorrow && !snoozesOnly) {
     final daily = dailyReminders(settings);
     for (var i = 1; i <= futureDays; i++) {
       addDay(DateTime(now.year, now.month, now.day + i), daily, onlyFuture: false);

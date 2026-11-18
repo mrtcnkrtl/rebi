@@ -17,6 +17,7 @@ import '../ui/shell/page_stage.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/app_sheet.dart';
 import '../ui/widgets/common.dart';
+import '../ui/brand/plus_style.dart';
 import '../ui/widgets/menu_list.dart';
 import 'today/today_widgets.dart';
 
@@ -42,6 +43,15 @@ class MeScreen extends StatelessWidget {
       leading: _Avatar(name: name),
       bottomPadding: 32,
       children: [
+        // Plus'a davet: ücretsiz hesapta ve satın alma mümkünse en üstte premium kart (abonede menüde sade satır kalır).
+        if (!plus && plusPurchasable) ...[
+          PlusPromoCard(
+            title: i18n.t('mobileMe.plus.title'),
+            hint: i18n.t('mobileMe.plus.hint'),
+            onTap: () => context.go('/dashboard/subscribe'),
+          ),
+          const SizedBox(height: 20),
+        ],
         MenuGroup(rows: [
           MenuRow(
             icon: LucideIcons.shield,
@@ -94,10 +104,10 @@ class MeScreen extends StatelessWidget {
         const SizedBox(height: 28),
         SectionLabel(i18n.t('mobileMe.groups.more')),
         MenuGroup(rows: [
-          if (plus || plusPurchasable)
+          if (plus)
             MenuRow(
               icon: LucideIcons.crown,
-              color: Tw.amber600,
+              color: PlusPalette.gold,
               title: i18n.t('mobileMe.plus.title'),
               hint: i18n.t(plus ? 'mobileMe.plus.active' : 'mobileMe.plus.hint'),
               onTap: () => context.go('/dashboard/subscribe'),
