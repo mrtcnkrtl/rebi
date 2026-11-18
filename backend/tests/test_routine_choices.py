@@ -96,9 +96,17 @@ def test_oily_morning_moisturizer_is_one_formula():
         temperature=22,
         actives_experience="regular",
     )
-    actions = [str(i.get("action") or "") for i in r["routine_items"]]
-    assert not any(a.lower().startswith("nemlendirici") for a in actions)
+    actions = [str(i.get("action") or "") for i in r["routine_items"] if i.get("category") in ("Bakım", "Koruma")]
+    moist = [a for a in actions if a.lower().startswith("nemlendirici")]
+    assert moist
+    assert all("dimetikon" not in a.lower() for a in moist)
     assert not any(a.lower().startswith("gece:") for a in actions)
-    oil = next(i for i in r["routine_items"] if "niasinamid" in (i.get("action") or "").lower())
-    assert "çinko" in oil["action"].lower()
+    oil = next(
+        i for i in r["routine_items"]
+        if i.get("category") == "Bakım" and (
+            "yeşil çay" in (i.get("action") or "").lower()
+            or "egcg" in (i.get("action") or "").lower()
+            or ("niasinamid" in (i.get("action") or "").lower() and "çinko" in (i.get("action") or "").lower())
+        )
+    )
     assert "choices" not in oil

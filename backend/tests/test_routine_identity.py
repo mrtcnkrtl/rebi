@@ -292,7 +292,8 @@ def test_dry_air_reselects_the_checkin_cream_only():
     out = adapt_existing_routine([cream], daily, {"level": "normal", "detail": ""})
     night = next(i for i in out["adapted_items"] if i.get("concern_role") == "checkin_moisturizer")
     assert "%0.1-1" in night["action"]
-    assert night["action"].lower().count("gece:") == 1
+    assert night["action"].lower().count("nemlendirici:") == 1
+    assert "gece:" not in night["action"].lower()
 
 
 def test_merge_strips_curated_alias_from_wrong_box():

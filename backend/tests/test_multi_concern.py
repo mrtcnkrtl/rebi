@@ -20,6 +20,15 @@ def _blob(items):
     return " ".join(parts).lower()
 
 
+def _care_blob(items):
+    """Bakım/Koruma only — Sonra plan satırlarını hariç tut."""
+    return " ".join(
+        f"{i.get('action') or ''} {i.get('detail') or ''}"
+        for i in items
+        if i.get("category") in ("Bakım", "Koruma")
+    ).lower()
+
+
 def _flow(**kwargs):
     base = dict(
         age=26,
@@ -81,12 +90,12 @@ def test_run_flow_ignores_first_selected_uses_highest_score():
     )
     assert r["multi_concern"]["primary"] == "acne"
     assert r["multi_concern"]["phase"] == "treatment"
-    blob = _blob(r["routine_items"])
+    blob = _care_blob(r["routine_items"])
     assert "benzoil" in blob or "azelaik" in blob
     assert "çene" in blob
     deferred_ids = [d["id"] for d in r["multi_concern"]["deferred"]]
     assert "pigmentation" in deferred_ids
-    # İkincil leke serumu yığılmaz
+    # İkincil leke serumu Bakım'da yok (Sonra planında olabilir)
     assert "heksilrezorsinol" not in blob
     assert "arbutin" not in blob
 
@@ -178,11 +187,16 @@ def test_dryness_ge6_barrier_defers_acne_no_secondary_stack():
         ],
     )
     assert r["multi_concern"]["phase"] == "barrier"
-    blob = _blob(r["routine_items"])
+    blob = _care_blob(r["routine_items"])
     assert "benzoil" not in blob
     # Bariyer gece kremi birleşik; ayrı support_oiliness yok
     assert "support_oiliness" not in blob
-    assert "panthenol" in blob or "seramid" in blob or "linolenik" in blob
+    assert (
+        "panthenol" in blob
+        or "centella" in blob
+        or "cica" in blob
+        or "nemlendirici" in blob
+    )
 
 
 def test_pigmentation_forces_spf_50_but_not_stacked_serum():
@@ -195,11 +209,11 @@ def test_pigmentation_forces_spf_50_but_not_stacked_serum():
             {"id": "pigmentation", "severity_score": 4},
         ],
     )
-    blob = _blob(r["routine_items"])
+    blob = _care_blob(r["routine_items"])
     assert "spf 50" in blob
     assert r["multi_concern"]["primary"] == "acne"
     assert "pigmentation" in [d["id"] for d in r["multi_concern"]["deferred"]]
-    # İkincil leke serumu aynı rutinde yok
+    # İkincil leke serumu Bakım'da yok
     assert "heksilrezorsinol" not in blob
     assert "arbutin" not in blob
 

@@ -173,9 +173,13 @@ def test_flow_stings_caps_to_two_nights():
     conc = [i for i in r["routine_items"] if i.get("concentrated_serum")]
     for it in conc:
         assert len(it.get("weekly_days") or []) <= 2
-    # Bariyer odaklı gece kremi
-    blob = " ".join((i.get("action") or "").lower() for i in r["routine_items"])
-    assert "panthenol" in blob or "linolenik" in blob or "seramid" in blob
+    # Bariyer odaklı gece kremi (cica|panthenol)
+    care = " ".join(
+        (i.get("action") or "").lower()
+        for i in r["routine_items"]
+        if i.get("category") in ("Bakım", "Koruma")
+    )
+    assert "panthenol" in care or "centella" in care or "cica" in care
 
 
 def test_flow_max_two_when_secondary_needed():

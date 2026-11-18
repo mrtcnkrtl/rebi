@@ -152,11 +152,13 @@ def test_most_severe_concern_stays_primary_with_undereye():
         ],
     )
     assert r["multi_concern"]["primary"] == "acne"
-    # Göz altı ertelenir; aynı rutinde göz serumu yığılmaz
+    # Göz altı ertelenir; Bakım'da göz serumu yok (Sonra planında olabilir)
     assert "undereye" in [d["id"] for d in r["multi_concern"]["deferred"]]
-    blob = _blob(r["routine_items"])
-    assert "göz çevresi" not in blob
-    assert "kafein" not in blob
+    care = " ".join(
+        (i.get("action") or "") for i in r["routine_items"] if i.get("category") in ("Bakım", "Koruma")
+    ).lower()
+    assert "göz çevresi" not in care
+    assert "kafein" not in care
 
 
 def test_high_risk_drops_caffeine_one_tier_and_keeps_it():
@@ -184,7 +186,7 @@ def test_high_risk_drops_caffeine_one_tier_and_keeps_it():
 
 
 def test_high_risk_drops_sulfur_one_tier_when_system_picks_sulfur():
-    """Hassasiyet bariyer-önce: akne ertelenir; BPO yok. Bariyer fazında panthenol/GLA."""
+    """Hassasiyet bariyer-önce: akne ertelenir; BPO yok. Bariyer gecesi cica|panthenol."""
     r = _flow(
         concern="acne",
         severity_score=9,
@@ -198,12 +200,14 @@ def test_high_risk_drops_sulfur_one_tier_when_system_picks_sulfur():
             {"id": "sensitivity", "severity_score": 7},
         ],
     )
-    blob = _blob(r["routine_items"])
+    care = " ".join(
+        (i.get("action") or "") for i in r["routine_items"] if i.get("category") in ("Bakım", "Koruma")
+    ).lower()
     assert all("choices" not in i for i in r["routine_items"])
     assert r["multi_concern"]["phase"] == "barrier"
     assert "acne" in [d["id"] for d in r["multi_concern"]["deferred"]]
-    assert "benzoil" not in blob
-    assert "panthenol" in blob or "linolenik" in blob or "seramid" in blob
+    assert "benzoil" not in care
+    assert "panthenol" in care or "centella" in care or "cica" in care
 
 
 def test_sensitive_licorice_stays_on_the_low_band_when_risk_is_high():
