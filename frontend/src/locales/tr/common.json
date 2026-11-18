@@ -647,5 +647,18 @@
       "spf_hybrid": "Hibrit güneş kremi mineral ve kimyasal filtreleri birleştirir; doku ve koruma dengesi arayanlar için tasarlanır.",
       "spf_tinted": "Renkli (tinted) güneş kremi, UV korumasına hafif örtü ekler; lekeli görünümde tek adımda pratiklik sağlar."
     }
+  },
+  "mobileBeta": {
+    "eyebrow": "Erken erişim",
+    "badge": "Beta",
+    "badgeLabel": "Beta sürüm",
+    "title": "Rebi’yi ilk kullananlardansın",
+    "body": "Uygulama hâlâ şekilleniyor; bazı köşeleri henüz pürüzlü olabilir. Senin deneyimin, Rebi’nin bundan sonraki hâlini belirleyecek.",
+    "updatesTitle": "Sık güncellenir",
+    "updatesBody": "Yeni özellikler ve düzeltmeler düzenli olarak gelir.",
+    "teamTitle": "Ekip seni okur",
+    "teamBody": "Gönderdiğin her not doğrudan bize ulaşır.",
+    "ok": "Keşfetmeye başla",
+    "report": "Geri bildirim gönder"
   }
 }

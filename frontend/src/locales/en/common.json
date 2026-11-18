@@ -647,5 +647,18 @@
       "spf_hybrid": "Hybrid sunscreen blends mineral and chemical filters for a balance of feel and protection.",
       "spf_tinted": "Tinted sunscreen adds light coverage to UV protection and can simplify routines for uneven tone."
     }
+  },
+  "mobileBeta": {
+    "eyebrow": "Early access",
+    "badge": "Beta",
+    "badgeLabel": "Beta version",
+    "title": "You’re one of Rebi’s first users",
+    "body": "The app is still taking shape, so a few corners may be rough. What you experience will shape what Rebi becomes next.",
+    "updatesTitle": "Updated often",
+    "updatesBody": "New features and fixes arrive regularly.",
+    "teamTitle": "Read by the team",
+    "teamBody": "Every note you send reaches us directly.",
+    "ok": "Start exploring",
+    "report": "Send feedback"
   }
 }
