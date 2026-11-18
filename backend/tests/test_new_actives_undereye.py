@@ -273,9 +273,20 @@ def test_sensitive_oiliness_is_green_tea_only():
     assert "salisilik" not in blob
 
 
-def test_gentle_mild_acne_is_mandelic():
+def test_gentle_mild_acne_sensitive_is_pha():
+    """Hassas ciltte wants_pha kapısı açık → mandelik değil PHA."""
     r = _flow(concern="acne", severity_score=3, skin_type_key="sensitive")
     blob = _blob(r["routine_items"])
+    assert "glukonolakton" in blob or "polihidroksi" in blob
+    assert "mandelik" not in blob
+    assert "salisilik" not in blob
+
+
+def test_gentle_mild_acne_dry_is_mandelic():
+    """Kuru + nazik (PHA kapısı kapalı değilse laktik/PHA; dry gentle → mandelik yolu)."""
+    r = _flow(concern="acne", severity_score=3, skin_type_key="dry")
+    blob = _blob(r["routine_items"])
+    # dry: gentle=True; wants_pha(skin=dry) False → mandelik
     assert "mandelik asit" in blob
     assert "salisilik" not in blob
 
