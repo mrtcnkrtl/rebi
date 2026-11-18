@@ -152,8 +152,11 @@ def test_most_severe_concern_stays_primary_with_undereye():
         ],
     )
     assert r["multi_concern"]["primary"] == "acne"
+    # Göz altı ertelenir; aynı rutinde göz serumu yığılmaz
+    assert "undereye" in [d["id"] for d in r["multi_concern"]["deferred"]]
     blob = _blob(r["routine_items"])
-    assert "kafein" in blob or "göz çevresi" in blob
+    assert "göz çevresi" not in blob
+    assert "kafein" not in blob
 
 
 def test_high_risk_drops_caffeine_one_tier_and_keeps_it():
@@ -181,7 +184,7 @@ def test_high_risk_drops_caffeine_one_tier_and_keeps_it():
 
 
 def test_high_risk_drops_sulfur_one_tier_when_system_picks_sulfur():
-    """BPO kaçınılınca sistem sülfür/azelaik seçer; yüksek riskte sülfür bir kademe iner."""
+    """Hassasiyet bariyer-önce: akne ertelenir; BPO yok. Bariyer fazında panthenol/GLA."""
     r = _flow(
         concern="acne",
         severity_score=9,
@@ -196,15 +199,11 @@ def test_high_risk_drops_sulfur_one_tier_when_system_picks_sulfur():
         ],
     )
     blob = _blob(r["routine_items"])
-    assert "choices" not in "".join(str(i.keys()) for i in r["routine_items"])
     assert all("choices" not in i for i in r["routine_items"])
-    # Hassasiyet → BPO yok; nazik antibakteriyel. Sülfür seçildiyse kademe düşmüş olmalı.
-    sulfur_steps = [i for i in r["routine_items"] if "sülfür" in (i.get("action") or "").lower() or "kükürt" in (i.get("action") or "").lower()]
-    if sulfur_steps:
-        assert "%3-5" in sulfur_steps[0]["action"] or "%2-3" in sulfur_steps[0]["action"]
-        assert "%5-10" not in sulfur_steps[0]["action"]
-    else:
-        assert "azelaik" in blob
+    assert r["multi_concern"]["phase"] == "barrier"
+    assert "acne" in [d["id"] for d in r["multi_concern"]["deferred"]]
+    assert "benzoil" not in blob
+    assert "panthenol" in blob or "linolenik" in blob or "seramid" in blob
 
 
 def test_sensitive_licorice_stays_on_the_low_band_when_risk_is_high():
@@ -223,14 +222,21 @@ def test_sensitive_licorice_stays_on_the_low_band_when_risk_is_high():
     assert "glabridin %0.1-0.5" not in blob
 
 
-def test_acne_without_barrier_need_has_no_moisturizer():
+def test_acne_focus_uses_panthenol_night_not_barrier_stack():
+    """Akne odağında akşam panthenol; GLA+cica+seramid yığını yok. Linoleik isteğe bağlı notta."""
     r = _flow(concern="acne", severity_score=8, skin_type_key="combination")
     actions = [i.get("action") or "" for i in r["routine_items"]]
-    assert not any(a.startswith("Nemlendirici:") for a in actions)
-    assert not any(a.startswith("Gece:") for a in actions)
+    night = [a for a in actions if a.startswith("Nemlendirici") or a.startswith("Gece")]
+    assert any("panthenol %5" in a.lower() for a in night)
+    assert not any("linoleik" in a.lower() for a in night)
+    assert not any("+" in a and "seramid" in a.lower() for a in night)
+    blob = " ".join(
+        f"{i.get('action') or ''} {i.get('detail') or ''}" for i in r["routine_items"]
+    )
+    assert "linoleik" in blob.lower()
 
 
-def test_dryness_chooses_dimethicone_morning_and_night():
+def test_dryness_chooses_skin_type_moisturizer_and_barrier_night():
     r = _flow(
         concern="dryness",
         severity_score=6,
@@ -238,19 +244,30 @@ def test_dryness_chooses_dimethicone_morning_and_night():
         concerns=[{"id": "dryness", "severity_score": 6}],
     )
     actions = [i.get("action") or "" for i in r["routine_items"]]
-    assert any(a.startswith("Nemlendirici: Dimetikon %1-5") for a in actions)
-    assert any("Gece: gama linolenik asit (GLA) %0.1-1" in a for a in actions)
-    assert not any("Centella" in a or "Seramid %1-2" in a for a in actions)
+    assert any(a.startswith("Nemlendirici:") and "dimetikon" not in a.lower() for a in actions)
+    # Bariyer fazında tek ajan: cica veya panthenol (GLA yığını yok)
+    assert any(
+        ("Nemlendirici" in a or "Gece" in a)
+        and ("panthenol" in a.lower() or "centella" in a.lower() or "cica" in a.lower())
+        for a in actions
+    )
+    assert not any(a.startswith("Centella") for a in actions)
+    assert not any(" + " in a and ("Nemlendirici" in a or "Gece" in a) for a in actions)
 
 
-def test_sensitivity_uses_the_hassas_barrier_column():
+def test_sensitivity_uses_gentle_morning_moisturizer():
     r = _flow(concern="sensitivity", severity_score=3, skin_type_key="combination")
     actions = [i.get("action") or "" for i in r["routine_items"]]
-    assert any(a.startswith("Nemlendirici: Dimetikon %0.5-2") for a in actions)
+    assert any(
+        a.startswith("Nemlendirici:") and ("nazik" in a.lower() or "parfümsüz" in a.lower() or "nemlendirici" in a.lower())
+        for a in actions
+    )
+    assert not any("dimetikon" in a.lower() for a in actions)
     assert not any("Centella" in a or "Seramid %1-2" in a for a in actions)
 
 
-def test_acne_barrier_stress_selects_linoleic():
+def test_acne_barrier_stress_selects_panthenol_or_cica_single():
+    """Stres/bariyer baskısında tek gece ajanı (cica|panthenol); yığın yok."""
     r = _flow(
         concern="acne",
         severity_score=8,
@@ -261,8 +278,14 @@ def test_acne_barrier_stress_selects_linoleic():
         sleep_hours=4,
     )
     actions = [i.get("action") or "" for i in r["routine_items"]]
-    assert any("Gece: Linoleik asit %1-2.5" in a for a in actions)
-    assert not any("Centella" in a or "Seramid %1-2" in a for a in actions)
+    night = [
+        a for a in actions
+        if a.startswith("Nemlendirici") or a.startswith("Gece") or "centella" in a.lower()
+    ]
+    assert night
+    assert any("panthenol" in a.lower() or "centella" in a.lower() or "cica" in a.lower() for a in night)
+    assert not any(" + " in a for a in night)
+    assert not any("linoleik" in a.lower() for a in night)
 
 
 def test_sensitive_oiliness_is_green_tea_only():
@@ -303,7 +326,8 @@ def test_oily_sensitive_mild_acne_is_pha():
     assert "salisilik" not in blob
 
 
-def test_dry_skin_barrier_uses_kuru_column():
+def test_dry_skin_barrier_uses_rich_moisturizer():
     r = _flow(concern="dryness", severity_score=6, skin_type_key="dry")
     blob = _blob(r["routine_items"])
-    assert NEW_ACTIVE_DOSES["barrier"]["dimethicone"]["kuru"] in blob
+    assert "dimetikon" not in blob
+    assert "yoğun nemlendirici" in blob or "nemlendirici krem" in blob

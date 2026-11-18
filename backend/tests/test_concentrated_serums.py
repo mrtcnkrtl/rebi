@@ -162,16 +162,20 @@ def test_flow_concentrated_never_exceeds_four_nights():
 
 
 def test_flow_stings_caps_to_two_nights():
+    """Batma → bariyer fazı; derişik akne aktifi yok. Streak/cap bariyer sonrası tedavi için geçerli."""
     r = _flow(
         concern="acne",
         severity_score=5,
         special_flags={"stings_with_products": True},
         actives_experience="regular",
     )
+    assert r["multi_concern"]["phase"] == "barrier"
     conc = [i for i in r["routine_items"] if i.get("concentrated_serum")]
-    assert conc
     for it in conc:
         assert len(it.get("weekly_days") or []) <= 2
+    # Bariyer odaklı gece kremi
+    blob = " ".join((i.get("action") or "").lower() for i in r["routine_items"])
+    assert "panthenol" in blob or "linolenik" in blob or "seramid" in blob
 
 
 def test_flow_max_two_when_secondary_needed():

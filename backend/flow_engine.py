@@ -400,16 +400,16 @@ def classify_age_group(age: int) -> dict:
 SKIN_TYPE_PROFILES = {
     "oily": {
         "label_tr": "Yağlı",
-        "moisturizer_type": "Dimetikon %0.5-2 nefes alan film",
+        "moisturizer_type": "Hafif, yağsız jel/losyon nemlendirici",
         "cleanser_type": "Yüzey aktif (SLES-free) köpük temizleyici",
         "avoid_ingredients": ["ağır yağlar", "vazelin", "mineral yağ"],
         "prefer_ingredients": ["niasinamid", "salisilik asit", "çay ağacı"],
         "spf_type": "mat bitişli, yağsız SPF",
-        "night_cream": "Linoleik asit %1-2.5",
+        "night_cream": "panthenol %5 (INCI: Panthenol)",
     },
     "dry": {
         "label_tr": "Kuru",
-        "moisturizer_type": "Dimetikon %1-5 nefes alan film",
+        "moisturizer_type": "Yoğun nemlendirici krem",
         "cleanser_type": "Krem bazlı nazik temizleyici (sülfat-free)",
         "avoid_ingredients": ["alkol bazlı tonikler", "sodyum lauril sülfat"],
         "prefer_ingredients": ["hyaluronik asit", "seramid", "squalane", "shea yağı"],
@@ -418,7 +418,7 @@ SKIN_TYPE_PROFILES = {
     },
     "combination": {
         "label_tr": "Karma",
-        "moisturizer_type": "Dimetikon %0.5-2 nefes alan film",
+        "moisturizer_type": "Dengeli, orta ağırlıkta nemlendirici",
         "cleanser_type": "Dengeli pH (5.5) jel temizleyici",
         "avoid_ingredients": ["çok ağır kremler"],
         "prefer_ingredients": ["niasinamid", "hyaluronik asit"],
@@ -427,7 +427,7 @@ SKIN_TYPE_PROFILES = {
     },
     "normal": {
         "label_tr": "Normal",
-        "moisturizer_type": "Dimetikon %0.5-2 nefes alan film",
+        "moisturizer_type": "Günlük dengeli nemlendirici",
         "cleanser_type": "Nazik jel temizleyici (sülfat-free)",
         "avoid_ingredients": [],
         "prefer_ingredients": ["antioksidanlar", "peptidler"],
@@ -436,7 +436,7 @@ SKIN_TYPE_PROFILES = {
     },
     "sensitive": {
         "label_tr": "Hassas",
-        "moisturizer_type": "Dimetikon %0.5-2 nefes alan film",
+        "moisturizer_type": "Nazik, parfümsüz nemlendirici",
         "cleanser_type": "Süt bazlı nazik temizleyici (sülfat-free)",
         "avoid_ingredients": ["parfüm", "alkol", "esansiyel yağlar", "retinol (yüksek doz)"],
         "prefer_ingredients": ["centella", "allantoin", "panthenol", "bisabolol"],
@@ -1286,6 +1286,33 @@ def _skin_panthenol() -> str:
     return "D-Pantenol %5 yatıştırıcı serum (INCI: Panthenol; B5 provitamini)"
 
 
+def _skin_cica() -> str:
+    return (
+        "Centella (cica) ekstraktı %0.1-1 yatıştırıcı katman "
+        "(INCI: Centella Asiatica Extract; madecassoside/asiaticoside)"
+    )
+
+
+def pick_barrier_night_repair(
+    *,
+    focus_id: str = "",
+    sens_score: int = 0,
+    dry_score: int = 0,
+    stings: bool = False,
+) -> str:
+    """
+    Bariyer onarım gecesi: sistem cica veya panthenol seçer (tek yatıştırıcı).
+    Kızarıklık/hassasiyet/batma → cica; kuruluk baskın → panthenol.
+    """
+    fid = (focus_id or "").lower()
+    if stings or sens_score >= dry_score or fid == "sensitivity":
+        return (
+            "centella (cica) ekstraktı %0.1-1 "
+            "(INCI: Centella Asiatica Extract)"
+        )
+    return "panthenol %5 (INCI: Panthenol)"
+
+
 def _skin_toco_ferulic() -> str:
     return "Tokoferol (E vitamini) + ferulik asit antioksidan serum"
 
@@ -1677,12 +1704,38 @@ def barrier_column(skin_key: str) -> str:
     return {"dry": "kuru", "oily": "yagli"}.get(skin_key or "", "hassas")
 
 
+_MOISTURIZER_BY_COLUMN = {
+    "yagli": "Hafif, yağsız jel/losyon nemlendirici",
+    "kuru": "Yoğun nemlendirici krem",
+    "hassas": "Nazik, parfümsüz nemlendirici",
+}
+
+
+def _skin_type_moisturizer(column: str) -> str:
+    """Sabah nemlendirici: etken adı yok, cilt tipine uygun form."""
+    return _MOISTURIZER_BY_COLUMN.get(column) or _MOISTURIZER_BY_COLUMN["hassas"]
+
+
 def _skin_dimethicone(column: str) -> str:
-    return f"Dimetikon {NEW_ACTIVE_DOSES['barrier']['dimethicone'][column]} nefes alan film"
+    """Geriye uyum — rutinde dimetikon yazılmaz; cilt tipi nemlendiricisine yönlendirir."""
+    return _skin_type_moisturizer(column)
 
 
 def _skin_linoleic(column: str) -> str:
+    """İsteğe bağlı: kullanıcıda linoleik ürün varsa panthenol yerine kullanılabilir."""
     return f"Linoleik asit {NEW_ACTIVE_DOSES['barrier']['linoleic'][column]}"
+
+
+def _skin_panthenol_night(column: str = "yagli") -> str:
+    """Piyasada yaygın gece bariyer/yağ dengesi alternatifi (linoleik yerine varsayılan)."""
+    _ = column  # doz panthenol için sabit %5; kolon API uyumu
+    return "panthenol %5 (INCI: Panthenol)"
+
+
+_LINOLEIC_OPTIONAL_NOTE = (
+    "Linoleik asitli nemlendiricin varsa panthenol yerine onu kullanabilirsin; "
+    "yoksa panthenol yeterli."
+)
 
 
 def _skin_gla(column: str) -> str:
@@ -1907,29 +1960,38 @@ def build_evening_moisturizer_item(
     severity: dict,
     skin_type: dict,
     personalization: Optional[dict] = None,
+    *,
+    barrier_phase: bool = False,
 ) -> dict:
     """
     Gece nemlendirici / bariyer satırının tek çıkış noktası (tüm concern'ler).
     Kişisel puan (risk + şiddet + tolerans) yüksekse ekstra bariyer adımları burada birleştirilir.
     """
-    base = skin_type["night_cream"]
+    base = skin_type.get("_night_cream_override") or skin_type["night_cream"]
     sev = severity.get("level", "")
     pers = personalization or {}
     sfx = _personalization_detail_suffix(personalization)
 
-    if concern == "sensitivity" and sev == "şiddetli":
+    if barrier_phase or (concern == "sensitivity" and sev == "şiddetli"):
+        repair = pick_barrier_night_repair(
+            focus_id=concern,
+            sens_score=10 if concern == "sensitivity" else 0,
+            dry_score=10 if concern == "dryness" else 0,
+            stings=False,
+        )
+        # Tek ajan: cica VEYA panthenol — GLA/seramid yığını yazma (formülde olabilir, ayrı ürün değil)
+        night = base if ("panthenol" in (base or "").lower() or "centella" in (base or "").lower() or "cica" in (base or "").lower()) else repair
         return {
             "time": "Akşam", "category": "Bakım", "icon": "🌙",
-            "action": (
-                f"Gece (tek yoğun katman): {base} + panthenol %5; "
-                "gerekirse son adım ince vazelin bariyer kilidi"
-            ),
+            "action": f"Nemlendirici: {night}",
             "detail": (
-                "Tek gece katmanında toplandı; ayrı panthenol/vazelin şişesi şart değil. "
-                "Çok kuruysa en son ince vazelin filmi; tıkanıklıkta vazelini seyrelt veya azalt."
+                "Bariyer odaklı tek akşam nemlendirici; sistem cica veya panthenol seçer. "
+                "Seramidli formül bonus, ayrı şişe şart değil. "
+                "Çok kuruysa en son ince vazelin filmi; tıkanıklıkta vazelini azalt. "
+                + _LINOLEIC_OPTIONAL_NOTE
                 + sfx
             ),
-            "usage": "Temiz cilde önce onarım katmanı; vazelin varsa en son, ince film.",
+            "usage": "Temiz cilde tek katman; vazelin varsa en son, ince film.",
             "priority": 3,
             "step_order": 30,
         }
@@ -1937,32 +1999,37 @@ def build_evening_moisturizer_item(
     if concern == "dryness" and sev == "şiddetli" and pers.get("merge_barrier_layers"):
         return {
             "time": "Akşam", "category": "Bakım", "icon": "🌙",
-            "action": f"Gece (yoğun tek katman): {base} + HA nem çekimi; çok kuruda kalınlık artır",
+            "action": f"Nemlendirici (yoğun tek katman): {base} + HA nem çekimi; çok kuruda kalınlık artır",
             "detail": (f"Ayrı maske satırı yok; tek blokta bariyer + nem yoğunluğu ({base})." + sfx),
             "usage": "Serum/aktif sonrası tek kalın nem tabanı; gerekirse ıslak cilde uygula.",
             "priority": 3,
             "step_order": 30,
         }
 
-    # Hafif/orta kuruluk + tier≤1: akşam seramid serumu kaldırıldı; bariyer amacı gece kremde toplanır
+    # Hafif/orta kuruluk + tier≤1: akşam seramid serumu kaldırıldı; bariyer amacı kremde toplanır
     if concern == "dryness" and _personalization_compress_evening(pers):
         if not (sev == "şiddetli" and pers.get("merge_barrier_layers")):
             return {
                 "time": "Akşam", "category": "Bakım", "icon": "🌙",
                 "action": (
-                    f"Gece (tek katman): {base} + seramid NP/skualan onarım içeriği "
+                    f"Nemlendirici (tek katman): {base} + seramid NP/skualan onarım içeriği "
                     "(bir ürün veya nemlendiricide birleşik)"
                 ),
-                "detail": ("Ayrı gece serum yok; seramid/skualan hedefini bu nemlendiricide topla." + sfx),
+                "detail": ("Ayrı akşam serum yok; seramid/skualan hedefini bu nemlendiricide topla." + sfx),
                 "usage": "Temiz cilde veya hafif tonik sonrası tek kalın taban.",
                 "priority": 3,
                 "step_order": 30,
             }
 
+    linoleic_hint = (
+        f" {_LINOLEIC_OPTIONAL_NOTE}"
+        if concern in ("acne", "oiliness", "pores") and "panthenol" in (base or "").lower()
+        else ""
+    )
     return {
         "time": "Akşam", "category": "Bakım", "icon": "🌙",
-        "action": f"Gece: {base}",
-        "detail": f"Bariyer onarımı.{sfx}",
+        "action": f"Nemlendirici: {base}",
+        "detail": f"Bariyer onarımı.{linoleic_hint}{sfx}",
         "usage": "Dermokozmetik adımdan sonra. Tüm yüze ince katman, gece bırak.",
         "priority": 3,
         "step_order": 30,
@@ -2048,8 +2115,8 @@ def get_base_skincare_routine(
         skin_type["night_cream"] = night_cream
         items.append({
             "time": "Akşam", "category": "Bakım", "icon": "🌙",
-            "action": f"Gece: {night_cream}",
-            "detail": "Bu kişinin verisi gece kremi gerektiriyor.",
+            "action": f"Nemlendirici: {night_cream}",
+            "detail": "Bu kişinin verisi akşam nemlendirici gerektiriyor.",
             "usage": "Dermokozmetik adımdan sonra. Tüm yüze ince katman, gece bırak.",
             "priority": 3, "step_order": 30,
         })
@@ -2072,6 +2139,9 @@ def _add_morning_actives(
     Asit, yüksek % niasinamid, BP, arbutin vb. akşama taşınır.
     """
     g = guards or {}
+    # Bariyer fazı: tedavi aktifi yok — temizlik + nem + SPF + gece onarım yeterli
+    if g.get("_barrier_phase"):
+        return
     tier = dose_tier(g, score=concern_score)
 
     if concern == "acne":
@@ -2079,15 +2149,8 @@ def _add_morning_actives(
         pass
 
     elif concern == "oiliness":
-        # Hassas bantta sebum ürünü yeşil çaydır ve sabah yazılır. Akşam ikinci adım açılmaz.
-        if tier == "hassas":
-            items.append(_apply_dose_meta({
-                "time": "Sabah", "category": "Bakım", "icon": "🍵",
-                "action": _skin_green_tea(tier),
-                "detail": "Hassas veya yeni başlayan ciltte yağlılık için tek ürün yeşil çay.",
-                "usage": "Temiz cilde ince katman. Ardından nemlendirici varsa o, sonra SPF.",
-                "priority": 2, "step_order": 20,
-            }, _opt_meta("green_tea", tier)))
+        # Sıralı odak: sabah dinlenme; sebum aktifi yalnızca akşam.
+        pass
 
     elif concern == "pores":
         # Gözenek: BHA akşam çekirdek; sabah ekstra niasinamid yok (yağlılıktan ayrılır)
@@ -2230,6 +2293,9 @@ def _add_evening_actives(
     pers = personalization or {}
     compress = _personalization_compress_evening(pers)
     g = guards or {}
+    # Bariyer fazı: azelaik/meyan/asit yok — tek katman gece onarım (cica|panthenol)
+    if g.get("_barrier_phase"):
+        return
     _level_fallback = {"hafif": 3, "orta": 5, "şiddetli": 8}
     score = int(concern_score if concern_score is not None else _level_fallback.get(severity.get("level"), 5))
 
@@ -2430,12 +2496,12 @@ def _add_evening_actives(
                 items.append({
                     "time": "Akşam", "category": "Bakım", "icon": "💎",
                     "action": (
-                        f"Gece (tek yoğun blok): {_skin_peptide_ha()} + {_skin_bakuchiol()} + "
+                        f"Akşam (tek yoğun blok): {_skin_peptide_ha()} + {_skin_bakuchiol()} + "
                         "seramid NP/AP/EOP 3:1:1 (tek serum veya sıralı ince katmanlar)"
                     ),
                     "detail": (
                         "Kişisel puan: üç ayrı rutin satırı yerine aynı akşam peptid+HA → bakuchiol → seramid sırası; "
-                        "mümkünse çoklu içerikli tek gece ürünü. Sabahda sadece hafif HA kullanıldı."
+                        "mümkünse çoklu içerikli tek ürün. Sabahda sadece hafif HA kullanıldı."
                     ),
                     "priority": 2, "step_order": 20,
                 })
@@ -2478,8 +2544,15 @@ def _add_evening_actives(
         from multi_concern import bha_for_oiliness
 
         if dose_tier(g, score=score) == "hassas":
-            # Sabah yeşil çay bu sorunun tek ürünü.
-            pass
+            items.append(_apply_dose_meta({
+                "time": "Akşam", "category": "Bakım", "icon": "🍵",
+                "action": _skin_green_tea("hassas"),
+                "detail": (
+                    f"Yağlılık (şiddet {score}/10): hassas bantta tek akşam sebum adımı yeşil çay. "
+                    "Sabah dinlenme; ikinci sebum serumu yok."
+                ),
+                "priority": 2, "step_order": 20,
+            }, _opt_meta("green_tea", "hassas")))
         else:
             bha_pct, n = bha_for_oiliness(score, g)
             actions = {"niacin_zinc": _skin_niacin_zinc()}
@@ -3103,6 +3176,7 @@ def compute_environment_branches(
     *,
     spf_default: Optional[str] = None,
     concern_ids=(),
+    skip_extra_moisture: bool = False,
 ) -> list:
     """Hava durumu + cilt tipine göre çevresel öneriler. `spf_default` verilirse SPF seçenekli olur."""
     items = []
@@ -3148,49 +3222,52 @@ def compute_environment_branches(
         items.insert(start, spf_filter_item(spf_item, spf_type, default=spf_default, concern_ids=concern_ids))
 
     # ── Nem Dalı ──
-    if humidity < 25:
-        items.append({
-            "time": "Sabah", "category": "Bakım", "icon": "🏜️",
-            "action": "Yoğun nemlendirme: HA (çoklu mol.) + Seramid %2",
-            "detail": f"Hava çok kuru (%{humidity} nem). HA serum + seramid krem ikili şart.",
-            "priority": 1,
-        })
-        items.append({
-            "time": "Akşam", "category": "Bakım", "icon": "💦",
-            "action": "Gece maskesi: HA + Seramid (oklüzif katman)",
-            "detail": "Gece nem kaybını engellemek için oklüzif sleeping mask uygula.",
-            "priority": 2,
-        })
-    elif humidity < 40:
-        items.append({
-            "time": "Sabah", "category": "Bakım", "icon": "💦",
-            "action": "Ekstra nem: HA + Panthenol %5 katmanı",
-            "detail": f"Nem düşük (%{humidity}). Serum + nemlendirici ikili kullan.",
-            "priority": 2,
-        })
-    elif humidity > 75:
-        items.append({
-            "time": "Sabah", "category": "Bakım", "icon": "🌊",
-            "action": "Hafif jel: HA + Niasinamid %5",
-            "detail": f"Nem çok yüksek (%{humidity}). Bu planda ağır krem yerine su bazlı jel formülü öne alındı.",
-            "priority": 2,
-        })
+    # Rutinde zaten sabah/akşam nemlendirici veya bariyer fazı varsa ekstra HA katmanı yığma
+    if not skip_extra_moisture:
+        if humidity < 25:
+            items.append({
+                "time": "Sabah", "category": "Bakım", "icon": "🏜️",
+                "action": "Yoğun nemlendirme: HA (çoklu mol.) + Seramid %2",
+                "detail": f"Hava çok kuru (%{humidity} nem). HA serum + seramid krem ikili şart.",
+                "priority": 1,
+            })
+            items.append({
+                "time": "Akşam", "category": "Bakım", "icon": "💦",
+                "action": "Nemlendirici maske: HA + Seramid (oklüzif katman)",
+                "detail": "Gece nem kaybını engellemek için oklüzif sleeping mask uygula.",
+                "priority": 2,
+            })
+        elif humidity < 40:
+            items.append({
+                "time": "Sabah", "category": "Bakım", "icon": "💦",
+                "action": "Ekstra nem: HA + Panthenol %5 katmanı",
+                "detail": f"Nem düşük (%{humidity}). Serum + nemlendirici ikili kullan.",
+                "priority": 2,
+            })
+        elif humidity > 75:
+            items.append({
+                "time": "Sabah", "category": "Bakım", "icon": "🌊",
+                "action": "Hafif jel: HA + Niasinamid %5",
+                "detail": f"Nem çok yüksek (%{humidity}). Bu planda ağır krem yerine su bazlı jel formülü öne alındı.",
+                "priority": 2,
+            })
 
-    # ── Sıcaklık Dalı ──
-    if temperature > 35:
-        items.append({
-            "time": "Sabah", "category": "Bakım", "icon": "🔥",
-            "action": "HA + Panthenol %5 (hafif, sıcak hava)",
-            "detail": f"Hava çok sıcak ({temperature}°C). Termal su yanında taşı, yoğun maddelerden kaçın.",
-            "priority": 3,
-        })
-    elif temperature < 5:
-        items.append({
-            "time": "Sabah", "category": "Bakım", "icon": "❄️",
-            "action": "Seramid %2-5 + Kolesterol + Vazelin (bariyer onarım)",
-            "detail": f"Hava çok soğuk ({temperature}°C). Rüzgar ve soğuk bariyeri zayıflatır; seramid+kolesterol bariyer onarımı.",
-            "priority": 2,
-        })
+    # ── Sıcaklık Dalı (ekstra nem katmanı; skip_extra_moisture ile yığılmaz) ──
+    if not skip_extra_moisture:
+        if temperature > 35:
+            items.append({
+                "time": "Sabah", "category": "Bakım", "icon": "🔥",
+                "action": "HA + Panthenol %5 (hafif, sıcak hava)",
+                "detail": f"Hava çok sıcak ({temperature}°C). Termal su yanında taşı, yoğun maddelerden kaçın.",
+                "priority": 3,
+            })
+        elif temperature < 5:
+            items.append({
+                "time": "Sabah", "category": "Bakım", "icon": "❄️",
+                "action": "Seramid %2-5 + Kolesterol + Vazelin (bariyer onarım)",
+                "detail": f"Hava çok soğuk ({temperature}°C). Rüzgar ve soğuk bariyeri zayıflatır; seramid+kolesterol bariyer onarımı.",
+                "priority": 2,
+            })
 
     for it in items:
         if it.get("step_order") != 40:
@@ -4068,15 +4145,15 @@ def _deduplicate_and_limit(items: list) -> list:
             else:
                 item["step_order"] = 20
 
-    # Akşam Bakım öğelerine otomatik step_order ata (eksikse); "Gece:" ile başlayan = nemlendirici katmanı
+    # Akşam Bakım: nemlendirici katmanı (eski "Gece:" öneki de tanınır)
     for item in skincare_evening:
         if "step_order" not in item:
             action_lower = (item.get("action") or "").lower()
             if any(w in action_lower for w in ["temizl", "yıka", "misel", "çift"]):
                 item["step_order"] = 10
-            elif action_lower.startswith("gece:"):
+            elif action_lower.startswith("gece:") or action_lower.startswith("nemlendirici"):
                 item["step_order"] = 30
-            elif any(w in action_lower for w in ["nemlendirici", "bariyer kilidi", "onarım krem", "uyku mask", "maskesi"]):
+            elif any(w in action_lower for w in ["bariyer kilidi", "onarım krem", "uyku mask", "maskesi"]):
                 item["step_order"] = 35 if "mask" in action_lower else 30
             elif "vazelin" in action_lower:
                 item["step_order"] = 35
@@ -4085,10 +4162,21 @@ def _deduplicate_and_limit(items: list) -> list:
 
     skincare_morning = _keep_by_slot_rank(skincare_morning, MORNING_CARE_CAP)
     skincare_evening = _keep_by_slot_rank(skincare_evening, EVENING_CARE_CAP)
-    lifestyle.sort(key=lambda x: x.get("priority", 5))
+    # Odak + sonra-plan satırları kesilmesin; kalan Yaşam slotu doldurulur
+    pinned_life = [
+        i for i in lifestyle
+        if i.get("concern_role") in ("focus_state", "deferred_preview", "deferred_cycle")
+    ]
+    rest_life = [
+        i for i in lifestyle
+        if i.get("concern_role") not in ("focus_state", "deferred_preview", "deferred_cycle")
+    ]
+    rest_life.sort(key=lambda x: x.get("priority", 5))
+    life_budget = max(5, len(pinned_life) + 2)
+    lifestyle_out = pinned_life + rest_life[: max(0, life_budget - len(pinned_life))]
 
     # Akşam: temizlik + birincil aktif(ler) + ikincil katman + nemlendirici
-    result = skincare_morning + skincare_evening + lifestyle[:5] + other[:2]
+    result = skincare_morning + skincare_evening + lifestyle_out + other[:2]
     return result
 
 
@@ -4146,6 +4234,10 @@ def _normalize_special_flags(raw: Optional[dict]) -> dict:
         v = raw.get(k)
         if v is True or v == 1 or (isinstance(v, str) and v.lower() in ("true", "1", "yes")):
             out[k] = True
+    # Check-in odak ilerlemesi: kuyruk resume (bool değil)
+    fq = raw.get("focus_queue")
+    if isinstance(fq, list) and fq:
+        out["focus_queue"] = fq
     return out
 
 
@@ -4349,6 +4441,9 @@ def choose_moisturizers(
     water_intake: float,
     humidity: float,
     stings: bool,
+    *,
+    focus_id: Optional[str] = None,
+    phase: str = "treatment",
 ) -> tuple:
     """Sabah nemlendiricisi ve gece kremi yalnızca veriyle gerekliyse. İkisi de tek madde."""
     by = {e["id"]: int(e.get("score") or 0) for e in (ranked or []) if e.get("id")}
@@ -4365,17 +4460,45 @@ def choose_moisturizers(
     except (TypeError, ValueError):
         hum = 100.0
     stressed = risk_level in ("high", "crisis") or water < 1.5 or hum < 40
-    if not (dry or sensitive or stressed):
+    barrier_phase = phase == "barrier" or focus_id in ("sensitivity", "dryness") and phase == "barrier"
+    if phase == "barrier":
+        barrier_phase = True
+    if not (dry or sensitive or stressed or barrier_phase):
+        # Tedavi odağında ince gece kremi: focus acne/oil/pores → panthenol (linoleik isteğe bağlı)
+        fid = (focus_id or "").lower()
+        if fid in ("acne", "oiliness", "pores"):
+            return _skin_type_moisturizer("yagli"), _skin_panthenol_night("yagli")
         return None, None
 
-    acne_oil = any(e.get("id") in ("acne", "oiliness", "pores") for e in (ranked or []))
+    # Akne/yağ/gözenek odağında panthenol; bariyer fazında tek onarım ajanı (cica|panthenol) sonra override
+    focus_acne_oil = (focus_id or "").lower() in ("acne", "oiliness", "pores") and not barrier_phase
+    acne_oil = focus_acne_oil
 
     def _pair(column: str) -> tuple:
-        night_col = "hassas" if column == "hassas" else "yagli"
-        night = _skin_linoleic(night_col) if acne_oil else _skin_gla(column)
-        return _skin_dimethicone(column), night
+        night_col = "hassas" if column == "hassas" else ("kuru" if column == "kuru" else "yagli")
+        if barrier_phase:
+            # Gece kremi run_flow'da pick_barrier_night_repair ile tek ajan olur (yığın yok)
+            night = _skin_panthenol_night(night_col)
+        elif acne_oil:
+            night = _skin_panthenol_night("hassas" if column == "hassas" else "yagli")
+        else:
+            night = _skin_gla(column)
+        return _skin_type_moisturizer(column), night
 
-    if sensitive and sens_score >= dry_score and skin_key != "dry":
+    if barrier_phase:
+        # Bariyer fazı: kuruluk baskınsa kuru kolon; hassasiyet/batma → hassas
+        if (focus_id or "").lower() == "dryness" or dry_score > sens_score:
+            if sensitive or stings:
+                column = "hassas"
+            elif skin_key == "oily" and dry_score < 7:
+                column = "yagli"
+            else:
+                column = "kuru"
+        else:
+            column = "hassas"
+        morning_product, night_product = _pair(column)
+        dryness_leads = True
+    elif sensitive and sens_score >= dry_score and skin_key != "dry":
         morning_product, night_product = _pair("hassas")
         dryness_leads = False
     elif dry:
@@ -4394,9 +4517,15 @@ def choose_moisturizers(
         morning_product, night_product = _pair("hassas")
         dryness_leads = False
 
-    strong = dry_score >= 5 or sens_score >= 5 or stressed or skin_key in ("dry", "sensitive")
-    morning = morning_product if strong or sensitive else None
-    night = night_product if strong or dryness_leads else None
+    strong = (
+        dry_score >= 5
+        or sens_score >= 5
+        or stressed
+        or barrier_phase
+        or skin_key in ("dry", "sensitive")
+    )
+    morning = morning_product if strong or sensitive or barrier_phase else None
+    night = night_product if strong or dryness_leads or barrier_phase or acne_oil else None
     if morning is None and night is None:
         night = night_product
     return morning, night
@@ -4488,6 +4617,8 @@ def run_flow(
 
     from multi_concern import (
         add_secondary_actives,
+        build_focus_queue,
+        build_focus_state_item,
         build_guards,
         normalize_concern_entries,
         rank_concerns,
@@ -4501,15 +4632,29 @@ def run_flow(
             concerns=concerns,
         )
     )
-    primary = ranked[0]
+    # Optional resume from prior check-in advance (concerns[*].resume_queue or special_flags)
+    resume_queue = None
+    if isinstance(special_flags_norm.get("focus_queue"), list):
+        resume_queue = special_flags_norm.get("focus_queue")
+    focus_info = build_focus_queue(
+        ranked,
+        stings_with_products=bool(special_flags_norm.get("stings_with_products")),
+        skin_type_key=skin_type_key,
+        resume_queue=resume_queue,
+    )
+    primary = focus_info["focus"]
     concern = primary["id"]
     severity_score = int(primary["score"])
+    focus_phase = str(focus_info.get("phase") or "treatment")
     guards = build_guards(
         ranked,
         stings_with_products=bool(special_flags_norm.get("stings_with_products")),
         skin_type_key=skin_type_key,
     )
     guards["_undereye_look"] = normalize_undereye_look(undereye_look)
+    guards["_barrier_phase"] = focus_phase == "barrier"
+    guards["_focus_id"] = concern
+    guards["_focus_phase"] = focus_phase
     from concern_history import (
         apply_history_to_guards,
         build_history_routine_items,
@@ -4611,15 +4756,25 @@ def run_flow(
         water_intake,
         humidity,
         bool(special_flags_norm.get("stings_with_products")),
+        focus_id=concern,
+        phase=focus_phase,
     )
+    if focus_phase == "barrier":
+        by_id = {e["id"]: int(e.get("score") or 0) for e in ranked if e.get("id")}
+        # Tek ajan — GLA+cica+seramid yığını yok; formülde seramid olabilir ama ayrı satır değil
+        _pm_cream = pick_barrier_night_repair(
+            focus_id=concern,
+            sens_score=int(by_id.get("sensitivity") or 0),
+            dry_score=int(by_id.get("dryness") or 0),
+            stings=bool(special_flags_norm.get("stings_with_products")),
+        )
     guards["_morning_moisturizer"] = _am_cream
     guards["_night_cream"] = _pm_cream
     personalization = compute_personalization_profile(
         risk_info, severity_score, skin_type_key, merged_actives_tol, concern
     )
 
-    # 6. Base skincare routine (concern + severity + age + skin_type + kişisel puan)
-    # Yeni etkenler de aynı starter koşulunda bir alt onaylı banda iner. Madde değişmez.
+    # 6. Base skincare routine — yalnız odak sorun; ikinciller deferred kuyruğunda
     _drop_token = _DROP_NEW_ACTIVE_TIER.set(_strength_stage == "starter")
     try:
         routine_items = get_base_skincare_routine(
@@ -4632,6 +4787,41 @@ def run_flow(
             concern_score=severity_score,
         )
         add_secondary_actives(routine_items, ranked[1:], guards, age_group)
+        from multi_concern import attach_deferred_plan
+
+        focus_row = build_focus_state_item(
+            focus_info,
+            good_streak=0,
+            ranked_snapshot=ranked,
+            rebuild_ctx={
+                "age": age,
+                "gender": gender,
+                "skin_type_key": skin_type_key,
+                "actives_experience": actives_experience,
+                "is_pregnant": bool(is_pregnant and gender == "female"),
+                "stress_score": stress_score,
+                "sleep_hours": sleep_hours,
+                "water_intake": water_intake,
+                "humidity": humidity,
+                "temperature": temperature,
+                "uv_index": uv_index,
+                "smoking": smoking,
+                "alcohol": alcohol,
+                "special_flags": special_flags_norm,
+                "undereye_look": undereye_look,
+                "makeup_frequency": makeup_frequency,
+                "makeup_removal": makeup_removal,
+            },
+        )
+        focus_row, deferred_preview = attach_deferred_plan(
+            focus_row,
+            focus_info.get("deferred") or [],
+            guards,
+            age_group,
+        )
+        routine_items.insert(0, focus_row)
+        # 2./3. sorun maddeleri yazılı ama Bakım adımı değil (Sonra / Yaşam)
+        routine_items.extend(deferred_preview)
     finally:
         _DROP_NEW_ACTIVE_TIER.reset(_drop_token)
 
@@ -4691,9 +4881,15 @@ def run_flow(
             stings=bool(special_flags_norm.get("stings_with_products")),
         ),
         concern_ids=[e["id"] for e in ranked],
+        skip_extra_moisture=bool(
+            guards.get("_barrier_phase")
+            or guards.get("_morning_moisturizer")
+            or guards.get("_night_cream")
+        ),
     )
     routine_items.extend(env_items)
-    if any(e["id"] == "undereye" for e in ranked):
+    # Göz altı yaşam notu yalnız odak göz altı iken (deferredken ürün/alışkanlık peşin gösterme)
+    if focus_phase != "barrier" and concern == "undereye":
         routine_items.append(build_undereye_lifestyle_item())
 
     # 10. Hormonal modifiers (kadınlar için)
@@ -5035,6 +5231,20 @@ def run_flow(
         "multi_concern": {
             "ranked": ranked,
             "primary": concern,
+            "focus": focus_info.get("focus"),
+            "deferred": focus_info.get("deferred") or [],
+            "deferred_plan": next(
+                (
+                    list(it.get("deferred_plan") or [])
+                    for it in routine_items
+                    if it.get("concern_role") == "focus_state"
+                ),
+                [],
+            ),
+            "phase": focus_phase,
+            "advance_rule": "checkin",
+            "good_streak_needed": focus_info.get("good_streak_needed"),
+            "queue": focus_info.get("queue") or [],
             "guards": {k: v for k, v in guards.items() if k != "by_id" and not k.startswith("_")},
         },
     }
@@ -5110,9 +5320,13 @@ def _why_this_step_for_user(
         "benzoil_peroksit": f"{slot} benzoil peroksit: bakteri yükü için; {focus} yoğun akne tablolarında. Sabah kullanımı genelde önerilmez.",
         "hyaluronik_asit": f"{slot} hyaluronik asit: nem tutulumu ve dolgunluk hissi. {focus} hedefinde nem katmanı için.",
         "seramidler": f"{slot} seramid: bu veride bariyer için seçilen tek nemlendirici. {focus} ile uyumlu.",
-        "dimethicone": f"{slot} dimetikon: kuruluk verisine göre seçilen tek nemlendirici.",
+        "dimethicone": f"{slot} nemlendirici: cilt tipine göre seçilen tek sabah nem tabanı.",
         "gla": f"{slot} GLA: kuru veya hassas bariyer için seçilen tek gece nemlendiricisi.",
-        "linoleic": f"{slot} linoleik asit: bu ciltte tek gece nemlendiricisi. Sebum dengesini destekler.",
+        "linoleic": (
+            f"{slot} linoleik asit: isteğe bağlı; panthenol yoksa veya linoleik ürünün varsa kullan. "
+            "Sebum dengesini destekler."
+        ),
+        "panthenol": f"{slot} panthenol: piyasada yaygın gece bariyer/yağ dengesi nemlendiricisi.",
         "azelaik_asit": f"{slot} azelaik asit: akne ve kızarıklık/leke dengesinde orta güçlü seçenek. {focus} ve {ctx}.",
         "traneksamik_asit": f"{slot} niasinamid + traneksamik asit: bu ciltte leke için seçilen tek akşam ürünü. {ctx}.",
         "kojik_asit": f"{slot} kojik asit: leke baskılama seçeneklerinden; {focus} ve {ctx} sırasına göre.",
@@ -5328,7 +5542,7 @@ def finalize_user_routine_item_details(
             continue
 
         orig = dict(item)
-        if orig.get("concern_role") == "deferred_cycle":
+        if orig.get("concern_role") in ("deferred_cycle", "deferred_preview", "focus_state"):
             orig["detail"] = sanitize_routine_detail_system_voice((orig.get("detail") or "").strip())
             if orig.get("usage"):
                 orig["usage"] = sanitize_routine_detail_system_voice(str(orig.get("usage")).strip())
@@ -5378,6 +5592,13 @@ def finalize_user_routine_item_details(
                 if " + " not in (orig.get("action") or "")
                 else "Tek nemlendirici. Etiketinde bu içerikler birlikte olsun."
             )
+            act_l = (orig.get("action") or "").lower()
+            if (
+                concern in ("acne", "oiliness", "pores")
+                and "panthenol" in act_l
+                and "linoleik" not in act_l
+            ):
+                budget = f"{budget} {_LINOLEIC_OPTIONAL_NOTE}"
             detail_parts = [p for p in [why, budget] if p]
         else:
             detail_parts = [why] if why else []
@@ -5393,8 +5614,15 @@ def finalize_user_routine_item_details(
         out.append(orig)
 
     if risk_level == "crisis":
-        has_ceramide = any("seramid" in i.get("action", "").lower() for i in out)
-        if not has_ceramide:
+        # Zaten bariyer/nemlendirici katmanı varsa ikinci seramid+niasinamid yığını ekleme
+        has_barrier_layer = any(
+            any(k in (i.get("action") or "").lower() for k in (
+                "seramid", "panthenol", "centella", "cica", "nemlendirici",
+            ))
+            for i in out
+            if i.get("category") == "Bakım"
+        )
+        if not has_barrier_layer:
             out.append({
                 "time": "Sabah ve Akşam", "category": "Bakım", "icon": "🛡️",
                 "action": "Seramid + niasinamid içeren bariyer nemlendirici (öncelik)",
@@ -5458,8 +5686,14 @@ def overlay_daily_risk_on_saved_routine(items: list, risk_level: str) -> list:
         adjusted.append(orig)
 
     if risk_level == "crisis":
-        has_ceramide = any("seramid" in i.get("action", "").lower() for i in adjusted)
-        if not has_ceramide:
+        has_barrier_layer = any(
+            any(k in (i.get("action") or "").lower() for k in (
+                "seramid", "panthenol", "centella", "cica", "nemlendirici",
+            ))
+            for i in adjusted
+            if i.get("category") == "Bakım"
+        )
+        if not has_barrier_layer:
             adjusted.append({
                 "time": "Sabah ve Akşam", "category": "Bakım", "icon": "🛡️",
                 "action": "Seramid + niasinamid içeren bariyer nemlendirici (öncelik)",
@@ -5693,17 +5927,17 @@ def _cream_for_situation(daily_data: dict) -> str:
     humidity = data.get("humidity") if _weather_live(data) else None
     temp = data.get("temperature") if _weather_live(data) and _outdoors(data) else None
     if feeling in ("irritasyon", "kirik"):
-        return _skin_dimethicone("hassas")
+        return _skin_type_moisturizer("hassas")
     if concern in ("acne", "oiliness", "pores"):
-        return _skin_linoleic("yagli")
+        return _skin_panthenol_night("yagli")
     if temp is not None and float(temp) < 5:
         return _skin_gla("kuru")
     if humidity is not None and float(humidity) < 40:
         return _skin_gla("kuru")
     if temp is not None and float(temp) > 35:
-        return _skin_dimethicone("yagli")
+        return _skin_type_moisturizer("yagli")
     if humidity is not None and float(humidity) > 75:
-        return _skin_dimethicone("yagli")
+        return _skin_type_moisturizer("yagli")
     return _skin_gla("hassas")
 
 
@@ -5758,16 +5992,16 @@ def _apply_checkin_strength(items: list, daily_data: dict, risk_level: str, chan
 def _sync_checkin_cream(out: list, daily_data: dict, direction: str, changes: list) -> list:
     """Tek check-in kremi. Orijinal gece kremine dokunulmaz. Ürün bugünün verisine göre yeniden seçilir."""
     product = _cream_for_situation(daily_data)
-    desired = f"Gece: {product}"
+    desired = f"Nemlendirici: {product}"
     keep_for_weather = _weather_wants_barrier(daily_data)
     has_checkin = any(it.get("concern_role") == "checkin_moisturizer" for it in out)
     if direction == "up" and not keep_for_weather:
         if has_checkin:
             changes.append({
-                "item": "Gece kremi",
+                "item": "Akşam nemlendirici",
                 "old": "check-in ekledi",
                 "new": "kaldırıldı",
-                "reason": "Check-in durumu sakin. Eklenen gece kremi çıktı.",
+                "reason": "Check-in durumu sakin. Eklenen akşam nemlendirici çıktı.",
             })
         return [it for it in out if it.get("concern_role") != "checkin_moisturizer"]
     if has_checkin:
@@ -5777,12 +6011,12 @@ def _sync_checkin_cream(out: list, daily_data: dict, direction: str, changes: li
             if it.get("action") != desired:
                 old = it.get("action") or ""
                 it["action"] = desired
-                it["detail"] = "Check-in verisi gece kremi ürününü bugüne göre seçti."
+                it["detail"] = "Check-in verisi akşam nemlendiriciyi bugüne göre seçti."
                 changes.append({
-                    "item": "Gece kremi",
+                    "item": "Akşam nemlendirici",
                     "old": old,
                     "new": product,
-                    "reason": "Nem, sıcaklık veya cilt hissi gece kremi ürününü güncelledi.",
+                    "reason": "Nem, sıcaklık veya cilt hissi akşam nemlendiriciyi güncelledi.",
                 })
         return out
     if (direction == "down" or keep_for_weather) and not _has_user_cream(out):
@@ -5791,14 +6025,14 @@ def _sync_checkin_cream(out: list, daily_data: dict, direction: str, changes: li
             "category": "Bakım",
             "icon": "🌙",
             "action": desired,
-            "detail": "Check-in verisi gece kremi gerektiriyor.",
+            "detail": "Check-in verisi akşam nemlendirici gerektiriyor.",
             "usage": "Dermokozmetik adımdan sonra. Tüm yüze ince katman, gece bırak.",
             "priority": 3,
             "step_order": 30,
             "concern_role": "checkin_moisturizer",
         })
         changes.append({
-            "item": "Gece kremi",
+            "item": "Akşam nemlendirici",
             "old": "yok",
             "new": product,
             "reason": "Check-in durumu nemlendirici ekledi.",
@@ -5917,6 +6151,133 @@ def routine_materially_changed(before: list, after: list) -> bool:
     return _snap(before) != _snap(after)
 
 
+def _find_focus_state_item(items: list) -> Optional[dict]:
+    for it in items or []:
+        if it.get("concern_role") == "focus_state":
+            return it
+    return None
+
+
+def apply_focus_checkin_advance(
+    current_routine: list,
+    *,
+    skin_feeling: str,
+) -> tuple[list, list, bool]:
+    """
+    İyi streak ile odak ilerlet; tahrişte bariyere çek.
+    İlerleme olursa rutin run_flow ile yeniden kurulur (rebuild_ctx varsa).
+    Dönüş: (items, changes, advanced)
+    """
+    from multi_concern import advance_focus_queue_state
+
+    items = [dict(it) for it in (current_routine or [])]
+    focus_it = _find_focus_state_item(items)
+    if not focus_it:
+        return items, [], False
+
+    ranked_snap = list(focus_it.get("ranked_snapshot") or [])
+    new_fields, advanced, note = advance_focus_queue_state(
+        focus_it,
+        skin_feeling=skin_feeling,
+        ranked=ranked_snap,
+        stings_with_products=False,
+    )
+    changes = []
+    if not advanced:
+        # Streak güncelle
+        if isinstance(new_fields, dict) and "good_streak" in new_fields:
+            for it in items:
+                if it.get("concern_role") == "focus_state":
+                    it["good_streak"] = int(new_fields.get("good_streak") or 0)
+                    if note:
+                        it["detail"] = (
+                            (it.get("detail") or "").split(" İyi streak")[0].rstrip()
+                            + (f" {note}" if note else "")
+                        )
+                    break
+            if note:
+                changes.append({
+                    "item": focus_it.get("action") or "Odak",
+                    "old": f"streak {focus_it.get('good_streak')}",
+                    "new": f"streak {new_fields.get('good_streak')}",
+                    "reason": note,
+                })
+        return items, changes, False
+
+    # Advanced: new_fields is a full focus_state item
+    rebuild_ctx = dict(focus_it.get("rebuild_ctx") or {})
+    queue = list(new_fields.get("focus_queue") or [])
+    if rebuild_ctx:
+        flags = dict(rebuild_ctx.get("special_flags") or {})
+        flags["focus_queue"] = queue
+        if skin_feeling in ("irritasyon", "kirik"):
+            flags["stings_with_products"] = True
+        concerns = [
+            {"id": e.get("id"), "severity_score": int(e.get("score") or 5)}
+            for e in ranked_snap
+            if isinstance(e, dict) and e.get("id") and e.get("id") != "barrier"
+        ]
+        if not concerns:
+            concerns = [
+                {"id": e.get("id"), "severity_score": int(e.get("score") or 5)}
+                for e in queue
+                if e.get("id") and e.get("id") != "barrier"
+            ]
+        try:
+            rebuilt = run_flow(
+                age=int(rebuild_ctx.get("age") or 30),
+                gender=str(rebuild_ctx.get("gender") or "female"),
+                skin_type_key=str(rebuild_ctx.get("skin_type_key") or "normal"),
+                concern=str((concerns[0] if concerns else {}).get("id") or "general"),
+                severity_score=int((concerns[0] if concerns else {}).get("severity_score") or 5),
+                concerns=concerns or None,
+                stress_score=int(rebuild_ctx.get("stress_score") or 4),
+                sleep_hours=float(rebuild_ctx.get("sleep_hours") or 7.0),
+                water_intake=float(rebuild_ctx.get("water_intake") or 2.0),
+                humidity=float(rebuild_ctx.get("humidity") or 50),
+                temperature=float(rebuild_ctx.get("temperature") or 22),
+                uv_index=int(rebuild_ctx.get("uv_index") or 3),
+                smoking=bool(rebuild_ctx.get("smoking")),
+                alcohol=bool(rebuild_ctx.get("alcohol")),
+                actives_experience=str(rebuild_ctx.get("actives_experience") or "occasional"),
+                is_pregnant=bool(rebuild_ctx.get("is_pregnant")),
+                special_flags=flags,
+                undereye_look=rebuild_ctx.get("undereye_look"),
+                makeup_frequency=int(rebuild_ctx.get("makeup_frequency") or 0),
+                makeup_removal=str(rebuild_ctx.get("makeup_removal") or "cleanser"),
+            )
+            new_items = list(rebuilt.get("routine_items") or [])
+            # Preserve streak 0 already; keep rebuild_ctx
+            for it in new_items:
+                if it.get("concern_role") == "focus_state":
+                    it["rebuild_ctx"] = rebuild_ctx
+                    it["ranked_snapshot"] = ranked_snap or it.get("ranked_snapshot")
+                    break
+            changes.append({
+                "item": "Odak kuyruğu",
+                "old": focus_it.get("action") or "",
+                "new": new_fields.get("action") or "",
+                "reason": note or "Odak sıradaki soruna geçti.",
+            })
+            return new_items, changes, True
+        except Exception:
+            pass
+
+    # Fallback: only swap focus_state row
+    out = [it for it in items if it.get("concern_role") != "focus_state"]
+    merged = dict(new_fields)
+    merged["rebuild_ctx"] = rebuild_ctx
+    merged["ranked_snapshot"] = ranked_snap
+    out.insert(0, merged)
+    changes.append({
+        "item": "Odak kuyruğu",
+        "old": focus_it.get("action") or "",
+        "new": merged.get("action") or "",
+        "reason": note or "Odak güncellendi.",
+    })
+    return out, changes, True
+
+
 def adapt_existing_routine(
     current_routine: list,
     daily_data: dict,
@@ -5949,6 +6310,13 @@ def adapt_existing_routine(
     skin_feeling = daily_data.get("skin_feeling", "iyi")
     changes = []
     adapted = []
+
+    # Sıralı odak: check-in ile kuyruk / bariyer
+    current_routine, focus_changes, focus_advanced = apply_focus_checkin_advance(
+        current_routine,
+        skin_feeling=str(skin_feeling or "iyi"),
+    )
+    changes.extend(focus_changes)
 
     def _shrink_weekly_days_for_reduce(it: dict, mult: float) -> None:
         """
@@ -6129,7 +6497,11 @@ def adapt_existing_routine(
     sanitize_routine_items_details(adapted)
     attach_structured_fields_to_routine_items(adapted)
 
-    adaptation_type = "major" if len(changes) >= 3 or risk_level in ("high", "crisis") else "minor"
+    adaptation_type = (
+        "major"
+        if focus_advanced or len(changes) >= 3 or risk_level in ("high", "crisis")
+        else "minor"
+    )
 
     return {
         "adapted_items": adapted,
@@ -6138,4 +6510,5 @@ def adapt_existing_routine(
         "risk_detail": risk_info.get("detail", ""),
         "adaptation_type": adaptation_type,
         "weather_note": weather_note,
+        "focus_advanced": bool(focus_advanced),
     }

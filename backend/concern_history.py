@@ -213,14 +213,15 @@ def defer_treatment_until_window_passes(items: list[dict], phase: str) -> list[d
         held[0],
     )
     label = _treatment_label(primary) or "seçilen dermokozmetik"
+    # Kullanıcıya madde adı gösterme — erken alıp kullanmasın; pencere bitince rutine eklenir
     note = {
         "time": "Akşam",
         "category": "Bakım",
         "icon": "⏸️",
-        "action": f"Bu dönem bitince: {label}",
+        "action": "Bu dönem bitince odak tedavisi açılacak",
         "detail": (
             f"{_PHASE_WAIT_TR[phase]} içindesin ve sorun adet döngüsüne bağlı. "
-            f"Bu pencere bitince başlanacak dermokozmetik: {label}. "
+            "Bu pencere bitince sıradaki dermokozmetik rutine eklenir; şimdiden alma. "
             "Bugün temizlik, nemlendirici ve güneş koruyucu yeterli. "
             "Menopoz ve gebelik bu beklemeye girmez."
         ),

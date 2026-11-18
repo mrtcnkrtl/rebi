@@ -1,6 +1,11 @@
 """
-Birden fazla cilt sorunu: şiddeti yüksek olanla başla, diğerlerini
-kötüleştirmeden ekle. Ürün değil etken; doz ve sıklık skora göre değişir.
+Tek odak kuralı:
+- 1 sorun → o sorunun rutini/aktifi.
+- 1'den fazla → şiddet sırasıyla kuyruk; rutinde yalnız sıradaki sorun.
+- Sorun geçince (check-in iyi streak) sistem sonraki sorunun rutin + aktifine geçer.
+- Cilt dengesi bozuksa (batma / yüksek hassasiyet-kuruluk) önce kısa bariyer fazı,
+  sonra tedavi kuyruğu aynı kurala döner.
+Ürün değil etken; doz ve sıklık skora göre değişir.
 """
 
 from __future__ import annotations
@@ -19,10 +24,35 @@ ALLOWED_CONCERNS = (
     "general",
 )
 
+# Tedavi kuyruğuna giren sorunlar (general yalnız iskelet; sensitivity guard + bariyer).
+TREATMENT_CONCERNS = frozenset(
+    {
+        "acne",
+        "pigmentation",
+        "dryness",
+        "aging",
+        "pores",
+        "oiliness",
+        "undereye",
+    }
+)
+
 # Eşit şiddette: inflamatuvar / leke / bariyer, yağ-gözenekten önce.
 _TIE_BREAK = {cid: i for i, cid in enumerate(ALLOWED_CONCERNS)}
 
-_MAX_SECONDARY_ADDS = 2
+FOCUS_ADVANCE_GOOD_STREAK = 2
+_CONCERN_LABEL_TR = {
+    "barrier": "bariyer onarımı",
+    "acne": "akne",
+    "pigmentation": "leke",
+    "dryness": "kuruluk",
+    "aging": "yaşlanma",
+    "pores": "gözenek",
+    "oiliness": "yağlılık",
+    "sensitivity": "hassasiyet",
+    "undereye": "göz altı",
+    "general": "genel bakım",
+}
 
 
 def score_band(score: int) -> str:
@@ -87,6 +117,274 @@ def rank_concerns(entries: list[dict]) -> list[dict]:
         entries,
         key=lambda e: (-int(e.get("score") or 0), _TIE_BREAK.get(e.get("id"), 99)),
     )
+
+
+def barrier_needs_repair(
+    ranked: list[dict],
+    *,
+    stings_with_products: bool = False,
+    skin_type_key: str = "normal",
+) -> bool:
+    """Cilt dengesi bozulmuşsa tedavi aktiflerinden önce bariyer."""
+    by_id = {e["id"]: int(e.get("score") or 0) for e in ranked if e.get("id")}
+    if stings_with_products:
+        return True
+    if by_id.get("sensitivity", 0) >= 5:
+        return True
+    if by_id.get("dryness", 0) >= 6:
+        return True
+    if (skin_type_key or "").lower() == "sensitive" and (
+        by_id.get("dryness", 0) >= 4 or by_id.get("sensitivity", 0) >= 3
+    ):
+        return True
+    return False
+
+
+def _barrier_focus_entry(ranked: list[dict], *, stings: bool) -> dict:
+    """Bariyer fazında iskelet: baskın hassasiyet veya kuruluk."""
+    by_id = {e["id"]: int(e.get("score") or 0) for e in ranked if e.get("id")}
+    sens = by_id.get("sensitivity", 0)
+    dry = by_id.get("dryness", 0)
+    if stings or sens >= dry:
+        score = max(sens, 6 if stings else 0, 5)
+        return {"id": "sensitivity", "score": score, "zones": [], "_barrier_phase": True}
+    return {"id": "dryness", "score": max(dry, 6), "zones": [], "_barrier_phase": True}
+
+
+def build_focus_queue(
+    ranked: list[dict],
+    *,
+    stings_with_products: bool = False,
+    skin_type_key: str = "normal",
+    resume_queue: Optional[list] = None,
+) -> dict[str, Any]:
+    """
+    Tek odak + ertelenenler.
+    resume_queue: check-in ile ilerlemiş kuyruk [{id, score}, ...] — varsa onu kullan.
+    """
+    ranked = list(ranked or [])
+    needs_barrier = barrier_needs_repair(
+        ranked,
+        stings_with_products=stings_with_products,
+        skin_type_key=skin_type_key,
+    )
+
+    if resume_queue:
+        raw0 = resume_queue[0] if resume_queue else {}
+        head_id = str((raw0 or {}).get("id") or "").strip().lower()
+        if head_id == "barrier":
+            focus = _barrier_focus_entry(ranked, stings=bool(stings_with_products))
+            deferred = []
+            for raw in resume_queue[1:]:
+                if not isinstance(raw, dict):
+                    continue
+                cid = str(raw.get("id") or "").strip().lower()
+                if cid in ("barrier", "general", "sensitivity"):
+                    continue
+                if cid not in TREATMENT_CONCERNS:
+                    continue
+                try:
+                    sc = int(raw.get("score") if raw.get("score") is not None else 5)
+                except (TypeError, ValueError):
+                    sc = 5
+                deferred.append({"id": cid, "score": max(0, min(10, sc)), "zones": list(raw.get("zones") or [])})
+            return {
+                "focus": focus,
+                "deferred": deferred,
+                "phase": "barrier",
+                "queue": [focus] + deferred,
+                "advance_rule": "checkin",
+                "good_streak_needed": FOCUS_ADVANCE_GOOD_STREAK,
+                "needs_barrier": True,
+            }
+        queue: list[dict] = []
+        for raw in resume_queue:
+            if not isinstance(raw, dict):
+                continue
+            cid = str(raw.get("id") or "").strip().lower()
+            if cid == "barrier":
+                continue
+            if cid not in ALLOWED_CONCERNS:
+                continue
+            try:
+                sc = int(raw.get("score") if raw.get("score") is not None else 5)
+            except (TypeError, ValueError):
+                sc = 5
+            queue.append({"id": cid, "score": max(0, min(10, sc)), "zones": list(raw.get("zones") or [])})
+        if queue:
+            focus = queue[0]
+            deferred = queue[1:]
+            return {
+                "focus": focus,
+                "deferred": deferred,
+                "phase": "treatment",
+                "queue": [focus] + deferred,
+                "advance_rule": "checkin",
+                "good_streak_needed": FOCUS_ADVANCE_GOOD_STREAK,
+                "needs_barrier": needs_barrier,
+            }
+
+    treatment = [dict(e) for e in ranked if e.get("id") in TREATMENT_CONCERNS]
+    if needs_barrier:
+        focus = _barrier_focus_entry(ranked, stings=bool(stings_with_products))
+        deferred = [e for e in treatment if e.get("id") != focus.get("id")]
+        phase = "barrier"
+    else:
+        if treatment:
+            focus = dict(treatment[0])
+            deferred = [dict(e) for e in treatment[1:]]
+        else:
+            # Yalnız general/sensitivity
+            focus = dict(ranked[0]) if ranked else {"id": "general", "score": 5, "zones": []}
+            deferred = []
+        phase = "treatment"
+
+    return {
+        "focus": focus,
+        "deferred": deferred,
+        "phase": phase,
+        "queue": [focus] + list(deferred),
+        "advance_rule": "checkin",
+        "good_streak_needed": FOCUS_ADVANCE_GOOD_STREAK,
+        "needs_barrier": needs_barrier,
+    }
+
+
+def concern_label_tr(cid: str) -> str:
+    return _CONCERN_LABEL_TR.get(cid, cid)
+
+
+def build_focus_state_item(
+    focus_info: dict,
+    *,
+    good_streak: int = 0,
+    ranked_snapshot: Optional[list] = None,
+    rebuild_ctx: Optional[dict] = None,
+) -> dict:
+    """Rutine gömülen odak meta satırı (check-in ilerletir)."""
+    focus = focus_info.get("focus") or {}
+    deferred = focus_info.get("deferred") or []
+    fid = str(focus.get("id") or "general")
+    phase = focus_info.get("phase") or "treatment"
+    label = concern_label_tr("barrier" if phase == "barrier" else fid)
+    has_next = any(d.get("id") for d in deferred)
+    if has_next:
+        detail = (
+            f"Şu an tek sorun odaklısın: {label}. "
+            f"Bu sorun geçince (ardışık {FOCUS_ADVANCE_GOOD_STREAK} iyi check-in) "
+            "sistem sıradaki sorunun rutinine ve aktifine geçer. "
+            "Sonraki maddeler plana yazıldı; şimdiden alma veya kullanma. "
+            "Sabah dinlenme/koruma; akşam yalnız bu odağın aktifi."
+        )
+    else:
+        detail = (
+            f"Tek sorun odaklısın: {label}. "
+            "Rutin ve aktif yalnız buna göre. "
+            "Sabah dinlenme/koruma; akşam bu odağın aktifi."
+        )
+    queue_payload = []
+    if phase == "barrier":
+        queue_payload.append({"id": "barrier", "score": int(focus.get("score") or 6)})
+    else:
+        queue_payload.append({"id": fid, "score": int(focus.get("score") or 5)})
+    for d in deferred:
+        queue_payload.append({"id": d.get("id"), "score": int(d.get("score") or 5)})
+
+    snap = ranked_snapshot
+    if snap is None:
+        snap = list(focus_info.get("queue") or queue_payload)
+
+    out = {
+        "time": "Günlük",
+        "category": "Yaşam",
+        "icon": "🎯",
+        "action": f"Odak: {label}",
+        "detail": detail,
+        "priority": 0,
+        "step_order": 1,
+        "concern_role": "focus_state",
+        "focus_id": fid if phase != "barrier" else "barrier",
+        "phase": phase,
+        "good_streak": max(0, int(good_streak or 0)),
+        "focus_queue": queue_payload,
+        "ranked_snapshot": [
+            {"id": e.get("id"), "score": int(e.get("score") or 5)}
+            for e in (snap or [])
+            if isinstance(e, dict) and e.get("id")
+        ],
+        "advance_rule": "checkin",
+        "deferred_plan": [],
+    }
+    if rebuild_ctx:
+        out["rebuild_ctx"] = dict(rebuild_ctx)
+    return out
+
+
+def attach_deferred_plan(
+    focus_item: dict,
+    deferred: list[dict],
+    guards: dict,
+    age_group: dict,
+) -> tuple[dict, list[dict]]:
+    """focus_state'e deferred_plan yazar; Yaşam önizleme satırlarını döner."""
+    plan = build_deferred_plan(deferred, guards, age_group)
+    focus_item = dict(focus_item or {})
+    focus_item["deferred_plan"] = plan
+    return focus_item, build_deferred_preview_items(plan)
+
+
+def advance_focus_queue_state(
+    focus_state: dict,
+    *,
+    skin_feeling: str,
+    ranked: Optional[list] = None,
+    stings_with_products: bool = False,
+) -> tuple[dict, bool, str]:
+    """
+    Check-in ile kuyruk ilerlemesi.
+    Dönüş: (yeni_focus_state_fields, advanced?, note)
+    """
+    feeling = (skin_feeling or "").strip().lower()
+    state = dict(focus_state or {})
+    queue = list(state.get("focus_queue") or [])
+    streak = int(state.get("good_streak") or 0)
+    note = ""
+
+    if feeling in ("irritasyon", "kirik"):
+        ranked = ranked or []
+        barrier_q = build_focus_queue(
+            ranked,
+            stings_with_products=True,
+            skin_type_key="sensitive",
+        )
+        new_item = build_focus_state_item(barrier_q, good_streak=0)
+        return new_item, True, "Bariyer önceliğine dönüldü (tahriş/kırık hissi)."
+
+    if feeling == "iyi":
+        streak += 1
+        if streak >= FOCUS_ADVANCE_GOOD_STREAK and len(queue) > 1:
+            queue = queue[1:]
+            streak = 0
+            # Rebuild focus_info from remaining queue
+            info = build_focus_queue(
+                ranked or [],
+                stings_with_products=stings_with_products,
+                resume_queue=queue,
+            )
+            new_item = build_focus_state_item(info, good_streak=0)
+            label = concern_label_tr(
+                "barrier" if info.get("phase") == "barrier" else str((info.get("focus") or {}).get("id"))
+            )
+            return new_item, True, f"Odak sonraki soruna geçti: {label}."
+        state["good_streak"] = streak
+        left = FOCUS_ADVANCE_GOOD_STREAK - streak
+        if left > 0:
+            note = f"İyi streak {streak}/{FOCUS_ADVANCE_GOOD_STREAK}; sonraki odağa {left} iyi check-in kaldı."
+        return state, False, note
+
+    # kuru / yagli / diğer: streak sıfır, ilerleme yok
+    state["good_streak"] = 0
+    return state, False, ""
 
 
 def build_guards(
@@ -223,24 +521,118 @@ def add_secondary_actives(
     age_group: dict,
 ) -> list[dict]:
     """
-    İkincil sorunlar: birincinin iskeletine 1-2 destek katmanı.
-    Aynı etken ailesini tekrar ekleme; tavanları guards belirler.
+    Eski yol: ikincil tedavi serumu yığmaz.
+    Sıralı odak modelinde destek katmanları deferred kuyruğunda bekler.
     """
-    added = 0
-    for entry in secondaries:
-        if added >= _MAX_SECONDARY_ADDS:
-            break
-        cid = entry["id"]
-        score = int(entry["score"])
-        if cid in ("general", "sensitivity"):
+    _ = (secondaries, guards, age_group)
+    return items
+
+
+def preview_deferred_active(
+    cid: str,
+    score: int,
+    guards: dict,
+    age_group: dict,
+) -> Optional[dict[str, Any]]:
+    """
+    Sıradaki sorun için planlanan madde (şimdi rutine EKLENMEZ).
+    Check-in ilerleyince run_flow yeniden kurar; bu yalnız önizleme.
+    """
+    from flow_engine import (
+        _skin_azelaic,
+        _skin_green_tea,
+        _skin_salicylic_toner,
+        dose_tier,
+    )
+
+    g = guards or {}
+    sc = int(score or 5)
+    # Birincil odak seçimine yakın önizleme (ikincil yığma dozundan bağımsız)
+    if cid == "oiliness":
+        t = dose_tier(g, score=sc)
+        action = _skin_green_tea("hassas" if t == "hassas" or g.get("stings_with_products") else "standart")
+        return {"id": cid, "label": concern_label_tr(cid), "score": sc, "action": action, "status": "later"}
+    if cid == "acne":
+        if g.get("avoid_bpo") or g.get("prefer_azelaic") or g.get("stings_with_products"):
+            action = _skin_azelaic("%10-15")
+        else:
+            action = _skin_azelaic("%10-15") if sc <= 6 else "Benzoil peroksit %2.5-5 kısa temas (plan)"
+        return {"id": cid, "label": concern_label_tr(cid), "score": sc, "action": action, "status": "later"}
+    if cid == "pores":
+        pct, _n = bha_for_pores(sc, g)
+        return {
+            "id": cid,
+            "label": concern_label_tr(cid),
+            "score": sc,
+            "action": _skin_salicylic_toner(pct),
+            "status": "later",
+        }
+
+    item = _secondary_item(cid, sc, blob="", guards=g, age_group=age_group or {})
+    if not item:
+        return None
+    action = (item.get("action") or "").strip()
+    if not action and item.get("system_pick"):
+        sp = item.get("system_pick") or {}
+        action = str(sp.get("action") or sp.get("label") or "")
+    if not action and item.get("choices"):
+        ch0 = (item.get("choices") or [{}])[0]
+        action = str(ch0.get("action") or "")
+    if not action:
+        return None
+    return {"id": cid, "label": concern_label_tr(cid), "score": sc, "action": action, "status": "later"}
+
+
+def build_deferred_plan(
+    deferred: list[dict],
+    guards: dict,
+    age_group: dict,
+) -> list[dict[str, Any]]:
+    """2./3. (ve sonrası) sorunların planlı maddeleri — status=later."""
+    out: list[dict[str, Any]] = []
+    for d in deferred or []:
+        if not isinstance(d, dict):
             continue
-        blob = _blob(items)
-        extra = _secondary_item(cid, score, blob, guards, age_group)
-        if extra:
-            extra.setdefault("concern_role", f"support_{cid}")
-            extra.setdefault("priority", 3)
-            items.append(extra)
-            added += 1
+        cid = str(d.get("id") or "").strip().lower()
+        if cid not in TREATMENT_CONCERNS:
+            continue
+        try:
+            sc = int(d.get("score") if d.get("score") is not None else 5)
+        except (TypeError, ValueError):
+            sc = 5
+        prev = preview_deferred_active(cid, sc, guards, age_group)
+        if prev:
+            out.append(prev)
+    return out
+
+
+def build_deferred_preview_items(deferred_plan: list[dict]) -> list[dict]:
+    """
+    Yaşam satırları: madde yazılı ama Bakım adımı değil — kullanıcı şimdi uygulamaz.
+    """
+    items: list[dict] = []
+    for i, p in enumerate(deferred_plan or [], start=2):
+        label = p.get("label") or concern_label_tr(str(p.get("id") or ""))
+        action = (p.get("action") or "").strip()
+        if not action:
+            continue
+        items.append({
+            "time": "Günlük",
+            "category": "Yaşam",
+            "icon": "⏳",
+            "action": f"Sonra (#{i}): {label} → {action}",
+            "detail": (
+                f"{label} maddesi şimdilik planlandı; "
+                f"ardışık {FOCUS_ADVANCE_GOOD_STREAK} iyi check-in sonrası rutine eklenir. "
+                "Şimdi alma veya kullanma."
+            ),
+            "usage": "Bu satır bilgi amaçlıdır; mevcut odak bitmeden uygulamayın.",
+            "priority": 9,
+            "step_order": 90 + i,
+            "concern_role": "deferred_preview",
+            "deferred_id": p.get("id"),
+            "deferred_status": "later",
+        })
     return items
 
 

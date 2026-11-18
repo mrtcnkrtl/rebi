@@ -155,8 +155,10 @@ def test_period_window_holds_the_treatment_until_it_passes():
     items = r["routine_items"]
     deferred = next(i for i in items if i.get("concern_role") == "deferred_cycle")
     assert "benzoil" in deferred["deferred_action"].lower()
+    # Kullanıcıya madde adı action'da görünmesin (erken alışveriş engeli)
+    assert "benzoil" not in (deferred.get("action") or "").lower()
     assert r["multi_concern"]["guards"].get("defer_treatment") == "luteal"
-    actions = " ".join((i.get("action") or "") for i in items if i.get("concern_role") != "deferred_cycle").lower()
+    actions = " ".join((i.get("action") or "") for i in items).lower()
     assert "benzoil" not in actions
     assert "çinko 30" not in actions
     assert any("temizle" in (i.get("action") or "").lower() for i in items)

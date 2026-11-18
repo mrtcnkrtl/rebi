@@ -214,7 +214,8 @@ def test_irritation_stops_vitamin_c_and_supports_recovery():
     assert vit["action"].startswith("⏸️")
     assert "%15-20" in vit["action"]
     cream = next(i for i in out["adapted_items"] if i.get("concern_role") == "checkin_moisturizer")
-    assert "dimetikon" in cream["action"].lower()
+    assert "nemlendirici" in cream["action"].lower()
+    assert "dimetikon" not in cream["action"].lower()
     assert any(i.get("concern_role") == "checkin_recovery" for i in out["adapted_items"])
 
     calm = adapt_existing_routine(out["adapted_items"], {"skin_feeling": "iyi", "concern": "aging"}, {"level": "normal", "detail": ""})
