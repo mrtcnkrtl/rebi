@@ -491,6 +491,23 @@ def _normalize_actives_experience(raw: str) -> str:
     return "occasional"
 
 
+# Derişik / yüksek konsantrasyon leave-on tedavi serumları (nemlendirici, SPF, niasinamid tek başına değil).
+_CONCENTRATED_SERUM_FAMILIES = frozenset(
+    {
+        "retinol",
+        "aha",
+        "bha",
+        "benzoyl",
+        "azelaic",
+        "pigment",
+        "sulfur",
+        "bakuchiol",
+    }
+)
+_MAX_CONCENTRATED_EVENING = 2
+_MAX_CONCENTRATED_NIGHTS = 4
+
+
 def _strong_actives_families_for_item(item: dict) -> set:
     """Rutin satırındaki güçlü aktif aileleri (API'deki actives_unused id'leriyle uyumlu)."""
     act_l = (item.get("action") or "").lower()
@@ -517,12 +534,182 @@ def _strong_actives_families_for_item(item: dict) -> set:
         out.add("vitamin_c")
     if "bakuchiol" in t:
         out.add("bakuchiol")
-    if any(k in t for k in ("arbutin", "traneksamik", "tranexamic", "heksilrezorsinol", "hexylresorcinol")):
+    if any(
+        k in t
+        for k in (
+            "arbutin",
+            "traneksamik",
+            "tranexamic",
+            "heksilrezorsinol",
+            "hexylresorcinol",
+            "kojik",
+            "kojic",
+        )
+    ):
         out.add("pigment")
     if any(k in t for k in ("sülfür", "sulfur", "kükürt")):
         out.add("sulfur")
     if "niasinamid" in t or "niacinamide" in t:
         out.add("niacinamide")
+    return out
+
+
+def _is_concentrated_evening_serum(item: dict) -> bool:
+    if item.get("time") != "Akşam" or item.get("category") != "Bakım":
+        return False
+    fam = _strong_actives_families_for_item(item)
+    return bool(fam & _CONCENTRATED_SERUM_FAMILIES)
+
+
+def concentrated_nights_cap(
+    *,
+    experience: str = "occasional",
+    actives_tolerance: Optional[dict] = None,
+    families: Optional[set] = None,
+    guards: Optional[dict] = None,
+    item: Optional[dict] = None,
+) -> int:
+    """
+    Derişik serum: en fazla haftada 4 gece.
+    Tolerans / deneyim / starter → 2 veya 3.
+    """
+    tol = merge_actives_tolerance(actives_tolerance, None)
+    fam = set(families or ())
+    if item is not None and not fam:
+        fam = _strong_actives_families_for_item(item) & _CONCENTRATED_SERUM_FAMILIES
+    g = guards or {}
+    exp = _normalize_actives_experience(experience)
+    cap = _MAX_CONCENTRATED_NIGHTS
+
+    if g.get("force_starter") or g.get("stings_with_products") or exp == "none":
+        cap = min(cap, 2)
+    elif exp == "occasional":
+        cap = min(cap, 3)
+
+    if fam & {k for k, v in tol.items() if v == "never"}:
+        cap = min(cap, 2)
+    elif fam & {k for k, v in tol.items() if v == "mild"}:
+        cap = min(cap, 3)
+
+    tier = str((item or {}).get("dose_tier") or "").lower()
+    if tier == "hassas":
+        cap = min(cap, 2)
+    elif tier == "standart":
+        cap = min(cap, 3)
+
+    ramp = str((item or {}).get("ramp_stage") or "").lower()
+    if ramp == "starter":
+        cap = min(cap, 2)
+
+    return max(1, min(int(cap), _MAX_CONCENTRATED_NIGHTS))
+
+
+def _concentrated_keep_needed(
+    ranked: Optional[list],
+    primary_concentrated_n: int,
+) -> int:
+    """
+    Varsayılan 1 derişik serum.
+    İkinci ancak çoklu sorun (ikincil ≥5) veya birincil iskelette zaten 2 çekirdek varsa.
+    Tavan: 2.
+    """
+    if primary_concentrated_n >= 2:
+        return _MAX_CONCENTRATED_EVENING
+    for e in (ranked or [])[1:]:
+        cid = str(e.get("id") or "")
+        if cid in ("general", "sensitivity"):
+            continue
+        # Orta+ ikincil sorun (≥4) → ikinci derişik gerekebilir
+        if int(e.get("score") or 0) >= 4:
+            return _MAX_CONCENTRATED_EVENING
+    return 1
+
+
+def limit_concentrated_evening_serums(
+    routine_items: list,
+    *,
+    experience: str = "occasional",
+    actives_tolerance: Optional[dict] = None,
+    guards: Optional[dict] = None,
+    ranked: Optional[list] = None,
+) -> list:
+    """
+    Derişik akşam serumları:
+    - haftada en fazla 4 gece (toleransa göre 2–4), günlere yay
+    - en fazla 2 adet; 2. yalnızca gerekliyse
+    """
+    items = list(routine_items or [])
+    concentrated = [it for it in items if _is_concentrated_evening_serum(it)]
+    if not concentrated:
+        return items
+
+    def _role_rank(it: dict) -> tuple:
+        role = str(it.get("concern_role") or "")
+        support = 1 if role.startswith("support_") else 0
+        return (
+            support,
+            int(it.get("priority") or 5),
+            int(it.get("step_order") or 50),
+            str(it.get("action") or ""),
+        )
+
+    concentrated_sorted = sorted(concentrated, key=_role_rank)
+    primary_n = sum(
+        1
+        for it in concentrated_sorted
+        if not str(it.get("concern_role") or "").startswith("support_")
+    )
+    keep_n = _concentrated_keep_needed(ranked, primary_n)
+    keep_n = max(1, min(keep_n, _MAX_CONCENTRATED_EVENING, len(concentrated_sorted)))
+    keep_set = set(id(it) for it in concentrated_sorted[:keep_n])
+    drop_set = set(id(it) for it in concentrated_sorted[keep_n:])
+
+    out: list = []
+    for it in items:
+        if id(it) in drop_set:
+            continue
+        if id(it) not in keep_set:
+            out.append(it)
+            continue
+        fam = _strong_actives_families_for_item(it) & _CONCENTRATED_SERUM_FAMILIES
+        cap = concentrated_nights_cap(
+            experience=experience,
+            actives_tolerance=actives_tolerance,
+            families=fam,
+            guards=guards,
+            item=it,
+        )
+        wd = it.get("weekly_days")
+        if isinstance(wd, list) and wd:
+            n = min(len(wd), cap)
+            it["weekly_days"] = _spread_n_days_across_week(n)
+        else:
+            it["weekly_days"] = _spread_n_days_across_week(cap)
+        it["concentrated_serum"] = True
+        it["frequency_per_week_cap"] = cap
+        note = f"Derişik serum: haftada en fazla {cap} gece (toleransa göre yayılır)."
+        detail = (it.get("detail") or "").strip()
+        if "Derişik serum:" not in detail:
+            it["detail"] = sanitize_routine_detail_system_voice(f"{detail} {note}".strip())
+        # Metindeki 'her gece / günde 1' aşırı sıklığı kırp
+        d2 = it.get("detail") or ""
+        d2 = re.sub(
+            r"(?i)\bher\s+gece\b",
+            f"haftada en fazla {cap} gece",
+            d2,
+        )
+        d2 = re.sub(
+            r"(?i)\bgünde\s*1(?:\s*kez)?(?:\s*akşam)?\b",
+            f"haftada en fazla {cap} gece",
+            d2,
+        )
+        d2 = re.sub(
+            rf"(?i)haftada\s*(?:[5-7]|\d+\s*[-–]\s*[5-7])\s*(?:gece|kez)",
+            f"haftada {cap} gece",
+            d2,
+        )
+        it["detail"] = d2
+        out.append(it)
     return out
 
 
@@ -594,9 +781,12 @@ def attach_structured_fields_to_routine_items(items: list) -> None:
     - active_families: ["bha","retinol",...]
     - strength_pct: "10-15" / "0.25-0.3" / "1"
     - frequency_per_week: weekly_days sayısı
-    - choices: yazılmaz; aynı işi gören madde menüsü yok
+    - choices: yazılmaz; aynı işi gören madde menüsü yok (sistem seçer)
     """
     for it in items or []:
+        # Kullanıcı menüsü kalıntısı temizlenir.
+        for k in ("choices", "choice_group", "default_choice_id", "choice_key"):
+            it.pop(k, None)
         cat = it.get("category")
         if cat not in ("Bakım", "Koruma"):
             continue
@@ -1048,8 +1238,26 @@ def _skin_benzoyl(pct: float = 5) -> str:
     return f"Benzoil peroksit %{float(pct):g} kısa temas (INCI: Benzoyl Peroxide)"
 
 
-def _skin_glycolic(pct: float) -> str:
-    return f"Glikolik asit %{pct:g} (AHA, INCI: Glycolic Acid)"
+def _skin_glycolic(tier: str = "standart") -> str:
+    return (
+        f"Glikolik asit {_dose('glycolic', tier)} "
+        f"(AHA, INCI: Glycolic Acid; leave-on tavan %10, pH≥3.5)"
+    )
+
+
+def _skin_lactic(tier: str = "standart") -> str:
+    return f"Laktik asit {_dose('lactic', tier)} (AHA, INCI: Lactic Acid; NMF destekli)"
+
+
+def _skin_kojic(tier: str = "standart") -> str:
+    return f"Kojik asit {_dose('kojic', tier)} (INCI: Kojic Acid; tirozinaz baskılayıcı, SCCS tavan %1)"
+
+
+def _skin_tea_tree(tier: str = "standart") -> str:
+    return (
+        f"Çay ağacı {_dose('cay_agaci', tier)} "
+        f"(INCI: Melaleuca Alternifolia Leaf Oil; noktasal, seyreltilmiş — saf yağ değil)"
+    )
 
 
 def _skin_arbutin(pct_label: str) -> str:
@@ -1223,6 +1431,11 @@ NEW_ACTIVE_DOSES: dict = {
     "undereye_vitc": {"tiers": {"hassas": {"pct": "%5", "freq": "sabah"}}, "form": "askorbil glukozit / SAP", "source": "user"},
     "undereye_niacinamide": {"tiers": {"hassas": {"pct": "%2-5", "freq": "akşam"}}, "source": "user"},
 }
+
+# Glikolik/laktik/kojik/çay ağacı/bariyer destekleri — active_dossier tek kaynak.
+from active_dossier import merge_into_new_active_doses as _merge_dossier_doses
+
+_merge_dossier_doses(NEW_ACTIVE_DOSES)
 
 
 # run_flow, rutin yazılmadan hemen önce bunu açar. Seçilen madde değişmez; yalnızca yüzde iner.
@@ -1569,10 +1782,13 @@ EQUIVALENCE_GROUPS: dict = {
 CHOICE_OPTION_META: dict = {
     "alfa_arbutin": ("Alfa-arbutin", "En yaygın, iyi tolere edilen leke aktifi.", "alfa_arbutin", "yaygın, iyi tolere"),
     "hexylresorcinol": ("Heksilrezorsinol", "Arbutine yakın etki; düşük yüzdede çalışır.", "hexylresorcinol", "düşük dozda güçlü"),
+    "kojic": ("Kojik asit", "Epidermal PIH / solar lentigo; SCCS tavan %1.", "kojik_asit", "ikinci basamak leke"),
+    "tea_tree": ("Çay ağacı", "Hafif inflamatuar akne; noktasal %5 jel.", "cay_agaci", "noktasal, yavaş etki"),
     "licorice": ("Meyan kökü", "Leke + kızarıklık; en nazik seçenek.", "licorice_extract", "en nazik seçenek"),
+    "glycolic": ("Glikolik asit", "Daha hızlı yenileme; leave-on tavan %10.", "glycolic_acid", "hızlı, biraz tahriş"),
+    "lactic": ("Laktik asit", "Kuru/hassasta glikolik yerine; NMF.", "lactic_acid", "nemli eksfoliasyon"),
     "niacinamide_txa": ("Niasinamid + TXA", "Traneksamik asitle melazma desteği.", "traneksamik_asit", "melazmaya güçlü destek"),
     "nag_niacinamide": ("NAG + niasinamid", "N-asetil glukozamin niasinamidle birlikte etkili.", "n_acetyl_glucosamine", "nazik ton eşitleme"),
-    "glycolic": ("Glikolik asit", "Daha hızlı yenileme; tahriş riski biraz daha yüksek.", "glycolic_acid", "hızlı, biraz tahriş"),
     "mandelic": ("Mandelik asit", "Yavaş nüfuz eder; tahrişe bağlı leke riski düşük.", "mandelic_acid", "yavaş, az tahriş"),
     "pha": ("PHA", "En nazik asit; nem de çeker.", "pha", "en nazik asit"),
     "benzoyl": ("Benzoil peroksit", "En güçlü antibakteriyel; kurutabilir.", "benzoil_peroksit", "güçlü ama kurutur"),
@@ -1618,8 +1834,8 @@ def make_equivalence_item(
     option_extra: Optional[dict] = None,
 ) -> Optional[dict]:
     """
-    Aynı soruna uyan etkenler tek rutin adımıdır. Koşul tek madde bırakırsa düz adım;
-    birden fazla kalırsa ayrı adım açılmaz, bu adımın seçenekleri olur. İlki önerilen.
+    Aynı role uyan etkenlerden sistemi tek madde seçer; kullanıcı menüsü yok.
+    `default` (veya grup sırasındaki ilk uygun) yazılır. Denetim için `system_pick` alanı kalır.
     """
     group = EQUIVALENCE_GROUPS[group_id]
     order = [k for k in group["options"] if k in actions and k not in set(exclude)]
@@ -1628,33 +1844,21 @@ def make_equivalence_item(
         order.insert(0, default)
     if not order:
         return None
+    pick = order[0]
     extra = option_extra or {}
     item = dict(base)
-    item["action"] = actions[order[0]]
-    item = _apply_dose_meta(item, extra.get(order[0]))
-    if len(order) == 1:
-        return item
-    choices = []
-    for i, key in enumerate(order):
-        label, hint, iid, diff = CHOICE_OPTION_META[key]
-        meta = extra.get(key) or {}
-        note = _dose_note_text(meta)
-        choices.append(
-            {
-                "id": key,
-                "label": label,
-                "diff": diff,
-                "hint": f"{hint} {note}".strip(),
-                "action": actions[key],
-                "ingredient_id": iid,
-                "default": i == 0,
-                **meta,
-            }
-        )
-    item["choices"] = choices
-    item["choice_group"] = group_id
-    item["default_choice_id"] = order[0]
-    item["choice_key"] = _choice_key_for(item, group_id)
+    item["action"] = actions[pick]
+    item = _apply_dose_meta(item, extra.get(pick))
+    meta = CHOICE_OPTION_META.get(pick)
+    item["system_pick"] = {
+        "group": group_id,
+        "id": pick,
+        "ingredient_id": meta[2] if meta else pick,
+        "candidates": order,
+    }
+    # Eski menü alanları asla yazılmaz / temizlenir.
+    for k in ("choices", "choice_group", "default_choice_id", "choice_key"):
+        item.pop(k, None)
     return item
 
 
@@ -1930,9 +2134,11 @@ def _add_morning_actives(
 
 def _best_pigment_item(skin_type: dict, g: dict, severity: dict, age_group: dict, score: int) -> dict:
     """
-    Leke için tek akşam ürünü. Glikolik, arbutin ve niasinamid+TXA aynı sorunu gördüğü için
-    yan yana yazılmaz; cilt verisi hangisinin uygun olduğunu belirler.
+    Leke için tek akşam ürünü. Sistem seçer (kullanıcı menüsü yok).
+    active_dossier.pick_pigment_active: NAG | retinol | meyan | kojik | niasinamid+TXA.
     """
+    from active_dossier import pick_pigment_active
+
     key = (skin_type or {}).get("key") or ""
     tier = dose_tier(g, score=score)
     gentle = (
@@ -1942,7 +2148,15 @@ def _best_pigment_item(skin_type: dict, g: dict, severity: dict, age_group: dict
         or tier == "hassas"
     )
     base = {"time": "Akşam", "category": "Bakım", "icon": "💎", "priority": 2, "step_order": 20}
-    if g.get("_pregnant"):
+    pick = pick_pigment_active(
+        score=score,
+        gentle=gentle,
+        pregnant=bool(g.get("_pregnant")),
+        retinol_ok=bool(age_group.get("retinol_ok")),
+        avoid_retinol=bool(g.get("avoid_retinol")),
+        avoid_txa=bool(g.get("avoid_txa")),
+    )
+    if pick == "nag_niacinamide":
         return _apply_dose_meta(
             dict(
                 base,
@@ -1954,12 +2168,7 @@ def _best_pigment_item(skin_type: dict, g: dict, severity: dict, age_group: dict
             ),
             {"frequency_note": NEW_ACTIVE_DOSES["nag"]["synergy"]["freq"]},
         )
-    if (
-        severity.get("level") == "şiddetli"
-        and age_group.get("retinol_ok")
-        and not g.get("avoid_retinol")
-        and not gentle
-    ):
+    if pick == "retinol":
         cap = str(g.get("max_retinol") or "0.3")
         r_pct = "%0.3" if "0.3" in cap or cap >= "0.3" else f"%{cap}"
         return dict(
@@ -1971,7 +2180,7 @@ def _best_pigment_item(skin_type: dict, g: dict, severity: dict, age_group: dict
                 "Aynı rutinde asit ve ikinci bir leke serumu yok. Haftada 2 gece ile başla."
             ),
         )
-    if gentle:
+    if pick == "licorice":
         return _apply_dose_meta(
             dict(
                 base,
@@ -1982,6 +2191,20 @@ def _best_pigment_item(skin_type: dict, g: dict, severity: dict, age_group: dict
                 ),
             ),
             _opt_meta("licorice", "hassas"),
+        )
+    if pick == "kojic":
+        k_tier = dose_tier(g, score=score)
+        return _apply_dose_meta(
+            dict(
+                base,
+                action=_skin_kojic(k_tier),
+                detail=(
+                    f"Hafif epidermal leke / PIH (şiddet {score}/10): sistem kojik asit seçti "
+                    f"(SCCS tavan %1). TXA/retinol yerine değil; meyan yetmediğinde pigment baskılayıcı. "
+                    "Aynı akşam ikinci leke serumu yok."
+                ),
+            ),
+            _opt_meta("kojic", k_tier),
         )
     return dict(
         base,
@@ -2016,6 +2239,8 @@ def _add_evening_actives(
         avoid_bpo = bool(g.get("avoid_bpo"))
         prefer_azelaic = bool(g.get("prefer_azelaic"))
         if severity["level"] == "hafif" or score <= 3:
+            from active_dossier import pick_acne_antibacterial, wants_pha
+
             key = (skin_type or {}).get("key") or ""
             tier = dose_tier(g, score=score)
             gentle = (
@@ -2029,13 +2254,45 @@ def _add_evening_actives(
                 and bool((g.get("_tier_ctx") or {}).get("sensitivity"))
                 and not g.get("stings_with_products")
             )
-            if gentle and oily_sensitive:
+            sens_score = int((g.get("by_id") or {}).get("sensitivity") or 0)
+            use_pha = wants_pha(
+                skin_key=key,
+                gentle=gentle,
+                avoid_aha=bool(g.get("avoid_aha")),
+                oily_sensitive=oily_sensitive,
+                sensitivity_score=sens_score,
+                dark_phototype=bool(g.get("dark_phototype")),
+                high_uv_season=bool(g.get("high_uv_season")),
+                on_retinoid_or_bpo_or_high_c=bool(g.get("on_strong_actives")),
+                aha_intolerance=bool(g.get("aha_intolerance")),
+            )
+            # BPO kaçınılan hafif inflamatuar → sistem noktasal çay ağacı (menü yok).
+            ab = pick_acne_antibacterial(
+                score=score,
+                avoid_bpo=bool(g.get("avoid_bpo")),
+                prefer_azelaic=bool(g.get("prefer_azelaic")),
+                stings=bool(g.get("stings_with_products")),
+            )
+            if ab == "tea_tree" and (g.get("avoid_bpo") or g.get("stings_with_products")):
+                tt = dose_tier(g, score=score)
+                items.append(_apply_dose_meta({
+                    "time": "Akşam", "category": "Bakım", "icon": "🎯",
+                    "action": _skin_tea_tree(tt),
+                    "detail": (
+                        f"Hafif inflamatuar akne (şiddet {score}/10): BPO tolere edilmediği için "
+                        "sistem %5 çay ağacı jeli seçti — yalnızca lezyona noktasal. "
+                        "Komedonal tıkaçta BHA; bu adım BHA/BPO yerine değil."
+                    ),
+                    "priority": 2, "step_order": 20,
+                }, _opt_meta("cay_agaci", tt)))
+            elif use_pha:
                 pha_t = _pha_tier_for(g, key, score)
                 items.append(_apply_dose_meta({
                     "time": "Akşam", "category": "Bakım", "icon": "🎯",
                     "action": _skin_pha(pha_t),
                     "detail": (
-                        f"Hafif akne (şiddet {score}/10), yağlı ve hassas cilt: tek ürün PHA. "
+                        f"Hafif akne (şiddet {score}/10): sistem PHA seçti "
+                        "(hassas/bariyer/AHA intoleransı veya nazik yenileme kapısı). "
                         "İkinci bir akne asidi yazılmaz."
                     ),
                     "priority": 2, "step_order": 20,
@@ -2095,34 +2352,34 @@ def _add_evening_actives(
                     {"azelaic": _skin_azelaic(az), "sulfur": _skin_sulfur(sulfur_t)},
                     option_extra={"sulfur": sulfur_meta},
                 ))
-            elif compress:
-                # Sade planda da seçim kullanıcıda kalır: tek adım, iki seçenek.
-                items.append(make_equivalence_item(
-                    {
-                        "time": "Akşam", "category": "Bakım", "icon": "⚡",
-                        "detail": (
-                            f"Şiddetli akne (şiddet {score}/10): tek akşam antibakteriyel, kısa temas "
-                            f"(5-10 dk, yıka). Sabah kullanılmaz."
-                        ),
-                        "priority": 2, "step_order": 20,
-                    },
-                    "acne_antibacterial",
-                    {"benzoyl": _skin_benzoyl(bpo_pct), "sulfur": _skin_sulfur(sulfur_t)},
-                    exclude=("benzoyl",) if g.get("_pregnant") else (),
-                    option_extra={"sulfur": sulfur_meta},
-                ))
             else:
+                from active_dossier import pick_acne_antibacterial
+
+                ab = pick_acne_antibacterial(
+                    score=score,
+                    avoid_bpo=False,
+                    prefer_azelaic=False,
+                    stings=bool(g.get("stings_with_products")),
+                )
+                # Hamilelikte BPO düşer → sülfür.
+                if g.get("_pregnant"):
+                    ab = "sulfur"
+                actions = {
+                    "benzoyl": _skin_benzoyl(bpo_pct),
+                    "sulfur": _skin_sulfur(sulfur_t),
+                }
                 items.append(make_equivalence_item(
                     {
                         "time": "Akşam", "category": "Bakım", "icon": "⚡",
                         "detail": (
-                            f"Şiddetli akne (şiddet {score}/10): akşam kısa temas antibakteriyel. "
-                            "Yüze sür, 5-10 dk bekle, yıka. Sabah kullanılmaz."
+                            f"Şiddetli akne (şiddet {score}/10): sistem tek antibakteriyel seçti "
+                            f"({ab}); kısa temas 5-10 dk, yıka. Sabah kullanılmaz. Kullanıcı menüsü yok."
                         ),
                         "priority": 2, "step_order": 20,
                     },
                     "acne_antibacterial",
-                    {"benzoyl": _skin_benzoyl(bpo_pct), "sulfur": _skin_sulfur(sulfur_t)},
+                    actions,
+                    default=ab if ab in actions else "benzoyl",
                     exclude=("benzoyl",) if g.get("_pregnant") else (),
                     option_extra={"sulfur": sulfur_meta},
                 ))
@@ -2228,14 +2485,18 @@ def _add_evening_actives(
             actions = {"niacin_zinc": _skin_niacin_zinc()}
             if bha_pct is not None:
                 actions["bha"] = _skin_salicylic_toner(bha_pct)
+            # Yüksek parlamada sistem BHA seçer; aksi halde niasinamid+çinko.
+            pick = "bha" if bha_pct is not None and score >= 7 else "niacin_zinc"
+            if pick not in actions:
+                pick = "niacin_zinc"
             items.append(make_equivalence_item(
                 {
                     "time": "Akşam", "category": "Bakım", "icon": "🍯",
                     "detail": (
-                        f"Yağlılık (şiddet {score}/10): sebum için tek akşam adımı."
+                        f"Yağlılık (şiddet {score}/10): sistem tek sebum adımı seçti ({pick})."
                         + (
-                            f" Yüksek parlamada salisilik asit %{bha_pct:g} de uyar; ayrı adım değil, bu adımın seçeneği. Haftada {n} gece."
-                            if bha_pct is not None
+                            f" Yüksek parlamada BHA %{bha_pct:g}, haftada {n} gece."
+                            if pick == "bha"
                             else " Ek asit adımı yok."
                         )
                     ),
@@ -2243,6 +2504,7 @@ def _add_evening_actives(
                 },
                 "oiliness_treatment",
                 actions,
+                default=pick,
             ))
 
     elif concern == "pores":
@@ -3516,15 +3778,16 @@ def _optimize_weekly_days_for_strong_conflicts(routine_items: list) -> None:
 
 def _ensure_weekly_days_for_strong_evening_actives(routine_items: list) -> None:
     """
-    Bazı güçlü akşam aktifleri (retinol/BHA/AHA/BP gibi) metinde 'haftada X' yazmasa bile
-    haftalık takvim gerektirir. Aksi halde aynı gece birikim riski artar ve optimizer çalışamaz.
+    Bazı güçlü akşam aktifleri (retinol/BHA/AHA/BP/pigment/azelaik gibi) metinde
+    'haftada X' yazmasa bile haftalık takvim gerektirir.
+    Derişik serum tavanı: en fazla 4 gece (sonraki limit_concentrated adımı toleransa göre sıkar).
 
     Basit kural:
     - starter ramp: haftada 2
     - standard: haftada 3
     (existing weekly_days varsa dokunma)
     """
-    strong = {"retinol", "bha", "aha", "benzoyl"}
+    strong = _CONCENTRATED_SERUM_FAMILIES
     for it in routine_items or []:
         if it.get("time") != "Akşam" or it.get("category") != "Bakım":
             continue
@@ -3536,6 +3799,7 @@ def _ensure_weekly_days_for_strong_evening_actives(routine_items: list) -> None:
             continue
         stage = (it.get("ramp_stage") or "").lower()
         n = 2 if stage == "starter" else 3
+        n = min(n, _MAX_CONCENTRATED_NIGHTS)
         it["weekly_days"] = _spread_n_days_across_week(n)
 
 
@@ -4588,8 +4852,8 @@ def run_flow(
             if not fam:
                 continue
             wd = it.get("weekly_days")
-            if isinstance(wd, list) and len(wd) > 3:
-                it["weekly_days"] = _spread_n_days_across_week(3)
+            if isinstance(wd, list) and len(wd) > 2:
+                it["weekly_days"] = _spread_n_days_across_week(2)
     cap_weekly_days_from_timeline(routine_items, ranked)
     _sync_morning_c_with_strong_evening_days(routine_items)
     _ensure_weekly_days_for_strong_evening_actives(routine_items)
@@ -4597,6 +4861,14 @@ def run_flow(
     # '+' zincirleri: çatışma veya 3+ aktif aile varsa katman azalt (gerekirse 2 tur)
     for _ in range(2):
         routine_items = _split_plus_combined_conflicting_actives(routine_items)
+    # Derişik serum: ≤4 gece + en fazla 2 (2. yalnızca gerekliyse); toleransa göre
+    routine_items = limit_concentrated_evening_serums(
+        routine_items,
+        experience=actives_experience_for_ramp,
+        actives_tolerance=merged_actives_tol,
+        guards=guards,
+        ranked=ranked,
+    )
     _optimize_weekly_days_for_strong_conflicts(routine_items)
     attach_structured_fields_to_routine_items(routine_items)
 

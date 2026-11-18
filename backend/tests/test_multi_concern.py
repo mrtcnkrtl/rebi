@@ -179,7 +179,12 @@ def test_pigmentation_forces_spf_50():
     )
     blob = _blob(r["routine_items"])
     assert "spf 50" in blob
-    assert "arbutin" in blob or "traneksamik" in blob
+    assert (
+        "arbutin" in blob
+        or "traneksamik" in blob
+        or "heksilrezorsinol" in blob
+        or "hexylresorcinol" in blob
+    )
 
 
 def test_guards_from_all_selected():

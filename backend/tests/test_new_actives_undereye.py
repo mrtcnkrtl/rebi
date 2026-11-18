@@ -81,18 +81,14 @@ def test_sensitive_pigmentation_picks_licorice():
     assert all("choices" not in i for i in r["routine_items"])
 
 
-def test_severe_acne_is_one_step_and_sulfur_is_an_option():
+def test_severe_acne_system_picks_benzoyl_without_menu():
     r = _flow(concern="acne", severity_score=9)
-    steps = [
-        i
-        for i in r["routine_items"]
-        if any("benzoil" in (c.get("action") or "").lower() for c in i.get("choices") or [])
-        or "benzoil" in (i.get("action") or "").lower()
-    ]
+    steps = [i for i in r["routine_items"] if "benzoil" in (i.get("action") or "").lower()]
     assert len(steps) == 1
     it = steps[0]
-    assert {c["id"] for c in it["choices"]} == {"benzoyl", "sulfur"}
-    assert it["default_choice_id"] == "benzoyl"
+    assert "choices" not in it
+    assert "choice_group" not in it
+    assert (it.get("system_pick") or {}).get("id") == "benzoyl"
     assert "azelaik" not in _blob(r["routine_items"])
     assert "sülfasetamid" not in _blob(r["routine_items"])
 
@@ -184,21 +180,31 @@ def test_high_risk_drops_caffeine_one_tier_and_keeps_it():
     assert "choices" not in _morning_eye(stressed["routine_items"])
 
 
-def test_high_risk_drops_sulfur_option_one_tier():
-    """Sülfür akne adımında kalır; yüksek riskte %5-10 yerine %3-5 yazılır."""
+def test_high_risk_drops_sulfur_one_tier_when_system_picks_sulfur():
+    """BPO kaçınılınca sistem sülfür/azelaik seçer; yüksek riskte sülfür bir kademe iner."""
     r = _flow(
         concern="acne",
         severity_score=9,
+        skin_type_key="sensitive",
         stress_score=10,
         water_intake=0.5,
         sleep_hours=4,
         humidity=20,
+        concerns=[
+            {"id": "acne", "severity_score": 9},
+            {"id": "sensitivity", "severity_score": 7},
+        ],
     )
-    step = next(i for i in r["routine_items"] if i.get("choice_group") == "acne_antibacterial")
-    sulfur = next(c["action"] for c in step["choices"] if c["id"] == "sulfur")
-    assert "%3-5" in sulfur
-    assert "%5-10" not in sulfur
-    assert step["default_choice_id"] == "benzoyl"
+    blob = _blob(r["routine_items"])
+    assert "choices" not in "".join(str(i.keys()) for i in r["routine_items"])
+    assert all("choices" not in i for i in r["routine_items"])
+    # Hassasiyet → BPO yok; nazik antibakteriyel. Sülfür seçildiyse kademe düşmüş olmalı.
+    sulfur_steps = [i for i in r["routine_items"] if "sülfür" in (i.get("action") or "").lower() or "kükürt" in (i.get("action") or "").lower()]
+    if sulfur_steps:
+        assert "%3-5" in sulfur_steps[0]["action"] or "%2-3" in sulfur_steps[0]["action"]
+        assert "%5-10" not in sulfur_steps[0]["action"]
+    else:
+        assert "azelaik" in blob
 
 
 def test_sensitive_licorice_stays_on_the_low_band_when_risk_is_high():
