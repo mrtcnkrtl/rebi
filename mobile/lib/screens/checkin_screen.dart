@@ -52,6 +52,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
   double _sleepHours = 7;
   int _stressToday = 3;
   String _skinFeeling = '';
+  /// null = henüz seçilmedi
+  bool? _concernResolved;
   String _daySetting = '';
   bool _locationMissing = false;
   bool _appliedRoutine = true;
@@ -199,7 +201,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
     }
   }
 
-  bool get _canSubmit => _skinFeeling.isNotEmpty && !_loading && !_alreadyCheckedIn && !_ctxLoading;
+  bool get _canSubmit =>
+      _skinFeeling.isNotEmpty &&
+      _concernResolved != null &&
+      !_loading &&
+      !_alreadyCheckedIn &&
+      !_ctxLoading;
 
   static const _concernDriven = ['acne', 'dryness', 'pigmentation', 'sensitivity', 'aging'];
 
@@ -228,6 +235,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         'sleep_hours': _sleepHours,
         'stress_today': _stressToday,
         'skin_feeling': _skinFeeling,
+        'concern_resolved': _concernResolved == true,
         'applied_routine': _appliedRoutine,
         'notes': _notes.text.isEmpty ? null : _notes.text,
         'utc_offset_minutes': DateTime.now().timeZoneOffset.inMinutes,
@@ -370,6 +378,31 @@ class _CheckInScreenState extends State<CheckInScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Text(i18n.t('checkin.concernResolvedTitle'), style: tx(14, w: 7, c: Tw.gray800)),
+              const SizedBox(height: 4),
+              Text(i18n.t('checkin.concernResolvedHint'), style: tx(11, c: Tw.gray500, h: relaxed)),
+              const SizedBox(height: 8),
+              for (final (val, key) in [
+                (true, 'checkin.concernResolvedYes'),
+                (false, 'checkin.concernResolvedNo'),
+              ]) ...[
+                ChoiceChipBox(
+                  label: i18n.t(key),
+                  selected: _concernResolved == val,
+                  activeText: Tw.teal900,
+                  inactiveText: Tw.gray600,
+                  onTap: () => setState(() => _concernResolved = val),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ],
+          ),
+        ),
+        gap,
+        RCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
               Text('Bugün cildin daha çok nerede?', style: tx(14, w: 7, c: Tw.gray800)),
               const SizedBox(height: 4),
               Text(
@@ -435,6 +468,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   /// Sabit gönder çubuğu: uzun formun sonuna kaydırmadan gönderilir; düğme kapalıyken nedenini söyler (cilt hissi seçilmedi).
   Widget _submitBar(I18n i18n, RebiTheme theme) {
     final needsSkin = _skinFeeling.isEmpty && !_loading;
+    final needsResolved = _skinFeeling.isNotEmpty && _concernResolved == null && !_loading;
     return StageBottomBar(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -444,6 +478,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(i18n.t('mobileCheckin.needSkin'), textAlign: TextAlign.center, style: tx(12.5, w: 5, c: Tw.gray600, h: snug)),
+            ),
+          if (needsResolved)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(i18n.t('checkin.concernResolvedTitle'), textAlign: TextAlign.center, style: tx(12.5, w: 5, c: Tw.gray600, h: snug)),
             ),
           if (_loading)
             Padding(

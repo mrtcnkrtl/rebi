@@ -336,6 +336,10 @@
     "symptomAcne": "Sivilce alevlenmesi",
     "reactionSeverityTitle": "Aktif ürünlere tepki şiddeti",
     "reactionSeverityHint": "Rutindeki güçlü maddelere tolerans öğrenimi için (1 = hafif, 3 = belirgin).",
+    "concernResolvedTitle": "Odaklandığın sorun çözüldü mü?",
+    "concernResolvedHint": "En az ~2 haftalık odaktan sonra «Evet» dersen sıradaki soruna geçilir. Aktifler yeni odakta düşük doz ve seyrek başlar.",
+    "concernResolvedYes": "Evet, çözüldü — sıradakine geçilebilir",
+    "concernResolvedNo": "Hayır, bu odakta devam",
     "feedbackTitle": "Bu rapor ve öneriler sana uygun muydu?",
     "feedbackThanks": "Geri bildirimin kaydedildi, teşekkürler.",
     "feedbackSkip": "Atla"

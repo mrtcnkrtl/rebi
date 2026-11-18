@@ -168,6 +168,10 @@
     "symptomAcne": "Sivilce alovlanması",
     "reactionSeverityTitle": "Aktiv maddələrə reaksiya şiddəti",
     "reactionSeverityHint": "Tolerans öyrənməsi üçün (1 = yüngül, 3 = güclü).",
+    "concernResolvedTitle": "Fokuslandığın problem həll olundu?",
+    "concernResolvedHint": "Ən az ~2 həftəlik fokusdan sonra «Bəli» desən növbəti problemə keçilir. Aktivlər yeni fokusda aşağı doza və seyrək başlayır.",
+    "concernResolvedYes": "Bəli, həll olundu — növbətiyə keçilə bilər",
+    "concernResolvedNo": "Xeyr, bu fokusda davam",
     "feedbackTitle": "Bu hesabat sənin üçün faydalı oldu?",
     "feedbackThanks": "Rəyin qeyd edildi, təşəkkürlər.",
     "feedbackSkip": "Keç"

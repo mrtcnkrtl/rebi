@@ -345,6 +345,8 @@ export default function CheckIn() {
   const [sleepHours, setSleepHours] = useState(7);
   const [stressToday, setStressToday] = useState(3);
   const [skinFeeling, setSkinFeeling] = useState("");
+  /** null = henüz seçilmedi; false/true gönderilir */
+  const [concernResolved, setConcernResolved] = useState(null);
   const [daySetting, setDaySetting] = useState("");
   const [locationMissing, setLocationMissing] = useState(false);
   const [appliedRoutine, setAppliedRoutine] = useState(true);
@@ -383,7 +385,12 @@ export default function CheckIn() {
     setSymptomTags((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const canSubmit = skinFeeling && !loading && !alreadyCheckedIn && !ctxLoading;
+  const canSubmit =
+    skinFeeling &&
+    concernResolved !== null &&
+    !loading &&
+    !alreadyCheckedIn &&
+    !ctxLoading;
 
   const concernDrivenExtras = ["acne", "dryness", "pigmentation", "sensitivity", "aging"];
   const showWaterExtra =
@@ -454,6 +461,7 @@ export default function CheckIn() {
         sleep_hours: sleepHours,
         stress_today: stressToday,
         skin_feeling: skinFeeling,
+        concern_resolved: Boolean(concernResolved),
         applied_routine: appliedRoutine,
         notes: notes || null,
       };
@@ -797,6 +805,31 @@ export default function CheckIn() {
                 {skinFeeling === f.id && (
                   <CheckCircle2 className="w-5 h-5 ml-auto shrink-0" style={{ color: theme.primary }} />
                 )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="card mb-4">
+          <h3 className="text-sm font-bold text-gray-800 mb-1">{t("checkin.concernResolvedTitle")}</h3>
+          <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+            {t("checkin.concernResolvedHint")}
+          </p>
+          <div className="space-y-2">
+            {[
+              { id: true, labelKey: "checkin.concernResolvedYes" },
+              { id: false, labelKey: "checkin.concernResolvedNo" },
+            ].map((opt) => (
+              <button
+                key={String(opt.id)}
+                type="button"
+                onClick={() => setConcernResolved(opt.id)}
+                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                  concernResolved === opt.id ? "ring-2 shadow-md" : "bg-gray-50 hover:bg-gray-100"
+                }`}
+                style={concernResolved === opt.id ? { backgroundColor: theme.primaryLight } : {}}
+              >
+                <p className="text-sm font-medium text-gray-800">{t(opt.labelKey)}</p>
               </button>
             ))}
           </div>

@@ -1366,6 +1366,8 @@ class DailyCheckinRequest(BaseModel):
     sleep_hours: float
     stress_today: int          # 1-5
     skin_feeling: str          # "iyi" / "kuru" / "yagli" / "kirik" / "irritasyon"
+    # Odak sorunu çözüldü mü? (min gün dolunca sıradaki soruna geçiş)
+    concern_resolved: Optional[bool] = None
     applied_routine: bool
     notes: Optional[str] = None
     location_lat: Optional[float] = None
@@ -4584,6 +4586,8 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
         "sleep_hours": req.sleep_hours,
         "stress_today": req.stress_today,
         "skin_feeling": req.skin_feeling,
+        "concern_resolved": bool(req.concern_resolved),
+        "today": today_str,
         "applied_routine": req.applied_routine,
         "notes": req.notes or "",
         "tracking_today": tracking_today or {},

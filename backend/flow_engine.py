@@ -4620,8 +4620,10 @@ def run_flow(
         build_focus_queue,
         build_focus_state_item,
         build_guards,
+        focus_needs_starter_ramp,
         normalize_concern_entries,
         rank_concerns,
+        today_iso,
     )
 
     ranked = rank_concerns(
@@ -4646,6 +4648,7 @@ def run_flow(
     concern = primary["id"]
     severity_score = int(primary["score"])
     focus_phase = str(focus_info.get("phase") or "treatment")
+    focus_started_on = today_iso(special_flags_norm.get("focus_started_on"))
     guards = build_guards(
         ranked,
         stings_with_products=bool(special_flags_norm.get("stings_with_products")),
@@ -4655,6 +4658,11 @@ def run_flow(
     guards["_barrier_phase"] = focus_phase == "barrier"
     guards["_focus_id"] = concern
     guards["_focus_phase"] = focus_phase
+    # Yeni odak penceresi veya açık force_starter → tonik/serum alıştırma
+    if special_flags_norm.get("force_starter") or focus_needs_starter_ramp(
+        {"focus_started_on": focus_started_on}
+    ):
+        guards["force_starter"] = True
     from concern_history import (
         apply_history_to_guards,
         build_history_routine_items,
@@ -4746,7 +4754,7 @@ def run_flow(
     # UI netleştirme: ürünle batma/yanma işaretliyse daha yumuşak başlangıç (yüzde + sıklık)
     if special_flags_norm.get("stings_with_products"):
         _strength_stage = "starter"
-    if guards.get("force_starter"):
+    if guards.get("force_starter") or special_flags_norm.get("force_starter"):
         _strength_stage = "starter"
     _apply_niacinamide_pct_to_skin_profile(skin_type, _na_pct)
     _am_cream, _pm_cream = choose_moisturizers(
@@ -4793,6 +4801,7 @@ def run_flow(
             focus_info,
             good_streak=0,
             ranked_snapshot=ranked,
+            focus_started_on=focus_started_on,
             rebuild_ctx={
                 "age": age,
                 "gender": gender,
@@ -6162,46 +6171,51 @@ def apply_focus_checkin_advance(
     current_routine: list,
     *,
     skin_feeling: str,
+    concern_resolved: bool = False,
+    today: Optional[str] = None,
 ) -> tuple[list, list, bool]:
     """
-    İyi streak ile odak ilerlet; tahrişte bariyere çek.
+    «Sorun çözüldü» + min gün ile odak ilerlet; tahrişte bariyere çek.
     İlerleme olursa rutin run_flow ile yeniden kurulur (rebuild_ctx varsa).
     Dönüş: (items, changes, advanced)
     """
-    from multi_concern import advance_focus_queue_state
+    from multi_concern import advance_focus_queue_state, today_iso
 
     items = [dict(it) for it in (current_routine or [])]
     focus_it = _find_focus_state_item(items)
     if not focus_it:
         return items, [], False
 
+    day = today_iso(today)
     ranked_snap = list(focus_it.get("ranked_snapshot") or [])
     new_fields, advanced, note = advance_focus_queue_state(
         focus_it,
         skin_feeling=skin_feeling,
         ranked=ranked_snap,
         stings_with_products=False,
+        concern_resolved=bool(concern_resolved),
+        today=day,
     )
     changes = []
     if not advanced:
-        # Streak güncelle
-        if isinstance(new_fields, dict) and "good_streak" in new_fields:
-            for it in items:
-                if it.get("concern_role") == "focus_state":
+        for it in items:
+            if it.get("concern_role") == "focus_state":
+                if isinstance(new_fields, dict):
+                    if new_fields.get("focus_started_on"):
+                        it["focus_started_on"] = new_fields["focus_started_on"]
                     it["good_streak"] = int(new_fields.get("good_streak") or 0)
-                    if note:
-                        it["detail"] = (
-                            (it.get("detail") or "").split(" İyi streak")[0].rstrip()
-                            + (f" {note}" if note else "")
-                        )
-                    break
-            if note:
-                changes.append({
-                    "item": focus_it.get("action") or "Odak",
-                    "old": f"streak {focus_it.get('good_streak')}",
-                    "new": f"streak {new_fields.get('good_streak')}",
-                    "reason": note,
-                })
+                if note:
+                    base = (it.get("detail") or "").split(" Sorun çözüldü")[0]
+                    base = base.split(" İyi streak")[0].rstrip()
+                    it["detail"] = f"{base} {note}".strip()
+                break
+        if note:
+            changes.append({
+                "item": focus_it.get("action") or "Odak",
+                "old": str(focus_it.get("focus_started_on") or ""),
+                "new": str((new_fields or {}).get("focus_started_on") or day),
+                "reason": note,
+            })
         return items, changes, False
 
     # Advanced: new_fields is a full focus_state item
@@ -6210,6 +6224,9 @@ def apply_focus_checkin_advance(
     if rebuild_ctx:
         flags = dict(rebuild_ctx.get("special_flags") or {})
         flags["focus_queue"] = queue
+        flags["focus_started_on"] = new_fields.get("focus_started_on") or day
+        # Yeni odak: alıştırma (düşük doz / seyrek haftalık)
+        flags["force_starter"] = True
         if skin_feeling in ("irritasyon", "kirik"):
             flags["stings_with_products"] = True
         concerns = [
@@ -6247,11 +6264,11 @@ def apply_focus_checkin_advance(
                 makeup_removal=str(rebuild_ctx.get("makeup_removal") or "cleanser"),
             )
             new_items = list(rebuilt.get("routine_items") or [])
-            # Preserve streak 0 already; keep rebuild_ctx
             for it in new_items:
                 if it.get("concern_role") == "focus_state":
                     it["rebuild_ctx"] = rebuild_ctx
                     it["ranked_snapshot"] = ranked_snap or it.get("ranked_snapshot")
+                    it["focus_started_on"] = flags.get("focus_started_on") or day
                     break
             changes.append({
                 "item": "Odak kuyruğu",
@@ -6311,10 +6328,12 @@ def adapt_existing_routine(
     changes = []
     adapted = []
 
-    # Sıralı odak: check-in ile kuyruk / bariyer
+    # Sıralı odak: «sorun çözüldü» + min gün / bariyer
     current_routine, focus_changes, focus_advanced = apply_focus_checkin_advance(
         current_routine,
         skin_feeling=str(skin_feeling or "iyi"),
+        concern_resolved=bool(daily_data.get("concern_resolved")),
+        today=daily_data.get("today") or daily_data.get("log_date"),
     )
     changes.extend(focus_changes)
 

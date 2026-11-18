@@ -253,10 +253,21 @@ def test_build_focus_queue_defers_rest():
     assert q["phase"] == "treatment"
     assert q["focus"]["id"] == "acne"
     assert [d["id"] for d in q["deferred"]] == ["pigmentation", "undereye"]
-    assert q["advance_rule"] == "checkin"
+    assert q["advance_rule"] == "resolved_after_min_days"
 
 
-def test_checkin_two_iyi_advances_focus():
+def _backdate_focus(items, days=14):
+    """Test: odakta N gün geçmiş gibi focus_started_on ayarla."""
+    from datetime import date, timedelta
+
+    started = (date.today() - timedelta(days=days)).isoformat()
+    for it in items:
+        if it.get("concern_role") == "focus_state":
+            it["focus_started_on"] = started
+    return items
+
+
+def test_checkin_resolved_after_min_days_advances_focus():
     r = _flow(
         concern="acne",
         severity_score=8,
@@ -268,7 +279,7 @@ def test_checkin_two_iyi_advances_focus():
     items = r["routine_items"]
     focus = next(i for i in items if i.get("concern_role") == "focus_state")
     assert focus["focus_id"] == "acne"
-    assert focus["good_streak"] == 0
+    assert focus.get("focus_started_on")
     assert "şimdiden alma" in (focus.get("detail") or "").lower()
     # 2. sorun maddesi plana yazılır ama Bakım adımı olmaz
     plan = focus.get("deferred_plan") or []
@@ -279,12 +290,21 @@ def test_checkin_two_iyi_advances_focus():
     ).lower()
     assert "traneksamik" not in care and "kojik" not in care
 
-    items2, ch1, adv1 = apply_focus_checkin_advance(items, skin_feeling="iyi")
-    assert adv1 is False
+    # Erken «çözüldü» → geçiş yok
+    items2, ch_early, adv_early = apply_focus_checkin_advance(
+        items, skin_feeling="iyi", concern_resolved=True
+    )
+    assert adv_early is False
     f2 = next(i for i in items2 if i.get("concern_role") == "focus_state")
-    assert f2["good_streak"] == 1
+    assert f2["focus_id"] == "acne"
+    early_txt = (f2.get("detail") or "") + " ".join(c.get("reason") or "" for c in ch_early)
+    assert "en az" in early_txt.lower()
 
-    items3, ch2, adv2 = apply_focus_checkin_advance(items2, skin_feeling="iyi")
+    # Min gün + çözüldü → lekeye geç
+    _backdate_focus(items2, days=14)
+    items3, _, adv2 = apply_focus_checkin_advance(
+        items2, skin_feeling="iyi", concern_resolved=True
+    )
     assert adv2 is True
     f3 = next(i for i in items3 if i.get("concern_role") == "focus_state")
     assert f3["focus_id"] == "pigmentation"
@@ -321,10 +341,11 @@ def test_deferred_actives_only_appear_after_focus_advance():
     assert "azelaik" in preview or "benzoil" in preview
     assert "yeşil çay" in preview or "egcg" in preview
 
-    items, _, a1 = apply_focus_checkin_advance(r["routine_items"], skin_feeling="iyi")
-    assert a1 is False
-    items, _, a2 = apply_focus_checkin_advance(items, skin_feeling="iyi")
-    assert a2 is True
+    items = _backdate_focus(list(r["routine_items"]), days=14)
+    items, _, a1 = apply_focus_checkin_advance(
+        items, skin_feeling="iyi", concern_resolved=True
+    )
+    assert a1 is True
     f = next(i for i in items if i.get("concern_role") == "focus_state")
     assert f["focus_id"] == "acne"
     care1 = " ".join(
@@ -333,9 +354,11 @@ def test_deferred_actives_only_appear_after_focus_advance():
     assert "azelaik" in care1 or "benzoil" in care1 or "salisilik" in care1
     assert "yeşil çay" not in care1 and "egcg" not in care1
 
-    items, _, _ = apply_focus_checkin_advance(items, skin_feeling="iyi")
-    items, _, a4 = apply_focus_checkin_advance(items, skin_feeling="iyi")
-    assert a4 is True
+    items = _backdate_focus(items, days=14)
+    items, _, a2 = apply_focus_checkin_advance(
+        items, skin_feeling="iyi", concern_resolved=True
+    )
+    assert a2 is True
     f2 = next(i for i in items if i.get("concern_role") == "focus_state")
     assert f2["focus_id"] == "oiliness"
     care2 = " ".join(
@@ -357,7 +380,7 @@ def test_checkin_irritasyon_returns_to_barrier():
     assert f["phase"] == "barrier" or f["focus_id"] == "barrier"
 
 
-def test_adapt_existing_routine_tracks_focus_streak():
+def test_adapt_existing_routine_resolved_too_early_stays():
     r = _flow(
         concern="acne",
         severity_score=7,
@@ -368,11 +391,18 @@ def test_adapt_existing_routine_tracks_focus_streak():
     )
     out = adapt_existing_routine(
         r["routine_items"],
-        {"skin_feeling": "iyi", "sleep_hours": 7, "stress_today": 2},
+        {
+            "skin_feeling": "iyi",
+            "concern_resolved": True,
+            "sleep_hours": 7,
+            "stress_today": 2,
+        },
         {"level": "normal", "score": 1, "detail": ""},
     )
+    assert out.get("focus_advanced") is False
     f = next(i for i in out["adapted_items"] if i.get("concern_role") == "focus_state")
-    assert f["good_streak"] == 1
+    assert f["focus_id"] == "acne"
+    assert f.get("focus_started_on")
 
 
 def test_guards_from_all_selected():

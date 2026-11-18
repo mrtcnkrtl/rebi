@@ -2,14 +2,16 @@
 Tek odak kuralı:
 - 1 sorun → o sorunun rutini/aktifi.
 - 1'den fazla → şiddet sırasıyla kuyruk; rutinde yalnız sıradaki sorun.
-- Sorun geçince (check-in iyi streak) sistem sonraki sorunun rutin + aktifine geçer.
-- Cilt dengesi bozuksa (batma / yüksek hassasiyet-kuruluk) önce kısa bariyer fazı,
+- Sonraki soruna geçiş: check-in'de açıkça «sorun çözüldü» + en az FOCUS_MIN_DAYS.
+- Yeni odağın ilk FOCUS_STARTER_DAYS günü düşük doz / seyrek (starter) alıştırma.
+- Cilt dengesi bozuksa (batma / yüksek hassasiyet-kuruluk) önce bariyer fazı,
   sonra tedavi kuyruğu aynı kurala döner.
 Ürün değil etken; doz ve sıklık skora göre değişir.
 """
 
 from __future__ import annotations
 
+from datetime import date, datetime, timezone
 from typing import Any, Optional
 
 ALLOWED_CONCERNS = (
@@ -40,7 +42,12 @@ TREATMENT_CONCERNS = frozenset(
 # Eşit şiddette: inflamatuvar / leke / bariyer, yağ-gözenekten önce.
 _TIE_BREAK = {cid: i for i, cid in enumerate(ALLOWED_CONCERNS)}
 
+# Geriye uyum: eski test/metinler; ilerleme artık concern_resolved + min gün.
 FOCUS_ADVANCE_GOOD_STREAK = 2
+# Odak başına minimum süre (birkaç hafta) — erken «çözüldü» işaretinde geçiş yok.
+FOCUS_MIN_DAYS = 14
+# Yeni odak / yeni aktif: bu süre boyunca starter doz + seyrek haftalık günler.
+FOCUS_STARTER_DAYS = 14
 _CONCERN_LABEL_TR = {
     "barrier": "bariyer onarımı",
     "acne": "akne",
@@ -193,8 +200,8 @@ def build_focus_queue(
                 "deferred": deferred,
                 "phase": "barrier",
                 "queue": [focus] + deferred,
-                "advance_rule": "checkin",
-                "good_streak_needed": FOCUS_ADVANCE_GOOD_STREAK,
+                "advance_rule": "resolved_after_min_days",
+                "min_days": FOCUS_MIN_DAYS,
                 "needs_barrier": True,
             }
         queue: list[dict] = []
@@ -219,8 +226,8 @@ def build_focus_queue(
                 "deferred": deferred,
                 "phase": "treatment",
                 "queue": [focus] + deferred,
-                "advance_rule": "checkin",
-                "good_streak_needed": FOCUS_ADVANCE_GOOD_STREAK,
+                "advance_rule": "resolved_after_min_days",
+                "min_days": FOCUS_MIN_DAYS,
                 "needs_barrier": needs_barrier,
             }
 
@@ -244,8 +251,8 @@ def build_focus_queue(
         "deferred": deferred,
         "phase": phase,
         "queue": [focus] + list(deferred),
-        "advance_rule": "checkin",
-        "good_streak_needed": FOCUS_ADVANCE_GOOD_STREAK,
+        "advance_rule": "resolved_after_min_days",
+        "min_days": FOCUS_MIN_DAYS,
         "needs_barrier": needs_barrier,
     }
 
@@ -254,12 +261,45 @@ def concern_label_tr(cid: str) -> str:
     return _CONCERN_LABEL_TR.get(cid, cid)
 
 
+def today_iso(today: Optional[str] = None) -> str:
+    if today:
+        return str(today).strip()[:10]
+    return datetime.now(timezone.utc).date().isoformat()
+
+
+def parse_iso_date(value: Any) -> Optional[date]:
+    raw = str(value or "").strip()[:10]
+    if not raw:
+        return None
+    try:
+        return date.fromisoformat(raw)
+    except ValueError:
+        return None
+
+
+def focus_days_elapsed(focus_state: dict, *, today: Optional[str] = None) -> int:
+    """Odakta geçen tam gün (aynı gün = 0). Tarih yoksa 0 (min süre henüz dolmamış)."""
+    started = parse_iso_date((focus_state or {}).get("focus_started_on"))
+    if not started:
+        return 0
+    end = parse_iso_date(today) or datetime.now(timezone.utc).date()
+    return max(0, (end - started).days)
+
+
+def focus_needs_starter_ramp(focus_state: Optional[dict], *, today: Optional[str] = None) -> bool:
+    """Yeni odak / yeni aktif: ilk FOCUS_STARTER_DAYS düşük doz + seyrek sıklık."""
+    if not focus_state:
+        return True
+    return focus_days_elapsed(focus_state, today=today) < FOCUS_STARTER_DAYS
+
+
 def build_focus_state_item(
     focus_info: dict,
     *,
     good_streak: int = 0,
     ranked_snapshot: Optional[list] = None,
     rebuild_ctx: Optional[dict] = None,
+    focus_started_on: Optional[str] = None,
 ) -> dict:
     """Rutine gömülen odak meta satırı (check-in ilerletir)."""
     focus = focus_info.get("focus") or {}
@@ -268,11 +308,13 @@ def build_focus_state_item(
     phase = focus_info.get("phase") or "treatment"
     label = concern_label_tr("barrier" if phase == "barrier" else fid)
     has_next = any(d.get("id") for d in deferred)
+    weeks = max(1, FOCUS_MIN_DAYS // 7)
     if has_next:
         detail = (
             f"Şu an tek sorun odaklısın: {label}. "
-            f"Bu sorun geçince (ardışık {FOCUS_ADVANCE_GOOD_STREAK} iyi check-in) "
-            "sistem sıradaki sorunun rutinine ve aktifine geçer. "
+            f"Bu odakta en az ~{weeks} hafta kalınır; check-in’de «sorun çözüldü» "
+            "işaretleyince sıradaki sorunun rutinine ve aktifine geçilir. "
+            f"İlk {FOCUS_STARTER_DAYS} gün aktifler düşük doz ve seyrek (alıştırma). "
             "Sonraki maddeler plana yazıldı; şimdiden alma veya kullanma. "
             "Sabah dinlenme/koruma; akşam yalnız bu odağın aktifi."
         )
@@ -280,6 +322,7 @@ def build_focus_state_item(
         detail = (
             f"Tek sorun odaklısın: {label}. "
             "Rutin ve aktif yalnız buna göre. "
+            f"İlk {FOCUS_STARTER_DAYS} gün aktifler düşük doz ve seyrek (alıştırma). "
             "Sabah dinlenme/koruma; akşam bu odağın aktifi."
         )
     queue_payload = []
@@ -294,6 +337,7 @@ def build_focus_state_item(
     if snap is None:
         snap = list(focus_info.get("queue") or queue_payload)
 
+    started = today_iso(focus_started_on)
     out = {
         "time": "Günlük",
         "category": "Yaşam",
@@ -306,13 +350,16 @@ def build_focus_state_item(
         "focus_id": fid if phase != "barrier" else "barrier",
         "phase": phase,
         "good_streak": max(0, int(good_streak or 0)),
+        "focus_started_on": started,
+        "focus_min_days": FOCUS_MIN_DAYS,
+        "focus_starter_days": FOCUS_STARTER_DAYS,
         "focus_queue": queue_payload,
         "ranked_snapshot": [
             {"id": e.get("id"), "score": int(e.get("score") or 5)}
             for e in (snap or [])
             if isinstance(e, dict) and e.get("id")
         ],
-        "advance_rule": "checkin",
+        "advance_rule": "resolved_after_min_days",
         "deferred_plan": [],
     }
     if rebuild_ctx:
@@ -339,15 +386,22 @@ def advance_focus_queue_state(
     skin_feeling: str,
     ranked: Optional[list] = None,
     stings_with_products: bool = False,
+    concern_resolved: bool = False,
+    today: Optional[str] = None,
 ) -> tuple[dict, bool, str]:
     """
     Check-in ile kuyruk ilerlemesi.
+    - irritasyon/kırık → bariyer
+    - concern_resolved + min gün + sırada başka sorun → sonraki odak
     Dönüş: (yeni_focus_state_fields, advanced?, note)
     """
     feeling = (skin_feeling or "").strip().lower()
     state = dict(focus_state or {})
     queue = list(state.get("focus_queue") or [])
-    streak = int(state.get("good_streak") or 0)
+    day = today_iso(today)
+    # Eksik başlangıç tarihi: bugünden başlat (eski rutinler için min süre uygulanır)
+    if not state.get("focus_started_on"):
+        state["focus_started_on"] = day
     note = ""
 
     if feeling in ("irritasyon", "kirik"):
@@ -357,34 +411,37 @@ def advance_focus_queue_state(
             stings_with_products=True,
             skin_type_key="sensitive",
         )
-        new_item = build_focus_state_item(barrier_q, good_streak=0)
+        new_item = build_focus_state_item(barrier_q, good_streak=0, focus_started_on=day)
         return new_item, True, "Bariyer önceliğine dönüldü (tahriş/kırık hissi)."
 
-    if feeling == "iyi":
-        streak += 1
-        if streak >= FOCUS_ADVANCE_GOOD_STREAK and len(queue) > 1:
-            queue = queue[1:]
-            streak = 0
-            # Rebuild focus_info from remaining queue
-            info = build_focus_queue(
-                ranked or [],
-                stings_with_products=stings_with_products,
-                resume_queue=queue,
+    days = focus_days_elapsed(state, today=day)
+    state["good_streak"] = 0
+
+    if concern_resolved and len(queue) > 1:
+        if days < FOCUS_MIN_DAYS:
+            left = FOCUS_MIN_DAYS - days
+            note = (
+                f"Sorun çözüldü işaretlendi; bu odakta en az {FOCUS_MIN_DAYS} gün "
+                f"gerekir ({days}/{FOCUS_MIN_DAYS}). {left} gün sonra sıradaki soruna geçilebilir."
             )
-            new_item = build_focus_state_item(info, good_streak=0)
-            label = concern_label_tr(
-                "barrier" if info.get("phase") == "barrier" else str((info.get("focus") or {}).get("id"))
-            )
-            return new_item, True, f"Odak sonraki soruna geçti: {label}."
-        state["good_streak"] = streak
-        left = FOCUS_ADVANCE_GOOD_STREAK - streak
-        if left > 0:
-            note = f"İyi streak {streak}/{FOCUS_ADVANCE_GOOD_STREAK}; sonraki odağa {left} iyi check-in kaldı."
+            return state, False, note
+        queue = queue[1:]
+        info = build_focus_queue(
+            ranked or [],
+            stings_with_products=stings_with_products,
+            resume_queue=queue,
+        )
+        new_item = build_focus_state_item(info, good_streak=0, focus_started_on=day)
+        label = concern_label_tr(
+            "barrier" if info.get("phase") == "barrier" else str((info.get("focus") or {}).get("id"))
+        )
+        return new_item, True, f"Odak sonraki soruna geçti: {label}."
+
+    if concern_resolved and len(queue) <= 1:
+        note = "Odak sorun çözüldü olarak işaretlendi; sırada başka sorun yok, mevcut odakta kalınıyor."
         return state, False, note
 
-    # kuru / yagli / diğer: streak sıfır, ilerleme yok
-    state["good_streak"] = 0
-    return state, False, ""
+    return state, False, note
 
 
 def build_guards(
@@ -623,7 +680,8 @@ def build_deferred_preview_items(deferred_plan: list[dict]) -> list[dict]:
             "action": f"Sonra (#{i}): {label} → {action}",
             "detail": (
                 f"{label} maddesi şimdilik planlandı; "
-                f"ardışık {FOCUS_ADVANCE_GOOD_STREAK} iyi check-in sonrası rutine eklenir. "
+                f"mevcut odakta en az ~{max(1, FOCUS_MIN_DAYS // 7)} hafta + check-in’de "
+                "«sorun çözüldü» sonrası rutine eklenir. "
                 "Şimdi alma veya kullanma."
             ),
             "usage": "Bu satır bilgi amaçlıdır; mevcut odak bitmeden uygulamayın.",
