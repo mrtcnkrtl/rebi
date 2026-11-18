@@ -161,12 +161,29 @@ def test_most_severe_concern_stays_primary_with_undereye():
     assert "kafein" not in care
 
 
-def test_high_risk_drops_caffeine_one_tier_and_keeps_it():
-    """Yoğun kafein (%5) yüksek riskte bir kademe iner; madde kafein kalır."""
+def test_new_focus_starter_drops_caffeine_one_tier():
+    """Yeni odak alıştırma: yoğun kafein bir kademe iner (%5→%3); madde kafein kalır."""
+    r = _flow(
+        concern="undereye",
+        severity_score=8,
+        undereye_look={"color": "purple", "puffiness": "often"},
+    )
+    eye = _morning_eye(r["routine_items"])["action"].lower()
+    assert "kafein %3" in eye
+    assert "kafein %5" not in eye
+    assert "choices" not in _morning_eye(r["routine_items"])
+
+
+def test_high_risk_drops_caffeine_after_starter_window():
+    """Alıştırma penceresi bitince yoğun %5; yüksek riskte yine bir kademe iner."""
+    from datetime import date, timedelta
+
+    past = (date.today() - timedelta(days=20)).isoformat()
     calm = _flow(
         concern="undereye",
         severity_score=8,
         undereye_look={"color": "purple", "puffiness": "often"},
+        special_flags={"focus_started_on": past},
     )
     stressed = _flow(
         concern="undereye",
@@ -176,6 +193,7 @@ def test_high_risk_drops_caffeine_one_tier_and_keeps_it():
         water_intake=0.5,
         sleep_hours=4,
         humidity=20,
+        special_flags={"focus_started_on": past},
     )
     calm_eye = _morning_eye(calm["routine_items"])["action"].lower()
     stressed_eye = _morning_eye(stressed["routine_items"])["action"].lower()

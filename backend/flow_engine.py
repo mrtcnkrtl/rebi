@@ -4238,6 +4238,12 @@ def _normalize_special_flags(raw: Optional[dict]) -> dict:
     fq = raw.get("focus_queue")
     if isinstance(fq, list) and fq:
         out["focus_queue"] = fq
+    # Odak başlangıç tarihi + yeni odak alıştırma bayrağı
+    started = raw.get("focus_started_on")
+    if isinstance(started, str) and started.strip():
+        out["focus_started_on"] = started.strip()[:10]
+    if raw.get("force_starter") is True or raw.get("force_starter") in (1, "1", "true", "True", "yes"):
+        out["force_starter"] = True
     return out
 
 
