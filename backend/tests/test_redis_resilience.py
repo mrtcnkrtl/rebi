@@ -189,14 +189,21 @@ def test_proxy_falls_back_on_any_error_and_returns_when_the_primary_recovers():
     assert proxy.value(2) == "redis:2"
 
 
-def test_proxy_logs_an_outage_once_a_minute_not_once_per_request(caplog):
+def test_proxy_logs_an_outage_once_a_minute_not_once_per_request(monkeypatch):
+    """caplog + özel StreamHandler kırılgan; doğrudan log.warning sayılır."""
     primary, backup = _Primary(), _Backup()
     primary.fail = True
+    logged: list[str] = []
+    monkeypatch.setattr(
+        redis_client.log,
+        "warning",
+        lambda msg, *args, **kwargs: logged.append(msg % args if args else str(msg)),
+    )
     proxy = FallbackProxy(primary, backup, "deneme")
-    with caplog.at_level(logging.WARNING, logger="redis_client"):
-        for i in range(50):
-            proxy.value(i)
-    assert len([r for r in caplog.records if "bellek yedeğine" in r.getMessage()]) == 1
+    for i in range(50):
+        proxy.value(i)
+    assert len(logged) == 1
+    assert "bellek yedeğine" in logged[0]
 
 
 # ── Hız sınırlayıcı ──────────────────────────────────────────────────────────────────────────────
