@@ -41,8 +41,16 @@ export 'analyze_form.dart' show calcCyclePhase, pssScore, strongActiveFamilyIds;
 const _chapters = ['about', 'skin', 'life', 'products', 'finish'];
 
 String _chapterOf(String id) {
-  if (id.startsWith('sev') || const ['skinType', 'concerns', 'primary', 'zones', 'flags'].contains(id)) return 'skin';
-  if (id.startsWith('pss') || const ['waterSleep', 'stressIntro', 'smoking', 'alcohol', 'makeup', 'shaving'].contains(id)) return 'life';
+  if (id.startsWith('sev_') ||
+      id.startsWith('zones_') ||
+      id.startsWith('tl_') ||
+      const ['skinType', 'concerns', 'primary', 'flags', 'triggers', 'pastTreatments', 'expectations'].contains(id)) {
+    return 'skin';
+  }
+  if (id.startsWith('pss') ||
+      const ['waterSleep', 'stressIntro', 'smoking', 'alcohol', 'nutrition', 'makeup', 'shaving'].contains(id)) {
+    return 'life';
+  }
   if (const ['actives', 'tolerance'].contains(id)) return 'products';
   if (const ['photo', 'summary'].contains(id)) return 'finish';
   return 'about';
@@ -154,7 +162,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
 
   List<String> _pages() {
     final f = _form;
-    final sevCount = severityQuestionsFor(severityPack, f.primaryConcern).length;
+    final zoneConcerns = f.concerns.where((c) => c != 'general').toList();
     return [
       'intro',
       'basics',
@@ -164,14 +172,20 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
       'skinType',
       'concerns',
       if (f.concerns.length > 1) 'primary',
-      if (f.primaryConcern != 'general') 'zones',
+      for (final c in zoneConcerns) 'zones_$c',
       if (f.hasAgingConcern || f.hasSensitivityConcern) 'flags',
-      for (var i = 0; i < sevCount; i++) 'sev$i',
+      for (final c in f.concerns)
+        for (var i = 0; i < severityQuestionsFor(severityPack, c).length; i++) 'sev_${c}_$i',
+      for (final c in f.concerns) 'tl_$c',
+      'triggers',
+      'pastTreatments',
+      'expectations',
       'waterSleep',
       'stressIntro',
       if (_stressTest)
         for (var i = 0; i < 10; i++) 'pss$i',
       if (f.asksHabits) ...['smoking', 'alcohol'],
+      'nutrition',
       if (f.asksMakeup) 'makeup',
       if (f.asksShaving) 'shaving',
       'actives',
@@ -184,11 +198,14 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
   /// Bu sayfada "Devam et" açık mı.
   bool _canContinue(String id) {
     final f = _form;
-    if (id.startsWith('sev')) {
-      final qs = severityQuestionsFor(severityPack, f.primaryConcern);
-      final i = int.parse(id.substring(3));
-      return i < qs.length && (f.severityAnswers[f.primaryConcern]?.containsKey(qs[i]['id'].toString()) ?? false);
+    final sev = RegExp(r'^sev_(.+)_(\d+)$').firstMatch(id);
+    if (sev != null) {
+      final concern = sev.group(1)!;
+      final i = int.parse(sev.group(2)!);
+      final qs = severityQuestionsFor(severityPack, concern);
+      return i < qs.length && (f.severityAnswers[concern]?.containsKey(qs[i]['id'].toString()) ?? false);
     }
+    if (id.startsWith('tl_')) return f.timelineReadyFor(id.substring(3));
     if (id.startsWith('pss')) return f.pssTouched[int.parse(id.substring(3))];
     return switch (id) {
       'basics' => f.basicsDone,
@@ -197,6 +214,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
       'period' => f.lastPeriodDate.isNotEmpty,
       'skinType' => f.skinType.isNotEmpty,
       'concerns' => f.concerns.isNotEmpty,
+      // Tıraş: hayır yeter; evetse sonrası (rahat/tahriş/batık) açıkça seçilmeli — tahriş varsayılanı yok.
+      'shaving' => f.shavingFreq == 0 || f.shavingAfter.isNotEmpty,
       _ => true,
     };
   }
@@ -413,7 +432,12 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
         setState(() => _submitError = pack.s('errors.storageOffWarn'));
       }
 
-      final body = f.toBody(userId: user?.id ?? demoUserId, photoPath: photoPath, severity: f.severityScore(severityPack));
+      final body = f.toBody(
+        userId: user?.id ?? demoUserId,
+        photoPath: photoPath,
+        severity: f.severityScore(severityPack),
+        severityPack: severityPack,
+      );
       final res = await apiPost('/generate_routine', body, timeout: apiLongTimeout);
       if (!res.ok) {
         if (isConsentError(res.status, res.data)) {

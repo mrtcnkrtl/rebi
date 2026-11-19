@@ -27,6 +27,17 @@ def test_gecersiz_tiras_degerleri_normallesir():
     assert _req(shaving_frequency=-4).shaving_frequency == 0
 
 
+def test_female_clears_shaving_fields():
+    r = _req(gender="female", shaving_frequency=7, shaving_after="irritated")
+    assert r.gender == "female"
+    assert r.shaving_frequency == 0
+    assert r.shaving_after == ""
+    r2 = _req(gender="kadın", shaving_frequency=3, shaving_after="irritated")
+    assert r2.gender == "female"
+    assert r2.shaving_frequency == 0
+    assert r2.shaving_after == ""
+
+
 def test_yas_13_100_araligina_kirpilir():
     assert _req(age=9).age == 13
     assert _req(age=130).age == 100

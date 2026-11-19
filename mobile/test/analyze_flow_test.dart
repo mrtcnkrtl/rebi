@@ -7,6 +7,7 @@ import 'package:rebi/core/device_location.dart';
 import 'package:rebi/screens/analyze/analyze_form.dart';
 import 'package:rebi/ui/tw.dart';
 
+import 'helpers/analyze_walk.dart';
 import 'helpers/app_harness.dart';
 
 /// Analiz sihirbazı: tek soru tek ekran akışı, koşullu sorular, geri/kapat davranışı ve backend gövdesi.
@@ -21,6 +22,14 @@ Future<void> _toGender(WidgetTester t, {String age = '28'}) async {
   await t.enterText(find.widgetWithText(TextField, '25'), age);
   await settle(t, 3);
   await _next(t);
+}
+
+Future<void> _answerSeverity(WidgetTester t, String concern, {required bool worst, void Function()? check}) async {
+  for (final q in severityQuestions(concern)) {
+    check?.call();
+    final opts = (q['options'] as List).cast<Map>();
+    await tapText(t, (worst ? opts.last : opts.first)['label'].toString());
+  }
 }
 
 /// En uzun yol: kadın + düzenli döngü (adet tarihi sorusu) kontrolünden sonra menopoza dönüp tüm koşullu sorulardan geçer.
@@ -49,15 +58,17 @@ Future<void> _walkEverything(WidgetTester t, {required void Function() check}) a
   expect(find.text(tr('mobileAnalyze.zones.title')), findsOneWidget);
   check();
   await tapText(t, packS('zone.forehead'));
-  await _next(t);
+  await _next(t); // aging zones
+  await _next(t); // sensitivity zones
+  await _next(t); // flags
   expect(find.text(tr('mobileAnalyze.flags.title')), findsOneWidget);
   check();
   await tapText(t, packS('step2.aging_frown'));
   await _next(t);
-  for (final q in severityQuestions('acne')) {
-    check();
-    await tapText(t, ((q['options'] as List).last as Map)['label'].toString());
+  for (final c in ['acne', 'aging', 'sensitivity']) {
+    await _answerSeverity(t, c, worst: true, check: check);
   }
+  await fillTimelineAndContext(t, concernCount: 3);
   expect(find.text(tr('mobileAnalyze.life.title')), findsOneWidget);
   check();
   await _next(t);
@@ -75,6 +86,9 @@ Future<void> _walkEverything(WidgetTester t, {required void Function() check}) a
   await tapText(t, packS('alcoholFreq.3'));
   check();
   await _next(t);
+  expect(find.text(tr('mobileAnalyze.nutrition.title')), findsOneWidget);
+  check();
+  await skipNutrition(t);
   await tapText(t, packS('makeup.frequency.3'));
   check();
   await _next(t);
@@ -136,24 +150,53 @@ void main() {
       expect(f.severityScore(pack), isNull, reason: 'genel bakımın anketi yok');
     });
 
-    test('gövde: genel bakımda bölge gitmez; işaret yoksa special_flags null', () {
+    test('gövde: genel bakımda bölge gitmez; işaret yoksa special_flags null; concerns[] gider', () {
       final f = AnalyzeForm(name: 'Ayşe');
       addTearDown(f.dispose);
       f.age.text = '30';
-      f.zones.add('forehead');
+      f.concernZones['acne'] = ['forehead'];
       var body = f.toBody(userId: 'u', photoPath: null, severity: null);
       expect(body['acne_zones'], isEmpty, reason: 'sorunsuz ciltte bölge sorulmaz, eski cevap gitmez');
       expect(body['severity_score'], 5);
       expect(body['special_flags'], isNull);
+      expect(body['concerns'], isA<List>());
+      expect(body['nutrition'], isA<Map>());
+      f.concernZones.clear();
       f
+        ..toggleConcern('acne')
+        ..toggleConcernZone('acne', 'forehead')
         ..toggleConcern('aging')
-        ..specialFlags['frown_lines'] = true;
+        ..specialFlags['frown_lines'] = true
+        ..setTimelineField('aging', 'duration', '1-3')
+        ..setTimelineField('aging', 'frequency', 'weekly')
+        ..toggleConcernZone('aging', 'cheeks');
       body = f.toBody(userId: 'u', photoPath: 'p.jpg', severity: 7);
-      expect(body['acne_zones'], ['forehead']);
+      expect(body['acne_zones'], ['forehead'], reason: 'acne seçiliyken acne_zones acne bölgelerinden gelir');
       expect((body['special_flags'] as Map)['frown_lines'], true);
       expect(body['photo_url'], 'p.jpg');
       expect(body['severity_score'], 7);
-      expect(body['concern'], 'aging');
+      expect(body['concern'], 'acne', reason: 'toggle sırası: acne önce eklendi');
+      final concerns = (body['concerns'] as List).cast<Map>();
+      expect(concerns.map((c) => c['id']), containsAll(['acne', 'aging']));
+      final aging = concerns.firstWhere((c) => c['id'] == 'aging');
+      expect(aging['zones'], ['left_cheek', 'right_cheek']);
+      expect(aging['duration'], '1-3');
+      expect(aging['frequency'], 'weekly');
+    });
+
+    test('göz altı: severity picks → undereye_look; yanak → sol/sağ', () {
+      final f = AnalyzeForm(name: 'Ali');
+      addTearDown(f.dispose);
+      f
+        ..age.text = '28'
+        ..gender = 'male'
+        ..toggleConcern('undereye')
+        ..severityPicks['undereye'] = {'color': 2, 'puffiness': 3}
+        ..concernZones['undereye'] = ['undereye', 'cheeks'];
+      final body = f.toBody(userId: 'u', photoPath: null, severity: 6);
+      expect(body['undereye_look'], {'color': 'purple', 'puffiness': 'all_day'});
+      final c = (body['concerns'] as List).cast<Map>().single;
+      expect(c['zones'], ['undereye', 'left_cheek', 'right_cheek']);
     });
   });
 
@@ -237,7 +280,9 @@ void main() {
       await tapText(tester, packS('concern.general'));
       await _next(tester);
       expect(find.text(tr('mobileAnalyze.zones.title')), findsNothing);
-      expect(find.text(tr('mobileAnalyze.life.title')), findsOneWidget, reason: 'genel bakımda doğrudan günlük hayata geçilir');
+      expect(find.text(tr('mobileAnalyze.timeline.title')), findsOneWidget, reason: 'genel bakımda süre/sıklık sorulur');
+      await fillTimelineAndContext(tester);
+      expect(find.text(tr('mobileAnalyze.life.title')), findsOneWidget);
       expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/analyze');
     });
 
@@ -286,10 +331,13 @@ void main() {
       await tapText(tester, packS('skinPicker.normal.label'));
       await tapText(tester, packS('concern.general'));
       await _next(tester);
-      await _next(tester);
+      await fillTimelineAndContext(tester);
+      await _next(tester); // su-uyku
       await _key(tester, 'flow-skip');
       expect(find.text(tr('mobileAnalyze.smoking.title')), findsNothing);
       expect(find.text(tr('mobileAnalyze.alcohol.title')), findsNothing);
+      expect(find.text(tr('mobileAnalyze.nutrition.title')), findsOneWidget);
+      await skipNutrition(tester);
       expect(find.text(tr('mobileAnalyze.makeup.title')), findsOneWidget);
       await tapText(tester, packS('makeup.frequency.0'));
       await tapText(tester, packS('activesExperience.none'));
@@ -311,10 +359,12 @@ void main() {
       await tapText(tester, packS('skinPicker.normal.label'));
       await tapText(tester, packS('concern.general'));
       await _next(tester);
+      await fillTimelineAndContext(tester);
       await _next(tester);
       await _key(tester, 'flow-skip');
       await tapText(tester, packS('smokingAmount.0'));
       await tapText(tester, packS('alcoholFreq.0'));
+      await skipNutrition(tester);
       expect(find.text(tr('mobileAnalyze.makeup.title')), findsNothing);
       expect(find.text(tr('mobileAnalyze.shaving.title')), findsOneWidget);
       await tapText(tester, tr('mobileAnalyze.shaving.freq.3'));
@@ -350,7 +400,7 @@ void main() {
       expect(h.backend.calls('/generate_routine'), isEmpty);
     });
 
-    testWidgets('birden çok sorun: öncelikli olan sorulur, anket ona göre gelir ve gövdedeki sorun odur', (tester) async {
+    testWidgets('birden çok sorun: her sorun için anket + süre; gövdede concerns[] ve öncelikli concern', (tester) async {
       final h = await pumpApp(tester, location: '/dashboard/analyze');
       await _toGender(tester);
       await tapText(tester, packS('gender.male'));
@@ -360,16 +410,18 @@ void main() {
       await _next(tester);
       expect(find.text(tr('mobileAnalyze.primary.title')), findsOneWidget);
       await tapText(tester, packS('concern.dryness'));
-      await _next(tester); // bölgeler → anket ilk soru
-      expect(find.text(severityQuestions('dryness').first['text'].toString()), findsOneWidget, reason: 'anket öncelikli sorunundur');
+      await _next(tester); // dryness zones
+      await _next(tester); // acne zones → dryness anketi
+      expect(find.text(severityQuestions('dryness').first['text'].toString()), findsOneWidget, reason: 'önce öncelikli sorunun anketi');
 
-      for (final q in severityQuestions('dryness')) {
-        await tapText(tester, ((q['options'] as List).first as Map)['label'].toString());
-      }
+      await _answerSeverity(tester, 'dryness', worst: false);
+      await _answerSeverity(tester, 'acne', worst: true);
+      await fillTimelineAndContext(tester, concernCount: 2);
       await _next(tester); // su-uyku
       await _key(tester, 'flow-skip');
       await tapText(tester, packS('smokingAmount.0'));
       await tapText(tester, packS('alcoholFreq.0'));
+      await skipNutrition(tester);
       await tapText(tester, tr('mobileAnalyze.shaving.freq.0'));
       await tapText(tester, packS('activesExperience.none'));
       await _next(tester); // ürün tepkileri
@@ -378,9 +430,13 @@ void main() {
       await settle(tester, 20);
       final body = h.backend.bodyOf('/generate_routine');
       expect(body['concern'], 'dryness');
-      expect(body['severity_score'], 1, reason: 'en hafif seçenekler → 1/10');
+      expect(body['severity_score'], 1, reason: 'öncelikli dryness en hafif → 1/10');
       expect(body['gender'], 'male');
       expect(body['is_pregnant'], false);
+      final concerns = (body['concerns'] as List).cast<Map>();
+      expect(concerns.map((c) => c['id']), containsAll(['dryness', 'acne']));
+      expect(concerns.every((c) => (c['duration'] as String).isNotEmpty), isTrue);
+      expect(concerns.every((c) => (c['frequency'] as String).isNotEmpty), isTrue);
     });
 
     testWidgets('stres testi isteğe bağlı: çözülürse 10 soru gelir ve skora yansır; atlanırsa varsayılan kalır', (tester) async {
@@ -390,6 +446,7 @@ void main() {
       await tapText(tester, packS('skinPicker.normal.label'));
       await tapText(tester, packS('concern.general'));
       await _next(tester);
+      await fillTimelineAndContext(tester);
       await _next(tester); // su-uyku
       expect(find.text(tr('mobileAnalyze.stress.title')), findsOneWidget);
       await _next(tester); // "Testi çöz"
@@ -402,6 +459,7 @@ void main() {
       expect(find.text(tr('mobileAnalyze.smoking.title')), findsOneWidget);
       await tapText(tester, packS('smokingAmount.0'));
       await tapText(tester, packS('alcoholFreq.0'));
+      await skipNutrition(tester);
       await tapText(tester, tr('mobileAnalyze.shaving.freq.0'));
       await tapText(tester, packS('activesExperience.none'));
       for (var i = 0; i < 3; i++) {
@@ -419,6 +477,7 @@ void main() {
       await tapText(tester, packS('skinPicker.normal.label'));
       await tapText(tester, packS('concern.general'));
       await _next(tester);
+      await fillTimelineAndContext(tester);
       await _next(tester);
       await _key(tester, 'flow-skip');
       expect(find.text(tr('mobileAnalyze.smoking.title')), findsOneWidget);
@@ -480,10 +539,12 @@ void main() {
       await tapText(tester, packS('skinPicker.normal.label'));
       await tapText(tester, packS('concern.general'));
       await _next(tester);
+      await fillTimelineAndContext(tester);
       await _next(tester);
       await _key(tester, 'flow-skip');
       await tapText(tester, packS('smokingAmount.0'));
       await tapText(tester, packS('alcoholFreq.0'));
+      await skipNutrition(tester);
       await tapText(tester, tr('mobileAnalyze.shaving.freq.0'));
       await tapText(tester, packS('activesExperience.none'));
       await _next(tester); // ürün tepkileri
@@ -600,19 +661,7 @@ void main() {
     testWidgets('bağlantı hatasında analiz özette kalır, hata gösterilir ve tekrar denenebilir', (tester) async {
       final backend = FakeBackend()..generateFails = true;
       await pumpApp(tester, location: '/dashboard/analyze', backend: backend);
-      await _toGender(tester);
-      await tapText(tester, packS('gender.male'));
-      await tapText(tester, packS('skinPicker.normal.label'));
-      await tapText(tester, packS('concern.general'));
-      await _next(tester);
-      await _next(tester);
-      await _key(tester, 'flow-skip');
-      await tapText(tester, packS('smokingAmount.0'));
-      await tapText(tester, packS('alcoholFreq.0'));
-      await tapText(tester, tr('mobileAnalyze.shaving.freq.0'));
-      await tapText(tester, packS('activesExperience.none'));
-      await _next(tester); // ürün tepkileri
-      await _next(tester); // fotoğraf
+      await toSummary(tester);
       await _next(tester); // özet → oluştur
       await settle(tester, 20);
       expect(find.text(tr('analyze.generateFailedTitle')), findsOneWidget);

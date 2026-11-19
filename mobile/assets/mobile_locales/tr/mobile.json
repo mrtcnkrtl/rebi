@@ -1241,6 +1241,26 @@
       "aging": "Hangi çizgiler belirgin?",
       "sensitivity": "Cildin nasıl tepki veriyor?"
     },
+    "timeline": {
+      "title": "Süre ve sıklık",
+      "subtitle": "{{concern}} ne kadar süredir var ve ne sıklıkla oluyor?"
+    },
+    "triggers": {
+      "title": "Tetikleyiciler",
+      "subtitle": "Sorunların ne zaman artıyor? İstersen birkaçını seç."
+    },
+    "past": {
+      "title": "Geçmiş tedaviler",
+      "subtitle": "Daha önce ne denedin? İstersen birkaçını seç."
+    },
+    "expectations": {
+      "title": "Beklentilerin",
+      "subtitle": "Ne istiyorsun? İstersen birkaçını seç."
+    },
+    "nutrition": {
+      "title": "Beslenme",
+      "subtitle": "Günlük yeme alışkanlığına yakın seç."
+    },
     "severity": {
       "caption": "{{name}} · {{n}}/{{total}}"
     },

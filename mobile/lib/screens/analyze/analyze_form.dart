@@ -20,9 +20,42 @@ const strongActiveFamilyIds = [
   'urea',
 ];
 
-const concernIds = ['general', 'oiliness', 'pores', 'acne', 'aging', 'dryness', 'pigmentation', 'sensitivity'];
+const concernIds = [
+  'general',
+  'oiliness',
+  'pores',
+  'acne',
+  'aging',
+  'dryness',
+  'pigmentation',
+  'sensitivity',
+  'undereye',
+];
 
-const zoneIds = ['forehead', 'nose', 'cheeks', 'chin', 'undereye', 'lips', 'temples'];
+/// Eşit şiddette sıralama (web `CONCERN_RANK_TIE`).
+const concernRankTie = [
+  'acne',
+  'oiliness',
+  'pores',
+  'pigmentation',
+  'aging',
+  'dryness',
+  'sensitivity',
+  'undereye',
+  'general',
+];
+
+const zoneIds = ['forehead', 'nose', 'cheeks', 'chin', 'undereye', 'eye_corner', 'lips', 'temples'];
+
+const durationIds = ['lt1', '1-3', '3-6', '6-12', '1y+'];
+const frequencyIds = ['daily', 'several_week', 'weekly', 'monthly', 'flare', 'constant'];
+const triggerIds = ['stress', 'period', 'sun', 'food', 'season', 'cold', 'heat', 'other'];
+const pastTreatmentIds = ['none', 'cleanser', 'moisturizer', 'rx', 'derm', 'otc'];
+const expectationIds = ['acne_less', 'spots_less', 'clean_skin', 'hydration', 'aging_slow', 'comfort'];
+const nutritionKeys = ['fastfood', 'sugar', 'dairy', 'veggies'];
+
+const undereyeColorKeys = ['unsure', 'brown', 'purple', 'both'];
+const undereyePuffKeys = ['none', 'sometimes', 'often', 'all_day'];
 
 const toleranceLevels = ['never', 'good', 'mild', 'bad'];
 
@@ -73,6 +106,40 @@ List<Map> severityQuestionsFor(Map<String, dynamic> pack, String concern) {
   return (test['questions'] as List? ?? const []).whereType<Map>().toList();
 }
 
+/// Web `mapEngineZones`: yanak → sol/sağ yanak.
+List<String> mapEngineZones(List<String> zones) {
+  final out = <String>[];
+  for (final z in zones) {
+    if (z == 'cheeks') {
+      out.addAll(const ['left_cheek', 'right_cheek']);
+    } else {
+      out.add(z);
+    }
+  }
+  return [...{...out}];
+}
+
+List<String> rankConcernIds(Iterable<String> ids, Map<String, int> scores) {
+  final sorted = [...ids];
+  sorted.sort((a, b) {
+    final ds = (scores[b] ?? 5) - (scores[a] ?? 5);
+    if (ds != 0) return ds;
+    return concernRankTie.indexOf(a) - concernRankTie.indexOf(b);
+  });
+  return sorted;
+}
+
+/// Şiddet anketindeki seçenek sırası → `undereye_look` (web `undereyeLookFromPicks`).
+Map<String, String>? undereyeLookFromPicks(Map<String, int>? picks) {
+  if (picks == null || (!picks.containsKey('color') && !picks.containsKey('puffiness'))) return null;
+  final ci = picks['color'] ?? 0;
+  final pi = picks['puffiness'] ?? 0;
+  return {
+    'color': undereyeColorKeys[ci.clamp(0, undereyeColorKeys.length - 1)],
+    'puffiness': undereyePuffKeys[pi.clamp(0, undereyePuffKeys.length - 1)],
+  };
+}
+
 /// Cevaplar: analiz sihirbazının tüm girdileri ve backend'e (`POST /generate_routine`) giden gövde.
 /// Sihirbazın görünümünden bağımsızdır; web `Analyze.jsx` ile aynı alan kümesini üretir.
 class AnalyzeForm {
@@ -93,7 +160,13 @@ class AnalyzeForm {
 
   /// Seçilen sorunlar; ilki öncelikli sorundur (backend `concern`).
   final List<String> concerns = [];
-  final List<String> zones = [];
+
+  /// Sorun → bölgeler (çoklu sorun: her sorun ayrı).
+  final Map<String, List<String>> concernZones = {};
+
+  /// Sorun → {duration, frequency, note}.
+  final Map<String, Map<String, String>> concernTimeline = {};
+
   final Map<String, bool> specialFlags = {
     'frown_lines': false,
     'smile_lines': false,
@@ -104,8 +177,23 @@ class AnalyzeForm {
     'stings_with_products': false,
   };
 
-  /// Sorun → soru kimliği → seçeneğin puanı. Yalnızca öncelikli sorunun anketi sorulur.
+  /// Sorun → soru kimliği → seçeneğin puanı.
   final Map<String, Map<String, num>> severityAnswers = {};
+
+  /// Sorun → soru kimliği → seçenek indeksi (göz altı görünümü için).
+  final Map<String, Map<String, int>> severityPicks = {};
+
+  final List<String> triggers = [];
+  final List<String> pastTreatments = [];
+  final List<String> expectations = [];
+
+  /// Beslenme skorları (web varsayılanları).
+  final Map<String, int> nutrition = {
+    'fastfood': 0,
+    'sugar': 0,
+    'dairy': 0,
+    'veggies': 3,
+  };
 
   // Günlük hayat
   double waterIntake = 2;
@@ -121,7 +209,9 @@ class AnalyzeForm {
   int makeupFreq = 0;
   String makeupRemoval = 'cleanser';
   int shavingFreq = 0;
-  String shavingAfter = 'ok';
+
+  /// Boş = henüz seçilmedi; tahriş varsayılanı yok (ok|irritated|ingrown açık seçim).
+  String shavingAfter = '';
 
   // Ürünler
   String activesExperience = 'occasional';
@@ -199,6 +289,10 @@ class AnalyzeForm {
         ..remove('general')
         ..add(id);
     }
+    concernZones.removeWhere((k, _) => !concerns.contains(k));
+    concernTimeline.removeWhere((k, _) => !concerns.contains(k));
+    severityAnswers.removeWhere((k, _) => !concerns.contains(k));
+    severityPicks.removeWhere((k, _) => !concerns.contains(k));
     if (!hasAgingConcern) {
       for (final k in const ['frown_lines', 'smile_lines', 'eye_crows_feet']) {
         specialFlags[k] = false;
@@ -219,13 +313,38 @@ class AnalyzeForm {
       ..insert(0, id);
   }
 
-  void toggleZone(String id) => zones.contains(id) ? zones.remove(id) : zones.add(id);
+  void toggleConcernZone(String concernId, String zoneId) {
+    final list = concernZones.putIfAbsent(concernId, () => []);
+    list.contains(zoneId) ? list.remove(zoneId) : list.add(zoneId);
+    if (list.isEmpty) concernZones.remove(concernId);
+  }
 
-  /// Öncelikli sorunun anketi tamamlandıysa 1–10 şiddet skoru, değilse null.
-  int? severityScore(Map<String, dynamic> pack) {
-    final questions = severityQuestionsFor(pack, primaryConcern);
+  void setTimelineField(String concernId, String field, String value) {
+    concernTimeline.putIfAbsent(concernId, () => {});
+    concernTimeline[concernId]![field] = value;
+  }
+
+  bool timelineReadyFor(String concernId) {
+    final t = concernTimeline[concernId] ?? const {};
+    return (t['duration'] ?? '').isNotEmpty && (t['frequency'] ?? '').isNotEmpty;
+  }
+
+  void toggleList(List<String> list, String id, {String? exclusive}) {
+    if (exclusive != null && id == exclusive) {
+      list
+        ..clear()
+        ..add(exclusive);
+      return;
+    }
+    if (exclusive != null) list.remove(exclusive);
+    list.contains(id) ? list.remove(id) : list.add(id);
+  }
+
+  /// Belirli sorunun anketi tamamlandıysa 1–10 şiddet skoru, değilse null.
+  int? severityScoreFor(Map<String, dynamic> pack, String concern) {
+    final questions = severityQuestionsFor(pack, concern);
     if (questions.isEmpty) return null;
-    final answers = severityAnswers[primaryConcern] ?? const <String, num>{};
+    final answers = severityAnswers[concern] ?? const <String, num>{};
     if (answers.length < questions.length) return null;
     final maxPossible = questions.fold<num>(0, (sum, q) {
       final opts = (q['options'] as List? ?? const []).whereType<Map>();
@@ -236,16 +355,38 @@ class AnalyzeForm {
     return calculateSeverityScore(answers, maxPossible);
   }
 
+  /// Öncelikli sorunun skoru (geriye dönük).
+  int? severityScore(Map<String, dynamic> pack) => severityScoreFor(pack, primaryConcern);
+
+  Map<String, int> _scoresByConcern(Map<String, dynamic> pack) {
+    final out = <String, int>{};
+    for (final id in concerns) {
+      out[id] = severityScoreFor(pack, id) ?? 5;
+    }
+    return out;
+  }
+
   /// `POST /generate_routine` gövdesi (web `Analyze.jsx` ile aynı alanlar).
-  Map<String, dynamic> toBody({required String userId, required String? photoPath, required int? severity}) {
+  Map<String, dynamic> toBody({
+    required String userId,
+    required String? photoPath,
+    required int? severity,
+    Map<String, dynamic>? severityPack,
+  }) {
+    final pack = severityPack ?? const <String, dynamic>{};
+    final scores = _scoresByConcern(pack);
+    final ranked = rankConcernIds(concerns.isEmpty ? const ['general'] : concerns, scores);
+    final primary = primaryConcern;
+    final acneOrPores = concernZones['acne'] ?? concernZones['pores'] ?? const <String>[];
+
     return {
       'user_id': userId,
       'full_name': name.text,
       'age': ageValue,
       'gender': gender,
-      'concern': primaryConcern,
+      'concern': primary,
       'skin_type': skinType.isEmpty ? 'normal' : skinType,
-      'severity_score': severity ?? 5,
+      'severity_score': severity ?? scores[primary] ?? 5,
       'water_intake': waterIntake,
       'sleep_hours': sleepHours,
       'stress_score': (pssScore(pssAnswers) * 16 / 40).round(),
@@ -261,12 +402,31 @@ class AnalyzeForm {
       'photo_url': photoPath,
       'is_pregnant': isFemale && hormonalStatus == 'pregnant' && offersPregnancy,
       'cycle_phase': cyclePhase,
-      'acne_zones': primaryConcern == 'general' ? <String>[] : List<String>.of(zones),
+      'acne_zones': primary == 'general' ? <String>[] : mapEngineZones(List<String>.of(acneOrPores)),
+      'concerns': [
+        for (final id in ranked)
+          {
+            'id': id,
+            'severity_score': scores[id] ?? 5,
+            'zones': mapEngineZones(List<String>.of(concernZones[id] ?? const [])),
+            'duration': concernTimeline[id]?['duration'] ?? '',
+            'frequency': concernTimeline[id]?['frequency'] ?? '',
+            'note': () {
+              final n = (concernTimeline[id]?['note'] ?? '').trim();
+              return n.length <= 240 ? n : n.substring(0, 240);
+            }(),
+          },
+      ],
+      'triggers': List<String>.of(triggers),
+      'past_treatments': List<String>.of(pastTreatments),
+      'expectations': List<String>.of(expectations),
+      'nutrition': Map<String, int>.of(nutrition),
       'actives_experience': activesExperience,
       'actives_tolerance': Map<String, String>.of(activesTolerance),
       'makeup_frequency': asksMakeup ? makeupFreq : 0,
       'makeup_removal': asksMakeup && makeupFreq > 0 ? makeupRemoval : 'cleanser',
       'special_flags': anyFlag ? Map<String, bool>.of(specialFlags) : null,
+      'undereye_look': concerns.contains('undereye') ? undereyeLookFromPicks(severityPicks['undereye']) : null,
       // Yalnızca erkeğe sorulan tıraş cevabı (web gövdesinde yok; sunucu kaydeder ve sohbet bağlamına verir).
       if (asksShaving) ...{
         'shaving_frequency': shavingFreq,

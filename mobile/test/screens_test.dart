@@ -11,6 +11,7 @@ import 'package:rebi/screens/analyze/analyze_screen.dart';
 import 'package:rebi/screens/today/today_header.dart';
 import 'package:rebi/ui/shell/app_shell.dart';
 
+import 'helpers/analyze_walk.dart';
 import 'helpers/app_harness.dart';
 
 /// Ekran akışları: web'deki kullanıcı yolculuklarının mobilde aynı çalıştığını doğrular.
@@ -233,6 +234,7 @@ void main() {
     for (final q in severityQuestions('acne')) {
       await tapText(tester, ((q['options'] as List).last as Map)['label'].toString()); // her sorunun en şiddetli seçeneği
     }
+    await fillTimelineAndContext(tester);
 
     // Günlük hayat — stres testi atlanır
     expect(find.text(tr('mobileAnalyze.life.title')), findsOneWidget);
@@ -240,6 +242,7 @@ void main() {
     await tapFinder(tester, find.byKey(const Key('flow-skip')));
     await tapText(tester, packS('smokingAmount.0'));
     await tapText(tester, packS('alcoholFreq.0'));
+    await skipNutrition(tester);
     await tapText(tester, packS('makeup.frequency.3'));
     await next();
 
@@ -280,12 +283,20 @@ void main() {
     expect(body['special_flags'], isNull);
     expect(body['photo_url'], isNull);
     expect(body['location_lat'], isNull);
+    expect(body['undereye_look'], isNull);
+    final concerns = (body['concerns'] as List).cast<Map>();
+    expect(concerns.single['id'], 'acne');
+    expect(concerns.single['zones'], ['forehead']);
+    expect(concerns.single['duration'], '1-3');
+    expect(concerns.single['frequency'], 'weekly');
+    expect(body['nutrition'], isA<Map>());
     expect(body.keys.toSet(), {
       'user_id', 'full_name', 'age', 'gender', 'concern', 'skin_type', 'severity_score', 'water_intake',
       'sleep_hours', 'stress_score', 'smoking', 'smoking_per_day', 'smoking_years', 'alcohol',
       'alcohol_frequency', 'alcohol_amount', 'location_lat', 'location_lon', 'photo_url', 'is_pregnant',
-      'cycle_phase', 'acne_zones', 'actives_experience', 'actives_tolerance', 'makeup_frequency',
-      'makeup_removal', 'special_flags',
+      'cycle_phase', 'acne_zones', 'concerns', 'triggers', 'past_treatments', 'expectations', 'nutrition',
+      'actives_experience', 'actives_tolerance', 'makeup_frequency', 'makeup_removal', 'special_flags',
+      'undereye_look',
     }, reason: 'web Analyze.jsx ile aynı alan kümesi');
 
     // İlk rutin: karşılama → "Takibe başla" rutini kabul eder → (bildirim adımları atlanır) → takip modu

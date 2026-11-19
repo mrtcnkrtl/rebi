@@ -1241,6 +1241,26 @@
       "aging": "Which lines stand out?",
       "sensitivity": "How does your skin react?"
     },
+    "timeline": {
+      "title": "Duration and frequency",
+      "subtitle": "How long has {{concern}} been present, and how often does it show up?"
+    },
+    "triggers": {
+      "title": "Triggers",
+      "subtitle": "When do your concerns flare? Pick any that apply."
+    },
+    "past": {
+      "title": "Past treatments",
+      "subtitle": "What have you tried before? Pick any that apply."
+    },
+    "expectations": {
+      "title": "Your goals",
+      "subtitle": "What do you want? Pick any that apply."
+    },
+    "nutrition": {
+      "title": "Nutrition",
+      "subtitle": "Pick what is closest to your usual eating habits."
+    },
     "severity": {
       "caption": "{{name}} · {{n}}/{{total}}"
     },

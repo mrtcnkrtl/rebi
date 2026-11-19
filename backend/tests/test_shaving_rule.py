@@ -50,6 +50,18 @@ def test_diger_durumlarda_not_yok(kw):
     assert _notes(_flow(**kw)) == []
 
 
+def test_kadin_cinsiyet_etiketi_ile_de_not_yok():
+    """UI bazen 'kadın' gönderebilir; tıraş notu yine yazılmamalı."""
+    assert _notes(_flow(gender="kadın", shaving_frequency=7, shaving_after="irritated")) == []
+    assert _notes(_flow(gender="Kadın", shaving_frequency=7, shaving_after="irritated")) == []
+
+
+def test_ok_veya_bos_sonrasi_tahiris_notu_yok():
+    """Varsayılan tahriş yok: rahat/boş cevapta günlük not yazılmaz."""
+    assert _notes(_flow(shaving_frequency=7, shaving_after="ok")) == []
+    assert _notes(_flow(shaving_frequency=7, shaving_after="")) == []
+
+
 def test_baglam_ozeti_tirasi_anlatir():
     ctx = _flow(shaving_frequency=7, shaving_after="irritated")["context_summary"]
     assert "Tıraş: her gün" in ctx

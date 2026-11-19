@@ -4351,16 +4351,24 @@ def build_special_flags_routine_items(
 _SHAVING_FREQ_TR = {1: "ara sıra", 3: "haftada birkaç kez", 7: "her gün"}
 
 
+def _is_male_gender(gender: str) -> bool:
+    g = (gender or "").strip().lower()
+    return g in ("male", "m", "man", "erkek")
+
+
 def build_shaving_routine_items(*, gender: str, shaving_frequency: int, shaving_after: str) -> list:
     """
     Tıraştan sonra kızarma/yanma ya da batık tüy bildiren erkek kullanıcı için tek bir Yaşam notu.
+    Kadın / diğer cinsiyetlerde asla yazılmaz. Varsayılan tahriş yok: yalnız açıkça
+    irritated|ingrown seçildiyse not üretilir.
     Bakım satırı eklemez ve etken-madde mantığına girmez (özel işaret notlarıyla aynı kalıp): tıraş tekniği,
     tıraş sonrası bariyer bakımı ve o bölgeye aynı gece güçlü aktif sürmeme uyarısı verir. Kalıcı ya da
     iltihaplı durumda dermatolog yönlendirmesi içerir; tıbbi işlem önermez.
     """
-    if (gender or "").lower() != "male":
+    if not _is_male_gender(gender):
         return []
     freq = int(shaving_frequency or 0)
+    # "ok" veya boş → not yok (tahriş varsayılanı yok)
     if freq <= 0 or shaving_after not in ("irritated", "ingrown"):
         return []
     how = _SHAVING_FREQ_TR.get(freq, "düzenli")
@@ -4409,10 +4417,27 @@ def build_shaving_routine_items(*, gender: str, shaving_frequency: int, shaving_
 def _shaving_context_tr(gender: str, shaving_frequency: int, shaving_after: str) -> str:
     """AI cilası ve sohbet için tek cümlelik tıraş bağlamı (yalnız erkek, tıraş olan)."""
     freq = int(shaving_frequency or 0)
-    if (gender or "").lower() != "male" or freq <= 0:
+    if not _is_male_gender(gender) or freq <= 0:
         return ""
     after = {"ok": "rahat", "irritated": "kızarma/yanma", "ingrown": "batık tüy"}.get(shaving_after, "belirtilmedi")
     return f" Tıraş: {_SHAVING_FREQ_TR.get(freq, 'düzenli')}, tıraş sonrası cilt: {after}."
+
+
+def strip_shaving_notes_unless_male(routine_items: list, gender: str) -> list:
+    """Kadın/diğer: eski veya yanlış eklenmiş tıraş Yaşam notlarını temizle."""
+    if _is_male_gender(gender):
+        return list(routine_items or [])
+    out = []
+    for it in routine_items or []:
+        if not isinstance(it, dict):
+            continue
+        if it.get("step_order") == 94:
+            continue
+        action = (it.get("action") or "").lower()
+        if "tıraş sonrası tahriş" in action or action.startswith("batık tüy"):
+            continue
+        out.append(it)
+    return out
 
 
 def _special_flags_context_tr(flags: dict) -> str:
@@ -5024,6 +5049,7 @@ def run_flow(
             shaving_after=shaving_after,
         )
     )
+    routine_items = strip_shaving_notes_unless_male(routine_items, gender)
     routine_items.sort(
         key=lambda x: (
             time_order.get(x["time"], 2),

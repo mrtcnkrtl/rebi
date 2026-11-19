@@ -54,10 +54,13 @@ String _num(FlowHost h, double v) {
   return h.i18n.lang == 'tr' ? s.replaceAll('.', ',') : s;
 }
 
-/// Sayfa kimliği → gövde. Kimlikler: basics, gender, hormonal, period, skinType, concerns, primary, zones, flags,
-/// sev0…, waterSleep, stressIntro, pss0…, smoking, alcohol, makeup, actives, tolerance, photo, summary.
+/// Sayfa kimliği → gövde. Kimlikler: basics…, zones_$c, sev_$c_$i, tl_$c, triggers, pastTreatments,
+/// expectations, nutrition, waterSleep…, summary.
 Widget flowPageBody(String id, FlowHost h) {
-  if (id.startsWith('sev')) return _severity(h, int.parse(id.substring(3)));
+  final sev = RegExp(r'^sev_(.+)_(\d+)$').firstMatch(id);
+  if (sev != null) return _severity(h, sev.group(1)!, int.parse(sev.group(2)!));
+  if (id.startsWith('zones_')) return _zones(h, id.substring(6));
+  if (id.startsWith('tl_')) return _timeline(h, id.substring(3));
   if (id.startsWith('pss')) return _pss(h, int.parse(id.substring(3)));
   return switch (id) {
     'basics' => _basics(h),
@@ -67,8 +70,35 @@ Widget flowPageBody(String id, FlowHost h) {
     'skinType' => _skinType(h),
     'concerns' => _concerns(h),
     'primary' => _primary(h),
-    'zones' => _zones(h),
     'flags' => _flags(h),
+    'triggers' => _multiChips(
+      h,
+      titleKey: 'triggers.title',
+      subtitleKey: 'triggers.subtitle',
+      ids: triggerIds,
+      packPrefix: 'trigger',
+      selected: h.form.triggers,
+      onTap: (id) => h.refresh(() => h.form.toggleList(h.form.triggers, id)),
+    ),
+    'pastTreatments' => _multiChips(
+      h,
+      titleKey: 'past.title',
+      subtitleKey: 'past.subtitle',
+      ids: pastTreatmentIds,
+      packPrefix: 'pastTreatment',
+      selected: h.form.pastTreatments,
+      onTap: (id) => h.refresh(() => h.form.toggleList(h.form.pastTreatments, id, exclusive: 'none')),
+    ),
+    'expectations' => _multiChips(
+      h,
+      titleKey: 'expectations.title',
+      subtitleKey: 'expectations.subtitle',
+      ids: expectationIds,
+      packPrefix: 'expectation',
+      selected: h.form.expectations,
+      onTap: (id) => h.refresh(() => h.form.toggleList(h.form.expectations, id)),
+    ),
+    'nutrition' => _nutrition(h),
     'waterSleep' => _waterSleep(h),
     'stressIntro' => _stressIntro(h),
     'smoking' => _smoking(h),
@@ -131,6 +161,11 @@ Widget _gender(FlowHost h) {
                 if (g != 'female') {
                   f.hormonalStatus = '';
                   f.lastPeriodDate = '';
+                }
+                // Kadın/diğer: tıraş cevabını sıfırla (yanlışlıkla not üretilmesin).
+                if (g != 'male') {
+                  f.shavingFreq = 0;
+                  f.shavingAfter = '';
                 }
               }),
             ),
@@ -376,9 +411,10 @@ Widget _primary(FlowHost h) {
   );
 }
 
-Widget _zones(FlowHost h) {
+Widget _zones(FlowHost h, String concernId) {
   final f = h.form;
-  final concern = h.pack.or('concern.${f.primaryConcern}', f.primaryConcern);
+  final concern = h.pack.or('concern.$concernId', concernId);
+  final zones = f.concernZones[concernId] ?? const <String>[];
   return Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -386,9 +422,116 @@ Widget _zones(FlowHost h) {
       const SizedBox(height: 24),
       ChipCloud(
         items: [for (final z in zoneIds) (z, h.pack.or('zone.$z', z))],
-        isSelected: f.zones.contains,
-        onTap: (z) => h.refresh(() => f.toggleZone(z)),
+        isSelected: zones.contains,
+        onTap: (z) => h.refresh(() => f.toggleConcernZone(concernId, z)),
       ),
+    ],
+  );
+}
+
+Widget _timeline(FlowHost h, String concernId) {
+  final f = h.form;
+  final lab = h.pack.or('concern.$concernId', concernId);
+  final tl = f.concernTimeline[concernId] ?? const <String, String>{};
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      FlowTitle(
+        title: _t(h, 'timeline.title'),
+        subtitle: _t(h, 'timeline.subtitle', {'concern': lab}),
+      ),
+      const SizedBox(height: 8),
+      Text(lab, style: tx(15, w: 7, c: Tw.gray900)),
+      const SizedBox(height: 20),
+      Text(h.pack.s('step3.durationLabel'), style: tx(13, w: 6, c: Tw.gray700)),
+      const SizedBox(height: 10),
+      ChipCloud(
+        items: [for (final id in durationIds) (id, h.pack.or('duration.$id', id))],
+        isSelected: (id) => tl['duration'] == id,
+        onTap: (id) => h.refresh(() => f.setTimelineField(concernId, 'duration', id)),
+      ),
+      const SizedBox(height: 22),
+      Text(h.pack.s('step3.frequencyLabel'), style: tx(13, w: 6, c: Tw.gray700)),
+      const SizedBox(height: 10),
+      ChipCloud(
+        items: [for (final id in frequencyIds) (id, h.pack.or('frequency.$id', id))],
+        isSelected: (id) => tl['frequency'] == id,
+        onTap: (id) => h.refresh(() => f.setTimelineField(concernId, 'frequency', id)),
+      ),
+      const SizedBox(height: 22),
+      Text(h.pack.s('step3.noteLabel'), style: tx(13, w: 6, c: Tw.gray700)),
+      const SizedBox(height: 8),
+      TextFormField(
+        key: ValueKey('tl-note-$concernId'),
+        initialValue: tl['note'] ?? '',
+        maxLength: 240,
+        maxLines: 3,
+        minLines: 2,
+        style: tx(15, c: Tw.gray900, h: 1.35),
+        decoration: InputDecoration(
+          hintText: h.pack.s('step3.notePlaceholder'),
+          hintStyle: tx(14, c: Tw.gray400),
+          filled: true,
+          fillColor: Tw.surface,
+          counterText: '',
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Tw.gray200)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Tw.gray200)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: _theme(h).fg, width: 1.5)),
+        ),
+        onChanged: (v) => f.setTimelineField(concernId, 'note', v),
+      ),
+    ],
+  );
+}
+
+Widget _multiChips(
+  FlowHost h, {
+  required String titleKey,
+  required String subtitleKey,
+  required List<String> ids,
+  required String packPrefix,
+  required List<String> selected,
+  required void Function(String id) onTap,
+}) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      FlowTitle(title: _t(h, titleKey), subtitle: _t(h, subtitleKey)),
+      const SizedBox(height: 24),
+      ChipCloud(
+        items: [for (final id in ids) (id, h.pack.or('$packPrefix.$id', id))],
+        isSelected: selected.contains,
+        onTap: onTap,
+      ),
+    ],
+  );
+}
+
+List<(String, String)> _nutritionOpts(Pack pack, String key) {
+  final block = (pack.data['nutrition'] as Map?)?[key];
+  final opts = block is Map ? block['opts'] : null;
+  if (opts is! Map) return const [];
+  return [for (final e in opts.entries) ('${e.key}', e.value.toString())];
+}
+
+Widget _nutrition(FlowHost h) {
+  final f = h.form;
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      FlowTitle(title: _t(h, 'nutrition.title'), subtitle: _t(h, 'nutrition.subtitle')),
+      const SizedBox(height: 20),
+      for (final key in nutritionKeys) ...[
+        Text(h.pack.or('nutrition.$key.label', key), style: tx(14, w: 6, c: Tw.gray800)),
+        const SizedBox(height: 10),
+        ChipCloud(
+          items: _nutritionOpts(h.pack, key),
+          isSelected: (id) => f.nutrition[key] == int.tryParse(id),
+          onTap: (id) => h.refresh(() => f.nutrition[key] = int.tryParse(id) ?? 0),
+        ),
+        const SizedBox(height: 22),
+      ],
     ],
   );
 }
@@ -432,14 +575,14 @@ Widget _flags(FlowHost h) {
   );
 }
 
-Widget _severity(FlowHost h, int index) {
+Widget _severity(FlowHost h, String concern, int index) {
   final f = h.form;
-  final concern = f.primaryConcern;
   final questions = severityQuestionsFor(h.severityPack, concern);
   if (index >= questions.length) return const SizedBox.shrink();
   final q = questions[index];
   final qid = q['id'].toString();
   final answers = f.severityAnswers.putIfAbsent(concern, () => {});
+  final picks = f.severityPicks.putIfAbsent(concern, () => {});
   final test = h.severityPack[concern] as Map;
   final options = (q['options'] as List? ?? const []).whereType<Map>().toList();
   return Column(
@@ -454,11 +597,14 @@ Widget _severity(FlowHost h, int index) {
       const SizedBox(height: 24),
       ChoiceList(
         children: [
-          for (final o in options)
+          for (var oi = 0; oi < options.length; oi++)
             ChoiceTile(
-              title: (o['label'] ?? '').toString(),
-              selected: answers.containsKey(qid) && answers[qid] == o['score'],
-              onTap: () => h.answer(() => answers[qid] = (o['score'] as num?) ?? 0),
+              title: (options[oi]['label'] ?? '').toString(),
+              selected: answers.containsKey(qid) && answers[qid] == options[oi]['score'] && picks[qid] == oi,
+              onTap: () => h.answer(() {
+                answers[qid] = (options[oi]['score'] as num?) ?? 0;
+                picks[qid] = oi;
+              }),
             ),
         ],
       ),
@@ -650,7 +796,10 @@ Widget _shaving(FlowHost h) {
           ChoiceTile(
             title: _t(h, 'shaving.freq.$v'),
             selected: f.shavingFreq == v,
-            onTap: () => h.answer(() => f.shavingFreq = v, advance: v == 0),
+            onTap: () => h.answer(() {
+              f.shavingFreq = v;
+              if (v == 0) f.shavingAfter = '';
+            }, advance: v == 0),
           ),
       ]),
       if (f.shavingFreq > 0) ...[

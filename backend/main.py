@@ -1085,8 +1085,20 @@ class AssessmentRequest(BaseModel):
         self.alcohol_frequency = max(0, min(7, int(self.alcohol_frequency)))
         self.alcohol_amount = max(0, min(30, int(self.alcohol_amount)))
         self.makeup_frequency = max(0, min(7, int(self.makeup_frequency)))
+        # Cinsiyet normalize + tıraş yalnız erkek
+        g = (self.gender or "").strip().lower()
+        if g in ("female", "f", "woman", "kadın", "kadin"):
+            g = "female"
+        elif g in ("male", "m", "man", "erkek"):
+            g = "male"
+        elif g in ("other", "diğer", "diger", "nonbinary", "non-binary"):
+            g = "other"
+        self.gender = g
         self.shaving_frequency = max(0, min(7, int(self.shaving_frequency)))
         if self.shaving_after not in ("ok", "irritated", "ingrown"):
+            self.shaving_after = ""
+        if self.gender != "male":
+            self.shaving_frequency = 0
             self.shaving_after = ""
         if self.location_lat is not None and self.location_lon is not None:
             try:
@@ -3616,8 +3628,8 @@ def generate_routine(request: Request, req: AssessmentRequest):
                     "makeup_removal": req.makeup_removal or "cleanser",
                     "special_flags": req.special_flags or {},
                     "undereye_look": req.undereye_look or {},
-                    "shaving_frequency": req.shaving_frequency,
-                    "shaving_after": req.shaving_after,
+                    "shaving_frequency": req.shaving_frequency if req.gender == "male" else 0,
+                    "shaving_after": req.shaving_after if req.gender == "male" else "",
                     "concerns": req.concerns or [],
                     "triggers": req.triggers or [],
                     "past_treatments": req.past_treatments or [],
@@ -4036,7 +4048,14 @@ def _generate_chat_general_reply(request: Request, req: ChatGeneralRequest) -> t
     try:
         supabase = get_supabase()
         if supabase and not is_demo_user_id(req.user_id):
-            p = supabase.table("profiles").select("skin_type,age,city").eq("id", req.user_id).limit(1).execute()
+            p = (
+                supabase.table("profiles")
+                .select("skin_type,age,city,gender")
+                .eq("id", req.user_id)
+                .limit(1)
+                .execute()
+            )
+            profile_gender = ""
             if p.data:
                 row = p.data[0] or {}
                 if row.get("skin_type"):
@@ -4045,6 +4064,9 @@ def _generate_chat_general_reply(request: Request, req: ChatGeneralRequest) -> t
                     profile_hint["age"] = row.get("age")
                 if row.get("city"):
                     profile_hint["city"] = row.get("city")
+                profile_gender = str(row.get("gender") or "").strip().lower()
+                if profile_gender:
+                    profile_hint["gender"] = profile_gender
             a = (
                 supabase.table("assessments")
                 .select("concern,created_at,lifestyle_data")
@@ -4064,7 +4086,8 @@ def _generate_chat_general_reply(request: Request, req: ChatGeneralRequest) -> t
                         profile_hint["actives_tolerance"] = ld.get("actives_tolerance")
                     if ld.get("special_flags") is not None:
                         profile_hint["special_flags"] = ld.get("special_flags")
-                    if ld.get("shaving_after"):
+                    # Tıraş ipucu yalnız erkek profilde
+                    if profile_gender in ("male", "m", "man", "erkek") and ld.get("shaving_after"):
                         profile_hint["shaving_after"] = ld.get("shaving_after")
 
             # Aktif rutin: kullanıcı sorularını "mevcut plana göre" yanıtlamak için kısa özet
