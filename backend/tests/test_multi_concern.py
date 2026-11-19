@@ -1,8 +1,11 @@
 """Çoklu sorun: şiddet sıralaması, bariyer-önce tek odak, check-in ilerleme."""
 
+from datetime import date, timedelta
+
 from flow_engine import adapt_existing_routine, apply_focus_checkin_advance, run_flow
 from multi_concern import (
     barrier_needs_repair,
+    build_concern_resolved_prompt,
     build_focus_queue,
     build_guards,
     normalize_concern_entries,
@@ -258,13 +261,93 @@ def test_build_focus_queue_defers_rest():
 
 def _backdate_focus(items, days=14):
     """Test: odakta N gün geçmiş gibi focus_started_on ayarla."""
-    from datetime import date, timedelta
-
     started = (date.today() - timedelta(days=days)).isoformat()
     for it in items:
         if it.get("concern_role") == "focus_state":
             it["focus_started_on"] = started
     return items
+
+
+def test_concern_resolved_prompt_weekly_and_needs_next():
+    r = _flow(
+        concern="acne",
+        severity_score=8,
+        concerns=[
+            {"id": "acne", "severity_score": 8},
+            {"id": "pigmentation", "severity_score": 5},
+        ],
+    )
+    items = r["routine_items"]
+    p0 = build_concern_resolved_prompt(items, past_logs=[], today=date.today().isoformat())
+    assert p0["ask_concern_resolved"] is True
+    assert p0["has_next_focus"] is True
+    assert p0["next_focus_id"] == "pigmentation"
+
+    today = date.today().isoformat()
+    p1 = build_concern_resolved_prompt(
+        items,
+        past_logs=[
+            {
+                "log_date": today,
+                "adaptation": {"checkin_extras": {"concern_resolved": False}},
+            }
+        ],
+        today=today,
+    )
+    assert p1["ask_concern_resolved"] is False
+
+    week_ago = (date.today() - timedelta(days=7)).isoformat()
+    p2 = build_concern_resolved_prompt(
+        items,
+        past_logs=[
+            {
+                "log_date": week_ago,
+                "adaptation": {"checkin_extras": {"concern_resolved": True}},
+            }
+        ],
+        today=today,
+    )
+    assert p2["ask_concern_resolved"] is True
+
+    single = _flow(concern="acne", severity_score=7, concerns=[{"id": "acne", "severity_score": 7}])
+    p3 = build_concern_resolved_prompt(single["routine_items"], past_logs=[], today=today)
+    assert p3["ask_concern_resolved"] is False
+    assert p3["has_next_focus"] is False
+
+
+def test_resolved_checkin_rebuilds_active_routine_items():
+    """Evet + min gün → focus_advanced ve yeni odak Bakım maddeleri rutinde."""
+    r = _flow(
+        concern="acne",
+        severity_score=8,
+        concerns=[
+            {"id": "acne", "severity_score": 8},
+            {"id": "pigmentation", "severity_score": 5},
+        ],
+    )
+    items = _backdate_focus(list(r["routine_items"]), days=14)
+    out = adapt_existing_routine(
+        items,
+        {
+            "skin_feeling": "iyi",
+            "concern_resolved": True,
+            "sleep_hours": 7,
+            "stress_today": 2,
+            "today": date.today().isoformat(),
+        },
+        {"level": "normal", "score": 1, "detail": ""},
+    )
+    assert out.get("focus_advanced") is True
+    assert out.get("changes")
+    f = next(i for i in out["adapted_items"] if i.get("concern_role") == "focus_state")
+    assert f["focus_id"] == "pigmentation"
+    care = " ".join(
+        (i.get("action") or "")
+        for i in out["adapted_items"]
+        if i.get("category") in ("Bakım", "Koruma")
+    ).lower()
+    assert "traneksamik" in care or "kojik" in care or "meyan" in care or "retinol" in care
+    assert "benzoil" not in care
 
 
 def test_checkin_resolved_after_min_days_advances_focus():

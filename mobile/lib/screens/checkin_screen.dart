@@ -52,8 +52,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
   double _sleepHours = 7;
   int _stressToday = 3;
   String _skinFeeling = '';
-  /// null = henüz seçilmedi
+  /// null = henüz seçilmedi (yalnız haftalık soru açıksa zorunlu)
   bool? _concernResolved;
+  bool _askConcernResolved = false;
+  String _nextFocusLabel = '';
   String _daySetting = '';
   bool _locationMissing = false;
   bool _appliedRoutine = true;
@@ -193,7 +195,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
         setState(() => _submitError = formatApiErrorDetail(res.data));
         return;
       }
-      if (res.data['already_checked_in'] == true) setState(() => _alreadyCheckedIn = true);
+      if (!mounted) return;
+      setState(() {
+        if (res.data['already_checked_in'] == true) _alreadyCheckedIn = true;
+        _askConcernResolved = res.data['ask_concern_resolved'] == true;
+        final next = res.data['next_focus_label'];
+        _nextFocusLabel = next is String ? next : '';
+      });
     } catch (e) {
       if (mounted && isNetworkError(e)) setState(() => _submitError = I18n.instance.t('mobileCheckin.errors.network'));
     } finally {
@@ -203,7 +211,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
   bool get _canSubmit =>
       _skinFeeling.isNotEmpty &&
-      _concernResolved != null &&
+      (!_askConcernResolved || _concernResolved != null) &&
       !_loading &&
       !_alreadyCheckedIn &&
       !_ctxLoading;
@@ -235,11 +243,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
         'sleep_hours': _sleepHours,
         'stress_today': _stressToday,
         'skin_feeling': _skinFeeling,
-        'concern_resolved': _concernResolved == true,
         'applied_routine': _appliedRoutine,
         'notes': _notes.text.isEmpty ? null : _notes.text,
         'utc_offset_minutes': DateTime.now().timeZoneOffset.inMinutes,
       };
+      if (_askConcernResolved && _concernResolved != null) {
+        payload['concern_resolved'] = _concernResolved == true;
+      }
       final loc = await lookupDeviceLocation();
       if (mounted) setState(() => _locationMissing = loc == null);
       if (loc != null) {
@@ -374,31 +384,39 @@ class _CheckInScreenState extends State<CheckInScreen> {
         gap,
         CheckinSkinCard(selected: _skinFeeling, theme: theme, onChanged: (id) => setState(() => _skinFeeling = id)),
         gap,
-        RCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(i18n.t('checkin.concernResolvedTitle'), style: tx(14, w: 7, c: Tw.gray800)),
-              const SizedBox(height: 4),
-              Text(i18n.t('checkin.concernResolvedHint'), style: tx(11, c: Tw.gray500, h: relaxed)),
-              const SizedBox(height: 8),
-              for (final (val, key) in [
-                (true, 'checkin.concernResolvedYes'),
-                (false, 'checkin.concernResolvedNo'),
-              ]) ...[
-                ChoiceChipBox(
-                  label: i18n.t(key),
-                  selected: _concernResolved == val,
-                  activeText: Tw.teal900,
-                  inactiveText: Tw.gray600,
-                  onTap: () => setState(() => _concernResolved = val),
+        if (_askConcernResolved) ...[
+          RCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(i18n.t('checkin.concernResolvedTitle'), style: tx(14, w: 7, c: Tw.gray800)),
+                const SizedBox(height: 4),
+                Text(
+                  [
+                    i18n.t('checkin.concernResolvedHint'),
+                    if (_nextFocusLabel.isNotEmpty) ' Sıradaki odak: $_nextFocusLabel.',
+                  ].join(),
+                  style: tx(11, c: Tw.gray500, h: relaxed),
                 ),
                 const SizedBox(height: 8),
+                for (final (val, key) in [
+                  (true, 'checkin.concernResolvedYes'),
+                  (false, 'checkin.concernResolvedNo'),
+                ]) ...[
+                  ChoiceChipBox(
+                    label: i18n.t(key),
+                    selected: _concernResolved == val,
+                    activeText: Tw.teal900,
+                    inactiveText: Tw.gray600,
+                    onTap: () => setState(() => _concernResolved = val),
+                  ),
+                  const SizedBox(height: 8),
+                ],
               ],
-            ],
+            ),
           ),
-        ),
-        gap,
+          gap,
+        ],
         RCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -468,7 +486,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
   /// Sabit gönder çubuğu: uzun formun sonuna kaydırmadan gönderilir; düğme kapalıyken nedenini söyler (cilt hissi seçilmedi).
   Widget _submitBar(I18n i18n, RebiTheme theme) {
     final needsSkin = _skinFeeling.isEmpty && !_loading;
-    final needsResolved = _skinFeeling.isNotEmpty && _concernResolved == null && !_loading;
+    final needsResolved =
+        _askConcernResolved && _skinFeeling.isNotEmpty && _concernResolved == null && !_loading;
     return StageBottomBar(
       child: Column(
         mainAxisSize: MainAxisSize.min,

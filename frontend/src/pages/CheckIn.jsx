@@ -345,8 +345,10 @@ export default function CheckIn() {
   const [sleepHours, setSleepHours] = useState(7);
   const [stressToday, setStressToday] = useState(3);
   const [skinFeeling, setSkinFeeling] = useState("");
-  /** null = henüz seçilmedi; false/true gönderilir */
+  /** null = henüz seçilmedi; false/true gönderilir (yalnız haftalık soru açıksa) */
   const [concernResolved, setConcernResolved] = useState(null);
+  const [askConcernResolved, setAskConcernResolved] = useState(false);
+  const [nextFocusLabel, setNextFocusLabel] = useState("");
   const [daySetting, setDaySetting] = useState("");
   const [locationMissing, setLocationMissing] = useState(false);
   const [appliedRoutine, setAppliedRoutine] = useState(true);
@@ -387,7 +389,7 @@ export default function CheckIn() {
 
   const canSubmit =
     skinFeeling &&
-    concernResolved !== null &&
+    (!askConcernResolved || concernResolved !== null) &&
     !loading &&
     !alreadyCheckedIn &&
     !ctxLoading;
@@ -430,6 +432,10 @@ export default function CheckIn() {
           return;
         }
         if (!cancelled && data.already_checked_in) setAlreadyCheckedIn(true);
+        if (!cancelled) {
+          setAskConcernResolved(Boolean(data.ask_concern_resolved));
+          setNextFocusLabel(typeof data.next_focus_label === "string" ? data.next_focus_label : "");
+        }
       } catch (e) {
         console.error("Check-in status:", e);
         if (!cancelled && isNetworkError(e)) {
@@ -461,10 +467,12 @@ export default function CheckIn() {
         sleep_hours: sleepHours,
         stress_today: stressToday,
         skin_feeling: skinFeeling,
-        concern_resolved: Boolean(concernResolved),
         applied_routine: appliedRoutine,
         notes: notes || null,
       };
+      if (askConcernResolved && concernResolved !== null) {
+        payload.concern_resolved = Boolean(concernResolved);
+      }
       const loc = await readCheckinLocation();
       setLocationMissing(!loc);
       if (loc) {
@@ -810,30 +818,35 @@ export default function CheckIn() {
           </div>
         </div>
 
-        <div className="card mb-4">
-          <h3 className="text-sm font-bold text-gray-800 mb-1">{t("checkin.concernResolvedTitle")}</h3>
-          <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
-            {t("checkin.concernResolvedHint")}
-          </p>
-          <div className="space-y-2">
-            {[
-              { id: true, labelKey: "checkin.concernResolvedYes" },
-              { id: false, labelKey: "checkin.concernResolvedNo" },
-            ].map((opt) => (
-              <button
-                key={String(opt.id)}
-                type="button"
-                onClick={() => setConcernResolved(opt.id)}
-                className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
-                  concernResolved === opt.id ? "ring-2 shadow-md" : "bg-gray-50 hover:bg-gray-100"
-                }`}
-                style={concernResolved === opt.id ? { backgroundColor: theme.primaryLight } : {}}
-              >
-                <p className="text-sm font-medium text-gray-800">{t(opt.labelKey)}</p>
-              </button>
-            ))}
+        {askConcernResolved && (
+          <div className="card mb-4">
+            <h3 className="text-sm font-bold text-gray-800 mb-1">{t("checkin.concernResolvedTitle")}</h3>
+            <p className="text-[11px] text-gray-500 mb-3 leading-relaxed">
+              {t("checkin.concernResolvedHint")}
+              {nextFocusLabel
+                ? ` Sıradaki odak: ${nextFocusLabel}.`
+                : ""}
+            </p>
+            <div className="space-y-2">
+              {[
+                { id: true, labelKey: "checkin.concernResolvedYes" },
+                { id: false, labelKey: "checkin.concernResolvedNo" },
+              ].map((opt) => (
+                <button
+                  key={String(opt.id)}
+                  type="button"
+                  onClick={() => setConcernResolved(opt.id)}
+                  className={`w-full text-left px-4 py-3 rounded-xl transition-all ${
+                    concernResolved === opt.id ? "ring-2 shadow-md" : "bg-gray-50 hover:bg-gray-100"
+                  }`}
+                  style={concernResolved === opt.id ? { backgroundColor: theme.primaryLight } : {}}
+                >
+                  <p className="text-sm font-medium text-gray-800">{t(opt.labelKey)}</p>
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="card mb-4">
           <h3 className="text-sm font-bold text-gray-800 mb-1">Bugün cildin daha çok nerede?</h3>

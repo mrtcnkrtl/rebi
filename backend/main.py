@@ -4329,6 +4329,57 @@ def translate_routine_items_endpoint(request: Request, req: TranslateRoutineItem
     return {"routine_items": items}
 
 
+def _concern_resolved_status_payload(
+    supabase,
+    user_id: str,
+    today: str,
+    *,
+    routine_items: Optional[list] = None,
+) -> dict:
+    """Haftalık «sorun geçti mi?» sorusu için status alanları."""
+    from datetime import date as _date, timedelta
+    from multi_concern import build_concern_resolved_prompt
+
+    items = list(routine_items or [])
+    if not items and should_use_supabase_db(supabase, user_id):
+        try:
+            row = _load_active_routine(supabase, user_id)
+            items = list(row.get("active_routine") or [])
+        except Exception:
+            items = []
+
+    past_logs: list = []
+    if should_use_supabase_db(supabase, user_id) and supabase:
+        try:
+            since = (_date.fromisoformat(today) - timedelta(days=21)).isoformat()
+            lr = (
+                supabase.table("daily_logs")
+                .select("log_date,adaptation")
+                .eq("user_id", user_id)
+                .gte("log_date", since)
+                .lte("log_date", today)
+                .order("log_date", desc=True)
+                .limit(21)
+                .execute()
+            )
+            past_logs = list(lr.data or [])
+        except Exception as e:
+            log.error("concern_resolved status logs (ignored): %s", e)
+
+    prompt = build_concern_resolved_prompt(items, past_logs=past_logs, today=today)
+    return {
+        "ask_concern_resolved": bool(prompt.get("ask_concern_resolved")),
+        "has_next_focus": bool(prompt.get("has_next_focus")),
+        "focus_id": prompt.get("focus_id"),
+        "focus_label": prompt.get("focus_label"),
+        "next_focus_id": prompt.get("next_focus_id"),
+        "next_focus_label": prompt.get("next_focus_label"),
+        "focus_days_elapsed": int(prompt.get("focus_days_elapsed") or 0),
+        "focus_min_days": int(prompt.get("focus_min_days") or 14),
+        "ask_interval_days": int(prompt.get("ask_interval_days") or 7),
+    }
+
+
 @app.get(
     "/daily_checkin/status",
     tags=["checkin"],
@@ -4339,17 +4390,19 @@ def daily_checkin_status(
     user_id: str,
     utc_offset_minutes: Optional[int] = Query(None, ge=-840, le=840),
 ):
-    """Bugün için check-in yapılmış mı (aynı gün tekrarını önlemek için)."""
+    """Bugün için check-in yapılmış mı; haftalık odak sorusu gösterilsin mi."""
     enforce_supabase_user(request, user_id)
     supabase = get_supabase()
     today = str(_local_today(utc_offset_minutes))
+    prompt = _concern_resolved_status_payload(supabase, user_id, today)
     if is_demo_user_id(user_id):
         return {
             "already_checked_in": demo_checkin_already_today(user_id, today),
             "log_date": today,
+            **prompt,
         }
     if not supabase:
-        return {"already_checked_in": False, "log_date": today}
+        return {"already_checked_in": False, "log_date": today, **prompt}
     try:
         r = (
             supabase.table("daily_logs")
@@ -4359,10 +4412,10 @@ def daily_checkin_status(
             .limit(1)
             .execute()
         )
-        return {"already_checked_in": bool(r.data), "log_date": today}
+        return {"already_checked_in": bool(r.data), "log_date": today, **prompt}
     except Exception as e:
         log.error("daily_checkin/status hatası: %s", e)
-        return {"already_checked_in": False, "log_date": today}
+        return {"already_checked_in": False, "log_date": today, **prompt}
 
 
 @app.post(
@@ -4735,7 +4788,14 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
                         "day_setting": req.day_setting,
                         "recommendation_helpful": req.recommendation_helpful,
                         "recommendation_feedback_note": req.recommendation_feedback_note,
+                        # Anahtar varsa bu hafta soruldu sayılır (True/False fark etmez)
+                        **(
+                            {"concern_resolved": bool(req.concern_resolved)}
+                            if req.concern_resolved is not None
+                            else {}
+                        ),
                     },
+                    "focus_advanced": bool(adaptation.get("focus_advanced")),
                 },
             }).execute()
 

@@ -56,6 +56,8 @@ def test_daily_checkin_status_demo(client):
     assert r.status_code == 200
     j = r.json()
     assert "already_checked_in" in j
+    assert "ask_concern_resolved" in j
+    assert "has_next_focus" in j
     assert "log_date" in j
 
 

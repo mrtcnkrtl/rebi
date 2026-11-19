@@ -48,6 +48,8 @@ FOCUS_ADVANCE_GOOD_STREAK = 2
 FOCUS_MIN_DAYS = 14
 # Yeni odak / yeni aktif: bu süre boyunca starter doz + seyrek haftalık günler.
 FOCUS_STARTER_DAYS = 14
+# «Sorun geçti mi?» check-in sorusu aralığı.
+CONCERN_RESOLVED_ASK_INTERVAL_DAYS = 7
 _CONCERN_LABEL_TR = {
     "barrier": "bariyer onarımı",
     "acne": "akne",
@@ -291,6 +293,82 @@ def focus_needs_starter_ramp(focus_state: Optional[dict], *, today: Optional[str
     if not focus_state:
         return True
     return focus_days_elapsed(focus_state, today=today) < FOCUS_STARTER_DAYS
+
+
+def find_focus_state_item(routine_items: Optional[list]) -> Optional[dict]:
+    for it in routine_items or []:
+        if isinstance(it, dict) and it.get("concern_role") == "focus_state":
+            return it
+    return None
+
+
+def build_concern_resolved_prompt(
+    routine_items: Optional[list],
+    *,
+    past_logs: Optional[list] = None,
+    today: Optional[str] = None,
+) -> dict[str, Any]:
+    """
+    Check-in UI: «sorun geçti mi?» haftada bir, yalnız sırada sonraki sorun varken.
+    past_logs: en yeni önce; adaptation.checkin_extras.concern_resolved anahtarı sorulmuş demektir.
+    """
+    day = today_iso(today)
+    focus = find_focus_state_item(routine_items)
+    empty = {
+        "ask_concern_resolved": False,
+        "has_next_focus": False,
+        "focus_id": None,
+        "focus_label": None,
+        "next_focus_id": None,
+        "next_focus_label": None,
+        "focus_days_elapsed": 0,
+        "focus_min_days": FOCUS_MIN_DAYS,
+        "ask_interval_days": CONCERN_RESOLVED_ASK_INTERVAL_DAYS,
+    }
+    if not focus:
+        return empty
+
+    queue = [e for e in (focus.get("focus_queue") or []) if isinstance(e, dict) and e.get("id")]
+    focus_id = str(focus.get("focus_id") or (queue[0].get("id") if queue else "") or "")
+    next_id = str(queue[1].get("id")) if len(queue) > 1 else None
+    has_next = bool(next_id)
+    days = focus_days_elapsed(focus, today=day)
+
+    out = {
+        **empty,
+        "has_next_focus": has_next,
+        "focus_id": focus_id or None,
+        "focus_label": concern_label_tr(focus_id) if focus_id else None,
+        "next_focus_id": next_id,
+        "next_focus_label": concern_label_tr(next_id) if next_id else None,
+        "focus_days_elapsed": days,
+        "focus_min_days": FOCUS_MIN_DAYS,
+        "ask_interval_days": CONCERN_RESOLVED_ASK_INTERVAL_DAYS,
+    }
+    if not has_next:
+        return out
+
+    last_asked: Optional[date] = None
+    for row in past_logs or []:
+        if not isinstance(row, dict):
+            continue
+        ad = row.get("adaptation") or {}
+        extras = ad.get("checkin_extras") if isinstance(ad, dict) else None
+        if not isinstance(extras, dict):
+            continue
+        if "concern_resolved" not in extras:
+            continue
+        last_asked = parse_iso_date(row.get("log_date"))
+        if last_asked:
+            break
+
+    if last_asked is None:
+        out["ask_concern_resolved"] = True
+        return out
+
+    end = parse_iso_date(day) or datetime.now(timezone.utc).date()
+    out["ask_concern_resolved"] = (end - last_asked).days >= CONCERN_RESOLVED_ASK_INTERVAL_DAYS
+    return out
 
 
 def build_focus_state_item(
