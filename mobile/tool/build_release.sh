@@ -72,12 +72,21 @@ fi
 
 flutter pub get
 
+# Mağaza paketi: beta şeridi kapalı. İmza Android'de key.properties, iOS'ta Apple hesabı/sertifika ile yapılır.
+define_flags=(--dart-define-from-file="$env_file" --dart-define=REBI_BETA=false)
+
 case "$platform" in
   android)
     # REBI_REQUIRE_RELEASE_SIGNING: android/key.properties yoksa debug anahtarıyla sessizce imzalamak yerine dur.
-    REBI_REQUIRE_RELEASE_SIGNING=true flutter build appbundle --release --dart-define-from-file="$env_file"
+    REBI_REQUIRE_RELEASE_SIGNING=true flutter build appbundle --release "${define_flags[@]}"
     ;;
   ios)
-    flutter build ipa --release --dart-define-from-file="$env_file"
+    export_opts="ios/ExportOptions-appstore.plist"
+    if [[ ! -f "$export_opts" ]]; then
+      echo "$export_opts yok." >&2
+      exit 1
+    fi
+    # IPA üretimi Apple imzası ister (Xcode otomatik imzalama veya ASC API anahtarı).
+    flutter build ipa --release "${define_flags[@]}" --export-options-plist="$export_opts"
     ;;
 esac
