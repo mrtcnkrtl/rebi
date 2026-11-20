@@ -25,6 +25,9 @@ def test_health(client):
     # Şema uygulaması sessizce başarısız olabiliyordu; durumu health söylüyor.
     assert body.get("db_schema") in {"ok", "skipped", "error", "unknown"}
     assert body.get("push") in {"configured", "off"}
+    # Kullanıcı "AI tarafında hata" dediğinde ilk bakılacak alan; anahtar/model/harcama yazılmaz.
+    assert body.get("gemini") in {"configured", "budget_spent", "off"}
+    assert not any("key" in k.lower() for k in body)
 
 
 def test_docs_are_disabled_unless_explicitly_enabled(monkeypatch):

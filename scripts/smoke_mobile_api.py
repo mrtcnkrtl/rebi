@@ -170,6 +170,10 @@ def run(api: str, token: str, write: bool) -> int:
         report.ok("/health", f"db_schema={health.get('db_schema')} push={health.get('push')}")
         if health.get("db_schema") not in ("ok",):
             report.warn("db_schema", f"'{health.get('db_schema')}': yeni migration'lar uygulanmamış olabilir")
+        if health.get("gemini") == "off":
+            report.warn("gemini", "yapay zekâ kapalı: rutin üretilir ama metinler cilasız, sohbet bilgi tabanına düşer")
+        elif health.get("gemini") == "budget_spent":
+            report.warn("gemini", "günlük bütçe dolmuş: yapay zekâ çağrıları bugün yapılmıyor")
         if "push_dispatch" not in health:
             report.warn("push_dispatch", "/health'te yok: sunucu eski sürümde (mobil için güncel backend dağıtılmamış)")
         elif health.get("push") == "configured" and not health.get("push_dispatch"):

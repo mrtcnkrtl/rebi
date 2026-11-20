@@ -2027,6 +2027,24 @@ def store_checkout(request: Request, req: StoreCheckoutRequest):
     return {"checkout_url": url, "open": True}
 
 
+def _gemini_status() -> str:
+    """`configured` | `budget_spent` | `off` — ayrıntı sızdırmadan yapay zekânın çalışır durumda olup olmadığı."""
+    try:
+        from rag_service import gemini_client
+
+        if gemini_client is None:
+            return "off"
+        from ai_client import GeminiBudgetExceeded, check_budget
+
+        try:
+            check_budget()
+        except GeminiBudgetExceeded:
+            return "budget_spent"
+        return "configured"
+    except Exception:
+        return "off"
+
+
 @app.get("/health", tags=["health"])
 async def health():
     supabase = get_supabase()
@@ -2049,6 +2067,11 @@ async def health():
         "push": "configured" if push_configured() else "off",
         "push_dispatch": (await run_sync(_push_last_run)) or None,
         "db_schema": _DB_SCHEMA_STATUS,
+        # Yapay zekâ çağrıları (rutin cilası, sohbet, çeviri) yapılabiliyor mu. "off": anahtar yok ya
+        # da istemci kurulamadı — motor yine rutin üretir ama metinler cilasız kalır. "budget_spent":
+        # günlük bütçe dolmuş. Kullanıcı "AI tarafında hata" dediğinde ilk bakılacak yer burası;
+        # uç herkese açık olduğu için anahtar, model adı ve harcama tutarı yazılmaz.
+        "gemini": _gemini_status(),
     }
     if not auth_valid:
         return JSONResponse(status_code=503, content=body)
