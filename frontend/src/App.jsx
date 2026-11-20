@@ -11,6 +11,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import ConfirmEmail from "./pages/ConfirmEmail";
 import Dashboard from "./pages/Dashboard";
+import RoutineEdit from "./pages/RoutineEdit";
 import Analyze from "./pages/Analyze";
 import Chat from "./pages/Chat";
 import CheckIn from "./pages/CheckIn";
@@ -108,6 +109,7 @@ function AppRoutes() {
         )}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/dashboard/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />
+        <Route path="/dashboard/routine/edit" element={<ProtectedRoute><RoutineEdit /></ProtectedRoute>} />
         <Route path="/dashboard/checkin" element={<ProtectedRoute><CheckIn /></ProtectedRoute>} />
         <Route path="/dashboard/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
         <Route path="/dashboard/themes" element={<ProtectedRoute><Themes /></ProtectedRoute>} />

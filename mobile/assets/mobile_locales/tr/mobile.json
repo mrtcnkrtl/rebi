@@ -1367,14 +1367,7 @@
       "create": "Rutinimi oluştur"
     },
     "again": {
-      "title": "Yeni analiz",
-      "body": "Önceki cevaplarınla açabilirim: değişenleri düzeltmen yeter, her soruyu baştan yazmana gerek yok.",
-      "draftBody": "Yarım kalan bir analizin var. Kaldığın yerden devam edebilir ya da baştan başlayabilirsin.",
-      "resume": "Kaldığım yerden devam et",
-      "useLast": "Önceki cevaplarımla aç",
-      "fresh": "Baştan başla",
-      "resumedNote": "Kaldığın yerden devam ediyorsun; cevaplarının hepsi burada.",
-      "prefilledNote": "Önceki analizindeki cevaplarla dolduruldu; değişenleri düzelt."
+      "title": "Yeni analiz"
     }
   },
   "mobileShelf": {

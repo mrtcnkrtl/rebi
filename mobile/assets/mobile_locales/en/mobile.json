@@ -1367,14 +1367,7 @@
       "create": "Create my routine"
     },
     "again": {
-      "title": "New analysis",
-      "body": "I can start from your previous answers: just change what's different, no need to fill everything in again.",
-      "draftBody": "You have an unfinished analysis. Continue where you left off, or start over.",
-      "resume": "Continue where I left off",
-      "useLast": "Start from my previous answers",
-      "fresh": "Start over",
-      "resumedNote": "You're continuing where you left off; all your answers are here.",
-      "prefilledNote": "Filled in from your previous analysis; change what's different."
+      "title": "New analysis"
     }
   },
   "mobileShelf": {

@@ -48,7 +48,7 @@ void main() {
     await pumpApp(tester, location: '/dashboard/analyze', prefs: {analyzeDraftKey(testUserId): draft});
 
     expect(find.text(tr('mobileAnalyze.skinType.title')), findsOneWidget);
-    expect(find.text(tr('mobileAnalyze.again.resumedNote')), findsOneWidget);
+    expect(find.text(tr('analyze.again.resumedNote')), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('analyze-start-over')));
     await settle(tester, 3);
@@ -64,7 +64,7 @@ void main() {
     });
     await pumpApp(tester, location: '/dashboard/analyze', prefs: {analyzeDraftKey(testUserId): stale});
     expect(find.text(tr('mobileAnalyze.intro.title')), findsOneWidget);
-    expect(find.text(tr('mobileAnalyze.again.resumedNote')), findsNothing);
+    expect(find.text(tr('analyze.again.resumedNote')), findsNothing);
   });
 
   testWidgets('yeni analiz: önceki analizin cevaplarıyla açılır', (tester) async {
@@ -98,7 +98,7 @@ void main() {
     await tester.tap(find.byKey(const Key('analyze-again-keep')));
     await settle(tester, 4);
 
-    expect(find.text(tr('mobileAnalyze.again.prefilledNote')), findsOneWidget);
+    expect(find.text(tr('analyze.again.prefilledNote')), findsOneWidget);
     final answers = draftAnswers();
     expect(answers!['age'], '31');
     expect(answers['gender'], 'female');
@@ -110,6 +110,19 @@ void main() {
     expect(answers['activesExperience'], 'regular');
   });
 
+  testWidgets('rutin üretilince taslak silinir ve geri gelmez', (tester) async {
+    await pumpApp(tester, location: '/dashboard/analyze');
+    // En kısa yoldan özete git ve rutini oluştur.
+    await analyzeWalkTo(tester, 'summary');
+    expect(getAnalyzeDraft(testUserId), isNotNull, reason: 'özette hâlâ yarım cevaplar var');
+
+    await tapText(tester, tr('mobileAnalyze.summary.create'));
+    await settle(tester, 20);
+
+    // Ekran kapanırken taslağı yeniden yazmamalı: yoksa sonraki analizde eski cevaplar sorulur.
+    expect(getAnalyzeDraft(testUserId), isNull);
+  });
+
   testWidgets('önceki analiz okunamazsa boş formla açılır', (tester) async {
     final backend = FakeBackend()..lastAssessmentFails = true;
     await pumpApp(tester, location: '/dashboard/analyze', prefs: acceptedPrefs(), backend: backend);
@@ -117,6 +130,6 @@ void main() {
     await tester.tap(find.byKey(const Key('analyze-again-keep')));
     await settle(tester, 4);
     expect(find.text(tr('mobileAnalyze.basics.title')), findsOneWidget);
-    expect(find.text(tr('mobileAnalyze.again.prefilledNote')), findsNothing);
+    expect(find.text(tr('analyze.again.prefilledNote')), findsNothing);
   });
 }

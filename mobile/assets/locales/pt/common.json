@@ -149,7 +149,16 @@
     "photoContextUnsure": "Not sure",
     "photoTooDark": "This looks dark; try natural light and a closer, steady shot.",
     "photoTooBlurry": "This may be blurry; hold steady or tap to focus.",
-    "photoQualityOk": "Photo quality looks OK for tracking."
+    "photoQualityOk": "Photo quality looks OK for tracking.",
+    "again": {
+      "body": "I can start from your previous answers: just change what's different, no need to fill everything in again.",
+      "draftBody": "You have an unfinished analysis. Continue where you left off, or start over.",
+      "resume": "Continue where I left off",
+      "useLast": "Start from my previous answers",
+      "fresh": "Start over",
+      "resumedNote": "You're continuing where you left off; all your answers are here.",
+      "prefilledNote": "Filled in from your previous analysis; change what's different."
+    }
   },
   "checkin": {
     "todayReport": "Today's report",
@@ -268,5 +277,39 @@
     "fullAnalyze": "analysis form",
     "photosTitle": "Skin photos",
     "refresh": "Refresh"
+  },
+  "routineEdit": {
+    "title": "Edit my routine",
+    "subtitle": "Rebi builds the plan, but it's yours: drop a step you won't do, add your own.",
+    "hint": "A dropped step isn't deleted; you can bring it back here. We don't change the wording of Rebi's steps, because their order and frequency are set for your skin's safety.",
+    "rebiSteps": "Steps Rebi suggested",
+    "rebiStepsHint": "A step you switch off won't appear in your plan, today's list or reminders.",
+    "mySteps": "Your own steps",
+    "myStepsHint": "Steps you write are not shown as Rebi's advice.",
+    "myStepsEmpty": "You haven't added a step yet.",
+    "myStepsFull": "You can add up to {{n}} of your own steps.",
+    "addStep": "Add my own step",
+    "removeStep": "Delete step",
+    "addTitle": "Your own step",
+    "editTitle": "Edit step",
+    "addBody": "Write briefly what you'll do; add a note if you like.",
+    "actionLabel": "Step",
+    "actionHint": "e.g. lip balm",
+    "detailLabel": "Note (optional)",
+    "detailHint": "e.g. before bed",
+    "addSave": "Add",
+    "dropped": "you dropped this",
+    "save": "Save changes",
+    "saved": "Your routine is updated.",
+    "saveFailed": "The routine change couldn't be saved right now.",
+    "offline": "Couldn't reach the server; showing the copy in your browser. Saving needs a connection.",
+    "noRoutine": "There's no routine to edit yet. Finish the analysis first.",
+    "notSynced": "Routine changes aren't saved while you're a guest.",
+    "entry": "Edit my routine",
+    "time": {
+      "Sabah": "Morning",
+      "Akşam": "Evening",
+      "Günlük": "During the day"
+    }
   }
 }

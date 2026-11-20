@@ -95,6 +95,10 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
 
   /// Taslağın hangi kullanıcıya yazıldığı (çıkışta da aynı anahtar kullanılsın).
   String? _draftUid;
+
+  /// Rutin üretildi: taslak silindi ve bir daha yazılmayacak. Bu olmasa `dispose` içindeki
+  /// son yazma, az önce silinen taslağı geri getirir ve sonraki analizde eski cevaplar sorulur.
+  bool _draftDone = false;
   bool _locating = false;
   String _locationError = '';
   LocationFailure? _locationFailure;
@@ -133,18 +137,20 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
 
   /// Taslağı kısa bir duruştan sonra diske yazar (her dokunuşta disk yazmamak için).
   void _scheduleDraftSave() {
+    if (_draftDone) return;
     _saveTimer?.cancel();
     _saveTimer = Timer(const Duration(milliseconds: 400), _writeDraft);
   }
 
   void _writeDraft() {
-    if (!_form.hasAnswers) return;
+    if (_draftDone || !_form.hasAnswers) return;
     unawaited(saveAnalyzeDraft(_draftUid, pageId: _pageId, stressTest: _stressTest, answers: _form.toDraft()));
   }
 
   /// Cevapları temizleyip sihirbazı baştan açar (kullanıcı açıkça isterse).
   Future<void> _startOver() async {
     _saveTimer?.cancel();
+    _draftDone = false;
     await clearAnalyzeDraft(_draftUid);
     if (!mounted) return;
     setState(() {
@@ -526,6 +532,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
       final data = res.data;
       // Rutin üretildi: yarım cevap taslağı artık gereksiz.
       _saveTimer?.cancel();
+      _draftDone = true;
       await clearAnalyzeDraft(_draftUid);
       final localPreview = photo?.file.path;
       // İlk rutin: kısa karşılama (rutini kabul, gün saatleri, bildirim izni). Sonraki analizlerde doğrudan plana.
@@ -863,7 +870,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
     final choice = await AppSheet.show<String>(
       context,
       title: i18n.t('mobileAnalyze.again.title'),
-      subtitle: i18n.t(hasDraft ? 'mobileAnalyze.again.draftBody' : 'mobileAnalyze.again.body'),
+      subtitle: i18n.t(hasDraft ? 'analyze.again.draftBody' : 'analyze.again.body'),
       body: (ctx) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -871,13 +878,13 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
             key: const Key('analyze-again-keep'),
             onPressed: () => Navigator.of(ctx).pop(hasDraft ? 'draft' : 'last'),
             color: context.read<ThemeController>().theme.primary,
-            label: i18n.t(hasDraft ? 'mobileAnalyze.again.resume' : 'mobileAnalyze.again.useLast'),
+            label: i18n.t(hasDraft ? 'analyze.again.resume' : 'analyze.again.useLast'),
           ),
           const SizedBox(height: 10),
           SecondaryButton(
             key: const Key('analyze-again-fresh'),
             onPressed: () => Navigator.of(ctx).pop('fresh'),
-            label: i18n.t('mobileAnalyze.again.fresh'),
+            label: i18n.t('analyze.again.fresh'),
           ),
         ],
       ),
@@ -940,7 +947,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              i18n.t(_prefilledFromLast ? 'mobileAnalyze.again.prefilledNote' : 'mobileAnalyze.again.resumedNote'),
+              i18n.t(_prefilledFromLast ? 'analyze.again.prefilledNote' : 'analyze.again.resumedNote'),
               style: tx(12.5, w: 5, c: Tw.gray700, h: 1.3),
             ),
           ),
@@ -948,7 +955,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
             key: const Key('analyze-start-over'),
             onPressed: _startOver,
             style: TextButton.styleFrom(minimumSize: const Size(44, 40), padding: const EdgeInsets.symmetric(horizontal: 10)),
-            child: Text(i18n.t('mobileAnalyze.again.fresh'), style: tx(12.5, w: 7, c: theme.fg)),
+            child: Text(i18n.t('analyze.again.fresh'), style: tx(12.5, w: 7, c: theme.fg)),
           ),
         ],
       ),

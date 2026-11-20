@@ -10,6 +10,12 @@ import { hasCompletedOnboarding } from "../lib/routineTracking";
 import { formatApiErrorDetail, isNetworkError } from "../lib/apiErrors";
 import { isConsentError, requestConsentRecovery } from "../lib/consentRecovery";
 import { analyzeSkinPhotoQuality } from "../lib/imageQuality";
+import {
+  clearAnalyzeDraft,
+  draftAnswersFromAssessment,
+  getAnalyzeDraft,
+  saveAnalyzeDraft,
+} from "../lib/analyzeDraft";
 
 const MAX_PHOTO_BYTES = 8 * 1024 * 1024;
 const PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif", ""]);
@@ -408,6 +414,12 @@ export default function Analyze() {
   const [submitError, setSubmitError] = useState("");
   /** İlk analizden sonra varsayılan: kısa ekran; kullanıcı isterse tam sihirbazı açar. */
   const [forceFullWizard, setForceFullWizard] = useState(false);
+  /** Cevaplar tarayıcıdaki taslaktan geri geldi: üstte "kaldığın yerden devam ediyorsun" şeridi çıkar. */
+  const [resumedFromDraft, setResumedFromDraft] = useState(false);
+  /** Cevaplar önceki analizden dolduruldu (yeni analizde baştan yazmak gerekmesin). */
+  const [prefilledFromLast, setPrefilledFromLast] = useState(false);
+  /** Kısa ekranda "yeni analiz" seçimi bekleniyor. */
+  const [againChoice, setAgainChoice] = useState(false);
 
   useEffect(() => {
     setSubmitError("");
@@ -474,6 +486,186 @@ export default function Analyze() {
   const [activesTolerance, setActivesTolerance] = useState(() =>
     Object.fromEntries(STRONG_ACTIVE_FAMILY_IDS.map((id) => [id, "good"]))
   );
+
+  // ═══ Taslak: yarım kalan cevaplar kaybolmasın (mobil: core/analyze_draft.dart) ═══
+
+  const draftUid = user?.id || DEMO_USER_ID;
+
+  /** Fotoğraf dışındaki tüm cevaplar; taslağa bu yazılır. */
+  const draftAnswers = useMemo(
+    () => ({
+      name,
+      age,
+      gender,
+      hormonalStatus,
+      lastPeriodDate,
+      cycleLength,
+      skinType,
+      concerns,
+      concernZones,
+      concernTimeline,
+      specialFlags,
+      severityScoresByConcern,
+      severityPicksByConcern,
+      triggers,
+      pastTreatments,
+      expectations,
+      nutrition,
+      waterIntake,
+      sleepHours,
+      pssAnswers,
+      smokingPerDay,
+      smokingYears,
+      alcoholFreq,
+      alcoholAmt,
+      makeupFreq,
+      makeupRemoval,
+      activesExperience,
+      activesTolerance,
+      photoContext,
+    }),
+    [
+      name, age, gender, hormonalStatus, lastPeriodDate, cycleLength, skinType, concerns,
+      concernZones, concernTimeline, specialFlags, severityScoresByConcern, severityPicksByConcern,
+      triggers, pastTreatments, expectations, nutrition, waterIntake, sleepHours, pssAnswers,
+      smokingPerDay, smokingYears, alcoholFreq, alcoholAmt, makeupFreq, makeupRemoval,
+      activesExperience, activesTolerance, photoContext,
+    ]
+  );
+
+  /** Taslakta gerçekten cevap var mı. Ad sayılmaz: hesaptan kendiliğinden gelir. */
+  const hasAnswers = Boolean(String(age).trim() || gender || skinType || concerns.length);
+
+  /** Bir cevap kümesini forma yazar; bilinmeyen / bozuk anahtarlar sessizce atlanır. */
+  const applyDraftAnswers = (d) => {
+    if (!d || typeof d !== "object") return;
+    const str = (v) => (typeof v === "string" ? v : "");
+    const num = (v, fallback) => (typeof v === "number" && Number.isFinite(v) ? v : fallback);
+    const list = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === "string") : []);
+    const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : null);
+
+    if (typeof d.name === "string") setName(d.name);
+    if (d.age != null) setAge(String(d.age));
+    setGender(str(d.gender));
+    setHormonalStatus(str(d.hormonalStatus));
+    setLastPeriodDate(str(d.lastPeriodDate));
+    setCycleLength(num(d.cycleLength, 28));
+    setSkinType(str(d.skinType));
+    setConcerns(list(d.concerns));
+    setConcernZones(obj(d.concernZones) || {});
+    setConcernTimeline(obj(d.concernTimeline) || {});
+    const flags = obj(d.specialFlags);
+    if (flags) setSpecialFlags((prev) => ({ ...prev, ...Object.fromEntries(Object.keys(prev).map((k) => [k, flags[k] === true])) }));
+    setSeverityScoresByConcern(obj(d.severityScoresByConcern) || {});
+    setSeverityPicksByConcern(obj(d.severityPicksByConcern) || {});
+    setTriggers(list(d.triggers));
+    setPastTreatments(list(d.pastTreatments));
+    setExpectations(list(d.expectations));
+    const nut = obj(d.nutrition);
+    if (nut) setNutrition((prev) => ({ ...prev, ...nut }));
+    setWaterIntake(num(d.waterIntake, 2));
+    setSleepHours(num(d.sleepHours, 7));
+    if (Array.isArray(d.pssAnswers)) {
+      setPssAnswers(Array.from({ length: 10 }, (_, i) => num(d.pssAnswers[i], 0)));
+    }
+    setSmokingPerDay(num(d.smokingPerDay, 0));
+    setSmokingYears(num(d.smokingYears, 0));
+    setAlcoholFreq(num(d.alcoholFreq, 0));
+    setAlcoholAmt(num(d.alcoholAmt, 1));
+    setMakeupFreq(num(d.makeupFreq, 0));
+    if (typeof d.makeupRemoval === "string") setMakeupRemoval(d.makeupRemoval);
+    if (["none", "occasional", "regular"].includes(d.activesExperience)) setActivesExperience(d.activesExperience);
+    const tol = obj(d.activesTolerance);
+    if (tol) {
+      setActivesTolerance((prev) =>
+        Object.fromEntries(Object.keys(prev).map((id) => [id, typeof tol[id] === "string" ? tol[id] : prev[id]]))
+      );
+    }
+    if (typeof d.photoContext === "string") setPhotoContext(d.photoContext);
+  };
+
+  /** Açılışta taslak varsa cevapları ve kaldığı adımı geri yükle (bir kez). */
+  const draftRestored = useRef(false);
+  /** Rutin üretildi: taslak silindi ve bir daha yazılmayacak (silinen taslak geri gelmesin). */
+  const draftDone = useRef(false);
+  useEffect(() => {
+    if (draftRestored.current) return;
+    draftRestored.current = true;
+    const draft = getAnalyzeDraft(draftUid);
+    if (!draft) return;
+    applyDraftAnswers(draft.answers);
+    const savedStep = Number(draft.step);
+    if (Number.isFinite(savedStep) && savedStep > 1) {
+      setStep(savedStep);
+      setStep3Section(Number(draft.step3Section) || 0);
+      // Taslak varsa kısa ekranı atla: kullanıcı yarım bıraktığı sihirbaza döner.
+      setForceFullWizard(true);
+    }
+    setResumedFromDraft(true);
+  }, [draftUid]);
+
+  /** Cevaplar değiştikçe taslağa yaz (kısa bir duruştan sonra, her tuşta değil). */
+  useEffect(() => {
+    if (!draftRestored.current || draftDone.current || !hasAnswers) return;
+    const id = setTimeout(
+      () => saveAnalyzeDraft(draftUid, { step, step3Section, answers: draftAnswers }),
+      400
+    );
+    return () => clearTimeout(id);
+  }, [draftUid, step, step3Section, draftAnswers, hasAnswers]);
+
+  /** Cevapları temizleyip sihirbazı baştan açar (kullanıcı açıkça isterse). */
+  const startOver = () => {
+    draftDone.current = false;
+    clearAnalyzeDraft(draftUid);
+    applyDraftAnswers({});
+    setName(user?.user_metadata?.full_name || "");
+    setAge("");
+    setStep(1);
+    setStep3Section(0);
+    setSubmitError("");
+    setResumedFromDraft(false);
+    setPrefilledFromLast(false);
+    setAgainChoice(false);
+    setForceFullWizard(true);
+  };
+
+  /** Önceki analizin cevaplarıyla aç; okunamazsa boş formla devam. */
+  const prefillFromLast = async () => {
+    setAgainChoice(false);
+    const uid = user?.id;
+    if (uid && uid !== DEMO_USER_ID) {
+      try {
+        const auth = await apiAuthHeaders();
+        const res = await fetch(`${API_URL}/me/assessment/last?user_id=${encodeURIComponent(uid)}`, { headers: auth });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data?.found) {
+          applyDraftAnswers(draftAnswersFromAssessment(data));
+          setPrefilledFromLast(true);
+        }
+      } catch {
+        /* önceki analiz okunamadı: boş formla devam */
+      }
+    }
+    setResumedFromDraft(false);
+    setStep(1);
+    setStep3Section(0);
+    setForceFullWizard(true);
+  };
+
+  /** Taslaktan devam (kısa ekrandaki seçim). */
+  const resumeDraft = () => {
+    const draft = getAnalyzeDraft(draftUid);
+    setAgainChoice(false);
+    if (draft) {
+      applyDraftAnswers(draft.answers);
+      const savedStep = Number(draft.step);
+      setStep(Number.isFinite(savedStep) && savedStep > 1 ? savedStep : 1);
+      setStep3Section(Number(draft.step3Section) || 0);
+      setResumedFromDraft(true);
+    }
+    setForceFullWizard(true);
+  };
 
   const genders = useMemo(
     () => ["female", "male", "other"].map((id) => ({ id, label: pack.gender[id] || id })),
@@ -778,6 +970,9 @@ export default function Analyze() {
         setSubmitError(msg + (response.status ? ` (${response.status})` : ""));
         return;
       }
+      // Rutin üretildi: yarım cevap taslağı artık gereksiz.
+      draftDone.current = true;
+      clearAnalyzeDraft(draftUid);
       navigate("/dashboard", {
         state: {
           routine: data.routine,
@@ -816,6 +1011,7 @@ export default function Analyze() {
   const uid = user?.id || DEMO_USER_ID;
   const showCompactHub =
     !forceFullWizard && hasCompletedOnboarding(uid);
+  const hasDraftSaved = Boolean(getAnalyzeDraft(draftUid));
 
   if (showCompactHub) {
     return (
@@ -851,17 +1047,38 @@ export default function Analyze() {
                 <Camera className="w-5 h-5" />
                 {t("analyze.quickPhotoUpload")}
               </Link>
-              <button
-                type="button"
-                onClick={() => {
-                  setForceFullWizard(true);
-                  setStep(1);
-                }}
-                className="btn-secondary w-full justify-center text-sm"
-                style={{ borderColor: theme.primaryLight, color: theme.primary }}
-              >
-                {t("analyze.newAnalyzeFull")}
-              </button>
+              {!againChoice ? (
+                <button
+                  type="button"
+                  onClick={() => setAgainChoice(true)}
+                  className="btn-secondary w-full justify-center text-sm"
+                  style={{ borderColor: theme.primaryLight, color: theme.primary }}
+                >
+                  {t("analyze.newAnalyzeFull")}
+                </button>
+              ) : (
+                <div className="space-y-2 pt-1 text-left">
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {hasDraftSaved ? t("analyze.again.draftBody") : t("analyze.again.body")}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={hasDraftSaved ? resumeDraft : prefillFromLast}
+                    className="btn-primary w-full justify-center text-sm"
+                    style={{ backgroundColor: theme.primary }}
+                  >
+                    {hasDraftSaved ? t("analyze.again.resume") : t("analyze.again.useLast")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={startOver}
+                    className="btn-secondary w-full justify-center text-sm"
+                    style={{ borderColor: theme.primaryLight, color: theme.primary }}
+                  >
+                    {t("analyze.again.fresh")}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -880,6 +1097,26 @@ export default function Analyze() {
           ))}
           <span className="text-xs text-gray-400 ml-1">{step}/4</span>
         </div>
+
+        {/* Cevapların nereden geldiğini söyler ve tek tıkla baştan başlatır. */}
+        {(resumedFromDraft || prefilledFromLast) && (
+          <div
+            className="mb-5 flex items-start gap-3 rounded-2xl px-4 py-3 text-sm"
+            style={{ backgroundColor: `${theme.primary}14`, color: theme.primaryDark || theme.primary }}
+          >
+            <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <p className="min-w-0 flex-1 leading-relaxed">
+              {t(prefilledFromLast ? "analyze.again.prefilledNote" : "analyze.again.resumedNote")}
+            </p>
+            <button
+              type="button"
+              onClick={startOver}
+              className="shrink-0 text-xs font-semibold underline-offset-2 hover:underline"
+            >
+              {t("analyze.again.fresh")}
+            </button>
+          </div>
+        )}
 
         {submitError && (
           <div className="mb-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50/90 px-4 py-3 text-sm text-red-900">
