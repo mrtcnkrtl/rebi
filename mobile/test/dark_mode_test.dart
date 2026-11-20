@@ -228,6 +228,7 @@ void main() {
         '/dashboard/history',
         '/dashboard/reminders',
         '/dashboard/routine',
+        '/dashboard/routine/edit',
         '/dashboard/profile',
         '/dashboard/account',
       ]) {

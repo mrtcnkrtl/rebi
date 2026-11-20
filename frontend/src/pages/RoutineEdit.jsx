@@ -203,7 +203,9 @@ export default function RoutineEdit() {
                   return (
                     <li key={key} className="flex items-center gap-3 py-3">
                       <div className="min-w-0 flex-1">
-                        <p className={`text-sm font-semibold ${kept ? "text-gray-900" : "text-gray-400 line-through"}`}>
+                        {/* Çıkarılan adım üstü çizili ve "plandan çıkardın" etiketiyle ayrılır; renk
+                            soluklaştırılmaz (gray-400 bu puntoda 4.5:1 kontrastın altında kalıyor). */}
+                        <p className={`text-sm font-semibold ${kept ? "text-gray-900" : "text-gray-500 line-through"}`}>
                           {item.action}
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5">

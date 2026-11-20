@@ -273,7 +273,9 @@ class _RoutineEditScreenState extends State<RoutineEditScreen> {
               children: [
                 Text(
                   action,
-                  style: tx(13.5, w: 6, c: kept ? Tw.gray900 : Tw.gray400, h: snug).copyWith(
+                  // Çıkarılan adım üstü çizili ve "plandan çıkardın" etiketiyle ayrılır; renk
+                  // soluklaştırılmaz (gray400 bu punto için 4.5:1 kontrastın altında kalıyor).
+                  style: tx(13.5, w: 6, c: kept ? Tw.gray900 : Tw.gray600, h: snug).copyWith(
                     decoration: kept ? null : TextDecoration.lineThrough,
                   ),
                 ),
