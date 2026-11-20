@@ -1187,7 +1187,7 @@
     "decrease": "Azalt",
     "increase": "Artır",
     "leaveTitle": "Analizden çıkılsın mı?",
-    "leaveBody": "Şimdiye kadarki cevapların kaydedilmez.",
+    "leaveBody": "Cevapların cihazında kalır; döndüğünde kaldığın yerden devam edebilirsin.",
     "leaveStay": "Devam et",
     "leaveExit": "Çık",
     "intro": {
@@ -1365,6 +1365,16 @@
       "locationHint": "Rutini bulunduğun yerin hava ve UV bilgisine göre ayarlarım. İsteğe bağlı.",
       "locationSet": "Konum alındı",
       "create": "Rutinimi oluştur"
+    },
+    "again": {
+      "title": "Yeni analiz",
+      "body": "Önceki cevaplarınla açabilirim: değişenleri düzeltmen yeter, her soruyu baştan yazmana gerek yok.",
+      "draftBody": "Yarım kalan bir analizin var. Kaldığın yerden devam edebilir ya da baştan başlayabilirsin.",
+      "resume": "Kaldığım yerden devam et",
+      "useLast": "Önceki cevaplarımla aç",
+      "fresh": "Baştan başla",
+      "resumedNote": "Kaldığın yerden devam ediyorsun; cevaplarının hepsi burada.",
+      "prefilledNote": "Önceki analizindeki cevaplarla dolduruldu; değişenleri düzelt."
     }
   },
   "mobileShelf": {

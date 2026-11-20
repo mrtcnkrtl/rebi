@@ -1593,6 +1593,24 @@ class UserHistoryResponse(BaseModel):
     water_target_ml: int = 2000
 
 
+class LastAssessmentResponse(BaseModel):
+    """Son analizin ham cevapları: sihirbazı baştan doldurmak yerine önceki cevaplarla açmak için."""
+
+    user_id: str
+    found: bool = False
+    assessment_id: Optional[str] = None
+    created_at: Optional[str] = None
+    concern: str = ""
+    severity_score: int = 5
+    # `assessments.lifestyle_data` olduğu gibi: istemci bildiği alanları okur, bilmediğini atlar.
+    lifestyle_data: dict = {}
+    # Profilden gelen temel alanlar (sihirbazın ilk sayfası).
+    full_name: str = ""
+    age: Optional[int] = None
+    gender: str = ""
+    synced: bool = True
+
+
 class DeviceRegisterRequest(BaseModel):
     user_id: str
     token: str
@@ -1771,6 +1789,7 @@ async def root():
             "/me/snapshot",
             "/me/profile",
             "/me/history",
+            "/me/assessment/last",
             "/devices/register",
             "/upload_photo",
             "/account/delete",
@@ -2511,6 +2530,55 @@ def me_history(
         days=days_out,
         water_target_ml=_water_target_for(supabase, user_id),
         assessments=assessments,
+        synced=True,
+    )
+
+
+@app.get(
+    "/me/assessment/last",
+    response_model=LastAssessmentResponse,
+    tags=["account"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_USER_DATA))],
+)
+def me_last_assessment(request: Request, user_id: str = Query(..., min_length=1)):
+    """
+    En son analizin cevapları. Yeni analizde sihirbaz bunlarla açılır: kullanıcı her şeyi baştan
+    yazmak yerine değişenleri düzeltir. Üretmez, yalnızca okur.
+    """
+    enforce_supabase_user(request, user_id)
+    supabase = get_supabase()
+    if not should_use_supabase_db(supabase, user_id):
+        return LastAssessmentResponse(user_id=user_id, found=False, synced=False)
+    try:
+        res = (
+            supabase.table("assessments")
+            .select("id,concern,severity_score,lifestyle_data,created_at")
+            .eq("user_id", user_id)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Son analiz okunamadı: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Önceki analiz şu an okunamadı.")
+    rows = res.data or []
+    if not rows:
+        return LastAssessmentResponse(user_id=user_id, found=False, synced=True)
+    row = rows[0] or {}
+    profile = _load_profile_row(supabase, user_id)
+    lifestyle = row.get("lifestyle_data")
+    age = profile.get("age")
+    return LastAssessmentResponse(
+        user_id=user_id,
+        found=True,
+        assessment_id=str(row.get("id") or "") or None,
+        created_at=str(row.get("created_at") or "") or None,
+        concern=str(row.get("concern") or ""),
+        severity_score=int(row.get("severity_score") or 5),
+        lifestyle_data=lifestyle if isinstance(lifestyle, dict) else {},
+        full_name=str(profile.get("full_name") or ""),
+        age=int(age) if isinstance(age, (int, float)) else None,
+        gender=str(profile.get("gender") or ""),
         synced=True,
     )
 

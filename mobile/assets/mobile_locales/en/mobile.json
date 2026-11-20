@@ -1187,7 +1187,7 @@
     "decrease": "Decrease",
     "increase": "Increase",
     "leaveTitle": "Leave the analysis?",
-    "leaveBody": "Your answers so far will not be saved.",
+    "leaveBody": "Your answers stay on your device; you can continue where you left off when you come back.",
     "leaveStay": "Keep going",
     "leaveExit": "Leave",
     "intro": {
@@ -1365,6 +1365,16 @@
       "locationHint": "I adjust the routine to your local weather and UV. Optional.",
       "locationSet": "Location received",
       "create": "Create my routine"
+    },
+    "again": {
+      "title": "New analysis",
+      "body": "I can start from your previous answers: just change what's different, no need to fill everything in again.",
+      "draftBody": "You have an unfinished analysis. Continue where you left off, or start over.",
+      "resume": "Continue where I left off",
+      "useLast": "Start from my previous answers",
+      "fresh": "Start over",
+      "resumedNote": "You're continuing where you left off; all your answers are here.",
+      "prefilledNote": "Filled in from your previous analysis; change what's different."
     }
   },
   "mobileShelf": {

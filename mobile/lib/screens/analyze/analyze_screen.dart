@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/analyze_draft.dart';
 import '../../core/api.dart';
 import '../../core/consent_recovery.dart';
 import '../../core/daily_tracking.dart';
@@ -16,6 +17,7 @@ import '../../core/demo_user.dart';
 import '../../core/device_location.dart';
 import '../../core/i18n.dart';
 import '../../core/image_quality.dart';
+import '../../core/last_assessment.dart';
 import '../../core/privacy_preferences.dart';
 import '../../core/routine_tracking.dart';
 import '../../state/auth_controller.dart';
@@ -81,6 +83,18 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
 
   /// Stres testi (10 soru) isteğe bağlıdır; çözülmek istenirse sayfaları listeye girer.
   bool _stressTest = false;
+
+  /// Cevaplar cihazdaki taslaktan geri geldi: üstte "kaldığın yerden devam ediyorsun" şeridi çıkar.
+  bool _resumedFromDraft = false;
+
+  /// Cevaplar önceki analizden dolduruldu (yeni analizde baştan yazmak gerekmesin).
+  bool _prefilledFromLast = false;
+
+  /// Taslağı diske yazma gecikmesi: her dokunuşta değil, kısa bir duruştan sonra yazılır.
+  Timer? _saveTimer;
+
+  /// Taslağın hangi kullanıcıya yazıldığı (çıkışta da aynı anahtar kullanılsın).
+  String? _draftUid;
   bool _locating = false;
   String _locationError = '';
   LocationFailure? _locationFailure;
@@ -90,20 +104,74 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    final meta = context.read<AuthController>().user?.userMetadata;
+    final user = context.read<AuthController>().user;
+    final meta = user?.userMetadata;
     _form = AnalyzeForm(name: (meta?['full_name'] ?? '').toString());
     _form.name.addListener(_rebuild);
     _form.age.addListener(_rebuild);
+    _draftUid = user?.id ?? demoUserId;
+    _restoreDraft();
+  }
+
+  /// Yarım kalan cevaplar: uygulama kapansa, kullanıcı çıksa ya da yanlışlıkla başa dönse de kaybolmaz.
+  void _restoreDraft() {
+    final draft = getAnalyzeDraft(_draftUid);
+    if (draft == null) return;
+    final answers = draft['answers'];
+    if (answers is! Map) return;
+    _form.applyDraft(answers.cast<String, dynamic>());
+    if (!_form.hasAnswers) return;
+    _stressTest = draft['stressTest'] == true;
+    final saved = draft['pageId'];
+    if (saved is String && saved.isNotEmpty && saved != 'intro') {
+      _pageId = _pages().contains(saved) ? saved : 'basics';
+      // Taslak varsa kısa ekranı atla: kullanıcı yarım bıraktığı sihirbaza döner.
+      _forceFullWizard = true;
+    }
+    _resumedFromDraft = true;
+  }
+
+  /// Taslağı kısa bir duruştan sonra diske yazar (her dokunuşta disk yazmamak için).
+  void _scheduleDraftSave() {
+    _saveTimer?.cancel();
+    _saveTimer = Timer(const Duration(milliseconds: 400), _writeDraft);
+  }
+
+  void _writeDraft() {
+    if (!_form.hasAnswers) return;
+    unawaited(saveAnalyzeDraft(_draftUid, pageId: _pageId, stressTest: _stressTest, answers: _form.toDraft()));
+  }
+
+  /// Cevapları temizleyip sihirbazı baştan açar (kullanıcı açıkça isterse).
+  Future<void> _startOver() async {
+    _saveTimer?.cancel();
+    await clearAnalyzeDraft(_draftUid);
+    if (!mounted) return;
+    setState(() {
+      _form.applyDraft(const {});
+      final meta = context.read<AuthController>().user?.userMetadata;
+      _form.name.text = (meta?['full_name'] ?? '').toString();
+      _form.age.text = '';
+      _stressTest = false;
+      _resumedFromDraft = false;
+      _prefilledFromLast = false;
+      _pageId = 'basics';
+      _direction = 1;
+      _submitError = '';
+    });
   }
 
   void _rebuild() {
     if (mounted) setState(() {});
+    _scheduleDraftSave();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _autoTimer?.cancel();
+    _saveTimer?.cancel();
+    _writeDraft();
     _form.dispose();
     super.dispose();
   }
@@ -144,11 +212,15 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
   }
 
   @override
-  void refresh(VoidCallback change) => setState(change);
+  void refresh(VoidCallback change) {
+    setState(change);
+    _scheduleDraftSave();
+  }
 
   @override
   void answer(VoidCallback change, {bool advance = true}) {
     setState(change);
+    _scheduleDraftSave();
     _autoTimer?.cancel();
     // Ekran okuyucu kullanıcıları için kendiliğinden ilerleme kapalı: "Devam et" düğmesini kullanırlar.
     if (!advance || MediaQuery.of(context).accessibleNavigation) return;
@@ -228,6 +300,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
       _direction = direction;
       _submitError = '';
     });
+    _scheduleDraftSave();
   }
 
   void _next() {
@@ -248,10 +321,12 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
 
   void _exit() => context.canPop() ? context.pop() : context.go('/dashboard/routine');
 
-  /// Kapat: ilk sorudan sonra cevaplar kaybolacağı için sorar.
+  /// Kapat: cevaplar cihazda kalır (taslak), kullanıcı kaldığı yerden dönebilir.
   Future<void> _close() async {
     final pages = _pages();
     if (pages.indexOf(_pageId) <= 1) return _exit();
+    _saveTimer?.cancel();
+    _writeDraft();
     final leave = await AppSheet.show<bool>(
       context,
       title: i18n.t('mobileAnalyze.leaveTitle'),
@@ -449,6 +524,9 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
         return;
       }
       final data = res.data;
+      // Rutin üretildi: yarım cevap taslağı artık gereksiz.
+      _saveTimer?.cancel();
+      await clearAnalyzeDraft(_draftUid);
       final localPreview = photo?.file.path;
       // İlk rutin: kısa karşılama (rutini kabul, gün saatleri, bildirim izni). Sonraki analizlerde doğrudan plana.
       final firstRoutine = user != null && !isRoutineTrackingAccepted(user.id);
@@ -517,6 +595,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
                     closeLabel: i18n.t('common.close'),
                   ),
                 ),
+                if (_resumedFromDraft || _prefilledFromLast) _resumeBar(),
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: reduce ? Duration.zero : const Duration(milliseconds: 260),
@@ -776,6 +855,106 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
     );
   }
 
+  /// Yeni tam analiz: baştan yazdırmak yerine önce ne yapılacağı sorulur — yarım kalan taslak varsa
+  /// kaldığı yerden, yoksa önceki analizin cevaplarıyla ya da boş formla.
+  Future<void> _openFullWizard() async {
+    final draft = getAnalyzeDraft(_draftUid);
+    final hasDraft = draft != null;
+    final choice = await AppSheet.show<String>(
+      context,
+      title: i18n.t('mobileAnalyze.again.title'),
+      subtitle: i18n.t(hasDraft ? 'mobileAnalyze.again.draftBody' : 'mobileAnalyze.again.body'),
+      body: (ctx) => Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PrimaryButton(
+            key: const Key('analyze-again-keep'),
+            onPressed: () => Navigator.of(ctx).pop(hasDraft ? 'draft' : 'last'),
+            color: context.read<ThemeController>().theme.primary,
+            label: i18n.t(hasDraft ? 'mobileAnalyze.again.resume' : 'mobileAnalyze.again.useLast'),
+          ),
+          const SizedBox(height: 10),
+          SecondaryButton(
+            key: const Key('analyze-again-fresh'),
+            onPressed: () => Navigator.of(ctx).pop('fresh'),
+            label: i18n.t('mobileAnalyze.again.fresh'),
+          ),
+        ],
+      ),
+    );
+    if (choice == null || !mounted) return;
+    if (choice == 'fresh') {
+      await _startOver();
+      if (mounted) setState(() => _forceFullWizard = true);
+      return;
+    }
+    if (choice == 'draft') {
+      setState(() {
+        _restoreDraft();
+        _forceFullWizard = true;
+      });
+      return;
+    }
+    await _prefillFromLast();
+  }
+
+  /// Önceki analizin cevaplarını forma yazar; okunamazsa boş formla açılır.
+  Future<void> _prefillFromLast() async {
+    setState(() => _loading = true);
+    LastAssessment? last;
+    try {
+      final uid = context.read<AuthController>().user?.id;
+      if (uid != null && uid != demoUserId) last = await fetchLastAssessment(uid);
+    } catch (_) {
+      /* önceki analiz okunamadı: boş formla devam */
+    }
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _forceFullWizard = true;
+      _pageId = 'basics';
+      _direction = 1;
+      _stressTest = false;
+      _resumedFromDraft = false;
+      if (last != null) {
+        _form.applyDraft(last.toDraftAnswers());
+        _prefilledFromLast = true;
+      }
+    });
+    _writeDraft();
+  }
+
+  /// Üstteki şerit: cevapların nereden geldiğini söyler ve tek dokunuşla baştan başlatır.
+  Widget _resumeBar() {
+    final theme = context.watch<ThemeController>().theme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.fromLTRB(14, 10, 8, 10),
+      decoration: BoxDecoration(
+        color: theme.primary.withValues(alpha: .08),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(_prefilledFromLast ? LucideIcons.history : LucideIcons.bookmark, size: 18, color: theme.fg),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              i18n.t(_prefilledFromLast ? 'mobileAnalyze.again.prefilledNote' : 'mobileAnalyze.again.resumedNote'),
+              style: tx(12.5, w: 5, c: Tw.gray700, h: 1.3),
+            ),
+          ),
+          TextButton(
+            key: const Key('analyze-start-over'),
+            onPressed: _startOver,
+            style: TextButton.styleFrom(minimumSize: const Size(44, 40), padding: const EdgeInsets.symmetric(horizontal: 10)),
+            child: Text(i18n.t('mobileAnalyze.again.fresh'), style: tx(12.5, w: 7, c: theme.fg)),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// İlk analizden sonra: rutin hazır; hızlı fotoğraf ya da yeni tam analiz.
   Widget _compactHub() {
     final theme = context.watch<ThemeController>().theme;
@@ -832,10 +1011,7 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
                       ),
                       const SizedBox(height: 4),
                       TextButton(
-                        onPressed: () => setState(() {
-                          _forceFullWizard = true;
-                          _pageId = 'intro';
-                        }),
+                        onPressed: _openFullWizard,
                         style: TextButton.styleFrom(minimumSize: const Size(48, 52)),
                         child: Text(i18n.t('analyze.newAnalyzeFull'), style: tx(14.5, w: 6, c: Tw.gray600)),
                       ),

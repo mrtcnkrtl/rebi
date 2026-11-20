@@ -311,11 +311,15 @@ void main() {
     expect((getRoutineSnapshot(testUserId)?['routine'] as List).length, routine.length);
   });
 
-  testWidgets('analiz: ilk analizden sonra kısa ekran, istenirse tam form', (tester) async {
+  testWidgets('analiz: ilk analizden sonra kısa ekran, istenirse tam form baştan', (tester) async {
     await pumpApp(tester, location: '/dashboard/analyze', prefs: acceptedPrefs());
     expect(find.text(tr('analyze.routineReadyTitle')), findsOneWidget);
     await tapText(tester, tr('analyze.newAnalyzeFull'));
-    expect(find.text(tr('mobileAnalyze.intro.title')), findsOneWidget);
+    // Yeni analiz doğrudan boş forma atmaz: önce ne yapılacağı sorulur.
+    expect(find.text(tr('mobileAnalyze.again.title')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('analyze-again-fresh')));
+    await settle(tester, 3);
+    expect(find.text(tr('mobileAnalyze.basics.title')), findsOneWidget);
   });
 
   testWidgets('check-in: rutin kabul edilmeden açılmaz', (tester) async {

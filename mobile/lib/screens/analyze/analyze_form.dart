@@ -228,6 +228,188 @@ class AnalyzeForm {
     age.dispose();
   }
 
+  // ═══ Taslak (cihazda saklanan yarım cevaplar) ═══
+
+  /// Fotoğraf dışındaki tüm cevaplar; `analyze_draft.dart` bunu diske yazar.
+  Map<String, dynamic> toDraft() => {
+        'name': name.text,
+        'age': age.text,
+        'gender': gender,
+        'hormonalStatus': hormonalStatus,
+        'lastPeriodDate': lastPeriodDate,
+        'cycleLength': cycleLength,
+        'lat': lat,
+        'lon': lon,
+        'skinType': skinType,
+        'concerns': List<String>.of(concerns),
+        'concernZones': {for (final e in concernZones.entries) e.key: List<String>.of(e.value)},
+        'concernTimeline': {for (final e in concernTimeline.entries) e.key: Map<String, String>.of(e.value)},
+        'specialFlags': Map<String, bool>.of(specialFlags),
+        'severityAnswers': {for (final e in severityAnswers.entries) e.key: Map<String, num>.of(e.value)},
+        'severityPicks': {for (final e in severityPicks.entries) e.key: Map<String, int>.of(e.value)},
+        'triggers': List<String>.of(triggers),
+        'pastTreatments': List<String>.of(pastTreatments),
+        'expectations': List<String>.of(expectations),
+        'nutrition': Map<String, int>.of(nutrition),
+        'waterIntake': waterIntake,
+        'sleepHours': sleepHours,
+        'pssAnswers': List<int>.of(pssAnswers),
+        'pssTouched': List<bool>.of(pssTouched),
+        'smokingPerDay': smokingPerDay,
+        'smokingYears': smokingYears,
+        'alcoholFreq': alcoholFreq,
+        'alcoholAmt': alcoholAmt,
+        'makeupFreq': makeupFreq,
+        'makeupRemoval': makeupRemoval,
+        'shavingFreq': shavingFreq,
+        'shavingAfter': shavingAfter,
+        'activesExperience': activesExperience,
+        'activesTolerance': Map<String, String>.of(activesTolerance),
+        'photoContext': photoContext,
+      };
+
+  /// Bir cevap kümesini forma yazar. Bozuk / eski anahtarlar sessizce atlanır: taslak da,
+  /// sunucudan gelen önceki analiz de (bkz. `applyAssessment`) bu yoldan geçer.
+  void applyDraft(Map<String, dynamic> d) {
+    String s(Object? v) => v is String ? v : '';
+    int? i(Object? v) => v is num ? v.toInt() : null;
+    double? dbl(Object? v) => v is num ? v.toDouble() : null;
+    List<String> strList(Object? v) => v is List ? v.whereType<String>().toList() : const [];
+
+    if (d['name'] is String) name.text = s(d['name']);
+    if (d['age'] is String) {
+      age.text = s(d['age']);
+    } else if (d['age'] is num) {
+      age.text = '${i(d['age'])}';
+    }
+    gender = s(d['gender']);
+    hormonalStatus = s(d['hormonalStatus']);
+    lastPeriodDate = s(d['lastPeriodDate']);
+    cycleLength = i(d['cycleLength']) ?? cycleLength;
+    lat = dbl(d['lat']);
+    lon = dbl(d['lon']);
+    skinType = s(d['skinType']);
+
+    concerns
+      ..clear()
+      ..addAll(strList(d['concerns']).where(concernIds.contains));
+
+    concernZones.clear();
+    final zones = d['concernZones'];
+    if (zones is Map) {
+      for (final e in zones.entries) {
+        final list = strList(e.value).where(zoneIds.contains).toList();
+        if (list.isNotEmpty) concernZones['${e.key}'] = list;
+      }
+    }
+
+    concernTimeline.clear();
+    final tl = d['concernTimeline'];
+    if (tl is Map) {
+      for (final e in tl.entries) {
+        if (e.value is! Map) continue;
+        final fields = <String, String>{};
+        for (final f in (e.value as Map).entries) {
+          if (f.value is String) fields['${f.key}'] = f.value as String;
+        }
+        if (fields.isNotEmpty) concernTimeline['${e.key}'] = fields;
+      }
+    }
+
+    final flags = d['specialFlags'];
+    if (flags is Map) {
+      for (final k in specialFlags.keys.toList()) {
+        if (flags[k] is bool) specialFlags[k] = flags[k] as bool;
+      }
+    }
+
+    severityAnswers.clear();
+    final sa = d['severityAnswers'];
+    if (sa is Map) {
+      for (final e in sa.entries) {
+        if (e.value is! Map) continue;
+        final answers = <String, num>{};
+        for (final a in (e.value as Map).entries) {
+          if (a.value is num) answers['${a.key}'] = a.value as num;
+        }
+        if (answers.isNotEmpty) severityAnswers['${e.key}'] = answers;
+      }
+    }
+
+    severityPicks.clear();
+    final sp = d['severityPicks'];
+    if (sp is Map) {
+      for (final e in sp.entries) {
+        if (e.value is! Map) continue;
+        final picks = <String, int>{};
+        for (final a in (e.value as Map).entries) {
+          if (a.value is num) picks['${a.key}'] = (a.value as num).toInt();
+        }
+        if (picks.isNotEmpty) severityPicks['${e.key}'] = picks;
+      }
+    }
+
+    triggers
+      ..clear()
+      ..addAll(strList(d['triggers']).where(triggerIds.contains));
+    pastTreatments
+      ..clear()
+      ..addAll(strList(d['pastTreatments']).where(pastTreatmentIds.contains));
+    expectations
+      ..clear()
+      ..addAll(strList(d['expectations']).where(expectationIds.contains));
+
+    final nut = d['nutrition'];
+    if (nut is Map) {
+      for (final k in nutritionKeys) {
+        final v = i(nut[k]);
+        if (v != null) nutrition[k] = v.clamp(0, 5);
+      }
+    }
+
+    waterIntake = (dbl(d['waterIntake']) ?? waterIntake).clamp(0, 8);
+    sleepHours = (dbl(d['sleepHours']) ?? sleepHours).clamp(0, 14);
+
+    final pss = d['pssAnswers'];
+    if (pss is List) {
+      for (var k = 0; k < pssAnswers.length && k < pss.length; k++) {
+        final v = i(pss[k]);
+        if (v != null) pssAnswers[k] = v.clamp(0, 4);
+      }
+    }
+    final touched = d['pssTouched'];
+    if (touched is List) {
+      for (var k = 0; k < pssTouched.length && k < touched.length; k++) {
+        if (touched[k] is bool) pssTouched[k] = touched[k] as bool;
+      }
+    }
+
+    smokingPerDay = (i(d['smokingPerDay']) ?? smokingPerDay).clamp(0, 60);
+    smokingYears = (i(d['smokingYears']) ?? smokingYears).clamp(0, 80);
+    alcoholFreq = (i(d['alcoholFreq']) ?? alcoholFreq).clamp(0, 7);
+    alcoholAmt = (i(d['alcoholAmt']) ?? alcoholAmt).clamp(0, 30);
+    makeupFreq = (i(d['makeupFreq']) ?? makeupFreq).clamp(0, 7);
+    if (d['makeupRemoval'] is String) makeupRemoval = s(d['makeupRemoval']);
+    shavingFreq = shavingFrequencies.contains(i(d['shavingFreq'])) ? i(d['shavingFreq'])! : 0;
+    shavingAfter = shavingAfterIds.contains(s(d['shavingAfter'])) ? s(d['shavingAfter']) : '';
+    if (const ['none', 'occasional', 'regular'].contains(s(d['activesExperience']))) {
+      activesExperience = s(d['activesExperience']);
+    }
+    final tol = d['activesTolerance'];
+    if (tol is Map) {
+      for (final id in strongActiveFamilyIds) {
+        final v = tol[id];
+        if (v is String && toleranceLevels.contains(v)) activesTolerance[id] = v;
+      }
+    }
+    if (d['photoContext'] is String) photoContext = s(d['photoContext']);
+  }
+
+  /// Taslakta gerçekten cevap var mı (boş formu "devam et" diye sormamak için).
+  /// Ad sayılmaz: hesaptan kendiliğinden gelir, kullanıcının verdiği bir cevap değildir.
+  bool get hasAnswers =>
+      age.text.trim().isNotEmpty || gender.isNotEmpty || skinType.isNotEmpty || concerns.isNotEmpty;
+
   bool get isFemale => gender == 'female';
 
   /// Adet tarihi gereken durum (düzenli / düzensiz döngü).

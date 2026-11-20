@@ -212,6 +212,12 @@ class FakeBackend {
   /// `GET /me/history` hata döndürsün.
   bool historyFails = false;
 
+  /// `GET /me/assessment/last` yanıtı: önceki analizin cevapları (null = analiz yok).
+  Map<String, dynamic>? lastAssessment;
+
+  /// `GET /me/assessment/last` hata döndürsün.
+  bool lastAssessmentFails = false;
+
   /// Gün içi kayıt uçlarına ağ yokmuş gibi davranır (istek atılır, bağlantı hatası döner).
   bool ingestOffline = false;
 
@@ -351,6 +357,9 @@ class FakeBackend {
           case 'GET /me/history':
             if (historyFails) return http.Response('{"detail":"hata"}', 502);
             return ok(history);
+          case 'GET /me/assessment/last':
+            if (lastAssessmentFails) return http.Response('{"detail":"hata"}', 502);
+            return ok(lastAssessment ?? {'user_id': testUserId, 'found': false, 'synced': true});
           case 'POST /devices/register':
             if (devicesOffline) throw const SocketException('çevrimdışı');
             return ok({
