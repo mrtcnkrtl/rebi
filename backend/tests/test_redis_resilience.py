@@ -189,21 +189,59 @@ def test_proxy_falls_back_on_any_error_and_returns_when_the_primary_recovers():
     assert proxy.value(2) == "redis:2"
 
 
-def test_proxy_logs_an_outage_once_a_minute_not_once_per_request(monkeypatch):
+def _capture_warnings(monkeypatch, module) -> list[str]:
     """caplog + özel StreamHandler kırılgan; doğrudan log.warning sayılır."""
-    primary, backup = _Primary(), _Backup()
-    primary.fail = True
     logged: list[str] = []
     monkeypatch.setattr(
-        redis_client.log,
+        module.log,
         "warning",
         lambda msg, *args, **kwargs: logged.append(msg % args if args else str(msg)),
     )
+    return logged
+
+
+def test_proxy_logs_an_outage_once_a_minute_not_once_per_request(monkeypatch):
+    primary, backup = _Primary(), _Backup()
+    primary.fail = True
+    logged = _capture_warnings(monkeypatch, redis_client)
     proxy = FallbackProxy(primary, backup, "deneme")
     for i in range(50):
         proxy.value(i)
     assert len(logged) == 1
     assert "bellek yedeğine" in logged[0]
+
+
+def test_the_first_outage_is_logged_on_a_freshly_booted_host(monkeypatch):
+    """
+    `time.monotonic()` açılıştan beri geçen süredir: yeni açılmış makinede 60'tan küçüktür.
+    Sayaç 0.0 ile başlatılırsa ilk kesinti "daha bir dakika olmadı" sayılıp hiç günlüğe geçmez —
+    hem de tam Redis'in henüz hazır olmadığı, kesintinin en olası olduğu anda.
+    """
+    monkeypatch.setattr(redis_client.time, "monotonic", lambda: 3.0)
+    primary, backup = _Primary(), _Backup()
+    primary.fail = True
+    logged = _capture_warnings(monkeypatch, redis_client)
+
+    proxy = FallbackProxy(primary, backup, "deneme")
+    proxy.value(1)
+    assert len(logged) == 1, "açılıştan hemen sonraki ilk kesinti de günlüğe geçmeli"
+
+    # Aynı dakika içinde tekrar yazmaz.
+    proxy.value(2)
+    assert len(logged) == 1
+
+
+def test_shared_state_also_logs_its_first_outage_on_a_freshly_booted_host(monkeypatch):
+    import shared_state
+
+    monkeypatch.setattr(shared_state, "_last_log", None, raising=False)
+    monkeypatch.setattr(shared_state.time, "monotonic", lambda: 3.0)
+    logged = _capture_warnings(monkeypatch, shared_state)
+
+    shared_state._note(RuntimeError("bağlantı yok"), "okuma")
+    assert len(logged) == 1
+    shared_state._note(RuntimeError("bağlantı yok"), "okuma")
+    assert len(logged) == 1
 
 
 # ── Hız sınırlayıcı ──────────────────────────────────────────────────────────────────────────────

@@ -24,13 +24,16 @@ log = get_logger("shared_state")
 
 _PREFIX = "rebi:state:"
 _LOG_EVERY_SECONDS = 60.0
-_last_log = 0.0
+
+# None: henüz yazılmadı. 0.0 ile başlatılamaz — `time.monotonic()` açılıştan beri geçen süredir,
+# yeni açılmış bir makinede 60'tan küçük olur ve ilk kesinti hiç günlüğe geçmezdi.
+_last_log: float | None = None
 
 
 def _note(error: Exception, what: str) -> None:
     global _last_log
     now = time.monotonic()
-    if now - _last_log >= _LOG_EVERY_SECONDS:
+    if _last_log is None or now - _last_log >= _LOG_EVERY_SECONDS:
         _last_log = now
         log.warning("Paylaşılan durum Redis'e yazılamadı/okunamadı (%s), süreç belleği kullanılıyor: %s", what, type(error).__name__)
 

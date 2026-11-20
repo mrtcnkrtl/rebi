@@ -79,7 +79,9 @@ class FallbackProxy:
         self._primary = primary
         self._fallback = fallback
         self._name = name
-        self._last_log = 0.0
+        # None: henüz yazılmadı. 0.0 ile başlatılamaz — `time.monotonic()` açılıştan beri geçen
+        # süredir, yeni açılmış bir makinede 60'tan küçük olur ve ilk kesinti hiç günlüğe geçmezdi.
+        self._last_log: Optional[float] = None
 
     def __getattr__(self, method: str):
         def call(*args, **kwargs):
@@ -93,7 +95,7 @@ class FallbackProxy:
 
     def _note(self, error: Exception) -> None:
         now = time.monotonic()
-        if now - self._last_log >= self._LOG_EVERY_SECONDS:
+        if self._last_log is None or now - self._last_log >= self._LOG_EVERY_SECONDS:
             self._last_log = now
             log.warning("Redis kullanılamıyor (%s), bellek yedeğine düşüldü: %s", self._name, type(error).__name__)
 
