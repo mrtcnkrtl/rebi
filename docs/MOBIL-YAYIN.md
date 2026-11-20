@@ -9,7 +9,9 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 | Konu | Durum |
 | --- | --- |
 | Paket kimliği: Android ve iOS `com.rebiovil.mobile` (Android: Play'deki mevcut "Rebiovil" uygulamasının güncellemesi; iOS: App Store Connect'teki "Rebiovil Mobile" kaydı); iOS takımı `KJ7932W24A` | hazır |
-| Analiz alanları (web ile eşit: concerns, süre/sıklık, beslenme, undereye…) | hazır (`1.2.5+22`) |
+| Analiz alanları (web ile eşit: concerns, süre/sıklık, beslenme, undereye…) | hazır (`1.2.6+23`) |
+| Analiz taslağı (yarım cevaplar kaybolmaz) + yeni analizde önceki cevaplarla açılış | hazır (`1.2.6+23`) |
+| Rutini kendine göre düzenleme (adım çıkar / geri al / kendi adımını ekle) | hazır (`1.2.6+23`) |
 | Mağaza derleme betiği (`tool/build_release.sh`) | hazır; `REBI_BETA=false` + iOS `ExportOptions-appstore.plist` |
 | Android release imzalama (`android/key.properties` + upload keystore) | **yalnız bu kaldı** (bölüm 3) — repoya girmez |
 | iOS imzalama (Apple hesabı / ASC API anahtarı / dağıtım profili) | **yalnız bu kaldı** (bölüm 4) — repoya girmez |
@@ -25,7 +27,7 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 
 ## 2. Sürüm numarası
 
-`pubspec.yaml` → `version: 1.2.5+22`. `+` öncesi mağazada görünen sürüm, sonrası derleme numarasıdır
+`pubspec.yaml` → `version: 1.2.6+23`. `+` öncesi mağazada görünen sürüm, sonrası derleme numarasıdır
 (Android `versionCode`, iOS `CFBundleVersion`). **Her mağaza yüklemesinde derleme numarası artmalıdır**
 (`1.2.5+23`, `1.2.6+24`…). Aynı numarayı iki kez yükleyemezsiniz.
 

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rebi/core/analyze_draft.dart';
 import 'package:rebi/core/routine_tracking.dart';
+import 'package:rebi/screens/analyze/analyze_form.dart';
 
 import 'helpers/analyze_walk.dart';
 import 'helpers/app_harness.dart';
@@ -108,6 +109,42 @@ void main() {
     expect((answers['concernZones'] as Map)['acne'], ['cheeks']);
     expect(answers['triggers'], ['stress']);
     expect(answers['activesExperience'], 'regular');
+  });
+
+  test('"baştan başla" stres, beslenme, işaret ve tolerans cevaplarını da sıfırlar', () {
+    final form = AnalyzeForm(name: 'Eski Ad');
+    form.age.text = '31';
+    form.gender = 'female';
+    form.skinType = 'oily';
+    form.concerns.add('acne');
+    form.concernZones['acne'] = ['cheeks'];
+    form.specialFlags['stings_with_products'] = true;
+    form.pssAnswers[3] = 4;
+    form.pssTouched[3] = true;
+    form.nutrition['sugar'] = 3;
+    form.activesTolerance['retinol'] = 'bad';
+    form.waterIntake = 1;
+    form.shavingFreq = 7;
+    form.shavingAfter = 'ingrown';
+
+    form.resetAnswers(name: 'Yeni Ad');
+
+    expect(form.name.text, 'Yeni Ad');
+    expect(form.age.text, '');
+    expect(form.gender, '');
+    expect(form.skinType, '');
+    expect(form.concerns, isEmpty);
+    expect(form.concernZones, isEmpty);
+    expect(form.anyFlag, isFalse);
+    expect(form.pssAnswers, everyElement(0));
+    expect(form.pssTouched, everyElement(false));
+    expect(form.nutrition, {'fastfood': 0, 'sugar': 0, 'dairy': 0, 'veggies': 3});
+    expect(form.activesTolerance['retinol'], 'good');
+    expect(form.waterIntake, 2);
+    expect(form.shavingFreq, 0);
+    expect(form.shavingAfter, '');
+    expect(form.hasAnswers, isFalse);
+    form.dispose();
   });
 
   testWidgets('rutin üretilince taslak silinir ve geri gelmez', (tester) async {

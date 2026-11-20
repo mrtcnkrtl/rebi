@@ -268,6 +268,56 @@ class AnalyzeForm {
         'photoContext': photoContext,
       };
 
+  /// Tüm cevapları varsayılanlarına döndürür ("baştan başla"). `applyDraft(const {})` bunun yerini
+  /// tutmaz: orada verilmeyen anahtarlar olduğu gibi kalır (stres, beslenme, işaretler, tolerans).
+  void resetAnswers({String name = ''}) {
+    this.name.text = name;
+    age.text = '';
+    gender = '';
+    hormonalStatus = '';
+    lastPeriodDate = '';
+    cycleLength = 28;
+    lat = null;
+    lon = null;
+    skinType = '';
+    concerns.clear();
+    concernZones.clear();
+    concernTimeline.clear();
+    severityAnswers.clear();
+    severityPicks.clear();
+    for (final k in specialFlags.keys.toList()) {
+      specialFlags[k] = false;
+    }
+    triggers.clear();
+    pastTreatments.clear();
+    expectations.clear();
+    nutrition
+      ..['fastfood'] = 0
+      ..['sugar'] = 0
+      ..['dairy'] = 0
+      ..['veggies'] = 3;
+    waterIntake = 2;
+    sleepHours = 7;
+    for (var i = 0; i < pssAnswers.length; i++) {
+      pssAnswers[i] = 0;
+      pssTouched[i] = false;
+    }
+    smokingPerDay = 0;
+    smokingYears = 0;
+    alcoholFreq = 0;
+    alcoholAmt = 1;
+    makeupFreq = 0;
+    makeupRemoval = 'cleanser';
+    shavingFreq = 0;
+    shavingAfter = '';
+    activesExperience = 'occasional';
+    for (final id in strongActiveFamilyIds) {
+      activesTolerance[id] = 'good';
+    }
+    photo = null;
+    photoContext = 'unsure';
+  }
+
   /// Bir cevap kümesini forma yazar. Bozuk / eski anahtarlar sessizce atlanır: taslak da,
   /// sunucudan gelen önceki analiz de (bkz. `applyAssessment`) bu yoldan geçer.
   void applyDraft(Map<String, dynamic> d) {

@@ -614,13 +614,53 @@ export default function Analyze() {
     return () => clearTimeout(id);
   }, [draftUid, step, step3Section, draftAnswers, hasAnswers]);
 
+  /**
+   * Tüm cevapları varsayılanlarına döndürür. `applyDraftAnswers({})` bunun yerini tutmaz:
+   * orada verilmeyen anahtarlar olduğu gibi kalır (stres, beslenme, işaretler, tolerans).
+   */
+  const resetAnswers = () => {
+    setName(user?.user_metadata?.full_name || "");
+    setAge("");
+    setGender("");
+    setHormonalStatus("");
+    setLastPeriodDate("");
+    setCycleLength(28);
+    setLat(null);
+    setLon(null);
+    setLocationSet(false);
+    setSkinType("");
+    setConcerns([]);
+    setConcernZones({});
+    setConcernTimeline({});
+    setSeverityScoresByConcern({});
+    setSeverityPicksByConcern({});
+    setSpecialFlags((prev) => Object.fromEntries(Object.keys(prev).map((k) => [k, false])));
+    setTriggers([]);
+    setPastTreatments([]);
+    setExpectations([]);
+    setNutrition({ fastfood: 0, sugar: 0, dairy: 0, veggies: 3 });
+    setWaterIntake(2);
+    setSleepHours(7);
+    setPssAnswers(Array(10).fill(0));
+    setSmokingPerDay(0);
+    setSmokingYears(0);
+    setAlcoholFreq(0);
+    setAlcoholAmt(1);
+    setMakeupFreq(0);
+    setMakeupRemoval("cleanser");
+    setActivesExperience("occasional");
+    setActivesTolerance(Object.fromEntries(STRONG_ACTIVE_FAMILY_IDS.map((id) => [id, "good"])));
+    setPhotoFile(null);
+    setPhotoPreview(null);
+    setPhotoQuality(null);
+    setPhotoContext("unsure");
+  };
+
   /** Cevapları temizleyip sihirbazı baştan açar (kullanıcı açıkça isterse). */
   const startOver = () => {
     draftDone.current = false;
     clearAnalyzeDraft(draftUid);
-    applyDraftAnswers({});
-    setName(user?.user_metadata?.full_name || "");
-    setAge("");
+    resetAnswers();
     setStep(1);
     setStep3Section(0);
     setSubmitError("");
@@ -1011,9 +1051,10 @@ export default function Analyze() {
   const uid = user?.id || DEMO_USER_ID;
   const showCompactHub =
     !forceFullWizard && hasCompletedOnboarding(uid);
-  const hasDraftSaved = Boolean(getAnalyzeDraft(draftUid));
 
   if (showCompactHub) {
+    // Yalnız kısa ekranda okunur: sihirbaz her tuş vuruşunda yeniden çizilir, orada localStorage okumayalım.
+    const hasDraftSaved = Boolean(getAnalyzeDraft(draftUid));
     return (
       <div className={`min-h-screen ${theme.bg} pb-[calc(8rem+env(safe-area-inset-bottom))] relative`}>
         <ThemePatternOverlay pattern={theme.pattern} />

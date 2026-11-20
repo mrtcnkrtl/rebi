@@ -31,6 +31,11 @@ void main() {
     );
     // step_order yoksa boş kalır (sunucu da öyle yapar).
     expect(routineStepKey({'time': 'Akşam', 'action': 'SPF'}), 'Akşam||SPF');
+    // Tam sayı değerli ondalık tam sayı gibi yazılır (sunucudaki `_order_text` ile aynı).
+    expect(routineStepKey({'time': 'Sabah', 'step_order': 10.0, 'action': 'Temizleme'}), 'Sabah|10|Temizleme');
+    expect(routineStepKey({'time': 'Sabah', 'step_order': 10.5, 'action': 'X'}), 'Sabah|10.5|X');
+    // Boşluklar kırpılır: aynı adım, aynı kimlik.
+    expect(routineStepKey({'time': ' Sabah ', 'step_order': 10, 'action': ' Temizleme '}), 'Sabah|10|Temizleme');
   });
 
   test('plandan çıkarılan adım hiçbir görünüme girmez', () {

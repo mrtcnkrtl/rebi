@@ -22,15 +22,32 @@ MAX_DETAIL_CHARS = 240
 _USER_TIMES = ("Sabah", "Akşam", "Günlük")
 
 
+def _order_text(order: Any) -> str:
+    """
+    `step_order`un metin hâli. Tam sayı değerli ondalık ("10.0") tam sayı gibi yazılır: istemciler
+    sayıyı JavaScript kuralıyla basar (Dart `jsString`, JS `String`), Python ise "10.0" derdi — iki
+    taraf farklı kimlik üretirse kullanıcının çıkardığı adım eşleşmez ve plandan kalkmaz.
+    """
+    if order is None:
+        return ""
+    if isinstance(order, bool):
+        return str(order)
+    if isinstance(order, (int, float)):
+        try:
+            if float(order).is_integer():
+                return str(int(order))
+        except (OverflowError, ValueError):
+            pass
+    return str(order)
+
+
 def step_key(item: dict) -> str:
     """Bir rutin adımının kalıcı kimliği. İstemci de aynı kuralı kullanır (mobil `routineStepKey`)."""
     if not isinstance(item, dict):
         return ""
     time = str(item.get("time") or "").strip()
-    order = item.get("step_order")
-    order_text = "" if order is None else str(order)
     action = str(item.get("action") or "").strip()
-    return f"{time}|{order_text}|{action}"
+    return f"{time}|{_order_text(item.get('step_order'))}|{action}"
 
 
 def is_user_step(item: Any) -> bool:

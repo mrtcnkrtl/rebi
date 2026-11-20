@@ -72,6 +72,15 @@ def test_returns_the_newest_assessment_with_its_raw_answers(monkeypatch, client,
     assert body["gender"] == "female"
 
 
+def test_a_severity_of_zero_is_not_turned_into_the_default(monkeypatch, client, headers):
+    row = _assessment(USER_ID, "general", "2026-11-05T08:00:00+00:00")
+    row["severity_score"] = 0
+    _db(monkeypatch, [row])
+    r = client.get("/me/assessment/last", params={"user_id": USER_ID}, headers=headers)
+    assert r.status_code == 200, r.text
+    assert r.json()["severity_score"] == 0
+
+
 def test_without_an_assessment_the_answer_is_empty_not_an_error(monkeypatch, client, headers):
     _db(monkeypatch, [])
     r = client.get("/me/assessment/last", params={"user_id": USER_ID}, headers=headers)

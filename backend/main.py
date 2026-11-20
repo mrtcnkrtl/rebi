@@ -658,6 +658,14 @@ def _load_active_routine(supabase, user_id: str) -> dict:
         return {}
 
 
+def _int_or(value, fallback: int) -> int:
+    """Sayıya çevirir; çevrilemiyorsa [fallback] (0 geçerli bir değerdir, yedek değere düşmez)."""
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return fallback
+
+
 def _active_routine_split(row: dict) -> tuple[list[dict], list[dict]]:
     """Satırdaki rutini (yürürlükteki adımlar, kullanıcının çıkardığı adımlar) olarak ayırır."""
     from routine_edits import split_user_edits
@@ -1532,6 +1540,13 @@ class RoutineEditsRequest(BaseModel):
     hidden: list[str] = Field(default_factory=list, max_length=80)
     added: list[UserRoutineStep] = Field(default_factory=list, max_length=10)
 
+    @model_validator(mode="after")
+    def _drop_impossible_keys(self):
+        # Gerçek bir adım kimliği bu uzunluğu aşmaz (zaman + sıra + en çok 90 karakterlik eylem);
+        # daha uzun değer hiçbir adıma eşleşmez, karşılaştırmaya girmeden düşer.
+        self.hidden = [k for k in self.hidden if k and len(k) <= 300]
+        return self
+
 
 SkinTypeName = Literal["normal", "dry", "oily", "combination", "sensitive"]
 
@@ -2234,6 +2249,10 @@ def routine_active_edit(request: Request, req: RoutineEditsRequest):
     from routine_edits import apply_routine_edits, split_user_edits
 
     supabase = get_supabase()
+    # Misafir / veritabanı yok: sunucuda saklanan rutin de yok, düzenleme kaydedilemez.
+    if not should_use_supabase_db(supabase, req.user_id):
+        raise HTTPException(status_code=409, detail="Bu oturumda rutin düzenlemesi kaydedilemez.")
+
     row = _load_active_routine(supabase, req.user_id)
     current = row.get("active_routine") or []
     if not current:
@@ -2246,24 +2265,13 @@ def routine_active_edit(request: Request, req: RoutineEditsRequest):
     )
     routine, skipped = split_user_edits(merged)
 
-    if not should_use_supabase_db(supabase, req.user_id):
-        return RoutineActiveResponse(
-            user_id=req.user_id,
-            has_routine=bool(routine),
-            routine=routine,
-            assessment_id=(str(row["assessment_id"]) if row.get("assessment_id") else None),
-            created_at=(str(row["created_at"]) if row.get("created_at") else None),
-            skipped_steps=skipped,
-        )
-
     try:
-        (
-            supabase.table("routines")
-            .update({"active_routine": merged})
-            .eq("user_id", req.user_id)
-            .eq("is_active", True)
-            .execute()
-        )
+        write = supabase.table("routines").update({"active_routine": merged}).eq("user_id", req.user_id)
+        # Okuduğumuz satırı yaz. Birden fazla yürürlükte satır kalmışsa (eski kayıtlarda
+        # assessment_id boş olabiliyor) yalnız `is_active` ile yazmak diğerinin içeriğini de ezerdi.
+        assessment_id = row.get("assessment_id")
+        write = write.eq("assessment_id", assessment_id) if assessment_id else write.eq("is_active", True)
+        write.execute()
     except Exception as e:
         log.error("Rutin düzenlemesi kaydedilemedi: %s", type(e).__name__)
         raise HTTPException(status_code=502, detail="Rutin düzenlemesi şu an kaydedilemedi.")
@@ -2662,7 +2670,8 @@ def me_last_assessment(request: Request, user_id: str = Query(..., min_length=1)
         assessment_id=str(row.get("id") or "") or None,
         created_at=str(row.get("created_at") or "") or None,
         concern=str(row.get("concern") or ""),
-        severity_score=int(row.get("severity_score") or 5),
+        # `or 5` kullanılmaz: kayıtlı 0 skoru da 5 olurdu.
+        severity_score=_int_or(row.get("severity_score"), 5),
         lifestyle_data=lifestyle if isinstance(lifestyle, dict) else {},
         full_name=str(profile.get("full_name") or ""),
         age=int(age) if isinstance(age, (int, float)) else None,

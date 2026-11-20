@@ -154,10 +154,8 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
     await clearAnalyzeDraft(_draftUid);
     if (!mounted) return;
     setState(() {
-      _form.applyDraft(const {});
       final meta = context.read<AuthController>().user?.userMetadata;
-      _form.name.text = (meta?['full_name'] ?? '').toString();
-      _form.age.text = '';
+      _form.resetAnswers(name: (meta?['full_name'] ?? '').toString());
       _stressTest = false;
       _resumedFromDraft = false;
       _prefilledFromLast = false;
