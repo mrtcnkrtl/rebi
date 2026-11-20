@@ -196,7 +196,10 @@ class DayPlan {
 
 /// Rutin kategorileri — Dashboard'daki `useMemo` hesaplarının tamamı.
 class RoutineView {
-  RoutineView(this.routine) {
+  /// Kullanıcının plandan çıkardığı adımlar ([skipped_by_user]) hiçbir görünüme girmez: sunucu da
+  /// bunları `/today/plan` ve `/me/snapshot` yanıtlarından ayıklar, bu süzgeç cihazdaki eski
+  /// kopyalar ve çevrimdışı durumlar için ikinci güvencedir (bkz. `core/routine_edits.dart`).
+  RoutineView(List<RoutineItem> items) : routine = items.where((r) => r['skipped_by_user'] != true).toList() {
     productItems = routine.where((r) => !_lifestyleCategories.contains(r['category'])).toList();
     lifestyleItems = routine.where((r) => _lifestyleCategories.contains(r['category'])).toList();
     morningProducts = sortByStepOrder(productItems.where((r) => r['time'] == 'Sabah' || r['time'] == 'sabah'));

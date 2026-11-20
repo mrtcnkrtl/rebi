@@ -1009,6 +1009,14 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
                         fontSize: 15,
                         minHeight: 56,
                       ),
+                      const SizedBox(height: 12),
+                      SecondaryButton(
+                        onPressed: () => context.push('/dashboard/routine/edit'),
+                        icon: LucideIcons.listChecks,
+                        label: i18n.t('mobileRoutineEdit.entry'),
+                        fontSize: 15,
+                        minHeight: 56,
+                      ),
                       const SizedBox(height: 4),
                       TextButton(
                         onPressed: _openFullWizard,

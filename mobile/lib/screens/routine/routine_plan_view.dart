@@ -188,6 +188,17 @@ class _RoutinePlanViewState extends State<RoutinePlanView> {
       if (!widget.accepted) ...[_acceptCard(), _gap(16)],
       // Seçilen günün planı (hangi günün açık olduğu sahnedeki başlıkta yazar).
       ..._dayContent(day),
+      // Plan senin planın: yapmayacağın adımı çıkar, kendi adımlarını ekle (`/dashboard/routine/edit`).
+      if (widget.accepted) ...[
+        _gap(14),
+        SecondaryButton(
+          key: const Key('open-routine-edit'),
+          icon: LucideIcons.listChecks,
+          label: i18n.t('mobileRoutineEdit.entry'),
+          fontSize: 13.5,
+          onPressed: () => context.push('/dashboard/routine/edit'),
+        ),
+      ],
       if (v.dailyBalanceItem != null) ...[_gap(14), DailyBalanceCard(item: v.dailyBalanceItem, flowDebug: flowDebug, ctx: c)],
       if (v.dailyLifestyleItems.isNotEmpty) ...[
         _gap(14),

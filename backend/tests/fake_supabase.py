@@ -22,6 +22,7 @@ class FakeTable:
         self.unique_on: tuple[str, ...] = ()
         self.inserted: list[dict] = []
         self.upserted: list[dict] = []
+        self.updated: list[dict] = []
         self.deleted_count = 0
         self.max_rows: int | None = None
         self.select_calls = 0
@@ -59,6 +60,12 @@ class FakeTable:
         self.last_ignore_duplicates = ignore_duplicates
         return self
 
+    def update(self, payload):
+        self._op = "update"
+        self._payload = payload
+        self.updated.append(payload)
+        return self
+
     def delete(self):
         self._op = "delete"
         return self
@@ -69,6 +76,10 @@ class FakeTable:
 
     def in_(self, column, values):
         self.filters.append(("in", column, list(values)))
+        return self
+
+    def neq(self, column, value):
+        self.filters.append(("neq", column, value))
         return self
 
     def gt(self, column, value):
@@ -99,6 +110,8 @@ class FakeTable:
         for op, column, value in self.filters:
             cell = row.get(column)
             if op == "eq" and cell != value:
+                return False
+            if op == "neq" and cell == value:
                 return False
             if op == "in" and cell not in value:
                 return False
@@ -159,6 +172,14 @@ class FakeTable:
                         written.append(dict(existing))
                     else:
                         self.rows.append(dict(row))
+                        written.append(dict(row))
+                return Result(written)
+
+            if op == "update":
+                written = []
+                for row in self.rows:
+                    if self._matches(row):
+                        row.update(payload if isinstance(payload, dict) else {})
                         written.append(dict(row))
                 return Result(written)
 

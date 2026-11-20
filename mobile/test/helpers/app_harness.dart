@@ -218,6 +218,16 @@ class FakeBackend {
   /// `GET /me/assessment/last` hata döndürsün.
   bool lastAssessmentFails = false;
 
+  /// `GET /routine/active` yanıtı: yürürlükteki adımlar + kullanıcının çıkardıkları.
+  List<dynamic> activeRoutine = <dynamic>[];
+  List<dynamic> skippedSteps = <dynamic>[];
+
+  /// `GET /routine/active` hata döndürsün.
+  bool routineActiveFails = false;
+
+  /// `PUT /routine/active` bu durum koduyla yanıtlanır (null = normal).
+  int? routineEditStatus;
+
   /// Gün içi kayıt uçlarına ağ yokmuş gibi davranır (istek atılır, bağlantı hatası döner).
   bool ingestOffline = false;
 
@@ -357,6 +367,55 @@ class FakeBackend {
           case 'GET /me/history':
             if (historyFails) return http.Response('{"detail":"hata"}', 502);
             return ok(history);
+          case 'GET /routine/active':
+            if (routineActiveFails) return http.Response('{"detail":"hata"}', 502);
+            return ok({
+              'user_id': testUserId,
+              'has_routine': activeRoutine.isNotEmpty,
+              'routine': activeRoutine,
+              'skipped_steps': skippedSteps,
+              'assessment_id': 'a1',
+              'created_at': '2026-11-10T06:00:00+00:00',
+            });
+          case 'PUT /routine/active':
+            if (routineEditStatus != null) {
+              return http.Response.bytes(utf8.encode(jsonEncode({'detail': 'kaydedilemedi'})), routineEditStatus!,
+                  headers: {'content-type': 'application/json'});
+            }
+            // Sunucu gibi davranır: çıkarılanlar işaretlenir, kullanıcı adımları `source: "user"` ile eklenir.
+            final edits = (jsonDecode(req.body) as Map).cast<String, dynamic>();
+            final hidden = (edits['hidden'] as List? ?? const []).map((e) => '$e').toSet();
+            String keyOf(Map<String, dynamic> i) => '${i['time'] ?? ''}|${i['step_order'] ?? ''}|${i['action'] ?? ''}';
+            final engine = [
+              for (final raw in [...activeRoutine, ...skippedSteps])
+                if (raw is Map && raw['source'] != 'user')
+                  () {
+                    final item = raw.cast<String, dynamic>();
+                    final next = {...item}..remove('skipped_by_user');
+                    if (hidden.contains(keyOf(item))) next['skipped_by_user'] = true;
+                    return next;
+                  }(),
+            ];
+            final added = [
+              for (final raw in (edits['added'] as List? ?? const []).whereType<Map>())
+                {
+                  'time': raw['time'] ?? 'Sabah',
+                  'category': 'Bakım',
+                  'icon': '✍️',
+                  'step_order': 95,
+                  'action': raw['action'] ?? '',
+                  'detail': raw['detail'] ?? '',
+                  'source': 'user',
+                },
+            ];
+            activeRoutine = [...engine.where((i) => i['skipped_by_user'] != true), ...added];
+            skippedSteps = [...engine.where((i) => i['skipped_by_user'] == true)];
+            return ok({
+              'user_id': testUserId,
+              'has_routine': activeRoutine.isNotEmpty,
+              'routine': activeRoutine,
+              'skipped_steps': skippedSteps,
+            });
           case 'GET /me/assessment/last':
             if (lastAssessmentFails) return http.Response('{"detail":"hata"}', 502);
             return ok(lastAssessment ?? {'user_id': testUserId, 'found': false, 'synced': true});

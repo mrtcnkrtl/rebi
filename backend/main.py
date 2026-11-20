@@ -658,6 +658,13 @@ def _load_active_routine(supabase, user_id: str) -> dict:
         return {}
 
 
+def _active_routine_split(row: dict) -> tuple[list[dict], list[dict]]:
+    """Satırdaki rutini (yürürlükteki adımlar, kullanıcının çıkardığı adımlar) olarak ayırır."""
+    from routine_edits import split_user_edits
+
+    return split_user_edits(row.get("active_routine") or [])
+
+
 def _checkin_done_today(supabase, user_id: str, log_date: str) -> bool:
     if is_demo_user_id(user_id):
         return demo_checkin_already_today(user_id, log_date)
@@ -1506,6 +1513,24 @@ class RoutineActiveResponse(BaseModel):
     routine: list[dict] = []
     assessment_id: Optional[str] = None
     created_at: Optional[str] = None
+    # Kullanıcının kendi planından çıkardığı adımlar: plana girmezler, "geri al" için gönderilir.
+    skipped_steps: list[dict] = []
+
+
+class UserRoutineStep(BaseModel):
+    """Kullanıcının kendi yazdığı adım. Rebi'nin önerisi değildir; `source: "user"` ile işaretlenir."""
+
+    action: str = Field(..., min_length=1, max_length=90)
+    time: Literal["Sabah", "Akşam", "Günlük"] = "Sabah"
+    detail: str = Field("", max_length=240)
+
+
+class RoutineEditsRequest(BaseModel):
+    user_id: str
+    # Çıkarılan adımların kimlikleri (`routine_edits.step_key`). Her istek tam listedir:
+    # listede olmayan adımın işareti kalkar, yani aynı uç hem çıkarmayı hem geri almayı yapar.
+    hidden: list[str] = Field(default_factory=list, max_length=80)
+    added: list[UserRoutineStep] = Field(default_factory=list, max_length=10)
 
 
 SkinTypeName = Literal["normal", "dry", "oily", "combination", "sensitive"]
@@ -2181,13 +2206,75 @@ def routine_active(request: Request, user_id: str = Query(..., min_length=1)):
     """Mobil ana ekran: yürürlükteki rutin (üretmez, yalnızca okur)."""
     enforce_supabase_user(request, user_id)
     row = _load_active_routine(get_supabase(), user_id)
-    routine = row.get("active_routine") or []
+    routine, skipped = _active_routine_split(row)
     return RoutineActiveResponse(
         user_id=user_id,
         has_routine=bool(routine),
         routine=routine,
         assessment_id=(str(row["assessment_id"]) if row.get("assessment_id") else None),
         created_at=(str(row["created_at"]) if row.get("created_at") else None),
+        skipped_steps=skipped,
+    )
+
+
+@app.put(
+    "/routine/active",
+    response_model=RoutineActiveResponse,
+    tags=["routine"],
+    dependencies=[Depends(rate_limit_dependency(LIMIT_USER_PROFILE_WRITE))],
+)
+def routine_active_edit(request: Request, req: RoutineEditsRequest):
+    """
+    Kullanıcının kendi düzenlemeleri: yapmayacağı adımı plandan çıkarır, kendi adımını ekler.
+
+    Rebi'nin ürettiği adımların metni değişmez — istemci yalnızca hangi adımın çıkarıldığını ve kendi
+    yazdığı adımları gönderir. Çıkarılan adım silinmez, işaretlenir; "geri al" aynı uçla yapılır.
+    """
+    enforce_supabase_user(request, req.user_id)
+    from routine_edits import apply_routine_edits, split_user_edits
+
+    supabase = get_supabase()
+    row = _load_active_routine(supabase, req.user_id)
+    current = row.get("active_routine") or []
+    if not current:
+        raise HTTPException(status_code=404, detail="Düzenlenecek bir rutin yok; önce analiz tamamlanmalı.")
+
+    merged = apply_routine_edits(
+        current,
+        hidden=req.hidden,
+        added=[step.model_dump() for step in req.added],
+    )
+    routine, skipped = split_user_edits(merged)
+
+    if not should_use_supabase_db(supabase, req.user_id):
+        return RoutineActiveResponse(
+            user_id=req.user_id,
+            has_routine=bool(routine),
+            routine=routine,
+            assessment_id=(str(row["assessment_id"]) if row.get("assessment_id") else None),
+            created_at=(str(row["created_at"]) if row.get("created_at") else None),
+            skipped_steps=skipped,
+        )
+
+    try:
+        (
+            supabase.table("routines")
+            .update({"active_routine": merged})
+            .eq("user_id", req.user_id)
+            .eq("is_active", True)
+            .execute()
+        )
+    except Exception as e:
+        log.error("Rutin düzenlemesi kaydedilemedi: %s", type(e).__name__)
+        raise HTTPException(status_code=502, detail="Rutin düzenlemesi şu an kaydedilemedi.")
+
+    return RoutineActiveResponse(
+        user_id=req.user_id,
+        has_routine=bool(routine),
+        routine=routine,
+        assessment_id=(str(row["assessment_id"]) if row.get("assessment_id") else None),
+        created_at=(str(row["created_at"]) if row.get("created_at") else None),
+        skipped_steps=skipped,
     )
 
 
@@ -2238,7 +2325,8 @@ def today_plan_endpoint(
         weather = dict(WEATHER_FALLBACK)
 
     row = _load_active_routine(supabase, user_id)
-    routine = row.get("active_routine") or []
+    # Kullanıcının çıkardığı adımlar plana, hatırlatıcılara ve ilerlemeye girmez.
+    routine, _ = _active_routine_split(row)
     checkin_done = _checkin_done_today(supabase, user_id, today)
     products_out = _products_out(supabase, user_id, date.fromisoformat(today))
 
@@ -2602,7 +2690,7 @@ def me_snapshot(
     supabase = get_supabase()
     today = str(_local_today(utc_offset_minutes))
     row = _load_active_routine(supabase, user_id)
-    routine = row.get("active_routine") or []
+    routine, _ = _active_routine_split(row)
     synced = should_use_supabase_db(supabase, user_id)
 
     return UserSnapshotResponse(
@@ -4435,7 +4523,7 @@ def _concern_resolved_status_payload(
     if not items and should_use_supabase_db(supabase, user_id):
         try:
             row = _load_active_routine(supabase, user_id)
-            items = list(row.get("active_routine") or [])
+            items, _ = _active_routine_split(row)
         except Exception:
             items = []
 
@@ -4746,6 +4834,14 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
         "day_setting": req.day_setting,
     }
 
+    # Kullanıcının kendi düzenlemeleri uyarlamaya girmez: plandan çıkardığı adımlar bugün geri gelmez
+    # ve kendi yazdığı adımlar Rebi'nin uyarlama makinesinden geçip değişmez (bkz. routine_edits.py).
+    from routine_edits import is_user_step, split_user_edits
+
+    _effective, _user_skipped = split_user_edits(current_routine)
+    _user_added = [i for i in _effective if is_user_step(i)]
+    current_routine = [i for i in _effective if not is_user_step(i)]
+
     adaptation = adapt_existing_routine(
         current_routine=current_routine,
         daily_data=daily_data,
@@ -4910,7 +5006,8 @@ def daily_checkin(request: Request, req: DailyCheckinRequest):
                 current_routine, adaptation["adapted_items"]
             ):
                 supabase.table("routines").update({
-                    "active_routine": adaptation["adapted_items"],
+                    # Uyarlanan motor adımları + kullanıcının çıkardıkları (geri alınabilsin) + kendi adımları.
+                    "active_routine": [*adaptation["adapted_items"], *_user_skipped, *_user_added],
                 }).eq("user_id", req.user_id).eq("is_active", True).execute()
 
             log.info("Daily log kaydedildi: changes=%d", len(adaptation["changes"]))
