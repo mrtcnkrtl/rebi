@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:rebi/core/last_assessment.dart';
 import 'package:rebi/core/reminder_schedule.dart';
 import 'package:rebi/core/reminder_settings.dart';
 import 'package:rebi/core/today_plan.dart';
@@ -9,6 +10,7 @@ import 'package:rebi/core/user_history.dart';
 import 'package:rebi/core/user_profile.dart';
 import 'package:rebi/core/user_snapshot.dart';
 import 'package:rebi/core/weather_decisions.dart';
+import 'package:rebi/screens/analyze/analyze_form.dart';
 
 /// Backend sözleşmesi (`../contract/*.json`): fixture'lar sunucunun gerçek yanıtlarından üretilir
 /// (`backend/tests/test_contract.py`) ve backend testi yanıtların bu şekli koruduğunu doğrular.
@@ -223,6 +225,42 @@ void main() {
     expect(p.gender, 'female');
     expect(p.city, 'İstanbul');
     expect(p.synced, isTrue);
+  });
+
+  test('GET /me/assessment/last sihirbazı önceki cevaplarla doldurur', () {
+    final last = LastAssessment.fromJson(contract('me_assessment_last'));
+
+    expect(last.found, isTrue);
+    expect(last.concern, 'acne');
+    expect(last.fullName, 'Ayşe Yılmaz');
+    expect(last.age, 29);
+    expect(last.gender, 'female');
+
+    final answers = last.toDraftAnswers();
+    expect(answers['age'], '29');
+    expect(answers['gender'], 'female');
+    expect(answers['skinType'], 'oily');
+    expect(answers['concerns'], ['acne']);
+    // Motorun sol/sağ yanak ayrımı sihirbazın tek "yanak" seçeneğine döner.
+    expect((answers['concernZones'] as Map)['acne'], ['cheeks']);
+    expect((answers['concernTimeline'] as Map)['acne'], {'duration': '1-3', 'frequency': 'weekly'});
+    expect(answers['triggers'], ['stress']);
+    expect(answers['pastTreatments'], ['cleanser']);
+    expect(answers['expectations'], ['acne_less']);
+    expect(answers['makeupRemoval'], 'double');
+    // Adet tarihi saklanmıyor: döngü evresi taşınmaz, yeniden sorulur.
+    expect(answers['hormonalStatus'], '');
+
+    // Cevaplar forma yazılabilmeli (sihirbazın beklediği biçim).
+    final form = AnalyzeForm();
+    form.applyDraft(answers);
+    expect(form.age.text, '29');
+    expect(form.skinType, 'oily');
+    expect(form.concerns, ['acne']);
+    expect(form.concernZones['acne'], ['cheeks']);
+    expect(form.timelineReadyFor('acne'), isTrue);
+    expect(form.nutrition['sugar'], 2);
+    form.dispose();
   });
 
   test('GET /me/history', () {

@@ -317,7 +317,16 @@
     "photoContextUnsure": "Emin değilim",
     "photoTooDark": "Fotoğraf karanlık görünüyor; mümkünse doğal ışıkta, yüze yakın çek.",
     "photoTooBlurry": "Fotoğraf bulanık olabilir; sabit tut veya odak kontrolü yap.",
-    "photoQualityOk": "Foto kalitesi genel olarak uygun görünüyor."
+    "photoQualityOk": "Foto kalitesi genel olarak uygun görünüyor.",
+    "again": {
+      "body": "Önceki cevaplarınla açabilirim: değişenleri düzeltmen yeter, her soruyu baştan yazmana gerek yok.",
+      "draftBody": "Yarım kalan bir analizin var. Kaldığın yerden devam edebilir ya da baştan başlayabilirsin.",
+      "resume": "Kaldığım yerden devam et",
+      "useLast": "Önceki cevaplarımla aç",
+      "fresh": "Baştan başla",
+      "resumedNote": "Kaldığın yerden devam ediyorsun; cevaplarının hepsi burada.",
+      "prefilledNote": "Önceki analizindeki cevaplarla dolduruldu; değişenleri düzelt."
+    }
   },
   "checkin": {
     "todayReport": "Bugünün Raporu",
@@ -664,5 +673,39 @@
     "teamBody": "Gönderdiğin her not doğrudan bize ulaşır.",
     "ok": "Keşfetmeye başla",
     "report": "Geri bildirim gönder"
+  },
+  "routineEdit": {
+    "title": "Rutinimi düzenle",
+    "subtitle": "Rebi'nin kurduğu plan senin planın: yapmayacağın adımı çıkar, kendi adımlarını ekle.",
+    "hint": "Çıkardığın adım silinmez; buradan geri alabilirsin. Rebi'nin adımlarının metnini değiştirmiyoruz, çünkü sıra ve sıklık cildinin güvenliğine göre kuruluyor.",
+    "rebiSteps": "Rebi'nin önerdiği adımlar",
+    "rebiStepsHint": "Kapattığın adım planına, bugünün listesine ve hatırlatıcılara girmez.",
+    "mySteps": "Kendi adımların",
+    "myStepsHint": "Senin yazdığın adımlar Rebi'nin önerisi olarak gösterilmez.",
+    "myStepsEmpty": "Henüz kendi adımın yok.",
+    "myStepsFull": "En çok {{n}} kendi adımını ekleyebilirsin.",
+    "addStep": "Kendi adımımı ekle",
+    "removeStep": "Adımı sil",
+    "addTitle": "Kendi adımın",
+    "editTitle": "Adımı düzenle",
+    "addBody": "Ne yapacağını kısaca yaz; istersen bir not ekle.",
+    "actionLabel": "Adım",
+    "actionHint": "Örn. dudak balmı",
+    "detailLabel": "Not (isteğe bağlı)",
+    "detailHint": "Örn. yatmadan önce",
+    "addSave": "Ekle",
+    "dropped": "plandan çıkardın",
+    "save": "Değişiklikleri kaydet",
+    "saved": "Rutinin güncellendi.",
+    "saveFailed": "Rutin düzenlemesi şu an kaydedilemedi.",
+    "offline": "Sunucuya ulaşılamadı; tarayıcıdaki kopya gösteriliyor. Kaydetmek için bağlantı gerekir.",
+    "noRoutine": "Düzenlenecek bir rutin yok. Önce analizi tamamla.",
+    "notSynced": "Misafir kullanımda rutin düzenlemesi kaydedilmez.",
+    "entry": "Rutinimi kendime göre düzenle",
+    "time": {
+      "Sabah": "Sabah",
+      "Akşam": "Akşam",
+      "Günlük": "Gün içinde"
+    }
   }
 }

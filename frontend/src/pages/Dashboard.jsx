@@ -14,6 +14,7 @@ import {
 import RoutineStepChoices from "../components/RoutineStepChoices";
 import { applyChosenOptionIds, getChosenOption, withResolvedChoices } from "../lib/routineStepChoices";
 import { friendlyRoutineTitle } from "../lib/routineDisplay";
+import { activeRoutineItems } from "../lib/routineEdits";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import AiDisclaimer from "../components/AiDisclaimer";
 import { useTranslation } from "react-i18next";
@@ -21,7 +22,7 @@ import { ingestDailyTrackingEvent } from "../lib/dailyTracking";
 import {
   Sparkles, PlusCircle, CloudSun, Droplets, Sun, Thermometer,
   Calendar, ArrowRight, Leaf, AlertTriangle, Heart, Apple,
-  Droplet, Moon, MessageCircle, ClipboardCheck, Info,
+  Droplet, Moon, MessageCircle, ClipboardCheck, Info, ListChecks,
   CalendarDays, Activity,
 } from "lucide-react";
 
@@ -223,7 +224,8 @@ export default function Dashboard() {
     }
 
     return {
-      routine,
+      // Kullanıcının plandan çıkardığı adımlar hiçbir görünüme girmez (bkz. lib/routineEdits.js).
+      routine: activeRoutineItems(routine),
       weather: st.weather ?? snap?.weather ?? null,
       userName: st.userName ?? snap?.userName ?? user?.user_metadata?.full_name ?? t("common.user", { defaultValue: "User" }),
       photoUrl: st.photoUrl ?? snap?.photoUrl ?? null,
@@ -762,6 +764,22 @@ export default function Dashboard() {
             <div className="flex-1">
               <h3 className="text-sm font-bold text-gray-800">{t("dashboard.dailyCheckinTitle")}</h3>
               <p className="text-xs text-gray-500">{t("dashboard.feelsTodayHint")}</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+          </Link>
+        )}
+
+        {/* Plan senin planın: yapmayacağın adımı çıkar, kendi adımlarını ekle. */}
+        {showDailyCheckIn && (
+          <Link to="/dashboard/routine/edit"
+            className="card mb-5 flex items-center gap-3 hover:shadow-md transition-shadow cursor-pointer group">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ backgroundColor: theme.primaryLight }}>
+              <ListChecks className="w-5 h-5" style={{ color: theme.primary }} />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-gray-800">{t("routineEdit.entry")}</h3>
+              <p className="text-xs text-gray-500">{t("routineEdit.rebiStepsHint")}</p>
             </div>
             <ArrowRight className="w-5 h-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
           </Link>

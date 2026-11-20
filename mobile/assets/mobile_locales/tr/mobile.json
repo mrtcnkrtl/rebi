@@ -1187,7 +1187,7 @@
     "decrease": "Azalt",
     "increase": "Artır",
     "leaveTitle": "Analizden çıkılsın mı?",
-    "leaveBody": "Şimdiye kadarki cevapların kaydedilmez.",
+    "leaveBody": "Cevapların cihazında kalır; döndüğünde kaldığın yerden devam edebilirsin.",
     "leaveStay": "Devam et",
     "leaveExit": "Çık",
     "intro": {
@@ -1365,6 +1365,9 @@
       "locationHint": "Rutini bulunduğun yerin hava ve UV bilgisine göre ayarlarım. İsteğe bağlı.",
       "locationSet": "Konum alındı",
       "create": "Rutinimi oluştur"
+    },
+    "again": {
+      "title": "Yeni analiz"
     }
   },
   "mobileShelf": {
@@ -1740,5 +1743,39 @@
   "mobileAds": {
     "label": "Reklam",
     "removeAds": "Reklamları kaldır"
+  },
+  "mobileRoutineEdit": {
+    "title": "Rutinimi düzenle",
+    "subtitle": "Rebi'nin kurduğu plan senin planın: yapmayacağın adımı çıkar, kendi adımlarını ekle.",
+    "hint": "Çıkardığın adım silinmez; buradan geri alabilirsin. Rebi'nin adımlarının metnini değiştirmiyoruz, çünkü sıra ve sıklık cildinin güvenliğine göre kuruluyor.",
+    "rebiSteps": "Rebi'nin önerdiği adımlar",
+    "rebiStepsHint": "Kapattığın adım planına, bugünün listesine ve hatırlatıcılara girmez.",
+    "mySteps": "Kendi adımların",
+    "myStepsHint": "Senin yazdığın adımlar Rebi'nin önerisi olarak gösterilmez.",
+    "myStepsEmpty": "Henüz kendi adımın yok.",
+    "myStepsFull": "En çok {{n}} kendi adımını ekleyebilirsin.",
+    "addStep": "Kendi adımımı ekle",
+    "removeStep": "Adımı sil",
+    "addTitle": "Kendi adımın",
+    "editTitle": "Adımı düzenle",
+    "addBody": "Ne yapacağını kısaca yaz; istersen bir not ekle.",
+    "actionLabel": "Adım",
+    "actionHint": "Örn. dudak balmı",
+    "detailLabel": "Not (isteğe bağlı)",
+    "detailHint": "Örn. yatmadan önce",
+    "addSave": "Ekle",
+    "dropped": "plandan çıkardın",
+    "save": "Değişiklikleri kaydet",
+    "saved": "Rutinin güncellendi.",
+    "saveFailed": "Rutin düzenlemesi şu an kaydedilemedi.",
+    "offline": "Sunucuya ulaşılamadı; cihazdaki kopya gösteriliyor. Kaydetmek için bağlantı gerekir.",
+    "noRoutine": "Düzenlenecek bir rutin yok. Önce analizi tamamla.",
+    "notSynced": "Misafir kullanımda rutin düzenlemesi kaydedilmez.",
+    "entry": "Rutinimi kendime göre düzenle",
+    "time": {
+      "Sabah": "Sabah",
+      "Akşam": "Akşam",
+      "Günlük": "Gün içinde"
+    }
   }
 }

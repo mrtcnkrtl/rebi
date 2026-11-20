@@ -14,6 +14,7 @@ import 'screens/legal_screen.dart';
 import 'screens/me_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/reminders_screen.dart';
+import 'screens/routine/routine_edit_screen.dart';
 import 'screens/shelf_screen.dart';
 import 'screens/subscribe_screen.dart';
 import 'screens/themes_screen.dart';
@@ -179,6 +180,7 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
           GoRoute(path: '/dashboard/themes', pageBuilder: (context, state) => _fadeThroughPage(state, const ThemesScreen())),
           GoRoute(path: '/dashboard/subscribe', pageBuilder: (context, state) => _fadeThroughPage(state, const SubscribeScreen())),
           GoRoute(path: '/dashboard/routine', pageBuilder: (context, state) => _fadeThroughPage(state, const DashboardScreen(planOnly: true))),
+          GoRoute(path: '/dashboard/routine/edit', pageBuilder: (context, state) => _fadeThroughPage(state, const RoutineEditScreen())),
           GoRoute(path: '/dashboard/profile', pageBuilder: (context, state) => _fadeThroughPage(state, const MeScreen())),
           GoRoute(path: '/dashboard/account', pageBuilder: (context, state) => _fadeThroughPage(state, const ProfileScreen())),
           GoRoute(path: '/dashboard/history', pageBuilder: (context, state) => _fadeThroughPage(state, const HistoryScreen())),

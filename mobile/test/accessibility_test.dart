@@ -157,6 +157,18 @@ void main() {
       await pumpApp(t, location: '/dashboard/routine', prefs: accepted(), backend: populated());
       await tapFinder(t, find.text(tr('dashboard.whySkincareButton')).first);
     }),
+    ('Rutin · düzenleme', (t) {
+      // Dolu ekran: motorun adımları + kullanıcının çıkardığı ve kendi eklediği adım.
+      final b = populated()
+        ..activeRoutine = [
+          ...(routineFixture['routine'] as List),
+          {'time': 'Akşam', 'category': 'Bakım', 'icon': '✍️', 'step_order': 95, 'action': 'Dudak balmı', 'detail': 'Yatmadan', 'source': 'user'},
+        ]
+        ..skippedSteps = [
+          {'time': 'Sabah', 'category': 'Koruma', 'icon': '☀️', 'step_order': 40, 'action': 'SPF 50', 'detail': 'Son adım.', 'skipped_by_user': true},
+        ];
+      return pumpApp(t, location: '/dashboard/routine/edit', prefs: accepted(), backend: b);
+    }),
     ('Sohbet · boş', (t) => pumpApp(t, location: '/dashboard/chat', prefs: accepted(), backend: populated())),
     ('Sohbet · konuşma', (t) async {
       await pumpApp(t, location: '/dashboard/chat', prefs: accepted(), backend: populated()..chatReply = 'Yanıt:\n• Birinci madde\n• İkinci madde');

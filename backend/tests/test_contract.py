@@ -99,6 +99,19 @@ def _seed(monkeypatch) -> FakeSupabase:
         assessments=[{
             "id": "a1", "user_id": USER_ID, "concern": "acne", "severity_score": 4,
             "created_at": f"{yesterday}T08:00:00+00:00",
+            # Yeni analizde sihirbazı önceki cevaplarla açan ham veri.
+            "lifestyle_data": {
+                "skin_type": "oily", "water_intake": 2.0, "sleep_hours": 7.0,
+                "concerns": [{"id": "acne", "severity_score": 4, "zones": ["left_cheek", "right_cheek"],
+                              "duration": "1-3", "frequency": "weekly", "note": ""}],
+                "triggers": ["stress"], "past_treatments": ["cleanser"], "expectations": ["acne_less"],
+                "nutrition": {"fastfood": 1, "sugar": 2, "dairy": 0, "veggies": 3},
+                "actives_experience": "occasional", "actives_tolerance": {"bha": "good"},
+                "makeup_frequency": 3, "makeup_removal": "double",
+                "special_flags": {}, "undereye_look": {},
+                "shaving_frequency": 0, "shaving_after": "",
+                "is_pregnant": False, "cycle_phase": "luteal",
+            },
         }],
         reminder_settings=[{
             "user_id": USER_ID,
@@ -202,6 +215,13 @@ def test_me_history_contract(monkeypatch, client, headers):
     _check("me_history", r.json())
 
 
+def test_last_assessment_contract(monkeypatch, client, headers):
+    _seed(monkeypatch)
+    r = client.get("/me/assessment/last", params={"user_id": USER_ID}, headers=headers)
+    assert r.status_code == 200, r.text
+    _check("me_assessment_last", r.json())
+
+
 def test_me_profile_contract(monkeypatch, client, headers):
     _seed(monkeypatch)
     r = client.get("/me/profile", params={"user_id": USER_ID}, headers=headers)
@@ -293,6 +313,6 @@ def test_every_contract_fixture_is_exercised_by_a_test():
     names = {p.stem for p in CONTRACT_DIR.glob("*.json")} if CONTRACT_DIR.exists() else set()
     covered = {
         "me_snapshot", "today_plan", "reminder_settings", "me_history", "me_profile", "daily_tracking_ingest",
-        "reminder_slots",
+        "reminder_slots", "me_assessment_last",
     }
     assert names <= covered, f"Testi olmayan sözleşme dosyası: {sorted(names - covered)}"

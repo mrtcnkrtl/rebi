@@ -30,6 +30,7 @@ void main() {
       for (final loc in [
         '/dashboard',
         '/dashboard/routine',
+        '/dashboard/routine/edit',
         '/dashboard/chat',
         '/dashboard/history',
         '/dashboard/profile',
