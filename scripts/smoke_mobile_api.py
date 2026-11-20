@@ -191,6 +191,11 @@ def run(api: str, token: str, write: bool) -> int:
     for label, path, params in (
         ("GET /chat/history", "/chat/history", {"user_id": uid, "surface": "general", "limit": 1}),
         ("GET /chat_usage", "/chat_usage", {"user_id": uid}),
+        # Rutin düzenleme ekranının okuduğu uç (çıkarılan adımlar ayrı alanda gelir).
+        ("GET /routine/active", "/routine/active", {"user_id": uid}),
+        # Yeni analizde sihirbazı önceki cevaplarla açan uç. Sözleşmeye karşı denetlenmez:
+        # analizi olmayan hesapta `found: false` ve boş `lifestyle_data` döner.
+        ("GET /me/assessment/last", "/me/assessment/last", {"user_id": uid}),
     ):
         status, body, seconds = call("GET", f"{api}{path}?{q(params)}", token)
         if status == 200:
