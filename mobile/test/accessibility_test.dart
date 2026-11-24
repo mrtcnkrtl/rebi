@@ -8,6 +8,7 @@ import 'package:rebi/core/device_location.dart';
 import 'package:rebi/core/routine_tracking.dart';
 import 'package:rebi/screens/profile_screen.dart' show debugAccountAvailable;
 import 'package:rebi/screens/today/today_clock.dart';
+import 'package:rebi/state/auth_controller.dart' show debugAppleSignInAvailable, debugGoogleSignInAvailable;
 import 'package:rebi/ui/tw.dart';
 
 import 'auth_flow_test.dart' show FakeAuth;
@@ -266,6 +267,15 @@ void main() {
     }),
     ('Sohbet · oturumsuz davet', (t) => pumpApp(t, location: '/rebi', loggedIn: false)),
     ('Giriş', (t) => pumpApp(t, location: '/auth', loggedIn: false)),
+    ('Giriş · Apple ve Google (iOS)', (t) {
+      debugAppleSignInAvailable = true;
+      debugGoogleSignInAvailable = true;
+      addTearDown(() {
+        debugAppleSignInAvailable = null;
+        debugGoogleSignInAvailable = null;
+      });
+      return pumpApp(t, location: '/auth?mode=signup', loggedIn: false);
+    }),
     ('Giriş · e-posta kodu', (t) async {
       await pumpApp(t, location: '/auth?mode=signup', loggedIn: false, authController: FakeAuth());
       await t.enterText(find.byType(TextFormField).at(0), 'Ayşe Test');

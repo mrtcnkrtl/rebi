@@ -47,6 +47,21 @@ class FakeAuth extends AuthController {
     return googleResult;
   }
 
+  /// `signInWithApple` sonucu; [appleUser] verilirse Apple sayfasından dönüş gibi `signedIn` olayı yayılır
+  /// (gerçekte oturum tarayıcıya çıkmadan, uygulamanın içinde kurulur).
+  AuthActionResult appleResult = const AuthActionResult();
+  User? appleUser;
+
+  @override
+  Future<AuthActionResult> signInWithApple() async {
+    calls.add('apple');
+    final u = appleUser;
+    if (appleResult.ok && u != null) {
+      debugEmitAuthState(AuthState(AuthChangeEvent.signedIn, Session(accessToken: 'tok', tokenType: 'bearer', user: u)));
+    }
+    return appleResult;
+  }
+
   @override
   Future<SignUpResult> signUp(String email, String password, String fullName, {ConsentPermissions? consent}) async {
     calls.add('signUp $email $fullName');
@@ -652,7 +667,7 @@ void main() {
       expect(fake.calls, ['google']);
     });
 
-    testWidgets('iOS gibi kapalı platformda gösterilmez', (tester) async {
+    testWidgets('kapalı platformda (ve Apple de yoksa) gösterilmez; e-posta ayracı da çıkmaz', (tester) async {
       debugGoogleSignInAvailable = false;
       await pumpApp(tester, location: '/auth', loggedIn: false, authController: FakeAuth());
       expect(google(), findsNothing);
@@ -723,6 +738,128 @@ void main() {
       expect(find.text(tr('mobileAuth.googleFailed')), findsOneWidget);
       expect(find.text(tr('mobileAuth.errLinkInvalid')), findsNothing);
       expect(fake.linkError, isNull);
+    });
+  });
+
+  group('Apple ile devam et', () {
+    tearDown(() {
+      debugAppleSignInAvailable = null;
+      debugGoogleSignInAvailable = null;
+    });
+
+    Finder apple() => find.byKey(const Key('auth-apple'));
+    Finder google() => find.byKey(const Key('auth-google'));
+
+    /// iOS: Apple ve Google birlikte.
+    Future<Harness> pumpIos(WidgetTester tester, {required FakeAuth auth, String location = '/auth', FakeBackend? backend}) {
+      debugAppleSignInAvailable = true;
+      debugGoogleSignInAvailable = true;
+      return pumpApp(tester, location: location, loggedIn: false, authController: auth, backend: backend);
+    }
+
+    testWidgets('iOS\'ta Apple düğmesi Google\'ın üstünde ve aynı genişlikte durur (App Store 4.8)', (tester) async {
+      await pumpIos(tester, auth: FakeAuth());
+      expect(apple(), findsOneWidget);
+      expect(google(), findsOneWidget);
+      final a = tester.getRect(apple());
+      final g = tester.getRect(google());
+      expect(a.top, lessThan(g.top), reason: 'Apple üstte');
+      expect(a.width, moreOrLessEquals(g.width, epsilon: 0.5));
+      expect(a.height, greaterThanOrEqualTo(44), reason: 'dokunma hedefi');
+    });
+
+    testWidgets('Android\'de Apple düğmesi yok, Google var', (tester) async {
+      await pumpApp(tester, location: '/auth', loggedIn: false, authController: FakeAuth());
+      expect(apple(), findsNothing);
+      expect(google(), findsOneWidget);
+    });
+
+    testWidgets('parola sıfırlama kipinde iki düğme de yok', (tester) async {
+      await pumpIos(tester, auth: FakeAuth());
+      await tapFinder(tester, find.byKey(const Key('auth-forgot')));
+      expect(apple(), findsNothing);
+      expect(google(), findsNothing);
+    });
+
+    testWidgets('kayıtta rıza notu iki yolu da anlatır', (tester) async {
+      await pumpIos(tester, auth: FakeAuth(), location: '/auth?mode=signup');
+      expect(find.text(tr('mobileAuth.socialNote')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.googleNote')), findsNothing);
+    });
+
+    testWidgets('yalnız Apple varsa rıza notu Apple\'ı anlatır', (tester) async {
+      debugAppleSignInAvailable = true;
+      debugGoogleSignInAvailable = false;
+      await pumpApp(tester, location: '/auth?mode=signup', loggedIn: false, authController: FakeAuth());
+      expect(apple(), findsOneWidget);
+      expect(find.text(tr('mobileAuth.appleNote')), findsOneWidget);
+    });
+
+    testWidgets('oturum açılır ve panele geçilir; rızası olmayana rıza kutusu açılır', (tester) async {
+      final backend = FakeBackend()
+        ..consentMissing = true
+        ..snapshot = {
+          ...FakeBackend().snapshot,
+          'consent': {'legal_version': 'v2', 'legal_accepted': false, 'ai_processing_allowed': false},
+        };
+      final fake = FakeAuth()..appleUser = fakeUser();
+      final h = await pumpIos(tester, auth: fake, backend: backend);
+      await tapFinder(tester, apple());
+      await settle(tester, 8);
+      expect(fake.calls, ['apple']);
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+      expect(find.text(tr('common.consentRecoveryTitle')), findsOneWidget);
+    });
+
+    testWidgets('Apple sayfası kapatılırsa hata gösterilmez, düğme yeniden kullanılabilir', (tester) async {
+      final fake = FakeAuth()..appleResult = const AuthActionResult(error: appleCanceledError, kind: AuthErrorKind.canceled);
+      await pumpIos(tester, auth: fake);
+      await tapFinder(tester, apple());
+      expect(find.text(tr('mobileAuth.appleFailed')), findsNothing);
+      expect(find.text(tr('mobileAuth.appleUnavailable')), findsNothing);
+      await tapFinder(tester, apple());
+      expect(fake.calls, ['apple', 'apple']);
+    });
+
+    testWidgets('yetki eksikse / Apple hata verirse anlaşılır mesaj gösterilir', (tester) async {
+      final fake = FakeAuth()..appleResult = const AuthActionResult(error: 'Bad state: Apple sign-in unavailable: unknown');
+      await pumpIos(tester, auth: fake);
+      await tapFinder(tester, apple());
+      expect(find.text(tr('mobileAuth.appleFailed')), findsOneWidget);
+    });
+
+    testWidgets('Supabase panelinde Apple kapalıysa "şu an kullanılamıyor" denir (Google mesajı değil)', (tester) async {
+      final fake = FakeAuth()
+        ..appleResult = const AuthActionResult(error: appleProviderDisabledError, kind: AuthErrorKind.providerDisabled);
+      await pumpIos(tester, auth: fake);
+      await tapFinder(tester, apple());
+      expect(find.text(tr('mobileAuth.appleUnavailable')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.googleUnavailable')), findsNothing);
+      expect(find.text(tr('mobileAuth.appleFailed')), findsNothing);
+    });
+
+    testWidgets('ağ yoksa ağ mesajı gösterilir', (tester) async {
+      final fake = FakeAuth()
+        ..appleResult = const AuthActionResult(error: 'SocketException', networkError: true, kind: AuthErrorKind.network);
+      await pumpIos(tester, auth: fake);
+      await tapFinder(tester, apple());
+      expect(find.text(tr('mobileAuth.errNetwork')), findsOneWidget);
+    });
+
+    test('Apple sağlayıcı durumu /auth/v1/settings yanıtından okunur', () async {
+      MockClient reply(int code, String body) => MockClient((req) async {
+            expect(req.url.toString(), 'https://x.supabase.co/auth/v1/settings');
+            return http.Response(body, code);
+          });
+      const base = 'https://x.supabase.co';
+      expect(await fetchProviderEnabled('apple', client: reply(200, '{"external":{"apple":false}}'), baseUrl: base), isFalse);
+      expect(await fetchProviderEnabled('apple', client: reply(200, '{"external":{"apple":true}}'), baseUrl: base), isTrue);
+      expect(
+        await fetchProviderEnabled('apple', client: reply(200, '{"external":{"google":true}}'), baseUrl: base),
+        isNull,
+        reason: 'yanıtta yoksa deneme engellenmez',
+      );
+      expect(await fetchProviderEnabled('apple', baseUrl: ''), isNull);
     });
   });
 }

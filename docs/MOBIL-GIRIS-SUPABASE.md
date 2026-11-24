@@ -78,7 +78,11 @@ Yasal metinlerin okunabileceği yerler: kayıt ekranındaki bağlantılar, karş
 
 Testler: `mobile/test/auth_flow_test.dart` (34 test: hata sınıflandırma, kayıtlı e-posta, onaysız giriş, tekrar gönder, **e-posta onay kodu**
 (otomatik gönderim, yanlış kod, bekleme süresi, "Onayladım", uygulamaya dönünce otomatik giriş), parolamı unuttum,
-sıfırlama oturumu, geçersiz bağlantı, girişte rıza kutusu yok, kayıttaki rızanın ilk girişte yazılması). Supabase'e gerçek istek atılmaz.
+sıfırlama oturumu, geçersiz bağlantı, girişte rıza kutusu yok, kayıttaki rızanın ilk girişte yazılması,
+**Apple ile devam et** (iOS'ta Google'ın üstünde ve aynı boyutta, Android'de yok, vazgeçme, yetki eksikliği,
+sağlayıcı kapalı, ağ yok)). `test/native_apple_sign_in_test.dart` Apple'ın yerel sayfasını sahteleyip nonce'un
+özetlenerek gittiğini ve ad/e-posta okumayı sınar. Erişilebilirlik: `test/accessibility_test.dart` →
+"Giriş · Apple ve Google (iOS)". Supabase'e ve Apple'a gerçek istek atılmaz.
 
 ## 2. SENİN yapman gerekenler (Supabase paneli)
 
@@ -126,10 +130,11 @@ bağlantısını kullanır; aynı bağlantı-tarayıcısı sorununa (A7) açıkt
 
 ### 2.4 "Google ile devam et" (Google Cloud + Supabase)
 
-Kod hazır: web'de (`Auth.jsx`) ve **Android**'de görünür. **iOS'ta gizli**: App Store kuralı 4.8, üçüncü taraf girişi
-sunan uygulamadan "Apple ile giriş"i de ister; o eklenene kadar iOS'ta yalnızca e-posta vardır (`googleSignInAvailable`).
+Kod hazır: web'de (`Auth.jsx`), **Android**'de ve (1.2.7+24'ten beri) **iOS**'ta görünür. iOS'ta yanında
+"Apple ile devam et" de vardır (§2.5); App Store kuralı 4.8 üçüncü taraf girişi sunan uygulamadan Apple ile girişi de ister.
 Google akışı tarayıcıda yürür (Supabase OAuth); telefonda dönüş §2.1'deki `com.rebiovil.rebi://auth-callback` ile olur,
-yani Android imza parmak izi (SHA-1) **gerekmez**. Google ile gelen kullanıcı onay kodu görmez (adresi Google doğrulamıştır).
+yani Android imza parmak izi (SHA-1) ve iOS için ayrı bir Google client'ı **gerekmez** — iOS tarafında ek kurulum yoktur.
+Google ile gelen kullanıcı onay kodu görmez (adresi Google doğrulamıştır).
 Rıza: web'de onay kutuları Google düğmesinden önce işaretlenir ve dönüşte yazılır; mobilde rıza ilk açılışta rıza kutusuyla alınır.
 
 1. **console.cloud.google.com** → üstten proje seç / yeni proje (`Rebi`).
@@ -170,8 +175,68 @@ devam et" yazar (dönüş adresi Supabase'tir; değiştirmek ücretli Custom Dom
 - **Web**: Google Identity Services penceresi (`frontend/src/lib/googleIdentity.js`) "rebiovil.com" gösterir; nonce'lu belge
   `signInWithIdToken` ile verilir. Pencere gösterilemezse (FedCM/üçüncü taraf çerezleri kapalı, Google'ın bekleme süresi) eski
   yönlendirmeli akış kullanılır. CSP'de `accounts.google.com/gsi/` izinleri gerekir (`deploy/nginx/*.conf`, `frontend/nginx.conf`).
+- **iOS**: yerel yol **yok**; Safari'de Supabase'in adresi görünür. Yerel seçiciye geçmek için Google Cloud'da ayrı bir
+  **iOS client**'ı (paket kimliği `com.rebiovil.mobile`) açmak, ters çevrilmiş client kimliğini `Info.plist`'e URL şeması
+  olarak eklemek ve o client kimliğini Supabase'in Google ayarındaki Client IDs listesine yazmak gerekir. iOS'ta öne çıkan
+  yol zaten Apple ile giriştir (§2.5), bu yüzden şimdilik yapılmadı.
 
 Aynı e-postayla önceden e-posta/parola hesabı açmış kullanıcı Google ile girince Supabase iki girişi aynı hesapta birleştirir.
+
+### 2.5 "Apple ile devam et" (Apple Developer + Supabase) — iOS için ZORUNLU
+
+Kod hazır (`1.2.7+24`): iOS'ta giriş/kayıt ekranında **Apple ile devam et**, Google düğmesinin üstünde ve aynı
+boyutta durur. Apple'ın kendi sayfası uygulamanın **içinde** açılır (tarayıcıya çıkılmaz); alınan kimlik belgesi
+ham nonce'uyla birlikte `signInWithIdToken` ile Supabase'e verilir (`mobile/lib/core/native_apple_sign_in.dart`).
+Yerel akışta Services ID / gizli anahtar **gerekmez**: Supabase'in Apple ayarında Client IDs listesinde **paket kimliği**
+bulunması yeterlidir.
+
+Aşağıdaki iki adım yapılmadan düğme çalışmaz (hatta 1. adım olmadan **iOS derlemesi imzalanamaz**).
+
+**1. Apple Developer → App ID yeteneği (zorunlu, imzalamayı etkiler)**
+
+1. [developer.apple.com](https://developer.apple.com/account) → **Certificates, IDs & Profiles → Identifiers** →
+   `com.rebiovil.mobile` (takım `KJ7932W24A`).
+2. **Sign In with Apple** kutusunu işaretle → **Save** (çıkan uyarıda "Enable as a primary App ID" seçili kalsın;
+   Rebi'nin gruplanacağı başka bir uygulaması yok).
+3. Dağıtım profilleri yenilensin: Xcode'da otomatik imzalama kendiliğinden günceller. Komut satırında arşivliyorsan
+   `xcodebuild … -allowProvisioningUpdates` ile ASC API anahtarını ver; yoksa imzalama
+   `… doesn't include the com.apple.developer.applesignin entitlement` diye durur.
+   Uygulamadaki yetki dosyası hazırdır: `mobile/ios/Runner/Runner.entitlements`.
+
+**2. Supabase → Apple sağlayıcısı (zorunlu)**
+
+Supabase Dashboard → **Authentication → Sign In / Providers → Apple** → **Enable**:
+
+- **Client IDs**: `com.rebiovil.mobile` (uygulamanın paket kimliği). Birden çok değer virgülle ayrılır.
+- **Secret Key / Team ID / Key ID / Services ID** alanları **boş bırakılabilir**: bunlar yalnızca web ve Android'deki
+  tarayıcı akışı için gerekir. Rebi'de Apple ile giriş yalnızca iOS'ta ve yalnızca yerel akışla sunulur.
+- **Save**.
+
+Kontrol: `curl -s https://eulcargzcatxdbjevkpm.supabase.co/auth/v1/settings -H "apikey: <anon>" | grep apple`
+→ `"apple":true` olmalı. Uygulama bu uca bakar: kapalıysa Apple sayfasını hiç açmaz,
+"Apple ile giriş şu an kullanılamıyor" der.
+
+**İleride web/Android'de de istenirse**: Apple Developer'da bir **Services ID** (ör. `com.rebiovil.web`) açılır,
+dönüş adresi `https://<proje-kimliği>.supabase.co/auth/v1/callback` yazılır, **Keys**'ten bir Sign in with Apple
+anahtarı (`.p8`) üretilip Supabase'deki Secret/Team ID/Key ID alanlarına girilir. Kodda yalnızca
+`appleSignInAvailable` genişletilir.
+
+**Apple ile gelen kullanıcıda bilinmesi gerekenler**
+
+- **Ad yalnızca ilk izinde gelir.** Apple, kullanıcının adını yalnızca uygulamaya **ilk kez** izin verdiği girişte
+  yollar; sonraki girişlerde yollamaz. Uygulama bu adı ilk seferde `user_metadata.full_name`'e yazar (`_saveAppleFullName`).
+  Kullanıcı uygulamayı silip yeniden kurar ve Ayarlar → Apple Kimliği → "Apple ile oturum açma"dan Rebi'yi
+  kaldırmazsa ad **bir daha gelmez**; adı Ben → Profil'den yazabilir.
+- **"E-posta adresimi gizle"**: Apple `…@privaterelay.appleid.com` adresi verir. Gerçek bir adrestir, Rebi'nin
+  gönderdiği postalar kullanıcıya ulaşır; ama kullanıcı bu ilişkiyi Apple'dan kapatırsa adres ölür.
+  Aynı kişinin e-posta/parola hesabı varsa adresler farklı olduğu için Supabase bunları **ayrı hesap** sayar
+  (Google'dakinin aksine birleşme olmaz).
+- **Rıza**: Apple ile gelen kullanıcı kayıt formundaki KVKK kutularını görmez; rıza ilk açılışta rıza kutusuyla alınır
+  (Google ile aynı).
+- **Hesap silme**: Apple, Sign in with Apple kullanan uygulamalardan hesap silinirken Apple'ın `revoke` ucunun
+  çağrılmasını ister. Supabase, Apple'ın `refresh_token`'ını dışarı vermediği için bu çağrı şu an yapılamıyor;
+  `/account/delete` kullanıcıyı ve verisini siler, kullanıcı iznini Ayarlar → Apple Kimliği'nden kaldırabilir.
+  İncelemede sorulursa not bu: silme tam, yalnızca Apple tarafındaki izin kullanıcıda kalır.
 
 ## 3. Telefonda doğrulama (cihaz testi)
 
@@ -193,6 +258,11 @@ Aynı e-postayla önceden e-posta/parola hesabı açmış kullanıcı Google ile
 | A9 | Giriş ekranını aç | KVKK / açık rıza metni ve onay kutusu **yok**; yalnız e-posta + parola |
 | A10 | A1'deki kayıttan sonra (onay bağlantısına dokunup ya da şifreyle) ilk kez içeri gir | **Rıza kutusu çıkmaz** (kayıtta verilen rıza arka planda yazıldı); Ben → Hesap ve gizlilik'te izinler kayıttaki seçimle aynı |
 | A11 | Rıza kaydı sunucuda başarısız olursa (ör. sunucu kapalı) | Giriş **engellenmez**; panel açılır ve rıza kutusu bir kez sorar |
+| A12 | **iPhone'da** giriş ekranını aç (§2.5 yapıldıktan sonra) | Üstte siyah **Apple ile devam et**, altında beyaz **Google ile devam et**, sonra "veya e-postayla" ayracı |
+| A13 | **Apple ile devam et** → Face ID / parola → adı ve e-postayı paylaş | Tarayıcı açılmaz; panel açılır, ilk açılışta KVKK/açık rıza kutusu gelir. Ben → Profil'de ad **Apple'daki ad** olur |
+| A14 | Çıkış → yine **Apple ile devam et** (bu kez "E-posta adresimi gizle" ile yeni bir hesap) | Girer; e-posta `…@privaterelay.appleid.com` görünür, ad boş kalabilir (Apple ikinci girişte ad yollamaz) |
+| A15 | Apple sayfasını açıp vazgeç (aşağı kaydır / İptal) | Hata mesajı **çıkmaz**, düğme yeniden kullanılabilir |
+| A16 | **iPhone'da Google ile devam et** | Safari'de Supabase'in hesap seçme sayfası açılır, hesabı seç → uygulama açılır (dönüş `com.rebiovil.rebi://auth-callback`, §2.1'in listede olması şart) |
 
 ## 4. Bilinen sınırlar
 
@@ -208,3 +278,9 @@ Aynı e-postayla önceden e-posta/parola hesabı açmış kullanıcı Google ile
 - Kod ekranındaki otomatik giriş yalnızca ekran **açıkken** çalışır; uygulama kapatılıp yeniden açılırsa normal giriş yapılır (onaylıysa girer; değilse
   "henüz onaylanmamış" + kod ekranına geçiren tekrar gönder).
 - Parola en az 6 karakter (Supabase varsayılanı). Daha sıkı kural için panelde **Authentication → Policies**.
+- **Apple ile giriş yalnızca iOS/macOS'ta** sunulur (Android ve web'de Google vardır). Apple'ın ikinci girişte ad
+  yollamaması ve `privaterelay` adresinin ayrı hesap sayılması Apple'ın tasarımıdır, kodla değişmez (§2.5).
+- **Apple `revoke` çağrısı yapılamıyor**: Supabase Apple'ın `refresh_token`'ını dışarı vermiyor. Hesap silme
+  kullanıcıyı ve verisini siler; Apple tarafındaki izin kullanıcının Ayarlar → Apple Kimliği ekranında kalır (§2.5).
+- **iOS'ta Google** hâlâ tarayıcı akışıyla yürür: hesap seçme sayfasında Supabase'in adresi görünür. Yerel seçici
+  istenirse §2.4'ün sonundaki iOS maddesindeki üç adım yapılır.

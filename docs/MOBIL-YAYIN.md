@@ -12,6 +12,7 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 | Analiz alanları (web ile eşit: concerns, süre/sıklık, beslenme, undereye…) | hazır (`1.2.6+23`) |
 | Analiz taslağı (yarım cevaplar kaybolmaz) + yeni analizde önceki cevaplarla açılış | hazır (`1.2.6+23`) |
 | Rutini kendine göre düzenleme (adım çıkar / geri al / kendi adımını ekle) | hazır (`1.2.6+23`) |
+| Apple / Google ile giriş (iOS'ta ikisi de; Android'de Google) | hazır (`1.2.7+24`) — Apple Developer + Supabase ayarı gerekir (`MOBIL-GIRIS-SUPABASE.md` §2.5) |
 | Mağaza derleme betiği (`tool/build_release.sh`) | hazır; `REBI_BETA=false` + iOS `ExportOptions-appstore.plist` |
 | Android release imzalama (`android/key.properties` + upload keystore) | **yalnız bu kaldı** (bölüm 3) — repoya girmez |
 | iOS imzalama (Apple hesabı / ASC API anahtarı / dağıtım profili) | **yalnız bu kaldı** (bölüm 4) — repoya girmez |
@@ -27,7 +28,7 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 
 ## 2. Sürüm numarası
 
-`pubspec.yaml` → `version: 1.2.6+23`. `+` öncesi mağazada görünen sürüm, sonrası derleme numarasıdır
+`pubspec.yaml` → `version: 1.2.7+24`. `+` öncesi mağazada görünen sürüm, sonrası derleme numarasıdır
 (Android `versionCode`, iOS `CFBundleVersion`). **Her mağaza yüklemesinde derleme numarası artmalıdır**
 (`1.2.5+23`, `1.2.6+24`…). Aynı numarayı iki kez yükleyemezsiniz.
 
@@ -181,7 +182,10 @@ Mağaza incelemecisine verilecek not (gönderim formundaki "Notes for review" al
 
 1. **Demo hesabı** (zorunlu): e-posta + parola, rıza adımları tamamlanmış, bir rutini olan bir hesap. İncelemeci
    kayıt olurken e-posta onayı bekleyemez; onaylı hesap verin. (App Store 2.1)
-2. Giriş yalnızca e-posta + parola (üçüncü taraf girişi yok, "Apple ile giriş" gerekmez).
+2. Giriş yolları: **Apple ile devam et**, **Google ile devam et** ve e-posta + parola. iOS'ta Apple ile giriş,
+   Google ile aynı belirginlikte ve onun üstünde durur (App Store 4.8); yalnızca ad ve e-posta istenir, "adresimi
+   gizle" desteklenir ve üçüncü taraf reklam izlemesi için kullanılmaz. Android'de Apple düğmesi yoktur.
+   Kurulum ve sınırlar: [`MOBIL-GIRIS-SUPABASE.md`](MOBIL-GIRIS-SUPABASE.md) §2.5.
 3. Konum izni isteğe bağlı: yalnızca hava / UV'ye göre öneri için, yaklaşık konum. Kamera / fotoğraf: cilt fotoğrafı için,
    isteğe bağlı. Bildirimler: kullanıcı hatırlatma saatlerini ayarlar.
 4. Yapay zekâ: rutin ve sohbet yapay zekâ ile üretilir, tıbbi tanı değildir; uygulama içinde açıklama gösterilir.

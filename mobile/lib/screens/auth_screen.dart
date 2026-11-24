@@ -73,6 +73,9 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
   /// Google girişine başlandı: tarayıcıdan hata ile dönülürse "bağlantı geçersiz" yerine Google'a özgü mesaj gösterilir.
   bool _googleStarted = false;
 
+  /// Apple'ın giriş sayfası açık (uygulamanın içinde; tarayıcıya çıkılmaz).
+  bool _appleBusy = false;
+
   /// Ekran klavyesi açık mı: açıkken sabit alt şerit gizlenir. `MediaQuery` bu bilgiyi gövdede (Scaffold klavye
   /// boşluğunu düşer) vermez ve `View.of` yeniden çizim tetiklemez; bu yüzden pencere metrikleri dinlenir.
   bool _keyboardOpen = false;
@@ -441,6 +444,38 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         _shake++;
       });
 
+  /// Kayıt ekranındaki rıza notu: hangi sosyal giriş yolları görünüyorsa onu anlatır (iOS'ta ikisi de vardır).
+  String get _consentNoteKey {
+    if (appleSignInAvailable && googleSignInAvailable) return 'mobileAuth.socialNote';
+    return appleSignInAvailable ? 'mobileAuth.appleNote' : 'mobileAuth.googleNote';
+  }
+
+  /// Apple hesabıyla giriş/kayıt. Apple'ın sayfası uygulamanın içinde açılır ve oturum dönüşte hemen kurulur
+  /// (tarayıcı/derin bağlantı yok), bu yüzden Google'daki "başladı" durumuna gerek kalmaz.
+  Future<void> _apple() async {
+    FocusScope.of(context).unfocus();
+    final auth = context.read<AuthController>();
+    setState(() {
+      _appleBusy = true;
+      _error = '';
+      _info = '';
+      _canResend = false;
+    });
+    final r = await auth.signInWithApple();
+    if (!mounted) return;
+    setState(() => _appleBusy = false);
+    if (r.ok) return;
+    // Apple sayfası kapatıldı: kullanıcı vazgeçti, hata değil.
+    if (r.kind == AuthErrorKind.canceled) return;
+    if (r.networkError || r.kind == AuthErrorKind.notConfigured) return _showAuthError(r.error ?? '', r.kind);
+    setState(() {
+      _error = _t(r.kind == AuthErrorKind.providerDisabled ? 'mobileAuth.appleUnavailable' : 'mobileAuth.appleFailed');
+      _info = '';
+      _canResend = false;
+      _shake++;
+    });
+  }
+
   /// Geçersiz/süresi dolmuş e-posta bağlantısının nedenini bir kez gösterir.
   void _consumeLinkError() {
     if (!mounted) return;
@@ -629,16 +664,29 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                                 ),
                                                 const SizedBox(height: 8),
                                               ],
-                                              if (canSwitch && googleSignInAvailable) ...[
-                                                GoogleButton(
-                                                  key: const Key('auth-google'),
-                                                  label: i18n.t('mobileAuth.google'),
-                                                  loading: _googleBusy,
-                                                  onPressed: _loading ? null : _google,
-                                                ),
+                                              // "Apple ile devam et" Google ile aynı belirginlikte ve üstte durur
+                                              // (App Store kuralı 4.8: üçüncü taraf girişi sunan uygulama Apple ile
+                                              // girişi de eşit ölçüde göstermelidir).
+                                              if (canSwitch && (appleSignInAvailable || googleSignInAvailable)) ...[
+                                                if (appleSignInAvailable) ...[
+                                                  AppleButton(
+                                                    key: const Key('auth-apple'),
+                                                    label: i18n.t('mobileAuth.apple'),
+                                                    loading: _appleBusy,
+                                                    onPressed: _loading || _googleBusy ? null : _apple,
+                                                  ),
+                                                  if (googleSignInAvailable) const SizedBox(height: 10),
+                                                ],
+                                                if (googleSignInAvailable)
+                                                  GoogleButton(
+                                                    key: const Key('auth-google'),
+                                                    label: i18n.t('mobileAuth.google'),
+                                                    loading: _googleBusy,
+                                                    onPressed: _loading || _appleBusy ? null : _google,
+                                                  ),
                                                 if (signup) ...[
                                                   const SizedBox(height: 8),
-                                                  Text(i18n.t('mobileAuth.googleNote'), textAlign: TextAlign.center, style: tx(12, c: Brand.inkSoft, h: snug)),
+                                                  Text(i18n.t(_consentNoteKey), textAlign: TextAlign.center, style: tx(12, c: Brand.inkSoft, h: snug)),
                                                 ],
                                                 const SizedBox(height: 18),
                                                 OrDivider(label: i18n.t('mobileAuth.orEmail')),

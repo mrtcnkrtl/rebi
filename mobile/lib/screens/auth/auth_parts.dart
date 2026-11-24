@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart' show AppleLogoPainter;
 
 import '../../core/i18n.dart';
 import '../../ui/brand/brand_button.dart';
@@ -356,6 +357,63 @@ class GoogleLogoPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(GoogleLogoPainter oldDelegate) => false;
+}
+
+/// "Apple ile devam et": Apple'ın marka kuralına uygun siyah zeminli düğme (beyaz Apple logosu + metin).
+/// Tema açık olsa da zemin siyah kalır; Apple logosu için izin verilen biçimler siyah zemin/beyaz logo,
+/// beyaz zemin/siyah logo ve çerçeveli beyazdır. Logo yolu `sign_in_with_apple` paketinin resmî
+/// [AppleLogoPainter]'ındandır (elle çizilmiş bir kopya değil).
+class AppleButton extends StatelessWidget {
+  const AppleButton({super.key, required this.label, required this.onPressed, this.loading = false});
+
+  final String label;
+  final VoidCallback? onPressed;
+  final bool loading;
+
+  static const _bg = Color(0xFF000000);
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onPressed != null && !loading;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      excludeSemantics: true,
+      child: AnimatedOpacity(
+        opacity: enabled || loading ? 1 : .42,
+        duration: const Duration(milliseconds: 200),
+        child: Pressable(
+          onTap: enabled ? onPressed : null,
+          scale: .98,
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 54),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(color: _bg, borderRadius: BorderRadius.circular(27)),
+            child: loading
+                ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: Colors.white))
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Apple logosu metnin büyüklüğüne göre biraz yukarıda durur (gövdesi yaprağıyla birlikte).
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 2),
+                        child: SizedBox(
+                          width: 17,
+                          height: 20,
+                          child: CustomPaint(painter: AppleLogoPainter(color: Colors.white)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(child: Text(label, textAlign: TextAlign.center, style: tx(16, w: 6, c: Colors.white, ls: .1))),
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// İki giriş yolu arasındaki ayraç: ince çizgi — "veya e-postayla" — ince çizgi.

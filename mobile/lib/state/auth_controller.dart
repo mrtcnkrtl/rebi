@@ -10,6 +10,7 @@ import '../config/env.dart';
 import '../core/api.dart';
 import '../core/auth_errors.dart';
 import '../core/legal_consent.dart';
+import '../core/native_apple_sign_in.dart';
 import '../core/native_google_sign_in.dart';
 
 /// Parola sıfırlama, Google girişi (ve eski e-posta onayı) dönüşlerinin uygulamayı açtığı adres (Android `intent-filter`,
@@ -19,13 +20,28 @@ import '../core/native_google_sign_in.dart';
 /// (docs/MOBIL-GIRIS-SUPABASE.md §1.1).
 const authCallbackUrl = 'com.rebiovil.rebi://auth-callback';
 
-/// "Google ile devam et" gösterilsin mi. iOS'ta gizli: App Store kuralı 4.8, üçüncü taraf girişi sunan uygulamadan
-/// "Apple ile giriş"i de ister; o eklenene kadar iOS'ta yalnızca e-posta ile giriş vardır.
-bool get googleSignInAvailable => debugGoogleSignInAvailable ?? (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
+/// "Google ile devam et" gösterilsin mi. Android'de yerel hesap seçicisi, iOS'ta Supabase'in tarayıcıdaki OAuth
+/// akışı kullanılır. iOS'ta App Store kuralı 4.8 gereği yanında "Apple ile devam et" de vardır
+/// ([appleSignInAvailable]); üçüncü taraf girişi sunan uygulamadan Apple ile girişi de istenir.
+bool get googleSignInAvailable =>
+    debugGoogleSignInAvailable ??
+    (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS));
+
+/// "Apple ile devam et" gösterilsin mi. Yalnız Apple platformlarında: Apple'ın yerel giriş sayfası (ASAuthorization)
+/// yalnızca orada vardır ve App Store kuralı 4.8 de yalnızca Apple platformları için geçerlidir.
+bool get appleSignInAvailable =>
+    debugAppleSignInAvailable ??
+    (!kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS));
 
 /// Testlerde platformdan bağımsız açıp kapatmak için.
 @visibleForTesting
 bool? debugGoogleSignInAvailable;
+
+/// Testlerde platformdan bağımsız açıp kapatmak için.
+@visibleForTesting
+bool? debugAppleSignInAvailable;
 
 class SignUpResult {
   const SignUpResult({
@@ -73,12 +89,18 @@ const supabaseNotConfiguredError = 'Supabase not configured';
 /// Supabase panelinde Google sağlayıcısı kapalıyken `signInWithGoogle` bu hatayla döner (tarayıcı açılmaz).
 const googleProviderDisabledError = 'Google provider is not enabled';
 
+/// Supabase panelinde Apple sağlayıcısı kapalıyken `signInWithApple` bu hatayla döner (Apple sayfası açılmaz).
+const appleProviderDisabledError = 'Apple provider is not enabled';
+
 /// Yerel Google hesap seçicisi kapatıldı.
 const googleCanceledError = 'Google sign-in canceled';
 
-/// Supabase'in herkese açık `/auth/v1/settings` yanıtına göre Google sağlayıcısı açık mı.
+/// Apple'ın giriş sayfası kapatıldı.
+const appleCanceledError = 'Apple sign-in canceled';
+
+/// Supabase'in herkese açık `/auth/v1/settings` yanıtına göre [provider] (`google`, `apple`…) açık mı.
 /// `false` yalnızca sunucu açıkça "kapalı" dediğinde döner; ağ hatası/zaman aşımında `null` (deneme engellenmez).
-Future<bool?> fetchGoogleProviderEnabled({http.Client? client, String? baseUrl}) async {
+Future<bool?> fetchProviderEnabled(String provider, {http.Client? client, String? baseUrl}) async {
   final base = (baseUrl ?? Env.supabaseUrl).trim();
   if (base.isEmpty) return null;
   final c = client ?? http.Client();
@@ -88,8 +110,8 @@ Future<bool?> fetchGoogleProviderEnabled({http.Client? client, String? baseUrl})
         .timeout(const Duration(seconds: 6));
     if (res.statusCode != 200) return null;
     final body = jsonDecode(res.body);
-    final google = body is Map ? (body['external'] is Map ? body['external']['google'] : null) : null;
-    return google is bool ? google : null;
+    final value = body is Map ? (body['external'] is Map ? body['external'][provider] : null) : null;
+    return value is bool ? value : null;
   } catch (_) {
     return null;
   } finally {
@@ -97,13 +119,19 @@ Future<bool?> fetchGoogleProviderEnabled({http.Client? client, String? baseUrl})
   }
 }
 
+/// [fetchProviderEnabled] ile aynı; Google için kısa yol.
+Future<bool?> fetchGoogleProviderEnabled({http.Client? client, String? baseUrl}) =>
+    fetchProviderEnabled('google', client: client, baseUrl: baseUrl);
+
 /// Webdeki "Failed to fetch" karşılığı: sunucuya hiç ulaşılamadı.
 bool _isNetwork(Object e) => e is AuthRetryableFetchException || isNetworkError(e);
 
 AuthErrorKind _kindOf(Object e, String message, bool network) {
   if (message == supabaseNotConfiguredError) return AuthErrorKind.notConfigured;
-  if (message.contains(googleProviderDisabledError)) return AuthErrorKind.providerDisabled;
-  if (message.contains(googleCanceledError)) return AuthErrorKind.canceled;
+  if (message.contains(googleProviderDisabledError) || message.contains(appleProviderDisabledError)) {
+    return AuthErrorKind.providerDisabled;
+  }
+  if (message.contains(googleCanceledError) || message.contains(appleCanceledError)) return AuthErrorKind.canceled;
   return classifyAuthError(message, code: e is AuthException ? e.code : null, network: network);
 }
 
@@ -283,6 +311,10 @@ class AuthController extends ChangeNotifier {
   @visibleForTesting
   NativeGoogleSignIn nativeGoogle = NativeGoogleSignIn();
 
+  /// Apple'ın yerel giriş sayfası (testlerde sahtelenir).
+  @visibleForTesting
+  NativeAppleSignIn nativeApple = NativeAppleSignIn();
+
   /// Google hesabıyla giriş ya da kayıt (aynı düğme). Önce Android'in yerel hesap seçicisi denenir: ekranın altında
   /// açılır ve uygulama adını ("Rebi") gösterir; seçilen hesabın kimlik belgesiyle Supabase oturumu hemen açılır
   /// (`signedIn` olayı). Yerel yol kullanılamazsa (Play hizmetleri yok, Android client'ı/SHA-1 tanımsız) tarayıcıdaki
@@ -313,6 +345,45 @@ class AuthController extends ChangeNotifier {
         );
         if (!opened) throw StateError('browser');
       });
+
+  /// Apple hesabıyla giriş ya da kayıt (aynı düğme). Apple'ın kendi sayfası uygulamanın İÇİNDE açılır: tarayıcıya
+  /// çıkılmaz, kullanıcı Face ID / parolasıyla onaylar ve adını paylaşmayı ya da "adresimi gizle"yi seçer.
+  /// Alınan kimlik belgesi (+ ham nonce) `signInWithIdToken` ile Supabase'e verilir; oturum hemen açılır
+  /// (`signedIn` olayı). Apple'dan gelen e-posta doğrulanmıştır, onay kodu gerekmez; KVKK / açık rıza kaydı yoksa
+  /// açılış paketi rıza kutusunu gösterir.
+  /// Supabase'de Apple sağlayıcısı kapalıysa hiçbir şey açılmaz ([appleProviderDisabledError]).
+  Future<AuthActionResult> signInWithApple() => _action((auth) async {
+        if (await fetchProviderEnabled('apple') == false) throw StateError(appleProviderDisabledError);
+        final r = await nativeApple.obtainCredential();
+        switch (r) {
+          case NativeAppleCredential(:final idToken, :final rawNonce, :final fullName):
+            final res = await auth.signInWithIdToken(
+              provider: OAuthProvider.apple,
+              idToken: idToken,
+              nonce: rawNonce,
+            );
+            await _saveAppleFullName(auth, res.user, fullName);
+            return;
+          case NativeAppleCanceled():
+            throw StateError(appleCanceledError);
+          case NativeAppleUnavailable(:final reason):
+            // Yetki eksik, iOS 13 öncesi, iCloud hesabı yok… Google ya da e-posta yolu açık kalır.
+            throw StateError('Apple sign-in unavailable: $reason');
+        }
+      });
+
+  /// Apple adı yalnızca kullanıcının uygulamaya **ilk** izin verdiği girişte gelir. Kullanıcı bilgisinde `full_name`
+  /// yoksa bir kez yazılır (profil ve rutin metinleri bu adı kullanır); yazılamazsa giriş bozulmaz.
+  Future<void> _saveAppleFullName(GoTrueClient auth, User? u, String? fullName) async {
+    if (u == null || fullName == null || fullName.trim().isEmpty) return;
+    final current = u.userMetadata?['full_name'];
+    if (current is String && current.trim().isNotEmpty) return;
+    try {
+      await auth.updateUser(UserAttributes(data: {'full_name': fullName.trim()}));
+    } catch (_) {
+      /* ad sonradan Ben → Profil'den yazılabilir */
+    }
+  }
 
   /// Onay e-postasını (yeni kod + düğme) yeniden gönderir; önceki e-postadaki kod ve bağlantı geçersiz olur.
   Future<AuthActionResult> resendConfirmation(String email) =>

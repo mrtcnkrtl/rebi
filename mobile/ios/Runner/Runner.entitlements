@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- "Apple ile devam et" (ASAuthorizationAppleIDProvider). Bu yetki olmadan Apple
+	     authorization-error/unknown döner. Apple Developer'da App ID (com.rebiovil.mobile) için
+	     "Sign In with Apple" yeteneği de AÇIK olmalıdır; yoksa imzalama "profile doesn't include
+	     the com.apple.developer.applesignin entitlement" ile başarısız olur.
+	     Kurulum: docs/MOBIL-GIRIS-SUPABASE.md §2.5 -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
+</dict>
+</plist>
