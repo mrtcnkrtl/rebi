@@ -191,6 +191,8 @@ Yerel akışta Services ID / gizli anahtar **gerekmez**: Supabase'in Apple ayar�
 bulunması yeterlidir.
 
 Aşağıdaki iki adım yapılmadan düğme çalışmaz (hatta 1. adım olmadan **iOS derlemesi imzalanamaz**).
+**Her ikisi de 2026-11-24'te yapıldı** (aşağıdaki "Durum" satırları); burada nasıl yapıldığı ve nasıl
+doğrulanacağı duruyor.
 
 **1. Apple Developer → App ID yeteneği (zorunlu, imzalamayı etkiler)**
 
@@ -202,6 +204,23 @@ Aşağıdaki iki adım yapılmadan düğme çalışmaz (hatta 1. adım olmadan *
    `xcodebuild … -allowProvisioningUpdates` ile ASC API anahtarını ver; yoksa imzalama
    `… doesn't include the com.apple.developer.applesignin entitlement` diye durur.
    Uygulamadaki yetki dosyası hazırdır: `mobile/ios/Runner/Runner.entitlements`.
+
+**Durum: yapıldı (2026-11-24).** App ID `com.rebiovil.mobile` (kaynak kimliği `6CLF7CNDHL`) yetenekleri artık
+`APPLE_ID_AUTH` (`PRIMARY_APP_CONSENT`), `IN_APP_PURCHASE`, `PUSH_NOTIFICATIONS`.
+
+Panele girmeden **okumak/açmak** için ASC API anahtarı (`~/.appstoreconnect/private_keys/AuthKey_<KeyID>.p8`,
+Issuer ID `MOBIL-YAYIN.md` bölüm 4'te) yeterlidir — site oturumu ve 2FA gerekmez:
+
+```bash
+GET  https://api.appstoreconnect.apple.com/v1/bundleIds?filter[identifier]=com.rebiovil.mobile&include=bundleIdCapabilities
+POST https://api.appstoreconnect.apple.com/v1/bundleIdCapabilities
+     {"data":{"type":"bundleIdCapabilities","attributes":{"capabilityType":"APPLE_ID_AUTH",
+      "settings":[{"key":"APPLE_ID_AUTH_APP_CONSENT","options":[{"key":"PRIMARY_APP_CONSENT"}]}]},
+      "relationships":{"bundleId":{"data":{"type":"bundleIds","id":"6CLF7CNDHL"}}}}}
+```
+
+Yetenek listesinde `APPLE_ID_AUTH` **yoksa** kapalıdır. (Kimlik doğrulama: `.p8` ile ES256 imzalı, 10 dakikalık,
+`aud: appstoreconnect-v1` JWT.)
 
 **2. Supabase → Apple sağlayıcısı (zorunlu)**
 
@@ -215,6 +234,13 @@ Supabase Dashboard → **Authentication → Sign In / Providers → Apple** → 
 Kontrol: `curl -s https://eulcargzcatxdbjevkpm.supabase.co/auth/v1/settings -H "apikey: <anon>" | grep apple`
 → `"apple":true` olmalı. Uygulama bu uca bakar: kapalıysa Apple sayfasını hiç açmaz,
 "Apple ile giriş şu an kullanılamıyor" der.
+
+**Durum: yapıldı (2026-11-24).** `/auth/v1/settings` → `email: true`, `google: true`, `apple: true`.
+
+⚠️ **Panelde dikkat:** Chrome'un parola yöneticisi bu formu "kullanıcı adı + parola" sanıp **Client IDs** alanına
+Supabase hesabının e-postasını, **Secret Key** alanına kayıtlı parolayı kendiliğinden doldurabiliyor. Kaydetmeden
+önce Client IDs'in `com.rebiovil.mobile` olduğuna ve Secret Key'in **boş** olduğuna bak; yoksa hesap parolan
+sağlayıcı ayarına yazılır.
 
 **İleride web/Android'de de istenirse**: Apple Developer'da bir **Services ID** (ör. `com.rebiovil.web`) açılır,
 dönüş adresi `https://<proje-kimliği>.supabase.co/auth/v1/callback` yazılır, **Keys**'ten bir Sign in with Apple

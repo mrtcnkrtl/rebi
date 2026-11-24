@@ -12,7 +12,7 @@ sorumlu kişi (ve KVKK danışmanı) okuyup onaylamalıdır.
 | Analiz alanları (web ile eşit: concerns, süre/sıklık, beslenme, undereye…) | hazır (`1.2.6+23`) |
 | Analiz taslağı (yarım cevaplar kaybolmaz) + yeni analizde önceki cevaplarla açılış | hazır (`1.2.6+23`) |
 | Rutini kendine göre düzenleme (adım çıkar / geri al / kendi adımını ekle) | hazır (`1.2.6+23`) |
-| Apple / Google ile giriş (iOS'ta ikisi de; Android'de Google) | hazır (`1.2.7+24`) — Apple Developer + Supabase ayarı gerekir (`MOBIL-GIRIS-SUPABASE.md` §2.5) |
+| Apple / Google ile giriş (iOS'ta ikisi de; Android'de Google) | hazır (`1.2.7+24`); Apple Developer App ID yeteneği ve Supabase Apple sağlayıcısı 2026-11-24'te açıldı (`MOBIL-GIRIS-SUPABASE.md` §2.5) |
 | Mağaza derleme betiği (`tool/build_release.sh`) | hazır; `REBI_BETA=false` + iOS `ExportOptions-appstore.plist` |
 | Android release imzalama (`android/key.properties` + upload keystore) | **yalnız bu kaldı** (bölüm 3) — repoya girmez |
 | iOS imzalama (Apple hesabı / ASC API anahtarı / dağıtım profili) | **yalnız bu kaldı** (bölüm 4) — repoya girmez |
