@@ -10,6 +10,7 @@ import ConsentRecoveryModal from "./components/ConsentRecoveryModal";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import ConfirmEmail from "./pages/ConfirmEmail";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import RoutineEdit from "./pages/RoutineEdit";
 import Analyze from "./pages/Analyze";
@@ -78,6 +79,7 @@ function AppRoutes() {
         <Route path="/auth" element={user ? <Navigate to={next} replace /> : <Auth />} />
         {/* E-posta onay düğmesinin açtığı sayfa: giriş yapmış kullanıcıyı da yönlendirmez, token'ı düğmeyle doğrular. */}
         <Route path="/auth/confirm" element={<ConfirmEmail />} />
+        <Route path="/auth/reset" element={<ResetPassword />} />
         <Route path="/kvkk" element={<Legal />} />
         {/* Mağaza formlarındaki "gizlilik politikası" adresi (Play Console); aydınlatma metniyle aynı sayfa. */}
         <Route path="/privacy-policy" element={<Legal />} />

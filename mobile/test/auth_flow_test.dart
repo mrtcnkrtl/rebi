@@ -90,6 +90,23 @@ class FakeAuth extends AuthController {
     return resetResult;
   }
 
+  /// `resetPasswordWithCode` sonucu: kod doğru mu ([codeOk]) ve parola kabul edildi mi ([codePasswordResult]).
+  bool codeOk = true;
+  AuthActionResult codePasswordResult = const AuthActionResult();
+
+  @override
+  Future<({AuthActionResult result, bool verified})> resetPasswordWithCode(String email, String code, String password) async {
+    calls.add('resetCode $email $code $password');
+    if (!codeOk) {
+      return (result: const AuthActionResult(error: 'Token has expired or is invalid', kind: AuthErrorKind.linkInvalid), verified: false);
+    }
+    // Gerçek akış gibi: kod doğruysa oturum açılır; parola reddedilirse "yeni parola belirle" kipine geçilir.
+    user = _user(identities: const [_identity]);
+    recoveryPending = !codePasswordResult.ok;
+    notifyListeners();
+    return (result: codePasswordResult, verified: true);
+  }
+
   @override
   Future<AuthActionResult> updatePassword(String password) async {
     calls.add('update $password');
@@ -547,10 +564,20 @@ void main() {
       expect(r.kind, AuthErrorKind.notConfigured);
       expect(r.user, isNull);
     });
+
+    test('Supabase ayarsızken kodla parola sıfırlama "ayarlanmamış" döner; akış kilidi açık kalmaz', () async {
+      final auth = AuthController();
+      addTearDown(auth.dispose);
+      final r = await auth.resetPasswordWithCode('ayse@ornek.com', '123456', 'yeniparola1');
+      expect(r.verified, isFalse);
+      expect(r.result.kind, AuthErrorKind.notConfigured);
+      expect(auth.authFlowInProgress, isFalse);
+      expect(auth.recoveryPending, isFalse);
+    });
   });
 
   group('parolamı unuttum', () {
-    testWidgets('giriş ekranından açılır; yalnız e-posta ister, rıza kutusu yok; bağlantı gönderilir', (tester) async {
+    testWidgets('giriş ekranından açılır; yalnız e-posta ister, rıza kutusu yok; kod gönderilir ve kod ekranı açılır', (tester) async {
       final fake = FakeAuth();
       await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
       await tapFinder(tester, find.byKey(const Key('auth-forgot')));
@@ -567,6 +594,9 @@ void main() {
       await _submit(tester);
       expect(fake.calls, ['reset ayse@ornek.com']);
       expect(find.text(tr('mobileAuth.forgotSent')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.resetCodeSubtitle', {'email': 'ayse@ornek.com'})), findsOneWidget);
+      expect(find.byType(TextFormField), findsNWidgets(3), reason: 'kod + yeni parola + tekrar');
+      expect(find.text(tr('mobileAuth.resendWait', {'s': 60})), findsOneWidget, reason: 'kod az önce gitti: bekleme süresi');
 
       await tapFinder(tester, find.byKey(const Key('auth-back-login')));
       expect(find.text(tr('auth.welcome')), findsOneWidget);
@@ -580,6 +610,64 @@ void main() {
       await settle(tester, 4);
       await _submit(tester);
       expect(find.text(tr('mobileAuth.errEmailSend')), findsOneWidget);
+    });
+
+    Future<(Harness, FakeAuth)> openCode(WidgetTester tester, FakeAuth fake) async {
+      final h = await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
+      await tapFinder(tester, find.byKey(const Key('auth-forgot')));
+      await tester.enterText(find.byType(TextFormField).first, 'ayse@ornek.com');
+      await settle(tester, 4);
+      await _submit(tester);
+      return (h, fake);
+    }
+
+    Future<void> fillCode(WidgetTester tester, {String code = '123456', String pw = 'yeniparola1', String pw2 = 'yeniparola1'}) async {
+      await tester.enterText(find.byType(TextFormField).at(0), code);
+      await tester.enterText(find.byType(TextFormField).at(1), pw);
+      await tester.enterText(find.byType(TextFormField).at(2), pw2);
+      await settle(tester, 4);
+    }
+
+    testWidgets('kod + yeni parola doğruysa parola kaydedilir ve panele geçilir', (tester) async {
+      final (h, fake) = await openCode(tester, FakeAuth());
+      await fillCode(tester, pw2: 'baskaparola2');
+      await _submit(tester);
+      expect(find.text(tr('mobileAuth.resetMismatch')), findsOneWidget);
+      expect(fake.calls.where((c) => c.startsWith('resetCode')), isEmpty, reason: 'parolalar uyuşmadan gönderilmez');
+
+      await fillCode(tester);
+      await _submit(tester);
+      await settle(tester, 6);
+      expect(fake.calls, contains('resetCode ayse@ornek.com 123456 yeniparola1'));
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+
+    testWidgets('kod yanlışsa kod hatası gösterilir, ekranda kalınır', (tester) async {
+      final (h, _) = await openCode(tester, FakeAuth()..codeOk = false);
+      await fillCode(tester);
+      await _submit(tester);
+      await settle(tester, 4);
+      expect(find.text(tr('mobileAuth.errCodeInvalid')), findsOneWidget);
+      expect(h.router.routeInformationProvider.value.uri.path, '/auth');
+      expect(find.byKey(const Key('auth-reset-code')), findsOneWidget);
+    });
+
+    testWidgets('kod doğru ama parola reddedilirse "yeni parola belirle" ekranına geçilir', (tester) async {
+      final fake = FakeAuth()..codePasswordResult = const AuthActionResult(error: 'Password is known to be weak', kind: AuthErrorKind.weakPassword);
+      final (h, _) = await openCode(tester, fake);
+      await fillCode(tester);
+      await _submit(tester);
+      await settle(tester, 6);
+      expect(find.text(tr('mobileAuth.errWeakPassword')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.resetSubtitle')), findsOneWidget, reason: 'oturum açık; yalnız yeni parola istenir');
+      expect(find.byType(TextFormField), findsNWidgets(2));
+      expect(h.router.routeInformationProvider.value.uri.path, '/auth', reason: 'parola belirlenmeden panele geçilmez');
+    });
+
+    testWidgets('"Adresi değiştir" e-posta ekranına döner', (tester) async {
+      await openCode(tester, FakeAuth());
+      await tapFinder(tester, find.byKey(const Key('auth-reset-change')));
+      expect(find.text(tr('mobileAuth.forgotSubtitle')), findsOneWidget);
     });
   });
 

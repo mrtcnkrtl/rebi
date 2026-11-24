@@ -179,6 +179,9 @@ class AuthController extends ChangeNotifier {
   String? linkError;
 
   bool _disposed = false;
+
+  /// Kodla parola sıfırlama sürerken (ve hemen ardından) gelen "parola kurtarma" olayı yok sayılır.
+  DateTime? _codeResetUntil;
   Future<void> _consentSync = Future.value();
 
   /// Oturum açılınca kayıt sırasında verilen rızanın sunucuya yazılması (yoksa hemen biten bir Future).
@@ -206,7 +209,10 @@ class AuthController extends ChangeNotifier {
   void _onAuthState(AuthState data) {
     final next = data.session?.user;
     if (data.event == AuthChangeEvent.signedIn && next != null && next.id != user?.id) _startConsentSync(next);
-    final recovery = data.event == AuthChangeEvent.passwordRecovery;
+    // Kodla sıfırlamada doğrulama da "parola kurtarma" olayı yayar; parola o akışta zaten yazıldığı için olay
+    // (geç gelse bile) kullanıcıyı yeniden "yeni parola" ekranına düşürmemeli.
+    final codeReset = _codeResetUntil != null && DateTime.now().isBefore(_codeResetUntil!);
+    final recovery = data.event == AuthChangeEvent.passwordRecovery && !codeReset;
     var changed = false;
     if (recovery && !recoveryPending) {
       recoveryPending = true;
@@ -392,6 +398,27 @@ class AuthController extends ChangeNotifier {
   /// Parola sıfırlama bağlantısı gönderir. Supabase adresin kayıtlı olup olmadığını belli etmez.
   Future<AuthActionResult> sendPasswordReset(String email) =>
       _action((auth) => auth.resetPasswordForEmail(email, redirectTo: authCallbackUrl));
+
+  /// Sıfırlama e-postasındaki 6 haneli kodla yeni parolayı kaydeder (bağlantı tarayıcılarının tüketebildiği tek
+  /// kullanımlık bağlantı yerine). Önce kod doğrulanır (bu, kullanıcı için oturum açar), sonra parola güncellenir.
+  /// [verified] false ise kod yanlış/süresi dolmuş; true ama sonuç hatalıysa oturum açıktır ve parola reddedilmiştir
+  /// (ör. zayıf ya da sızdırılmış): ekran "yeni parola belirle" kipine geçer, kullanıcı başka parola dener.
+  Future<({AuthActionResult result, bool verified})> resetPasswordWithCode(String email, String code, String password) async {
+    _codeResetUntil = DateTime.now().add(const Duration(seconds: 15));
+    setAuthFlowInProgress(true);
+    try {
+      final verify = await _action((auth) => auth.verifyOTP(type: OtpType.recovery, email: email, token: code));
+      if (!verify.ok) return (result: verify, verified: false);
+      final update = await _action((auth) async {
+        await auth.updateUser(UserAttributes(password: password));
+      });
+      recoveryPending = !update.ok;
+      notifyListeners();
+      return (result: update, verified: true);
+    } finally {
+      setAuthFlowInProgress(false);
+    }
+  }
 
   /// Sıfırlama bağlantısıyla açılan oturumda yeni parolayı kaydeder; başarılıysa uygulamaya geçilir.
   Future<AuthActionResult> updatePassword(String password) async {

@@ -25,7 +25,7 @@ Telefon ──(Authorization: Bearer <token>)──▶ FastAPI (rebiovil.com/api
 | --- | --- | --- | --- |
 | 1 | **Kayıtlı e-postayla yeniden kayıt**: e-posta onayı açıkken Supabase hata vermez, e-posta da göndermez | "Onay e-postası gönderdik" diyordu; gelmeyen e-postayı bekleyen kullanıcı çıkmazda kalıyordu | `identities` boşsa "Bu e-posta zaten kayıtlı, giriş yap / parolamı unuttum" gösterilir |
 | 2 | **Onaysız e-posta ile giriş** | Ham İngilizce "Email not confirmed", yapacak bir şey yok | Açıklama + **Onay e-postasını tekrar gönder** |
-| 3 | **Parola sıfırlama hiç yoktu** (webde de yok) | Parolasını unutan kullanıcı hesabına bir daha giremiyordu | **Parolamı unuttum** → e-postadaki bağlantı uygulamayı açar → **yeni parola belirle** ekranı |
+| 3 | **Parola sıfırlama hiç yoktu** (webde de yok) | Parolasını unutan kullanıcı hesabına bir daha giremiyordu | **Parolamı unuttum** → e-postadaki **6 haneli kod** uygulamada yeni parolayla yazılır; e-postadaki düğme web'de (`/auth/reset`) yeni parola belirletir (§2.3b) |
 | 4 | Onay bağlantısı uygulamayı değil, **web sitesini** açıyordu | Kullanıcı tarayıcıda kalıyor, uygulamaya elle dönüp giriş yapıyordu | Bağlantı `com.rebiovil.rebi://auth-callback` ile uygulamayı açar ve oturumu kurar (Android/iOS derin bağlantı ayarı eklendi) |
 | 5 | Uygulamaya hata parametresiyle dönen bağlantı (`#error=…`) | Hata oturum akışına düşer; dinleyici yoktu → **yakalanmamış hata** | Hata yakalanır, giriş ekranında nedeniyle gösterilir (+ tekrar gönder). **Not:** kullanılmış/süresi dolmuş tek kullanımlık bağlantıda Supabase uygulamaya hiç yönlendirmez, tarayıcıda ham `otp_expired` JSON'u gösterir (bkz. A7); uygulama bunu göremez |
 | 6 | Supabase hataları ham İngilizce (`Invalid login credentials`, `User already registered`…) | Türkçe kullanıcıya İngilizce cümle | Hata kodu/mesajı türe çevrilir; TR/EN cümleler (`mobileAuth.err*`) |
@@ -125,8 +125,18 @@ Gelmiyorsa uygulamada "Şu an e-posta gönderilemedi" ya da "Kısa sürede çok 
    (uygulama tam 6 hane bekler; başka değer kod ekranını bozar), **Email OTP Expiration = 3600** (1 saat; şablondaki "1 saat geçerlidir" cümlesiyle uyumlu).
 4. Kontrol: ekip dışı bir adresle yeni kayıt ol → e-posta Türkçe/markalı gelmeli, kodu uygulamaya yazınca içeri girmeli (bkz. §3 A1–A2).
 
-**"Reset password" şablonu henüz değişmedi**: parola sıfırlama e-postası hâlâ Supabase'in tek kullanımlık `{{ .ConfirmationURL }}`
-bağlantısını kullanır; aynı bağlantı-tarayıcısı sorununa (A7) açıktır. Aynı kod + sayfa yöntemi sıfırlama için de uygulanabilir (bkz. §4).
+**Durum (2026-11-24):** şablon panelde, Email OTP length 6 (8'di; kod ekranını bozuyordu).
+
+### 2.3b "Reset password" e-posta şablonu — kodlu yöntem
+
+Aynı yöntem parola sıfırlamada da kullanılır: e-postada **6 haneli kod** (uygulamadaki "Sıfırlama kodu" alanına yeni parolayla
+birlikte yazılır) ve **rebiovil.com/auth/reset** düğmesi (sayfa token'a yalnız "Devam et"e dokununca dokunur, sonra web'de yeni
+parola belirlenir). Tek kullanımlık `{{ .ConfirmationURL }}` bağlantısı artık kullanılmaz; A7'deki ham `otp_expired` sorunu kapanır.
+
+**Sıra:** önce web sayfası canlıda olmalı (`https://rebiovil.com/auth/reset` → "Bağlantı eksik görünüyor"), sonra şablon:
+Supabase → **Authentication → Emails → Templates → Reset password** → Subject `Rebi parolanı sıfırla`, Body:
+`deploy/supabase/email-templates/reset-password.html` dosyasının tamamı → **Save**. `{{ .Token }}` / `{{ .TokenHash }}` silinmez.
+Uygulamanın eski sürümleri (bağlantı bekleyen) bu e-postayla da çalışır: düğme web'de parolayı değiştirir.
 
 ### 2.4 "Google ile devam et" (Google Cloud + Supabase)
 
@@ -277,9 +287,9 @@ anahtarı (`.p8`) üretilip Supabase'deki Secret/Team ID/Key ID alanlarına giri
 | A2d | Kod ekranında yanlış kod yaz (ör. 000000) | "Kod yanlış ya da süresi dolmuş…" mesajı; ekranda kalırsın |
 | A3 | Aynı e-postayla tekrar kayıt ol | "Bu e-posta ile zaten bir hesap var…" (e-posta gelmez) |
 | A4 | Onaylamadan giriş yapmayı dene | "Bu e-posta henüz onaylanmamış…" + tekrar gönder |
-| A5 | Giriş ekranı → **Parolamı unuttum** → e-posta | "Bu adres kayıtlıysa bağlantı gönderdik" |
-| A6 | Sıfırlama e-postasındaki bağlantıya dokun | Uygulama açılır, **Yeni parola belirle** ekranı; kaydedince panele geçer |
-| A7 | **Parola sıfırlama** bağlantısına ikinci kez dokun (bu e-posta henüz eski yöntemde, bkz. §2.3 sonu) | Tarayıcıda Supabase'in `{"code":403,"error_code":"otp_expired",…}` sayfası açılır (**Supabase kullanılmış/süresi dolmuş bağlantıyı uygulamaya yönlendirmez**, ham JSON gösterir; 2026-10-20 telefon testinde görüldü). Uygulamaya dön: giriş ekranından **tekrar gönder** / **Parolamı unuttum** ile yeni bağlantı iste |
+| A5 | Giriş ekranı → **Parolamı unuttum** → e-posta | "Bu adres kayıtlıysa 6 haneli bir kod gönderdik"; ekranda **kod + yeni parola + tekrar** alanları, "Tekrar gönder (60 sn)" |
+| A6 | E-postadaki **kodu** ve yeni parolayı yaz → Parolayı kaydet | Panele geçilir; yeni parolayla çıkış/giriş çalışır. Yanlış kodda "Kod yanlış ya da süresi dolmuş"; çok yaygın / sızdırılmış parolada "Yeni parola belirle" ekranında başka parola istenir |
+| A7 | Aynı e-postadaki **düğmeye** dokun (başka cihazda da olur) | `rebiovil.com/auth/reset` açılır → **Devam et** → yeni parola → "Parolan güncellendi". Düğmeye ikinci kez dokununca ham JSON yerine "Bu bağlantı artık geçerli değil" + yeni e-posta isteme formu |
 | A8 | Yeni parolayla çıkış yapıp giriş | Girer |
 | A9 | Giriş ekranını aç | KVKK / açık rıza metni ve onay kutusu **yok**; yalnız e-posta + parola |
 | A10 | A1'deki kayıttan sonra (onay bağlantısına dokunup ya da şifreyle) ilk kez içeri gir | **Rıza kutusu çıkmaz** (kayıtta verilen rıza arka planda yazıldı); Ben → Hesap ve gizlilik'te izinler kayıttaki seçimle aynı |
@@ -296,7 +306,7 @@ anahtarı (`.p8`) üretilip Supabase'deki Secret/Team ID/Key ID alanlarına giri
 - Bağlantı **başka cihazda** (ör. bilgisayardaki e-posta) açılırsa uygulama açılmaz; e-posta yine de onaylanmış olur,
   telefonda elle giriş yapılır. Parola sıfırlama bağlantısı ise **kayıt/istek yapılan aynı telefonda** açılmalıdır (PKCE).
 - Web'de "parolamı unuttum" hâlâ yok (`frontend/` yalnızca onay sayfası eklendi). İstersen ayrıca eklenir.
-- **Parola sıfırlama e-postası** henüz eski yöntemde (tek kullanımlık Supabase bağlantısı): Gmail/antivirüs bağlantıyı önceden açarsa A7'deki ham JSON çıkabilir.
+- **Parola sıfırlama e-postası** kodlu yönteme geçti (§2.3b); şablon panele yapıştırılmadan önceki e-postalar eski bağlantıyı taşır.
   Çözüm aynı kalıp: Türkçe şablon + 6 haneli kod + `rebiovil.com/auth/confirm` benzeri bir sayfa; uygulamada "kodu yaz → yeni parola". Henüz yapılmadı.
 - Web onay sayfası **canlıya çıkmadan** şablon değiştirilirse e-postadaki düğme ana sayfaya düşer (§2.3 sırası). Kod yöntemi sayfadan bağımsız çalışır.
 - "Rebi uygulamasını aç" düğmesi özel şemayı (`com.rebiovil.rebi://`) kullanır; uygulama yüklü değilse ya da iOS'ta TestFlight/mağaza sürümü yoksa

@@ -20,9 +20,10 @@ import 'auth/auth_parts.dart';
 
 /// Giriş / kayıt / parola sıfırlama (web: `pages/Auth.jsx`; sıfırlama yalnızca mobilde).
 ///
-/// Kipler: `login`, `signup`, `verify` (kayıttan sonra e-postadaki 6 haneli kodu yaz), `forgot` (sıfırlama bağlantısı
-/// iste) ve `reset` (bağlantıyla gelince yeni parola; kip `AuthController.recoveryPending` ile belirlenir, kullanıcı
-/// seçemez).
+/// Kipler: `login`, `signup`, `verify` (kayıttan sonra e-postadaki 6 haneli kodu yaz), `forgot` (sıfırlama kodu iste),
+/// `resetCode` (sıfırlama e-postasındaki 6 haneli kod + yeni parola) ve `reset` (oturum açıkken yeni parola: eski
+/// bağlantıyla gelindiğinde ya da kod doğru ama parola reddedildiğinde; kip `AuthController.recoveryPending` ile
+/// belirlenir, kullanıcı seçemez).
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key, required this.next, this.startInSignup = false});
 
@@ -218,6 +219,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     final router = GoRouter.of(context);
     if (auth.recoveryPending) return _submitReset(auth, router);
     if (_mode == 'forgot') return _submitForgot(auth);
+    if (_mode == 'resetCode') return _submitResetCode(auth, router);
     if (_mode == 'verify') return _submitVerify(auth, router);
     // KVKK ve açık rıza yalnızca kayıtta alınır; girişte kutu da, onay şartı da yoktur.
     if (_mode == 'signup' && (!_kvkk || !_riza)) {
@@ -349,9 +351,60 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         _showAuthError(r.error!, r.kind);
         return;
       }
-      setState(() => _info = _t('mobileAuth.forgotSent'));
+      // Kod yola çıktı: kullanıcı kodu ve yeni parolasını bu ekranda yazar.
+      setState(() {
+        _mode = 'resetCode';
+        _info = _t('mobileAuth.forgotSent');
+        _error = '';
+        _code.clear();
+        _password.clear();
+        _password2.clear();
+      });
+      _startCooldown();
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Sıfırlama e-postasındaki 6 haneli kod + yeni parola. Kod yanlışsa kod hatası; kod doğru ama parola reddedildiyse
+  /// (zayıf / sızdırılmış) oturum açılmıştır ve ekran "yeni parola belirle" kipine geçer.
+  Future<void> _submitResetCode(AuthController auth, GoRouter router) async {
+    setState(() => _loading = true);
+    try {
+      final r = await auth.resetPasswordWithCode(_email.text.trim(), _code.text.trim(), _password.text);
+      if (!mounted) return;
+      if (!r.result.ok) {
+        final kind = !r.verified && r.result.kind == AuthErrorKind.linkInvalid ? AuthErrorKind.codeInvalid : r.result.kind;
+        _showAuthError(r.result.error!, kind);
+        return;
+      }
+      _code.clear();
+      _password.clear();
+      _password2.clear();
+      router.go(widget.next);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Sıfırlama kodunu yeniden gönderir (öncekinin kodu geçersiz olur).
+  Future<void> _resendResetCode() async {
+    final auth = context.read<AuthController>();
+    setState(() {
+      _resending = true;
+      _error = '';
+      _info = '';
+    });
+    final r = await auth.sendPasswordReset(_email.text.trim());
+    if (!mounted) return;
+    setState(() => _resending = false);
+    if (r.ok) {
+      setState(() => _info = _t('mobileAuth.resetCodeResent'));
+      _code.clear();
+      _startCooldown();
+    } else {
+      _showAuthError(r.error!, r.kind);
+      if (r.kind == AuthErrorKind.rateLimited) _startCooldown();
     }
   }
 
@@ -524,6 +577,9 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
     final verify = mode == 'verify';
     final forgot = mode == 'forgot';
     final reset = mode == 'reset';
+    final resetCode = mode == 'resetCode';
+    // Yeni parola alanları (parola tekrarı + güç göstergesi) iki kipte de var.
+    final newPassword = reset || resetCode;
     // Yasal metinler ve onay kutuları yalnızca kayıt ekranında; giriş ve diğer kiplerde yoktur.
     final withLegal = signup;
     final canSwitch = login || signup;
@@ -539,6 +595,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
       'verify' => i18n.t('mobileAuth.verifyTitle'),
       'forgot' => i18n.t('mobileAuth.forgotTitle'),
       'reset' => i18n.t('mobileAuth.resetTitle'),
+      'resetCode' => i18n.t('mobileAuth.resetTitle'),
       _ => i18n.t('auth.welcome'),
     };
     final subtitle = switch (mode) {
@@ -546,13 +603,14 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
       'verify' => i18n.t('mobileAuth.verifySubtitle', {'email': _email.text.trim()}),
       'forgot' => i18n.t('mobileAuth.forgotSubtitle'),
       'reset' => i18n.t('mobileAuth.resetSubtitle'),
+      'resetCode' => i18n.t('mobileAuth.resetCodeSubtitle', {'email': _email.text.trim()}),
       _ => i18n.t('auth.loginToAccount'),
     };
     final submitLabel = switch (mode) {
       'signup' => i18n.t('auth.signup'),
       'verify' => i18n.t('mobileAuth.verifySubmit'),
       'forgot' => i18n.t('mobileAuth.forgotSend'),
-      'reset' => i18n.t('mobileAuth.resetSave'),
+      'reset' || 'resetCode' => i18n.t('mobileAuth.resetSave'),
       _ => i18n.t('auth.login'),
     };
 
@@ -611,7 +669,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                 physics: const ClampingScrollPhysics(),
                 slivers: [
                   SliverToBoxAdapter(
-                    child: AuthStage(modeKey: mode, compact: signup || verify, title: title, subtitle: subtitle, onBack: () => context.canPop() ? context.pop() : context.go('/')),
+                    child: AuthStage(modeKey: mode, compact: signup || verify || resetCode, title: title, subtitle: subtitle, onBack: () => context.canPop() ? context.pop() : context.go('/')),
                   ),
                   SliverToBoxAdapter(
                     child: Reveal(
@@ -748,7 +806,24 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                             child: Text(i18n.t('mobileAuth.verifyHint'), style: tx(12.5, c: Brand.inkSoft, h: snug)),
                                           ),
                                         ],
-                                        if (!reset && !verify) ...[
+                                        if (resetCode) ...[
+                                          AuthField(
+                                            key: const Key('auth-reset-code'),
+                                            label: i18n.t('mobileAuth.resetCodeLabel'),
+                                            controller: _code,
+                                            keyboardType: TextInputType.number,
+                                            textInputAction: TextInputAction.next,
+                                            autocorrect: false,
+                                            enableSuggestions: false,
+                                            autofillHints: const [AutofillHints.oneTimeCode],
+                                            inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
+                                            textAlign: TextAlign.center,
+                                            textStyle: tx(28, w: 7, c: Brand.ink, ls: 9),
+                                            validator: _codeValidator,
+                                          ),
+                                          const SizedBox(height: 14),
+                                        ],
+                                        if (!reset && !verify && !resetCode) ...[
                                           Reveal(
                                             delay: const Duration(milliseconds: 260),
                                             duration: const Duration(milliseconds: 600),
@@ -777,16 +852,16 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                             duration: const Duration(milliseconds: 600),
                                             offset: const Offset(0, 16),
                                             child: AuthField(
-                                              label: reset ? i18n.t('mobileAuth.resetNewPassword') : i18n.t('auth.password'),
+                                              label: newPassword ? i18n.t('mobileAuth.resetNewPassword') : i18n.t('auth.password'),
                                               icon: LucideIcons.lock,
                                               controller: _password,
                                               obscure: !_showPassword,
                                               autocorrect: false,
                                               enableSuggestions: false,
-                                              textInputAction: reset ? TextInputAction.next : null,
+                                              textInputAction: newPassword ? TextInputAction.next : null,
                                               autofillHints: [login ? AutofillHints.password : AutofillHints.newPassword],
                                               validator: _passwordValidator,
-                                              onSubmitted: reset
+                                              onSubmitted: newPassword
                                                   ? null
                                                   : (_) {
                                                       if (canSubmit) _submit();
@@ -803,7 +878,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                           duration: const Duration(milliseconds: 240),
                                           curve: Curves.easeOutCubic,
                                           alignment: Alignment.topCenter,
-                                          child: (signup || reset)
+                                          child: (signup || newPassword)
                                               ? Padding(
                                                   padding: const EdgeInsets.fromLTRB(4, 12, 4, 0),
                                                   child: ValueListenableBuilder<TextEditingValue>(
@@ -813,7 +888,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                                 )
                                               : const SizedBox(width: double.infinity),
                                         ),
-                                        if (reset) ...[
+                                        if (newPassword) ...[
                                           const SizedBox(height: 14),
                                           AuthField(
                                             label: i18n.t('mobileAuth.resetConfirmPassword'),
@@ -864,6 +939,30 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                             trailingIcon: LucideIcons.arrowRight,
                                           ),
                                         ),
+                                        if (resetCode) ...[
+                                          const SizedBox(height: 6),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: AuthTextAction(
+                                                  key: const Key('auth-reset-resend'),
+                                                  label: _cooldownLeft > 0
+                                                      ? i18n.t('mobileAuth.resendWait', {'s': _cooldownLeft})
+                                                      : i18n.t('mobileAuth.verifyResend'),
+                                                  busy: _resending,
+                                                  onTap: (_resending || _cooldownLeft > 0) ? null : _resendResetCode,
+                                                ),
+                                              ),
+                                              Expanded(
+                                                child: AuthTextAction(
+                                                  key: const Key('auth-reset-change'),
+                                                  label: i18n.t('mobileAuth.verifyChangeEmail'),
+                                                  onTap: () => _switchMode('forgot'),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
                                         if (verify) ...[
                                           const SizedBox(height: 6),
                                           AuthTextAction(

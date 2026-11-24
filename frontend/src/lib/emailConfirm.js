@@ -7,7 +7,7 @@
  * Bu sayfa açılınca hiçbir istek atmaz; token yalnızca kullanıcı düğmeye dokununca doğrulanır.
  */
 
-/** Sayfanın doğrulayabildiği e-posta bağlantısı türleri (parola sıfırlama için web'de ekran yok). */
+/** Sayfanın doğrulayabildiği e-posta bağlantısı türleri (parola sıfırlama: `/auth/reset`, `passwordReset.js`). */
 export const CONFIRM_TYPES = ["signup", "email"];
 
 /** Uygulamayı açan derin bağlantı (`AndroidManifest.xml` / `Info.plist` ile aynı olmalı). */
