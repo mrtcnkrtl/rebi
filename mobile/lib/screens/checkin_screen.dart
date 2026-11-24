@@ -8,6 +8,7 @@ import '../core/checkin_prefill.dart';
 import '../core/checkin_stats.dart';
 import '../core/device_location.dart';
 import '../core/demo_user.dart';
+import '../core/haptics.dart';
 import '../core/i18n.dart';
 import '../core/routine_logic.dart';
 import '../core/routine_tracking.dart';
@@ -285,13 +286,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
         return;
       }
       if (!res.ok) {
+        Haptics.failure();
         setState(() => _submitError = '${apiErrorMessage(res)} (${res.status})');
         return;
       }
       await recordCheckInSuccess(user?.id, appliedRoutine: _appliedRoutine);
       if (!mounted) return;
+      Haptics.success();
       setState(() => _result = res.data);
     } catch (e) {
+      Haptics.failure();
       if (mounted) {
         setState(() => _submitError = i18n.t(isNetworkError(e) ? 'mobileCheckin.errors.network' : 'mobileCheckin.errors.unexpected'));
       }

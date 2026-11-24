@@ -19,6 +19,10 @@ Future<void> clearUserLocalData(String? userId) async {
     await LocalStore.instance.remove(key);
   }
   await LocalStore.instance.remove('rebi-chat-history');
+  // Yukarıdaki liste eskiyebilir (analiz taslağı, hava konumu, adım seçimleri, yapay zekâ paylaşım tercihi…):
+  // hesabın kimliğini anahtarında taşıyan her kayıt kişiseldir ve gider. Kimlik bir UUID olduğundan başka
+  // hesabın anahtarına denk gelmez.
+  await LocalStore.instance.removeWhere((key) => key.contains(userId));
   // Mobil: gönderilmeyi bekleyen gün içi kayıtlar da kişisel veridir.
   await EventOutbox.instance.clear(userId);
   await clearNotificationPrefs(userId);

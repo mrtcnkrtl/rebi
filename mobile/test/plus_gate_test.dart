@@ -82,7 +82,7 @@ void main() {
     testWidgets('sohbet: sayaç altında "Rebi Plus" bağlantısı yok', (tester) async {
       await pumpApp(tester, location: '/dashboard/chat');
       expect(find.text(tr('chat.plusUpgradeLink')), findsNothing);
-      expect(find.text(tr('chat.footerHintShort')), findsOneWidget);
+      expect(find.text(tr('chat.footerHintShort')), findsNothing, reason: 'anlamsız teknik not gösterilmez');
     });
 
     testWidgets('açılış sayfasında Plus tanıtımı yok', (tester) async {

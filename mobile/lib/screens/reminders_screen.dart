@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../core/demo_user.dart';
 import '../core/device_location.dart';
+import '../core/haptics.dart';
 import '../core/i18n.dart';
 import '../core/reminder_settings.dart';
 import '../core/today_plan.dart';
@@ -123,12 +124,14 @@ class _RemindersScreenState extends State<RemindersScreen> {
     final result = await saveReminderSettings(uid!, _draft);
     if (!mounted) return;
     if (!result.ok) {
+      Haptics.failure();
       setState(() {
         _saving = false;
         _error = (result.error ?? '').isEmpty ? I18n.instance.t('mobileReminders.saveFailed') : result.error;
       });
       return;
     }
+    Haptics.success();
     final next = result.settings!;
     setState(() {
       _saving = false;
@@ -319,14 +322,15 @@ class _RemindersScreenState extends State<RemindersScreen> {
         children: [
           _sectionTitle(i18n.t('mobileReminders.water.title'), hint: i18n.t('mobileReminders.water.hint')),
           const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          _ChipGrid(columns: 2, children: [
             for (final minutes in waterIntervalChoices)
               ChoiceChipBox(
                 label: i18n.t('mobileReminders.water.every.$minutes'),
                 selected: _draft.waterEveryMinutes == minutes,
                 radius: 12,
                 fontSize: 13,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                center: true,
                 activeBorder: Tw.blue500,
                 activeBg: Tw.blue50,
                 activeText: Tw.blueText,
@@ -336,14 +340,15 @@ class _RemindersScreenState extends State<RemindersScreen> {
           const SizedBox(height: 18),
           _sectionTitle(i18n.t('mobileReminders.waterTarget.title'), hint: i18n.t('mobileReminders.waterTarget.hint')),
           const SizedBox(height: 12),
-          Wrap(spacing: 8, runSpacing: 8, children: [
+          _ChipGrid(columns: 3, children: [
             for (final ml in waterTargetChoices)
               ChoiceChipBox(
                 label: i18n.t('mobileReminders.waterTarget.choice', {'liters': _liters(i18n, ml)}),
                 selected: _draft.waterTargetMl == ml,
                 radius: 12,
                 fontSize: 13,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                center: true,
                 activeBorder: Tw.blue500,
                 activeBg: Tw.blue50,
                 activeText: Tw.blueText,
@@ -490,6 +495,32 @@ class _RemindersScreenState extends State<RemindersScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Eşit genişlikte seçenek ızgarası: Wrap'teki gibi "3 + 1" düzensiz satırlar oluşmaz. Büyük yazıda sütun sayısı
+/// azalır, metin sığmazsa alt satıra iner.
+class _ChipGrid extends StatelessWidget {
+  const _ChipGrid({required this.columns, required this.children});
+
+  final int columns;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    const gap = 8.0;
+    final scale = MediaQuery.textScalerOf(context).scale(10) / 10;
+    final cols = scale > 1.5 ? 1 : (scale > 1.2 ? (columns > 2 ? 2 : columns) : columns);
+    return LayoutBuilder(
+      builder: (context, c) {
+        final w = ((c.maxWidth - gap * (cols - 1)) / cols).floorToDouble();
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [for (final child in children) SizedBox(width: w, child: child)],
+        );
+      },
     );
   }
 }

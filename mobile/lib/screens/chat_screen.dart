@@ -545,19 +545,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Widget _footer(I18n i18n, RebiTheme theme) {
     final u = _usage;
     if (u?.kind == 'free_daily') {
-      return Wrap(
-        alignment: WrapAlignment.center,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (plusPurchasable) ...[
-            GestureDetector(
-              onTap: () => context.go('/dashboard/subscribe'),
-              child: Text(i18n.t('chat.plusUpgradeLink'), style: tx(11, w: 6, c: theme.fg)),
-            ),
-            Text(' · ', style: tx(11, c: Tw.gray500)),
-          ],
-          Text(i18n.t('chat.footerHintShort'), style: tx(11, c: Tw.gray500)),
-        ],
+      // Eski "Sayaç üstte; rutin planı Analiz'de" notu kaldırıldı: kullanıcıya bir şey anlatmıyordu.
+      if (!plusPurchasable) return const SizedBox.shrink();
+      return GestureDetector(
+        onTap: () => context.go('/dashboard/subscribe'),
+        child: Text(i18n.t('chat.plusUpgradeLink'), textAlign: TextAlign.center, style: tx(11.5, w: 6, c: theme.fg)),
       );
     }
     if (u?.kind == 'plan_daily') {
@@ -568,7 +560,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
           child: Text(i18n.t('mobileChat.limit.upgrade'), textAlign: TextAlign.center, style: tx(11, w: 6, c: theme.fg)),
         );
       }
-      return Text(i18n.t('chat.footerHintShort'), textAlign: TextAlign.center, style: tx(11, c: Tw.gray500));
+      return const SizedBox.shrink();
     }
     if (u?.kind == 'plus_monthly') {
       return Text(i18n.t('chat.plusPack1000Footer'), textAlign: TextAlign.center, style: tx(11, c: Tw.gray500));

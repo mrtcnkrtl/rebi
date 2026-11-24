@@ -321,6 +321,9 @@ List<RoutineItem> asRoutine(Object? v) {
 const shortStepMaxLength = 30;
 
 /// İki nokta öncesi bir zaman sözcüğüyse ("Gece: Niasinamid…") ad iki nokta sonrasından alınır.
+/// Adım metninin başındaki zaman ön ekleri ("Sabah: …"): adımın adı değildir.
+const stepTimePrefixes = _timePrefixes;
+
 const _timePrefixes = {'gece', 'sabah', 'akşam', 'aksam', 'night', 'morning', 'evening'};
 
 final _leadingMarks = RegExp(r'^[^\p{L}\p{N}(]+', unicode: true);

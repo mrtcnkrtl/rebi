@@ -30,6 +30,7 @@ import '../../ui/components/loading_screen.dart';
 import '../../ui/components/modals.dart';
 import '../../ui/components/photo_picker.dart';
 import '../../ui/widgets/app_sheet.dart';
+import '../../ui/shell/page_stage.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import 'analyze_flow.dart';
@@ -960,82 +961,57 @@ class _AnalyzeScreenState extends State<AnalyzeScreen> with WidgetsBindingObserv
     );
   }
 
-  /// İlk analizden sonra: rutin hazır; hızlı fotoğraf ya da yeni tam analiz.
+  /// İlk analizden sonra: rutin hazır; hızlı fotoğraf ya da yeni tam analiz. Diğer sayfalar gibi markanın sahnesinde
+  /// durur (eskiden düz zeminde tek başına bir simge + başlıktı); seçenekler sahneye binen tek kartta.
   Widget _compactHub() {
     final theme = context.watch<ThemeController>().theme;
-    return SafeArea(
-      bottom: false,
-      child: Column(
-        children: [
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
-              child: IconButton(
-                tooltip: i18n.t('common.back'),
-                onPressed: _exit,
-                icon: Icon(LucideIcons.chevronLeft, size: 26, color: Tw.gray700),
+    return StagePage(
+      theme: theme,
+      title: i18n.t('analyze.routineReadyTitle'),
+      subtitle: pack.s('compactHub.description'),
+      backTo: '/dashboard/routine',
+      maxWidth: 512,
+      children: [
+        RCard(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 10),
+          radius: 24,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PrimaryButton(
+                onPressed: () => context.go('/dashboard'),
+                color: theme.primary,
+                label: pack.s('compactHub.backToDashboard'),
+                trailingIcon: LucideIcons.arrowRight,
+                minHeight: 56,
               ),
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 480),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Container(
-                        width: 64,
-                        height: 64,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: theme.primary.withValues(alpha: .12)),
-                        child: Icon(LucideIcons.sparkles, size: 28, color: theme.fg),
-                      ),
-                      const SizedBox(height: 20),
-                      Semantics(header: true, child: Text(i18n.t('analyze.routineReadyTitle'), style: heading(32, h: 1.1))),
-                      const SizedBox(height: 12),
-                      Text(pack.s('compactHub.description'), style: tx(15.5, c: Tw.gray500, h: 1.5)),
-                      const SizedBox(height: 28),
-                      PrimaryButton(
-                        onPressed: () => context.go('/dashboard'),
-                        color: theme.primary,
-                        label: pack.s('compactHub.backToDashboard'),
-                        trailingIcon: LucideIcons.arrowRight,
-                        minHeight: 56,
-                      ),
-                      const SizedBox(height: 12),
-                      SecondaryButton(
-                        onPressed: () => context.push('/dashboard/analyze?photo=1'),
-                        icon: LucideIcons.camera,
-                        label: i18n.t('analyze.quickPhotoUpload'),
-                        fontSize: 15,
-                        minHeight: 56,
-                      ),
-                      const SizedBox(height: 12),
-                      SecondaryButton(
-                        onPressed: () => context.push('/dashboard/routine/edit'),
-                        icon: LucideIcons.listChecks,
-                        label: i18n.t('mobileRoutineEdit.entry'),
-                        fontSize: 15,
-                        minHeight: 56,
-                      ),
-                      const SizedBox(height: 4),
-                      TextButton(
-                        onPressed: _openFullWizard,
-                        style: TextButton.styleFrom(minimumSize: const Size(48, 52)),
-                        child: Text(i18n.t('analyze.newAnalyzeFull'), style: tx(14.5, w: 6, c: Tw.gray600)),
-                      ),
-                    ],
-                  ),
-                ),
+              const SizedBox(height: 12),
+              SecondaryButton(
+                onPressed: () => context.push('/dashboard/analyze?photo=1'),
+                icon: LucideIcons.camera,
+                label: i18n.t('analyze.quickPhotoUpload'),
+                fontSize: 15,
+                minHeight: 56,
               ),
-            ),
+              const SizedBox(height: 12),
+              SecondaryButton(
+                onPressed: () => context.push('/dashboard/routine/edit'),
+                icon: LucideIcons.listChecks,
+                label: i18n.t('mobileRoutineEdit.entry'),
+                fontSize: 15,
+                minHeight: 56,
+              ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: _openFullWizard,
+                style: TextButton.styleFrom(minimumSize: const Size(48, 52)),
+                child: Text(i18n.t('analyze.newAnalyzeFull'), style: tx(14.5, w: 6, c: Tw.gray600)),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
+
 }

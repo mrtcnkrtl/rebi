@@ -178,7 +178,13 @@ GoRouter buildRouter(AuthController auth, {bool splash = false}) {
           ),
           GoRoute(path: '/dashboard/shelf', pageBuilder: (context, state) => _fadeThroughPage(state, const ShelfScreen())),
           GoRoute(path: '/dashboard/themes', pageBuilder: (context, state) => _fadeThroughPage(state, const ThemesScreen())),
-          GoRoute(path: '/dashboard/subscribe', pageBuilder: (context, state) => _fadeThroughPage(state, const SubscribeScreen())),
+          GoRoute(
+            path: '/dashboard/subscribe',
+            pageBuilder: (context, state) => _fadeThroughPage(
+              state,
+              SubscribeScreen(backTo: state.uri.queryParameters['from'] == 'today' ? '/dashboard' : '/dashboard/profile'),
+            ),
+          ),
           GoRoute(path: '/dashboard/routine', pageBuilder: (context, state) => _fadeThroughPage(state, const DashboardScreen(planOnly: true))),
           GoRoute(path: '/dashboard/routine/edit', pageBuilder: (context, state) => _fadeThroughPage(state, const RoutineEditScreen())),
           GoRoute(path: '/dashboard/profile', pageBuilder: (context, state) => _fadeThroughPage(state, const MeScreen())),

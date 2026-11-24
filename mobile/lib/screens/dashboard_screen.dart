@@ -44,6 +44,8 @@ import 'today/weather_advice_card.dart';
 import 'routine/routine_parts.dart';
 import 'routine/routine_plan_view.dart';
 import '../ui/brand/palette.dart';
+import '../ui/brand/plus_style.dart';
+import '../core/subscription.dart';
 
 /// Ana panel (web: `pages/Dashboard.jsx`).
 /// `nav`: webdeki `location.state` — analiz / check-in sonrası taşınan rutin ve meta.
@@ -583,20 +585,53 @@ class _AccountShortcut extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final i18n = context.i18n;
+    final user = context.watch<AuthController>().user;
+    final plus = userHasRebiPlus(user);
     final initial = name.trim().isEmpty ? '?' : name.trim().characters.first.toUpperCase();
-    return Semantics(
+    final avatar = Semantics(
       button: true,
-      label: I18n.instance.t('mobileNav.me'),
+      label: i18n.t('mobileNav.me'),
       child: GestureDetector(
         onTap: () => context.go('/dashboard/profile'),
-        child: Container(
+        child: SizedBox(
           width: 48,
           height: 48,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(shape: BoxShape.circle, color: Brand.cream),
-          child: Text(initial, style: heading(20, c: theme.deep, w: 600)),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Brand.cream,
+                  border: plus ? Border.all(color: PlusPalette.gold, width: 2) : null,
+                ),
+                child: Text(initial, style: heading(20, c: theme.deep, w: 600)),
+              ),
+              // Abone: avatarın köşesinde küçük altın taç.
+              if (plus)
+                const Positioned(right: -3, bottom: -3, child: PlusMark(size: 20)),
+            ],
+          ),
         ),
       ),
+    );
+    // Ücretsiz hesapta Plus'a giden kalıcı giriş: ana ekranın en üstünde, hesap kısayolunun yanında.
+    if (plus || !plusPurchasable) return avatar;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        PlusHeaderChip(
+          key: const Key('today-plus'),
+          label: i18n.t('mobileMe.plus.title'),
+          onTap: () => context.go('/dashboard/subscribe?from=today'),
+        ),
+        const SizedBox(width: 10),
+        avatar,
+      ],
     );
   }
 }

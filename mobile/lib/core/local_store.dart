@@ -60,4 +60,17 @@ class LocalStore {
   }
 
   Future<void> setJson(String key, Object? value) => setString(key, jsonEncode(value));
+
+  /// Adı [test]'e uyan bütün anahtarları siler (ör. bir hesabın kimliğini taşıyan her kayıt).
+  Future<void> removeWhere(bool Function(String key) test) async {
+    Set<String> keys;
+    try {
+      keys = _prefs.getKeys();
+    } catch (_) {
+      return;
+    }
+    for (final key in keys.where(test).toList()) {
+      await remove(key);
+    }
+  }
 }

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../../core/day_log.dart';
+import '../../core/haptics.dart';
 import '../../core/i18n.dart';
 import '../../core/routine_logic.dart';
 import '../../core/today_plan.dart';
@@ -615,6 +616,7 @@ class _ProductsBodyState extends State<_ProductsBody> {
       if (outcome.saved) saved++;
     }
     if (!mounted) return;
+    saved == 0 ? Haptics.failure() : Haptics.success();
     Navigator.of(context).pop();
     actions.showToast(
       saved == 0 ? i18n.t('mobileToday.toast.failed') : i18n.t('mobileToday.toast.productsFinished', {'n': saved}),

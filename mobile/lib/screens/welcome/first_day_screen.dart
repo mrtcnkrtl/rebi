@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -211,6 +212,7 @@ class _FirstDayScreenState extends State<FirstDayScreen> {
     required String body,
     required Widget middle,
     required List<Widget> actions,
+    Widget? hero,
   }) {
     final lang = context.i18n.lang;
     return Column(
@@ -222,6 +224,7 @@ class _FirstDayScreenState extends State<FirstDayScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (hero != null) ...[Align(alignment: Alignment.centerLeft, child: hero), const SizedBox(height: 22)],
                 Row(
                   children: [
                     Container(width: 22, height: 1.5, color: Brand.tealDeep),
@@ -260,6 +263,7 @@ class _FirstDayScreenState extends State<FirstDayScreen> {
     // Rutinden somut bir önizleme: bu sabahın (sabah adımı yoksa bu akşamın) ilk dört adımı, kısa adlarıyla.
     final preview = (today.morning.isNotEmpty ? today.morning : today.evening).take(4).toList();
     return _page(
+      hero: const _ReadySeal(),
       eyebrow: i18n.t('mobileWelcome.ready.eyebrow'),
       title: name.isEmpty ? i18n.t('mobileWelcome.ready.titleNoName') : i18n.t('mobileWelcome.ready.title', {'name': name}),
       body: i18n.t('mobileWelcome.ready.body'),
@@ -599,4 +603,131 @@ class _QuietButton extends StatelessWidget {
       child: Text(label, style: tx(15, w: 6, c: Brand.ink)),
     );
   }
+}
+
+/// "Rutinin hazır" anının mührü: orman yeşili disk, etrafında çizilerek kapanan ince halka, ortada beliren tik ve iki
+/// yanından açılan iki küçük yaprak. Bir kez oynar (~1,2 sn); hareket azaltıldıysa doğrudan son hâli çizilir. Parıltı,
+/// konfeti ya da sallanma yok: sakin bir "tamam".
+class _ReadySeal extends StatefulWidget {
+  const _ReadySeal();
+
+  @override
+  State<_ReadySeal> createState() => _ReadySealState();
+}
+
+class _ReadySealState extends State<_ReadySeal> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_c.status == AnimationStatus.dismissed) {
+      if (reduceMotion(context)) {
+        _c.value = 1;
+      } else {
+        _c.forward();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: SizedBox.square(
+        dimension: 76,
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (context, _) => CustomPaint(painter: _SealPainter(_c.value, dark: Tw.dark)),
+        ),
+      ),
+    );
+  }
+}
+
+class _SealPainter extends CustomPainter {
+  const _SealPainter(this.t, {required this.dark});
+
+  final double t;
+  final bool dark;
+
+  double _iv(double a, double b, [Curve curve = Curves.easeOutCubic]) => curve.transform(((t - a) / (b - a)).clamp(0.0, 1.0));
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = size.center(Offset.zero);
+    final r = size.width / 2;
+    final disc = _iv(0, .35, Curves.easeOutBack);
+    final ring = _iv(.15, .7);
+    final tick = _iv(.45, .8);
+    final leaves = _iv(.65, 1, Curves.easeOutBack);
+
+    // yapraklar (diskin arkasında, iki yana açılır)
+    if (leaves > 0) {
+      final leafPaint = Paint()..color = Brand.tealDeep;
+      for (final side in [-1.0, 1.0]) {
+        canvas.save();
+        canvas.translate(c.dx + side * r * .7, c.dy + r * .42);
+        // defne gibi: dışa ve yukarı
+        final lift = .45 + .3 * leaves;
+        canvas.rotate(side > 0 ? -lift : math.pi + lift);
+        final len = r * .5 * leaves;
+        canvas.drawPath(
+          Path()
+            ..moveTo(0, 0)
+            ..quadraticBezierTo(len * .45, -len * .32, len, 0)
+            ..quadraticBezierTo(len * .45, len * .32, 0, 0),
+          leafPaint,
+        );
+        canvas.restore();
+      }
+    }
+
+    // disk
+    canvas.drawCircle(c, r * .72 * disc, Paint()..color = dark ? Brand.tealDeep : Brand.ink);
+
+    // halka
+    if (ring > 0) {
+      canvas.drawArc(
+        Rect.fromCircle(center: c, radius: r * .9),
+        -math.pi / 2,
+        math.pi * 2 * ring,
+        false,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6
+          ..strokeCap = StrokeCap.round
+          ..color = Brand.tealDeep.withValues(alpha: .8),
+      );
+    }
+
+    // tik
+    if (tick > 0) {
+      final a = Offset(c.dx - r * .28, c.dy + r * .02);
+      final b = Offset(c.dx - r * .06, c.dy + r * .24);
+      final e = Offset(c.dx + r * .32, c.dy - r * .2);
+      final path = Path()
+        ..moveTo(a.dx, a.dy)
+        ..lineTo(b.dx, b.dy)
+        ..lineTo(e.dx, e.dy);
+      final metric = path.computeMetrics().first;
+      canvas.drawPath(
+        metric.extractPath(0, metric.length * tick),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r * .13
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..color = Brand.cream,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SealPainter old) => old.t != t || old.dark != dark;
 }

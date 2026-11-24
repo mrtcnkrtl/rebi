@@ -56,6 +56,7 @@ void main() {
       final h = await pumpApp(tester, location: '/dashboard', prefs: acceptedPrefs());
       expect(find.text(tr('mobileToday.hero.outBadge')), findsNothing);
       expect(find.text('0/${steps.length}'), findsWidgets);
+      expect(find.text(tr('mobileToday.hero.dayRing')), findsOneWidget, reason: 'halka günün tamamını sayar');
 
       await tapText(tester, tr('mobileToday.productFinished'));
       await tapFinder(tester, inSheet(pickAction(product, localized: false)).first);
@@ -66,8 +67,8 @@ void main() {
       expect(h.backend.productsOut.map((p) => p['product']), [name]);
       expect(find.text(tr('mobileToday.hero.outBadge')), findsOneWidget);
       expect(find.text(tr('mobileToday.hero.restock')), findsOneWidget);
-      // Sabah halkası ve seçicisi biten ürünü toplamdan düşer (akşam seçicisi başka bir bloktur).
-      expect(find.text('0/${steps.length - 1}'), findsNWidgets(2));
+      // Sabah seçicisi biten ürünü toplamdan düşer; halka günün tamamını (sabah + akşam) sayar ve onu da düşer.
+      expect(find.text('0/${steps.length - 1}'), findsOneWidget);
     });
 
     testWidgets('"Aldım" ürünü rafa geri koyar, adım yeniden işaretlenebilir olur', (tester) async {

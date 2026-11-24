@@ -38,7 +38,7 @@ class _Bucket:
     def __init__(self):
         self.removed = []
 
-    def list(self, prefix):
+    def list(self, prefix, options=None):
         assert prefix == USER_ID
         return [{"name": "one.jpg"}, {"name": "two.webp"}]
 
@@ -158,6 +158,33 @@ def test_account_deletion_removes_all_user_photo_paths():
         f"{USER_ID}/one.jpg",
         f"{USER_ID}/two.webp",
     ]
+
+
+class _PagedBucket:
+    """Gerçek Storage gibi: liste `limit` kadar döner, silinenler sonraki listede yoktur."""
+
+    def __init__(self, count: int):
+        self.files = [f"p{i}.jpg" for i in range(count)]
+        self.removed: list[str] = []
+
+    def list(self, prefix, options=None):
+        limit = int((options or {}).get("limit", 100))
+        return [{"name": n} for n in self.files[:limit]]
+
+    def remove(self, paths):
+        names = {p.split("/", 1)[1] for p in paths}
+        self.files = [n for n in self.files if n not in names]
+        self.removed.extend(paths)
+
+
+def test_account_deletion_removes_photos_beyond_one_listing_page():
+    db = _Supabase()
+    db.bucket = _PagedBucket(2500)
+
+    _delete_skin_photos_for_user(db, USER_ID)
+
+    assert db.bucket.files == []
+    assert len(db.bucket.removed) == 2500
 
 
 def test_photo_magic_bytes_are_validated():

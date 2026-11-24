@@ -18,6 +18,7 @@ import '../state/theme_controller.dart';
 import '../ui/brand/palette.dart';
 import '../ui/components/photo_picker.dart';
 import '../ui/shell/page_stage.dart';
+import '../ui/brand/empty_art.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/app_sheet.dart';
 import '../ui/widgets/common.dart';
@@ -228,6 +229,8 @@ class _JournalScreenState extends State<JournalScreen> {
       ]);
     } else {
       children.addAll([
+        const Center(child: EmptyArt(EmptyArtKind.journal, size: 140)),
+        const SizedBox(height: 16),
         Text(i18n.t('mobileJournal.emptyTitle'), style: heading(24, h: 1.15)),
         const SizedBox(height: 8),
         Text(i18n.t('mobileJournal.emptyBody'), style: tx(14.5, c: Tw.gray600, h: relaxed)),

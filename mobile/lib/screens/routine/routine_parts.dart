@@ -310,9 +310,23 @@ class _RoutineStepTileState extends State<RoutineStepTile> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // "Temizleme: Yüzey aktif (SLES-free) köpük temizleyici" tek uzun kalın satır yerine iki katman:
+                  // adımın türü kalın, ne tür ürün olduğu altında sakin. Bilgi kısaltılmaz (parantezler kalır).
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(pickAction(item, localized: c.localized), style: tx(16, w: 6, c: Tw.gray900, h: 1.3)),
+                    child: Builder(builder: (context) {
+                      final parts = splitStepHeading(pickAction(item, localized: c.localized));
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(parts.title, style: tx(16, w: 7, c: Tw.gray900, h: 1.3)),
+                          if (parts.subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(parts.subtitle, style: tx(14, c: Tw.gray600, h: 1.4)),
+                          ],
+                        ],
+                      );
+                    }),
                   ),
                   if (_choices.length >= 2) ...[
                     const SizedBox(height: 8),
@@ -1113,4 +1127,26 @@ class _LifestyleRowState extends State<LifestyleRow> {
       ),
     );
   }
+}
+
+/// Rutin sayfasındaki adım başlığı: kısa ön ek ("Temizleme:", "Nemlendirici:") varsa başlık ve alt satır olarak ayrılır;
+/// metin kısaltılmaz. Ön ek yoksa ya da çok uzunsa tümü başlıktır.
+({String title, String subtitle}) splitStepHeading(String action) {
+  var s = action.trim();
+  var colon = s.indexOf(':');
+  // "Sabah: Temizleme: …" → zaman ön eki atılır.
+  if (colon > 0 && stepTimePrefixes.contains(s.substring(0, colon).trim().toLowerCase())) {
+    s = s.substring(colon + 1).trim();
+    colon = s.indexOf(':');
+  }
+  if (colon <= 0 || colon > 28) {
+    // "SPF 30+ (mat bitişli, yağsız SPF)" → ("SPF 30+", "mat bitişli, yağsız SPF")
+    final paren = RegExp(r'^(.{2,40}?)\s*\(([^()]+)\)\s*$').firstMatch(s);
+    if (paren != null) return (title: paren.group(1)!.trim(), subtitle: paren.group(2)!.trim());
+    return (title: s, subtitle: '');
+  }
+  final head = s.substring(0, colon).trim();
+  final rest = s.substring(colon + 1).trim();
+  if (rest.isEmpty || head.contains('(')) return (title: s, subtitle: '');
+  return (title: head, subtitle: rest);
 }

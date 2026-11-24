@@ -326,6 +326,7 @@
       }
     },
     "hero": {
+      "dayRing": "gün",
       "title": {
         "morning": "Sabah rutini",
         "evening": "Akşam rutini"
@@ -475,6 +476,10 @@
     "assessmentsTitle": "Son analizler",
     "severity": "Şiddet {{n}}",
     "trends": {
+      "emptyAllTitle": "Eğilimlerin kayıtlarınla oluşur",
+      "emptySomeTitle": "Henüz kaydı yok: {{names}}",
+      "emptyBody": "Check-in yaptıkça ve su kaydettikçe grafiklerin burada belirir; birkaç günde ilk eğilim görünür.",
+      "emptyAction": "Bugünün check-in’ini yap",
       "title": "Eğilimler",
       "avg": "Ort. {{v}}",
       "water": "Su",
@@ -830,6 +835,9 @@
       "goal": "Hedef seri ({{n}} gün)",
       "journey": "Rutin yolculuğun: ",
       "days": "{{n}} gün",
+      "emptyTitle": "Serin ilk check-in’inle başlar",
+      "emptyBody": "Günde yarım dakikalık check-in, rutinini cildinin o günkü hâline göre ayarlar. {{n}} günlük seri hedefin burada ilerler.",
+      "firstCheckin": "İlk check-in’i yap",
       "sinceAccept": " (kabul tarihinden)",
       "noAcceptDate": "Rutin kabul tarihi bir sonraki güncellemeden itibaren otomatik kaydedilir.",
       "checkin": "Check-in yap",
@@ -1032,6 +1040,11 @@
       "cardLabel": "Rebi AI",
       "cardValue": "Günde 120 soruya kadar",
       "memberLabel": "Üyeliğin",
+      "cardDaily": "Günde {{count}} Rebi AI sorusu",
+      "renews": "{{date}} tarihinde yenilenir",
+      "monthlyEquivalent": "aylık {{price}}",
+      "chatFree": "Ücretsiz: sınırlı",
+      "chatPaid": "Plus: günde 50–120",
       "compareTitle": "Plus ile neler değişir?",
       "free": "Ücretsiz",
       "limited": "Sınırlı",
@@ -1123,6 +1136,9 @@
     "googleNote": "Google ile devam edersen KVKK ve açık rıza onayını ilk açılışta isteriz.",
     "appleNote": "Apple ile devam edersen KVKK ve açık rıza onayını ilk açılışta isteriz.",
     "socialNote": "Apple ya da Google ile devam edersen KVKK ve açık rıza onayını ilk açılışta isteriz.",
+    "googleLoginNote": "Bu e-postayla daha önce hesap açtıysan Google ile girince aynı hesabına; rutinine ve geçmişine kaldığın yerden devam edersin.",
+    "errInvalidCredentialsGoogle": "E-posta veya parola hatalı. Hesabını Google ile açtıysan ya da parolanı hatırlamıyorsan \"Google ile devam et\"e dokun; aynı hesabına girersin.",
+    "errAlreadyRegisteredGoogle": "Bu e-posta ile zaten bir hesap var. Giriş yap ya da aynı e-postanın Google hesabıyla devam et; hesabın ve verilerin aynı kalır.",
     "googleFailed": "Google ile giriş tamamlanamadı. Tekrar dene ya da e-postanla devam et.",
     "googleUnavailable": "Google ile giriş şu an kullanılamıyor. Lütfen e-postanla devam et.",
     "appleFailed": "Apple ile giriş tamamlanamadı. Tekrar dene ya da e-postanla devam et.",

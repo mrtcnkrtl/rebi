@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,7 @@ import '../state/auth_controller.dart';
 import '../state/theme_controller.dart';
 import '../ui/components/ad_banner.dart';
 import '../ui/shell/page_stage.dart';
+import '../ui/brand/empty_art.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/widgets/skeleton.dart';
@@ -149,11 +151,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
       );
 
   Widget _emptyCard(I18n i18n) => RCard(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
         child: Column(children: [
-          Icon(LucideIcons.calendarDays, size: 28, color: Tw.gray300),
-          const SizedBox(height: 8),
-          Text(i18n.t('mobileHistory.empty'), textAlign: TextAlign.center, style: tx(13, c: Tw.gray500, h: relaxed)),
+          const EmptyArt(EmptyArtKind.history),
+          const SizedBox(height: 12),
+          Text(i18n.t('mobileHistory.empty'), textAlign: TextAlign.center, style: tx(13.5, c: Tw.gray600, h: relaxed)),
         ]),
       );
 
@@ -388,12 +390,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final waterMax = math.max(waterTargetMl.toDouble(), maxOf(t.water)) * 1.1;
     final weekly = t.bucketDays > 1 ? '${i18n.t('mobileHistory.trends.weeklyNote')} ' : '';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(padding: const EdgeInsets.only(left: 4), child: Text(i18n.t('mobileHistory.trends.title'), style: heading(22, h: 1.2))),
-        const SizedBox(height: 10),
-        _trendCard(
+    final cards = <(TrendSeries, IconData, Color, String, Widget)>[
+      (t.water, LucideIcons.droplet, Tw.blue500, i18n.t('mobileHistory.trends.water'), _trendCard(
           i18n,
           t,
           icon: LucideIcons.droplet,
@@ -409,9 +407,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             color: Tw.blue500,
             semanticLabel: label(i18n.t('mobileHistory.trends.water'), t.water, waterText ?? ''),
           ),
-        ),
-        const SizedBox(height: 12),
-        _trendCard(
+        )),
+      (t.sleep, LucideIcons.moon, Tw.indigo500, i18n.t('mobileHistory.trends.sleep'), _trendCard(
           i18n,
           t,
           icon: LucideIcons.moon,
@@ -428,9 +425,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             color: Tw.indigo500,
             semanticLabel: label(i18n.t('mobileHistory.trends.sleep'), t.sleep, sleepText ?? ''),
           ),
-        ),
-        const SizedBox(height: 12),
-        _trendCard(
+        )),
+      (t.stress, LucideIcons.brain, Tw.orange600, i18n.t('mobileHistory.trends.stress'), _trendCard(
           i18n,
           t,
           icon: LucideIcons.brain,
@@ -446,9 +442,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
             color: Tw.orange600,
             semanticLabel: label(i18n.t('mobileHistory.trends.stress'), t.stress, stressText ?? ''),
           ),
-        ),
-        const SizedBox(height: 12),
-        _trendCard(
+        )),
+      (t.routine, LucideIcons.calendarCheck, Tw.green600, i18n.t('mobileHistory.trends.routine'), _trendCard(
           i18n,
           t,
           icon: LucideIcons.calendarCheck,
@@ -462,7 +457,22 @@ class _HistoryScreenState extends State<HistoryScreen> {
             color: Tw.green600,
             semanticLabel: i18n.t('mobileHistory.trends.routineLabel', {'n': t.routine.recorded, 'avg': ((routineAvg ?? 0) * 100).round()}),
           ),
-        ),
+        )),
+    ];
+    final shown = [for (final c in cards) if (!c.$1.isEmpty) c.$5];
+    final empty = [for (final c in cards) if (c.$1.isEmpty) c];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(padding: const EdgeInsets.only(left: 4), child: Text(i18n.t('mobileHistory.trends.title'), style: heading(22, h: 1.2))),
+        const SizedBox(height: 10),
+        for (final c in shown) ...[c, const SizedBox(height: 12)],
+        // Kaydı olmayan ölçümler tek kartta toplanır: dört ayrı "kayıt yok" kartı yerine.
+        if (empty.isNotEmpty)
+          _TrendsEmptyCard(
+            items: [for (final c in empty) (c.$2, c.$3, c.$4)],
+            allEmpty: shown.isEmpty,
+          ),
       ],
     );
   }
@@ -626,4 +636,66 @@ class _Delta {
   final String text;
   final bool up;
   final bool? good;
+}
+
+/// Kaydı olmayan eğilimler için tek kart: ölçümlerin küçük simgeleri yan yana, kısa açıklama; hiç kayıt yoksa
+/// check-in'e götüren bağlantı. Dört ayrı "Bu aralıkta kayıt yok" kartı ekranı boş ve tekrarlı gösteriyordu.
+class _TrendsEmptyCard extends StatelessWidget {
+  const _TrendsEmptyCard({required this.items, required this.allEmpty});
+
+  final List<(IconData, Color, String)> items;
+  final bool allEmpty;
+
+  @override
+  Widget build(BuildContext context) {
+    final i18n = context.i18n;
+    final names = items.map((e) => e.$3).join(', ');
+    return RCard(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: Row(
+              children: [
+                for (final (icon, color, _) in items)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 8),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: color.withValues(alpha: Tw.dark ? .18 : .1),
+                      ),
+                      child: Icon(icon, size: 16, color: color),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            i18n.t(allEmpty ? 'mobileHistory.trends.emptyAllTitle' : 'mobileHistory.trends.emptySomeTitle', {
+              'names': names,
+            }),
+            style: tx(14, w: 7, c: Tw.gray900, h: 1.35),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            i18n.t('mobileHistory.trends.emptyBody'),
+            style: tx(12.5, c: Tw.gray600, h: relaxed),
+          ),
+          if (allEmpty) ...[
+            const SizedBox(height: 10),
+            TextLink(
+              i18n.t('mobileHistory.trends.emptyAction'),
+              onTap: () => context.go('/dashboard/checkin'),
+              style: tx(13.5, w: 7, c: Tw.readable(Tw.teal700)),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

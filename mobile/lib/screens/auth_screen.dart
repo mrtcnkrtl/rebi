@@ -163,12 +163,14 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         return _t('mobileAuth.errNetwork');
       case AuthErrorKind.providerDisabled:
         return _t('mobileAuth.googleUnavailable');
+      // Google ile açılmış (parolasız) hesapla e-postayla girmeye çalışan kullanıcı da bu hatayı alır: aynı hesaba
+      // Google düğmesiyle girebileceği söylenir (Supabase aynı e-postanın Google kimliğini mevcut hesaba bağlar).
       case AuthErrorKind.invalidCredentials:
-        return _t('mobileAuth.errInvalidCredentials');
+        return _t(googleSignInAvailable ? 'mobileAuth.errInvalidCredentialsGoogle' : 'mobileAuth.errInvalidCredentials');
       case AuthErrorKind.emailNotConfirmed:
         return _t('mobileAuth.errEmailNotConfirmed');
       case AuthErrorKind.alreadyRegistered:
-        return _t('mobileAuth.errAlreadyRegistered');
+        return _t(_alreadyRegisteredKey);
       case AuthErrorKind.weakPassword:
         return _t('mobileAuth.errWeakPassword');
       case AuthErrorKind.samePassword:
@@ -187,6 +189,9 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
         return raw.isEmpty ? (_en ? 'Something went wrong.' : 'Bir hata oluştu') : raw;
     }
   }
+
+  String get _alreadyRegisteredKey =>
+      googleSignInAvailable ? 'mobileAuth.errAlreadyRegisteredGoogle' : 'mobileAuth.errAlreadyRegistered';
 
   void _showAuthError(String raw, AuthErrorKind kind, {bool offerResend = false}) {
     if (!mounted) return;
@@ -242,7 +247,7 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
             setState(() {
               _error = '';
               _mode = 'login';
-              _info = _t('mobileAuth.errAlreadyRegistered');
+              _info = _t(_alreadyRegisteredKey);
             });
           }
           return;
@@ -687,6 +692,10 @@ class _AuthScreenState extends State<AuthScreen> with WidgetsBindingObserver {
                                                 if (signup) ...[
                                                   const SizedBox(height: 8),
                                                   Text(i18n.t(_consentNoteKey), textAlign: TextAlign.center, style: tx(12, c: Brand.inkSoft, h: snug)),
+                                                ] else if (googleSignInAvailable) ...[
+                                                  // Girişte: aynı e-postalı mevcut hesaba Google ile de girilebileceği söylenir.
+                                                  const SizedBox(height: 8),
+                                                  Text(i18n.t('mobileAuth.googleLoginNote'), textAlign: TextAlign.center, style: tx(12, c: Brand.inkSoft, h: snug)),
                                                 ],
                                                 const SizedBox(height: 18),
                                                 OrDivider(label: i18n.t('mobileAuth.orEmail')),

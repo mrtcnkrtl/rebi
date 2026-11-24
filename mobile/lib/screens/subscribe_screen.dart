@@ -1,18 +1,20 @@
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart' show DateFormat, NumberFormat;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' show User;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/env.dart';
+import '../core/haptics.dart';
 import '../core/i18n.dart';
 import '../core/sales_consent.dart';
 import '../core/subscription.dart';
 import '../state/auth_controller.dart';
 import '../state/store_controller.dart';
 import '../state/theme_controller.dart';
-import '../ui/brand/brand_caps.dart';
 import '../ui/brand/brand_sheet.dart';
 import '../ui/brand/motion.dart';
 import '../ui/brand/palette.dart';
@@ -23,15 +25,18 @@ import '../ui/widgets/common.dart';
 
 /// Rebi Plus: uygulamanın premium vitrini. Dil "klinik sıcaklık" + tek bir şampanya altını ([PlusPalette]):
 ///
-/// 1. Sahnenin üstüne binen **üyelik kartı** (orman yeşili, altın gravür) — sayfanın tek odak noktası; abonede paketini
-///    ve "aktif" durumunu taşır.
-/// 2. **Ücretsiz / Plus karşılaştırması** — farkı tek bakışta gösterir; Plus sütunu altın zeminde.
+/// 1. Sahnenin üstüne binen **üyelik kartı** (orman yeşili, altın gravür) — sayfanın tek odak noktası; seçilen paketi
+///    ve fiyatını canlı gösterir, abonede paketini ve yenilenme tarihini taşır.
+/// 2. **Plus ile gelenler** — dört ayrıcalık, altın madalyonlu geniş satırlar; sohbette "ücretsiz → Plus" farkı.
 /// 3. **Paket seçimi** — aylık/yıllık anahtarı (yıllıkta tasarruf rozeti), seçilince koyu yeşile dönen paket kartları.
 /// 4. Altta sabit **altın satın alma düğmesi** ve güven satırı; içerik kaydırılsa da görünür kalır.
 ///
 /// Mağaza sürümünde satın alma yolu yoksa yalnızca nötr bir bilgi çıkar; geliştirici notu yalnız debug'da.
 class SubscribeScreen extends StatefulWidget {
-  const SubscribeScreen({super.key});
+  const SubscribeScreen({super.key, this.backTo = '/dashboard/profile'});
+
+  /// "Geri"nin gideceği sayfa: Bugün'deki Plus düğmesiyle gelindiyse Bugün'e döner.
+  final String backTo;
 
   @override
   State<SubscribeScreen> createState() => _SubscribeScreenState();
@@ -79,6 +84,9 @@ class _SubscribeScreenState extends State<SubscribeScreen> {
     setState(() => _notice = '');
     final r = await store.purchase(plan);
     if (!mounted) return;
+    // Üyelik açıldı: günün "kilometre taşı" vuruşu; başarısızlıkta hata titreşimi.
+    if (r == PurchaseOutcome.success || r == PurchaseOutcome.activating) Haptics.milestone();
+    if (r == PurchaseOutcome.failed) Haptics.failure();
     setState(() {
       _notice = switch (r) {
         PurchaseOutcome.success => i18n.t('mobileSubscribe.store.success'),
@@ -117,21 +125,13 @@ class _SubscribeScreenState extends State<SubscribeScreen> {
     final selected = plans.where((p) => p.tier == selectedTier).firstOrNull;
     final isCurrent = selected != null && selected.tier == tier;
 
-    final card = PlusMembershipCard(
-      active: plus,
-      label: i18n.t(plus ? 'mobileSubscribe.premium.memberLabel' : 'mobileSubscribe.premium.cardLabel'),
-      value: tier != null
-          ? i18n.t('mobileSubscribe.activeTier', {'tier': i18n.t('mobileSubscribe.store.tiers.$tier')})
-          : plus
-          ? i18n.t('mobileSubscribe.active')
-          : i18n.t('mobileSubscribe.premium.cardValue'),
-    );
+    final card = _membershipCard(i18n, user, plus, tier, selected);
 
     return StagePage(
       theme: theme,
       title: i18n.t('subscribe.title'),
       subtitle: i18n.t('mobileSubscribe.premium.tagline'),
-      backTo: '/dashboard/profile',
+      backTo: widget.backTo,
       maxWidth: 512,
       overlap: 96,
       bottomBar: selected == null
@@ -184,8 +184,8 @@ class _SubscribeScreenState extends State<SubscribeScreen> {
             child: Text(i18n.t(plus ? 'mobileSubscribe.included' : 'mobileSubscribe.premium.compareTitle'), style: heading(24, h: 1.15)),
           ),
         ),
-        const SizedBox(height: 12),
-        const _Comparison(),
+        const SizedBox(height: 14),
+        const _Benefits(),
         const SizedBox(height: 30),
         if (storePurchasesEnabled)
           _storeSection(i18n, store, all, plans, yearly, hasYearly, selectedTier, tier)
@@ -233,6 +233,39 @@ class _SubscribeScreenState extends State<SubscribeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  /// Kart canlıdır: abonede paket + yenilenme tarihi, ücretsizde o an seçili paket ve fiyatı.
+  Widget _membershipCard(I18n i18n, User? user, bool plus, String? tier, StorePlan? selected) {
+    if (plus) {
+      final exp = storeExpiry(user);
+      return PlusMembershipCard(
+        active: true,
+        label: i18n.t('mobileSubscribe.premium.memberLabel'),
+        value: tier != null
+            ? i18n.t('mobileSubscribe.activeTier', {'tier': i18n.t('mobileSubscribe.store.tiers.$tier')})
+            : i18n.t('mobileSubscribe.active'),
+        footnote: exp == null
+            ? null
+            : i18n.t('mobileSubscribe.premium.renews', {'date': DateFormat.yMMMMd(i18n.lang).format(exp.toLocal())}),
+      );
+    }
+    if (selected == null) {
+      return PlusMembershipCard(
+        label: i18n.t('mobileSubscribe.premium.cardLabel'),
+        value: i18n.t('mobileSubscribe.premium.cardValue'),
+      );
+    }
+    final limit = storeTierDailyLimits[selected.tier];
+    return PlusMembershipCard(
+      label: '${i18n.t('mobileSubscribe.store.tiers.${selected.tier}')} · '
+          '${i18n.t(selected.yearly ? 'mobileSubscribe.store.yearly' : 'mobileSubscribe.store.monthly')}',
+      value: limit == null
+          ? i18n.t('mobileSubscribe.premium.cardValue')
+          : i18n.t('mobileSubscribe.premium.cardDaily', {'count': '$limit'}),
+      price: selected.priceString,
+      priceUnit: i18n.t(selected.yearly ? 'mobileSubscribe.store.perYear' : 'mobileSubscribe.store.perMonth'),
     );
   }
 
@@ -376,10 +409,23 @@ class _TrustLine extends StatelessWidget {
   }
 }
 
-/// Ücretsiz / Plus karşılaştırması: sol sütunda ayrıcalık (başlık + kısa açıklama), ortada ücretsiz, sağda altın
-/// zeminli Plus sütunu. Plus sütunu kesintisiz bir şerittir; ince çizgiler yalnızca sol ve orta sütunu ayırır.
-class _Comparison extends StatelessWidget {
-  const _Comparison();
+/// Yıllık paketin aylık karşılığı (mağazanın para birimiyle); fiyat bilinmiyorsa null.
+String? monthlyEquivalent(StorePlan plan, String lang) {
+  final product = plan.package.storeProduct;
+  if (product.price <= 0 || product.currencyCode.isEmpty) return null;
+  try {
+    return NumberFormat.simpleCurrency(locale: lang == 'tr' ? 'tr_TR' : 'en_US', name: product.currencyCode)
+        .format(product.price / 12);
+  } catch (_) {
+    return null;
+  }
+}
+
+/// Plus ile gelenler: tek kartta dört ayrıcalık. Her satırda altın zeminli bir madalyon, serif başlık ve kısa açıklama;
+/// sohbet satırında ücretsiz → Plus farkı tek satırda. Eski üç sütunlu tablo dar ekranda metni üç-dört satıra
+/// bölüyordu; bu düzen tam genişliği metne verir.
+class _Benefits extends StatelessWidget {
+  const _Benefits();
 
   static const _rows = [
     (LucideIcons.messageCircle, 'chat'),
@@ -391,139 +437,83 @@ class _Comparison extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final i18n = context.i18n;
-    final lang = i18n.lang;
-    final free = MediaQuery.textScalerOf(context).scale(10) > 14 ? 62.0 : 72.0;
-    const plusW = 84.0;
-    final line = BorderSide(color: Tw.gray100);
-    final headStyle = tx(10.5, w: 7, ls: brandTracking(lang, 1.2));
-
-    Widget plusCell(Widget child, {bool top = false, bool bottom = false}) => Container(
-      width: plusW,
-      alignment: Alignment.center,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 12),
-      decoration: BoxDecoration(
-        color: PlusPalette.wash,
-        border: Border(
-          left: BorderSide(color: PlusPalette.line),
-          right: BorderSide(color: PlusPalette.line),
-          top: top ? BorderSide(color: PlusPalette.line) : BorderSide.none,
-          bottom: bottom ? BorderSide(color: PlusPalette.line) : BorderSide.none,
-        ),
-        borderRadius: BorderRadius.vertical(
-          top: top ? const Radius.circular(16) : Radius.zero,
-          bottom: bottom ? const Radius.circular(16) : Radius.zero,
-        ),
-      ),
-      child: child,
-    );
-
     return RCard(
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      padding: const EdgeInsets.fromLTRB(18, 4, 18, 4),
       radius: 22,
       child: Column(
         children: [
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Spacer(),
-                SizedBox(
-                  width: free,
-                  child: Center(
-                    child: Text(
-                      brandCaps(i18n.t('mobileSubscribe.premium.free'), lang),
-                      textAlign: TextAlign.center,
-                      style: headStyle.copyWith(color: Tw.gray500),
+          for (var i = 0; i < _rows.length; i++)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              decoration: BoxDecoration(border: i == 0 ? null : Border(top: BorderSide(color: Tw.gray100))),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ExcludeSemantics(
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: PlusPalette.wash,
+                        border: Border.all(color: PlusPalette.line),
+                      ),
+                      child: Icon(_rows[i].$1, size: 18, color: PlusPalette.text),
                     ),
                   ),
-                ),
-                plusCell(
-                  top: true,
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ExcludeSemantics(child: Icon(LucideIcons.crown, size: 13, color: PlusPalette.text)),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text('PLUS', style: headStyle.copyWith(color: PlusPalette.text)),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          for (var i = 0; i < _rows.length; i++)
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+                  const SizedBox(width: 14),
                   Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(0, 14, 10, 14),
-                      decoration: BoxDecoration(border: Border(top: line)),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.only(top: 1),
-                            child: ExcludeSemantics(child: Icon(_rows[i].$1, size: 17, color: Tw.gray700)),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(i18n.t('mobileSubscribe.benefits.${_rows[i].$2}.title'), style: tx(14, w: 6, c: Tw.gray900, h: 1.3)),
-                                const SizedBox(height: 3),
-                                Text(i18n.t('mobileSubscribe.benefits.${_rows[i].$2}.body'), style: tx(12, c: Tw.gray600, h: 1.45)),
-                              ],
-                            ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 1),
+                        Text(
+                          i18n.t('mobileSubscribe.benefits.${_rows[i].$2}.title'),
+                          style: Brand.serif(18, color: Tw.gray900, h: 1.2, ls: -.2),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(i18n.t('mobileSubscribe.benefits.${_rows[i].$2}.body'), style: tx(13, c: Tw.gray600, h: 1.45)),
+                        if (i == 0) ...[
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 6,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              _Tag(text: i18n.t('mobileSubscribe.premium.chatFree'), plus: false),
+                              _Tag(text: i18n.t('mobileSubscribe.premium.chatPaid'), plus: true),
+                            ],
                           ),
                         ],
-                      ),
+                      ],
                     ),
-                  ),
-                  Container(
-                    width: free,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(border: Border(top: line)),
-                    child: i == 0
-                        ? Text(
-                            i18n.t('mobileSubscribe.premium.limited'),
-                            textAlign: TextAlign.center,
-                            style: tx(12, w: 5, c: Tw.gray500),
-                          )
-                        : Semantics(
-                            label: i18n.t('mobileSubscribe.premium.notIncluded'),
-                            child: ExcludeSemantics(child: Icon(LucideIcons.minus, size: 16, color: Tw.gray300)),
-                          ),
-                  ),
-                  plusCell(
-                    bottom: i == _rows.length - 1,
-                    i == 0
-                        ? Text(
-                            i18n.t('mobileSubscribe.premium.chatPlus'),
-                            textAlign: TextAlign.center,
-                            style: tx(12.5, w: 7, c: PlusPalette.text, h: 1.3),
-                          )
-                        : Semantics(
-                            label: i18n.t('mobileSubscribe.premium.included'),
-                            child: ExcludeSemantics(
-                              child: Container(
-                                width: 22,
-                                height: 22,
-                                decoration: const BoxDecoration(color: PlusPalette.gold, shape: BoxShape.circle),
-                                child: const Icon(LucideIcons.check, size: 14, color: PlusPalette.onGold),
-                              ),
-                            ),
-                          ),
                   ),
                 ],
               ),
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Ücretsiz (gri) / Plus (altın) küçük etiket.
+class _Tag extends StatelessWidget {
+  const _Tag({required this.text, required this.plus});
+
+  final String text;
+  final bool plus;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: plus ? PlusPalette.wash : Tw.gray50,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: plus ? PlusPalette.line : Tw.gray200),
+      ),
+      child: Text(text, style: tx(12, w: plus ? 7 : 5, c: plus ? PlusPalette.text : Tw.gray600)),
     );
   }
 }
@@ -621,6 +611,11 @@ class _TierCard extends StatelessWidget {
       children: [
         Text(plan.priceString, style: tx(19, w: 7, c: ink, h: 1.15)),
         Text(i18n.t(plan.yearly ? 'mobileSubscribe.store.perYear' : 'mobileSubscribe.store.perMonth'), style: tx(11.5, w: 5, c: soft)),
+        if (plan.yearly && monthlyEquivalent(plan, i18n.lang) != null)
+          Text(
+            i18n.t('mobileSubscribe.premium.monthlyEquivalent', {'price': monthlyEquivalent(plan, i18n.lang)!}),
+            style: tx(11.5, w: 6, c: selected ? PlusPalette.goldSoft : PlusPalette.text),
+          ),
       ],
     );
 

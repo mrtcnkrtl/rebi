@@ -14,6 +14,13 @@ export function clearUserLocalData(userId) {
     for (const key of keys) localStorage.removeItem(key);
     // Remove the legacy non-user-scoped chat key during the transition.
     localStorage.removeItem("rebi-chat-history");
+    // Newer per-account keys (analyze draft, weather place, …) carry the user id in their name.
+    const scoped = [];
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (key && key.includes(userId)) scoped.push(key);
+    }
+    for (const key of scoped) localStorage.removeItem(key);
   } catch {
     /* localStorage may be unavailable; server deletion still proceeds. */
   }

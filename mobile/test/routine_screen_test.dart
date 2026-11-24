@@ -109,11 +109,12 @@ void main() {
       await tapText(tester, tr('dashboard.howToChooseTitle'));
       expect(find.text(how), findsNothing);
 
-      // Etken madde listesi: kapalıyken adlar yalnızca adım başlığında, açılınca bir de çip olarak görünür.
+      // Etken madde listesi: kapalıyken tam ad görünmez (adım başlığı "tür / tarif" diye iki satıra bölünür),
+      // açılınca çip olarak tam haliyle görünür.
       final first = RoutineView(asRoutine(routine)).routineIngredientsList.first;
-      expect(find.text(first), findsOneWidget);
+      expect(find.text(first), findsNothing);
       await tapText(tester, tr('dashboard.productListTitle'));
-      expect(find.text(first), findsNWidgets(2));
+      expect(find.text(first), findsOneWidget);
     });
 
     testWidgets('bu hafta: seyrek adımlar yedi günlük kutularla ve uygulanacak günlerle gösterilir', (tester) async {

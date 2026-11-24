@@ -118,6 +118,8 @@ class _RoutineHeroState extends State<RoutineHero> {
         final checked = steps.where((s) => blockDone || progress.stepsOf(block).contains(s)).length;
         final fraction = live.isEmpty ? (blockDone ? 1.0 : 0.0) : checked / live.length;
         final showSteps = !blockDone || _stepsShownWhenDone.contains(block);
+        // Halka günün tamamını gösterir (sabah + akşam); sekmeler zaten bloğun kendi sayısını taşır.
+        final day = _dayProgress(plan, progress);
         _noticeCompletion(plan);
         final week = plan?.routineWeek ?? const <RoutineDay>[];
 
@@ -130,7 +132,7 @@ class _RoutineHeroState extends State<RoutineHero> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _header(i18n, block, fraction, checked, live.length, blockDone),
+                _header(i18n, block, day.total == 0 ? fraction : day.done / day.total, day.done, day.total, day.total > 0 && day.done >= day.total),
                 if (week.length == 7) ...[const SizedBox(height: 16), _WeekStrip(days: week, theme: widget.theme, i18n: i18n, since: widget.trackingSince)],
                 const SizedBox(height: 16),
                 _segments(i18n, progress, plan),
@@ -169,6 +171,21 @@ class _RoutineHeroState extends State<RoutineHero> {
     );
   }
 
+  /// Günün (sabah + akşam) işaretlenmiş ve toplam adım sayısı; Rafım'da biten ürünlerin adımı sayılmaz.
+  ({int done, int total}) _dayProgress(TodayPlan? plan, DayProgress progress) {
+    var done = 0;
+    var total = 0;
+    for (final (b, items) in [('morning', widget.morning), ('evening', widget.evening)]) {
+      final blockDone = progress.blockDone(b);
+      for (final it in items) {
+        if (_isOut(plan, it)) continue;
+        total++;
+        if (blockDone || progress.stepsOf(b).contains(stepOrder(it).round())) done++;
+      }
+    }
+    return (done: done, total: total);
+  }
+
   Widget _header(I18n i18n, String block, double fraction, int checked, int total, bool done) {
     final theme = widget.theme;
     return Row(
@@ -193,7 +210,15 @@ class _RoutineHeroState extends State<RoutineHero> {
           track: theme.primaryLight,
           child: done
               ? Icon(LucideIcons.check, size: 22, color: Tw.emerald700)
-              : Text(total == 0 ? '–' : '$checked/$total', style: tx(13, w: 7, c: Tw.gray700)),
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(total == 0 ? '–' : '$checked/$total', style: tx(13, w: 7, c: Tw.gray700, h: 1)),
+                    // Büyük yazıda halkanın içine iki satır sığmaz: "gün" etiketi düşer (ekran okuyucu zaten tam cümleyi okur).
+                    if (total > 0 && MediaQuery.textScalerOf(context).scale(10) <= 12)
+                      Text(i18n.t('mobileToday.hero.dayRing'), style: tx(9, w: 6, c: Tw.gray500, h: 1.1)),
+                  ],
+                ),
         ),
       ],
     );
@@ -663,7 +688,7 @@ class _WeekStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     final names = i18n.tList('dashboard.weekDays', const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
     final full = days.where((d) => d.full).length;
-    final counted = days.where((d) => !_before(d)).length;
+    final counted = [for (var i = 0; i < days.length; i++) if (i == days.length - 1 || !_before(days[i])) i].length;
     String dayName(RoutineDay d) {
       final date = DateTime.tryParse(d.logDate);
       return date == null || names.length != 7 ? '' : names[date.weekday - 1];
@@ -680,7 +705,9 @@ class _WeekStrip extends StatelessWidget {
             children: [
               Text(i18n.t('mobileToday.week.title'), style: tx(11.5, w: 7, c: Tw.gray500, ls: .8)),
               const Spacer(),
-              Text(i18n.t('mobileToday.week.full', {'n': full, 'total': counted}), style: tx(11.5, w: 6, c: Tw.gray600)),
+              // Sayılacak gün yokken "0/0 tam gün" anlamsız (ve kırık) görünür: sayaç gizlenir.
+              if (counted > 0)
+                Text(i18n.t('mobileToday.week.full', {'n': full, 'total': counted}), style: tx(11.5, w: 6, c: Tw.gray600)),
             ],
           ),
           const SizedBox(height: 10),
@@ -690,7 +717,7 @@ class _WeekStrip extends StatelessWidget {
                 Expanded(
                   child: Column(
                     children: [
-                      _WeekDot(day: days[i], color: theme.primary, today: i == days.length - 1, before: _before(days[i])),
+                      _WeekDot(day: days[i], color: theme.primary, today: i == days.length - 1, before: i != days.length - 1 && _before(days[i])),
                       const SizedBox(height: 5),
                       Text(
                         dayName(days[i]),

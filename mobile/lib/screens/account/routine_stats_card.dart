@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../core/checkin_stats.dart';
 import '../../core/i18n.dart';
 import '../../state/theme_controller.dart';
+import '../../ui/brand/palette.dart';
 import '../../ui/tw.dart';
 import '../../ui/widgets/common.dart';
 import 'account_parts.dart';
@@ -65,70 +66,99 @@ class AccountRoutineStatsCard extends StatelessWidget {
           AccountSectionTitle(icon: LucideIcons.target, color: theme.fg, text: i18n.t('profile.routineSummaryTitle')),
           const SizedBox(height: 10),
           Text(i18n.t('mobileAccount.stats.intro', {'n': routineStreakGoalDays}), style: tx(12.5, c: Tw.gray600, h: relaxed)),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              tile('${s.streak}', i18n.t('profile.streak'), theme.fg),
-              const SizedBox(width: 8),
-              tile('${s.totalCheckIns}', i18n.t('profile.totalCheckins'), Tw.gray800),
-            ],
-          ),
-          if (s.appliedRatePercent != null) ...[
-            const SizedBox(height: 12),
+          // Henüz hiç check-in yoksa "0 / 0 / %0" kutuları yerine tek bir davet: ilk adım net olsun.
+          if (s.totalCheckIns == 0) ...[
+            const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: BoxDecoration(color: Tw.gray50, borderRadius: BorderRadius.circular(14), border: Border.all(color: Tw.gray100)),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+              decoration: BoxDecoration(
+                color: theme.primary.withValues(alpha: Tw.dark ? .14 : .06),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: theme.primaryLight),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(LucideIcons.clipboardCheck, size: 16, color: Tw.gray500),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(i18n.t('profile.adherence'), style: tx(13, w: 6, c: Tw.gray800)),
-                        Text.rich(
-                          TextSpan(children: [
-                            TextSpan(text: i18n.t('mobileAccount.stats.applied')),
-                            TextSpan(text: '${s.appliedRatePercent}%', style: tx(12, w: 7, c: Tw.gray800)),
-                          ]),
-                          style: tx(12, c: Tw.gray600, h: snug),
-                        ),
-                      ],
-                    ),
+                  Text(i18n.t('mobileAccount.stats.emptyTitle'), style: heading(18, h: 1.25)),
+                  const SizedBox(height: 4),
+                  Text(i18n.t('mobileAccount.stats.emptyBody', {'n': routineStreakGoalDays}), style: tx(12.5, c: Tw.gray600, h: relaxed)),
+                  const SizedBox(height: 12),
+                  PrimaryButton(
+                    key: const Key('stats-first-checkin'),
+                    onPressed: () => context.go('/dashboard/checkin'),
+                    label: i18n.t('mobileAccount.stats.firstCheckin'),
+                    icon: LucideIcons.circleCheck,
+                    minHeight: 48,
+                    fontSize: 15,
                   ),
                 ],
               ),
             ),
-          ],
+          ] else ...[
           const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(i18n.t('mobileAccount.stats.goal', {'n': routineStreakGoalDays}), style: tx(12, c: Tw.gray600)),
-              Text('${s.goalProgress}%', style: tx(12, c: Tw.gray600)),
+            Row(
+              children: [
+                tile('${s.streak}', i18n.t('profile.streak'), theme.fg),
+                const SizedBox(width: 8),
+                tile('${s.totalCheckIns}', i18n.t('profile.totalCheckins'), Tw.gray800),
+              ],
+            ),
+            if (s.appliedRatePercent != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(color: Tw.gray50, borderRadius: BorderRadius.circular(14), border: Border.all(color: Tw.gray100)),
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.clipboardCheck, size: 16, color: Tw.gray500),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(i18n.t('profile.adherence'), style: tx(13, w: 6, c: Tw.gray800)),
+                          Text.rich(
+                            TextSpan(children: [
+                              TextSpan(text: i18n.t('mobileAccount.stats.applied')),
+                              TextSpan(text: '${s.appliedRatePercent}%', style: tx(12, w: 7, c: Tw.gray800)),
+                            ]),
+                            style: tx(12, c: Tw.gray600, h: snug),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
-          ),
-          const SizedBox(height: 4),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(999),
-            child: Container(
-              height: 8,
-              color: Tw.gray100,
-              alignment: Alignment.centerLeft,
-              child: FractionallySizedBox(
-                widthFactor: s.goalProgress / 100,
-                child: Container(decoration: BoxDecoration(color: theme.primary, borderRadius: BorderRadius.circular(999))),
+            const SizedBox(height: 14),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(i18n.t('mobileAccount.stats.goal', {'n': routineStreakGoalDays}), style: tx(12, c: Tw.gray600)),
+                Text('${s.goalProgress}%', style: tx(12, c: Tw.gray600)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: Container(
+                height: 8,
+                color: Tw.gray100,
+                alignment: Alignment.centerLeft,
+                child: FractionallySizedBox(
+                  widthFactor: s.goalProgress / 100,
+                  child: Container(decoration: BoxDecoration(color: theme.primary, borderRadius: BorderRadius.circular(999))),
+                ),
               ),
             ),
-          ),
+          ],
           const SizedBox(height: 12),
           if (s.daysSinceAccept != null)
             Text.rich(
               TextSpan(children: [
                 TextSpan(text: i18n.t('mobileAccount.stats.journey')),
                 TextSpan(text: i18n.t('mobileAccount.stats.days', {'n': s.daysSinceAccept}), style: tx(12, w: 7, c: Tw.gray800)),
-                TextSpan(text: i18n.t('mobileAccount.stats.sinceAccept')),
               ]),
               textAlign: TextAlign.center,
               style: tx(12, c: Tw.gray600),
@@ -141,7 +171,8 @@ class AccountRoutineStatsCard extends StatelessWidget {
             spacing: 8,
             runSpacing: 8,
             children: [
-              smallLink(i18n.t('mobileAccount.stats.checkin'), () => context.go('/dashboard/checkin'), theme.primaryLight, theme.fg),
+              if (s.totalCheckIns > 0)
+                smallLink(i18n.t('mobileAccount.stats.checkin'), () => context.go('/dashboard/checkin'), theme.primaryLight, theme.fg),
               smallLink(i18n.t('mobileAccount.stats.addPhoto'), () => context.push('/dashboard/analyze?photo=1'), Tw.gray200, Tw.gray700),
             ],
           ),

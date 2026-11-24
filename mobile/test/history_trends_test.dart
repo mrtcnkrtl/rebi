@@ -292,13 +292,15 @@ void main() {
       expect(find.textContaining(tr('mobileHistory.trends.weeklyNote')), findsNothing);
     });
 
-    testWidgets('bir seri tamamen boşsa o kartta "kayıt yok" yazar, grafik çizilmez', (tester) async {
+    testWidgets('boş seriler ayrı kart yerine tek "henüz kaydı yok" kartında toplanır', (tester) async {
       // Yalnızca su var: uyku, stres ve rutin için hiç değer yok.
       final backend = backendWith((now) => [row(0, from: now, tracking: {'water_ml_total': 900})]);
       await pumpApp(tester, location: '/dashboard/history', prefs: acceptedPrefs(), backend: backend);
       expect(find.byType(TrendBars), findsOneWidget);
       expect(find.byType(TrendLine), findsNothing);
-      expect(find.text(tr('mobileHistory.trends.noData')), findsNWidgets(2), reason: 'uyku ve stres');
+      final names = '${tr('mobileHistory.trends.sleep')}, ${tr('mobileHistory.trends.stress')}';
+      expect(find.text(tr('mobileHistory.trends.emptySomeTitle', {'names': names})), findsOneWidget, reason: 'uyku ve stres');
+      expect(find.text(tr('mobileHistory.trends.emptyAction')), findsNothing, reason: 'su ve rutin kayıtlı: tümü boş değil');
       expect(find.byType(TrendStrip), findsOneWidget, reason: 'rutin: kayıtlı gün var, yapılmamış (0)');
     });
 

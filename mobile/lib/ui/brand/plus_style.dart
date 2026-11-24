@@ -93,11 +93,18 @@ class PlusButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final enabled = onPressed != null && !loading;
     final content = loading
-        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.4, color: PlusPalette.onGold))
+        ? const SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.4, color: PlusPalette.onGold),
+          )
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[ExcludeSemantics(child: Icon(icon, size: 18, color: PlusPalette.onGold)), const SizedBox(width: 10)],
+              if (icon != null) ...[
+                ExcludeSemantics(child: Icon(icon, size: 18, color: PlusPalette.onGold)),
+                const SizedBox(width: 10),
+              ],
               Flexible(
                 child: Text(
                   label,
@@ -131,7 +138,12 @@ class PlusButton extends StatelessWidget {
       child: content,
     );
     if (shimmer && enabled) {
-      button = ShimmerOnce(delay: const Duration(milliseconds: 900), radius: height / 2, color: Colors.white, child: button);
+      button = ShimmerOnce(
+        delay: const Duration(milliseconds: 900),
+        radius: height / 2,
+        color: Colors.white,
+        child: button,
+      );
     }
     return Semantics(
       button: true,
@@ -146,24 +158,91 @@ class PlusButton extends StatelessWidget {
 }
 
 /// Üyelik kartı: orman yeşili zeminde altın gravür çizgileri, Fraunces "Rebi" ve aralıklı "PLUS". Sayfanın odak
-/// noktasıdır; sahnenin üstüne biner. [label] / [value] kartın altındaki iki satırdır (ücretsizde vaat, abonede paket).
+/// noktasıdır; sahnenin üstüne biner. Kart canlıdır: ücretsiz kullanıcıda seçilen paketi ([label] paket + dönem,
+/// [value] günlük hak, [price] / [priceUnit] fiyat), abonede paketini ve [footnote]'ta yenilenme tarihini gösterir.
 class PlusMembershipCard extends StatelessWidget {
-  const PlusMembershipCard({super.key, required this.label, required this.value, this.active = false});
+  const PlusMembershipCard({
+    super.key,
+    required this.label,
+    required this.value,
+    this.active = false,
+    this.price,
+    this.priceUnit,
+    this.footnote,
+  });
 
   final String label;
   final String value;
   final bool active;
+  final String? price;
+  final String? priceUnit;
+  final String? footnote;
 
   @override
   Widget build(BuildContext context) {
     final lang = context.i18n.lang;
     const radius = 24.0;
+    final soft = Brand.cream.withValues(alpha: .62);
+    // Büyük yazıda fiyat, paket bilgisinin altına iner (yan yana sığmaz).
+    final stacked = MediaQuery.textScalerOf(context).scale(10) > 13.5;
+    final details = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            if (active) ...[
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(color: PlusPalette.gold, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 7),
+            ],
+            Flexible(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: Text(
+                  brandCaps(label, lang),
+                  key: ValueKey(label),
+                  style: tx(10.5, w: 7, c: active ? PlusPalette.goldSoft : soft, ls: brandTracking(lang, 1.8)),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          child: Text(
+            value,
+            key: ValueKey(value),
+            style: tx(17, w: 6, c: Brand.cream, h: 1.25),
+          ),
+        ),
+        if (footnote != null) ...[const SizedBox(height: 3), Text(footnote!, style: tx(12, c: soft, h: 1.3))],
+      ],
+    );
+    final priceBlock = price == null
+        ? null
+        : AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            child: Column(
+              key: ValueKey(price),
+              crossAxisAlignment: stacked ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+              children: [
+                Text(price!, style: Brand.serif(24, color: PlusPalette.goldSoft, h: 1.05, ls: -.4)),
+                if (priceUnit != null) Text(priceUnit!, style: tx(11.5, w: 5, c: soft)),
+              ],
+            ),
+          );
     final card = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(radius),
         gradient: PlusPalette.cardGradient,
         border: Border.all(color: PlusPalette.goldSoft.withValues(alpha: .55), width: 1),
-        boxShadow: [BoxShadow(color: const Color(0xFF021412).withValues(alpha: .38), blurRadius: 34, offset: const Offset(0, 18))],
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF021412).withValues(alpha: .38), blurRadius: 34, offset: const Offset(0, 18)),
+        ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
@@ -194,28 +273,18 @@ class PlusMembershipCard extends StatelessWidget {
                     ExcludeSemantics(child: Icon(LucideIcons.crown, size: 22, color: PlusPalette.goldSoft)),
                   ],
                 ),
-                const SizedBox(height: 58),
-                Text(
-                  brandCaps(label, lang),
-                  style: tx(10.5, w: 7, c: Brand.cream.withValues(alpha: .62), ls: brandTracking(lang, 1.8)),
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    if (active) ...[
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: const BoxDecoration(color: PlusPalette.gold, shape: BoxShape.circle),
-                      ),
-                      const SizedBox(width: 8),
+                const SizedBox(height: 46),
+                if (stacked) ...[
+                  details,
+                  if (priceBlock != null) ...[const SizedBox(height: 10), priceBlock],
+                ] else
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(child: details),
+                      if (priceBlock != null) ...[const SizedBox(width: 12), priceBlock],
                     ],
-                    Flexible(
-                      child: Text(value, style: tx(17, w: 6, c: Brand.cream, h: 1.25)),
-                    ),
-                  ],
-                ),
+                  ),
               ],
             ),
           ),
@@ -231,6 +300,49 @@ class PlusMembershipCard extends StatelessWidget {
         radius: radius,
         color: PlusPalette.goldSoft,
         child: card,
+      ),
+    );
+  }
+}
+
+/// Bugün sahnesinin sağ üstünde, hesap kısayolunun yanında duran Plus girişi: koyu sahnede altın çerçeveli küçük hap
+/// (taç + "Plus"). Ana ekranda her zaman görünür ama göz yormaz; ücretsiz kullanıcıda ve satın alma mümkünken çıkar.
+class PlusHeaderChip extends StatelessWidget {
+  const PlusHeaderChip({super.key, required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Pressable(
+        onTap: onTap,
+        scale: .96,
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          alignment: Alignment.center,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(11, 7, 14, 7),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(99),
+              color: PlusPalette.goldSoft.withValues(alpha: .12),
+              border: Border.all(color: PlusPalette.goldSoft.withValues(alpha: .7)),
+            ),
+            child: ExcludeSemantics(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(LucideIcons.crown, size: 15, color: PlusPalette.goldSoft),
+                  const SizedBox(width: 6),
+                  Text('Plus', style: tx(14, w: 7, c: PlusPalette.goldSoft, ls: .2)),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -311,7 +423,13 @@ class PlusPromoCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(radius),
             gradient: PlusPalette.cardGradient,
             border: Border.all(color: PlusPalette.goldSoft.withValues(alpha: .5)),
-            boxShadow: [BoxShadow(color: const Color(0xFF021412).withValues(alpha: .22), blurRadius: 22, offset: const Offset(0, 10))],
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF021412).withValues(alpha: .22),
+                blurRadius: 22,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(radius),

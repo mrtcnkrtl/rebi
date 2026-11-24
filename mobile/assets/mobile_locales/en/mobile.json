@@ -326,6 +326,7 @@
       }
     },
     "hero": {
+      "dayRing": "day",
       "title": {
         "morning": "Morning routine",
         "evening": "Evening routine"
@@ -475,6 +476,10 @@
     "assessmentsTitle": "Recent analyses",
     "severity": "Severity {{n}}",
     "trends": {
+      "emptyAllTitle": "Your trends build from your logs",
+      "emptySomeTitle": "No entries yet: {{names}}",
+      "emptyBody": "As you check in and log water, your charts appear here; the first trend shows after a few days.",
+      "emptyAction": "Do today’s check-in",
       "title": "Trends",
       "avg": "Avg. {{v}}",
       "water": "Water",
@@ -830,6 +835,9 @@
       "goal": "Streak goal ({{n}} days)",
       "journey": "Your routine journey: ",
       "days": "{{n}} days",
+      "emptyTitle": "Your streak starts with your first check-in",
+      "emptyBody": "A half-minute daily check-in tunes your routine to how your skin feels that day. Your {{n}}-day streak goal grows here.",
+      "firstCheckin": "Do your first check-in",
       "sinceAccept": " (since you accepted it)",
       "noAcceptDate": "The date you accepted your routine will be recorded automatically from the next update.",
       "checkin": "Check in",
@@ -1032,6 +1040,11 @@
       "cardLabel": "Rebi AI",
       "cardValue": "Up to 120 questions a day",
       "memberLabel": "Your membership",
+      "cardDaily": "{{count}} Rebi AI questions a day",
+      "renews": "Renews on {{date}}",
+      "monthlyEquivalent": "{{price}} a month",
+      "chatFree": "Free: limited",
+      "chatPaid": "Plus: 50–120 a day",
       "compareTitle": "What changes with Plus",
       "free": "Free",
       "limited": "Limited",
@@ -1123,6 +1136,9 @@
     "googleNote": "If you continue with Google, we'll ask for your privacy and consent approval when the app first opens.",
     "appleNote": "If you continue with Apple, we'll ask for your privacy and consent approval when the app first opens.",
     "socialNote": "If you continue with Apple or Google, we'll ask for your privacy and consent approval when the app first opens.",
+    "googleLoginNote": "Already have an account with this email? Continue with Google and you will pick up your routine and history right where you left off.",
+    "errInvalidCredentialsGoogle": "Email or password is incorrect. If you signed up with Google or don't remember your password, tap \"Continue with Google\" to get into the same account.",
+    "errAlreadyRegisteredGoogle": "An account with this email already exists. Sign in, or continue with the Google account for this email; your account and data stay the same.",
     "googleFailed": "Google sign-in didn't finish. Try again or continue with your email.",
     "googleUnavailable": "Google sign-in isn't available right now. Please continue with your email.",
     "appleFailed": "Apple sign-in didn't finish. Try again or continue with your email.",

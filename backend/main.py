@@ -5162,34 +5162,40 @@ def _delete_skin_photos_for_user(supabase, user_id: str) -> None:
     prefix = (user_id or "").strip()
     if not prefix or ".." in prefix or any(c in prefix for c in "/\\"):
         raise HTTPException(status_code=400, detail="Geçersiz kullanıcı kimliği")
-    try:
-        items = supabase.storage.from_("skin-photos").list(prefix)
-    except Exception as e:
-        log.error("skin-photos list başarısız: %s", type(e).__name__)
-        raise HTTPException(
-            status_code=502,
-            detail="Cilt fotoğrafları doğrulanamadığı için hesap silme durduruldu.",
-        )
-    if not items:
-        return
-    paths: list[str] = []
-    for item in items:
-        if not isinstance(item, dict):
-            continue
-        name = item.get("name")
-        if name and str(name).strip():
-            paths.append(f"{prefix}/{name}")
-    if not paths:
-        return
-    try:
-        supabase.storage.from_("skin-photos").remove(paths)
-        log.info("skin-photos silindi: count=%d", len(paths))
-    except Exception as e:
-        log.error("skin-photos remove başarısız: %s", type(e).__name__)
-        raise HTTPException(
-            status_code=502,
-            detail="Cilt fotoğrafları silinemediği için hesap silme durduruldu.",
-        )
+    # Storage listesi sayfalıdır (varsayılan 100): her turda bir sayfa silinir, liste boşalana kadar.
+    page = 1000
+    total = 0
+    for _ in range(100):
+        try:
+            items = supabase.storage.from_("skin-photos").list(prefix, {"limit": page, "offset": 0})
+        except Exception as e:
+            log.error("skin-photos list başarısız: %s", type(e).__name__)
+            raise HTTPException(
+                status_code=502,
+                detail="Cilt fotoğrafları doğrulanamadığı için hesap silme durduruldu.",
+            )
+        paths: list[str] = []
+        for item in items or []:
+            if not isinstance(item, dict):
+                continue
+            name = item.get("name")
+            if name and str(name).strip():
+                paths.append(f"{prefix}/{name}")
+        if not paths:
+            break
+        try:
+            supabase.storage.from_("skin-photos").remove(paths)
+        except Exception as e:
+            log.error("skin-photos remove başarısız: %s", type(e).__name__)
+            raise HTTPException(
+                status_code=502,
+                detail="Cilt fotoğrafları silinemediği için hesap silme durduruldu.",
+            )
+        total += len(paths)
+        if len(items) < page:
+            break
+    if total:
+        log.info("skin-photos silindi: count=%d", total)
 
 
 # PostgREST "tablo yok" (şema önbelleğinde bulunamadı) ve Postgres "undefined_table" kodları.

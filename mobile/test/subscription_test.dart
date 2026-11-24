@@ -8,6 +8,7 @@ import 'package:rebi/state/store_controller.dart';
 import 'package:rebi/ui/components/ad_banner.dart';
 
 import 'helpers/app_harness.dart';
+import 'helpers/demo_data.dart';
 
 Map<String, dynamic> storeMeta(String tier, {DateTime? expires}) => {
       'rebi_store': {
@@ -24,7 +25,7 @@ StorePlan plan(String tier, {bool yearly = false, required String price}) {
     package: Package(
       '${tier}_${yearly ? 'yearly' : 'monthly'}',
       yearly ? PackageType.annual : PackageType.monthly,
-      StoreProduct(id, '', tier, 0, price, 'TRY'),
+      StoreProduct(id, '', tier, double.parse(price.replaceAll(RegExp(r'[^0-9,]'), '').replaceAll(',', '.')), price, 'TRY'),
       const PresentedOfferingContext('default', null, null),
     ),
   );
@@ -125,7 +126,8 @@ void main() {
       expect(find.text('Günde 50 soru'), findsOneWidget);
       expect(find.text('Günde 80 soru'), findsOneWidget);
       expect(find.text('Günde 120 soru'), findsOneWidget);
-      expect(find.textContaining('₺149,99'), findsOneWidget);
+      expect(find.textContaining('₺149,99'), findsNWidgets(2), reason: 'paket kartı + seçimi gösteren üyelik kartı');
+      expect(find.text('Günde 80 Rebi AI sorusu'), findsOneWidget, reason: 'üyelik kartı seçili paketi gösterir');
       expect(find.textContaining('₺1.299,99'), findsNothing, reason: 'yıllık fiyatlar sekme değişince');
       expect(find.text('Pro ile devam et'), findsOneWidget);
       expect(find.text(tr('mobileSubscribe.store.restore')), findsOneWidget);
@@ -133,14 +135,18 @@ void main() {
       expect(find.text(tr('mobileSubscribe.benefits.adFree.title')), findsOneWidget);
 
       await tapText(tester, tr('mobileSubscribe.store.yearly'));
-      expect(find.textContaining('₺1.299,99'), findsOneWidget);
+      expect(find.textContaining('₺1.299,99'), findsNWidgets(2));
+      expect(find.text('aylık ₺108,33'), findsOneWidget, reason: 'yıllık Pro paketinin aylık karşılığı');
       await tapText(tester, 'Max');
       expect(find.text('Max ile devam et'), findsOneWidget);
+      expect(find.text('Günde 120 Rebi AI sorusu'), findsOneWidget, reason: 'kart seçimle değişir');
     });
 
     testWidgets('abone: mevcut paket işaretli, üst pakete geçiş önerilir', (tester) async {
       await open(tester, meta: storeMeta('plus'));
       expect(find.text('Plus aktif'), findsOneWidget);
+      expect(find.textContaining(tr('mobileSubscribe.premium.renews', {'date': ''}).trim()), findsOneWidget,
+          reason: 'üyelik kartı yenilenme tarihini gösterir');
       expect(find.text(tr('mobileSubscribe.store.current')), findsWidgets);
       expect(find.text('Pro paketine geç'), findsOneWidget);
       expect(find.text(tr('mobileSubscribe.store.manage')), findsOneWidget);
@@ -160,6 +166,32 @@ void main() {
         lang: 'en',
       );
       expect(tester.takeException()?.toString(), isNull);
+    });
+  });
+
+  group('Bugün: Plus girişi', () {
+    testWidgets('ücretsiz hesapta sahnenin üstünde görünür; açılan sayfadan Geri ile Bugün sekmesine dönülür', (tester) async {
+      withPlusPurchasable();
+      final h = await pumpApp(tester, location: '/dashboard', prefs: demoPrefs(), backend: demoBackend());
+      expect(find.byKey(const Key('today-plus')), findsOneWidget);
+      await tester.tap(find.byKey(const Key('today-plus')));
+      await settle(tester, 4);
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard/subscribe');
+      await tapText(tester, 'Geri');
+      expect(h.router.routeInformationProvider.value.uri.path, '/dashboard');
+    });
+
+    testWidgets('abonede gösterilmez', (tester) async {
+      withPlusPurchasable();
+      await pumpApp(tester, location: '/dashboard', prefs: demoPrefs(), backend: demoBackend(), user: fakeUser(appMetadata: storeMeta('pro')));
+      expect(find.byKey(const Key('today-plus')), findsNothing);
+    });
+
+    testWidgets('satın alma yolu yokken gösterilmez', (tester) async {
+      plusPurchasableOverride = false;
+      addTearDown(() => plusPurchasableOverride = null);
+      await pumpApp(tester, location: '/dashboard', prefs: demoPrefs(), backend: demoBackend());
+      expect(find.byKey(const Key('today-plus')), findsNothing);
     });
   });
 

@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../config/env.dart';
 import '../core/demo_user.dart';
+import '../core/haptics.dart';
 import '../core/i18n.dart';
 import '../core/shelf.dart';
 import '../core/store_catalog.dart';
@@ -14,6 +15,7 @@ import '../state/theme_controller.dart';
 import '../state/today_plan_controller.dart';
 import '../ui/brand/palette.dart';
 import '../ui/shell/page_stage.dart';
+import '../ui/brand/empty_art.dart';
 import '../ui/tw.dart';
 import '../ui/widgets/common.dart';
 import '../ui/widgets/skeleton.dart';
@@ -81,9 +83,11 @@ class _ShelfScreenState extends State<ShelfScreen> {
       final outcome = await c.log(shelfRestockedEvent, payload);
       if (!mounted) return;
       if (!outcome.saved) {
+        Haptics.failure();
         _toast(i18n.t('mobileToday.toast.failed'));
         return;
       }
+      Haptics.success();
       _toast(
         outcome == LogOutcome.queued ? i18n.t('mobileToday.queuedHint') : i18n.t('mobileToday.toast.restocked', {'product': item.product}),
         undoLabel: i18n.t('mobileToday.toast.undo'),
@@ -218,8 +222,8 @@ class _ShelfScreenState extends State<ShelfScreen> {
         radius: 24,
         child: Column(
           children: [
-            TodayIconBadge(icon: LucideIcons.packageCheck, color: Tw.emerald700, size: 56),
-            const SizedBox(height: 16),
+            const EmptyArt(EmptyArtKind.shelf),
+            const SizedBox(height: 12),
             Text(i18n.t('mobileShelf.emptyTitle'), textAlign: TextAlign.center, style: heading(22)),
             const SizedBox(height: 8),
             Text(i18n.t('mobileShelf.emptyBody'), textAlign: TextAlign.center, style: tx(13, c: Tw.gray600, h: relaxed)),

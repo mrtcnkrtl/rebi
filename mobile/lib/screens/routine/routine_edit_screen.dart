@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/demo_user.dart';
+import '../../core/haptics.dart';
 import '../../core/i18n.dart';
 import '../../core/routine_edits.dart';
 import '../../core/routine_logic.dart';
@@ -128,12 +129,14 @@ class _RoutineEditScreenState extends State<RoutineEditScreen> {
     if (!mounted) return;
     final result = res.result;
     if (result == null) {
+      Haptics.failure();
       setState(() {
         _saving = false;
         _error = (res.error ?? '').isEmpty ? I18n.instance.t('mobileRoutineEdit.saveFailed') : res.error;
       });
       return;
     }
+    Haptics.success();
     // Cihazdaki kopya da güncellenir: panel ağ olmadan da düzenlenmiş planı gösterir.
     await saveRoutineSnapshot(_uid, {'routine': result.routine});
     if (!mounted) return;

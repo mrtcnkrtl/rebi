@@ -240,7 +240,7 @@ void main() {
       await pumpApp(tester, location: '/auth', loggedIn: false, authController: fake);
       await _fillLogin(tester);
       await _submit(tester);
-      expect(find.text(tr('mobileAuth.errInvalidCredentials')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.errInvalidCredentialsGoogle')), findsOneWidget, reason: 'Google ile açılmış hesaba yönlendirir');
       expect(find.text('Invalid login credentials'), findsNothing);
       expect(find.byKey(const Key('auth-resend')), findsNothing);
     });
@@ -405,7 +405,7 @@ void main() {
     testWidgets('kayıtlı adresle kayıt: "e-posta gönderdik" denmez, girişe ve sıfırlamaya yönlendirir', (tester) async {
       final fake = FakeAuth()..signUpResult = const SignUpResult(alreadyRegistered: true, kind: AuthErrorKind.alreadyRegistered);
       await openSignup(tester, fake);
-      expect(find.text(tr('mobileAuth.errAlreadyRegistered')), findsOneWidget);
+      expect(find.text(tr('mobileAuth.errAlreadyRegisteredGoogle')), findsOneWidget);
       expect(find.text(tr('mobileAuth.signupSent')), findsNothing);
       expect(find.text(tr('auth.welcome')), findsOneWidget);
       expect(find.byKey(const Key('auth-resend')), findsNothing, reason: 'gönderilmiş bir onay e-postası yok');
@@ -654,6 +654,7 @@ void main() {
       expect(google(), findsOneWidget);
       expect(find.text(tr('mobileAuth.orEmail')), findsOneWidget);
       expect(find.text(tr('mobileAuth.googleNote')), findsNothing, reason: 'rıza notu yalnızca kayıtta');
+      expect(find.text(tr('mobileAuth.googleLoginNote')), findsOneWidget, reason: 'mevcut hesaba Google ile devam edilebileceği söylenir');
 
       await tapFinder(tester, find.byKey(const Key('auth-forgot')));
       expect(google(), findsNothing);
