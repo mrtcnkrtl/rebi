@@ -1,7 +1,8 @@
-"""Check-in / risk usage önekleri üst üste binmesin; eski kayıtlar tekilleşsin."""
+"""Check-in / risk usage: motor jargonu kullanıcıya sızmasın; önekler tek kalsın."""
 
 from flow_engine import (
     _dedupe_usage_overlays,
+    _risk_condition_sentence,
     _strip_checkin_usage_overlays,
     _strip_risk_usage_overlays,
     overlay_daily_risk_on_saved_routine,
@@ -9,9 +10,7 @@ from flow_engine import (
 )
 
 
-STACKED = (
-    "Sıklık/güç hafif düşürüldü: Haftada 1-2x düşür. Tahriş riski azaltıldı. "
-    "Check-in: cilt hissi (kuru); haftalık sıklık düşürüldü: Kurulukta sıklık yarıya iner. "
+STACKED_LEGACY = (
     "Sıklık/güç hafif düşürüldü: Haftada 1-2x düşür. Tahriş riski azaltıldı. "
     "Check-in: cilt hissi (kuru); haftalık sıklık düşürüldü: Kurulukta sıklık yarıya iner. "
     "Sıklık/güç hafif düşürüldü: Haftada 1-2x düşür. Tahriş riski azaltıldı. "
@@ -20,43 +19,59 @@ STACKED = (
 )
 
 
-def test_dedupe_collapses_triple_stack_to_one_of_each():
-    out = _dedupe_usage_overlays(STACKED)
-    assert out.count("Sıklık/güç hafif düşürüldü") == 1
-    assert out.count("Check-in: cilt hissi") == 1
-    assert "Kişisel not" in out
-    assert ".." not in out
+def test_sanitize_strips_legacy_motor_jargon_from_usage():
+    items = [{"category": "Bakım", "action": "BHA", "usage": STACKED_LEGACY, "detail": "x"}]
+    sanitize_routine_items_details(items)
+    u = items[0]["usage"]
+    assert "Sıklık/güç" not in u
+    assert "Check-in:" not in u
+    assert "Tahriş riski" not in u
+    assert "Kişisel not" in u
 
 
-def test_strip_risk_keeps_checkin():
+def test_risk_sentence_is_user_facing():
+    s = _risk_condition_sentence("high", 0.5, "Haftada 1-2x düşür", paused=False)
+    assert "Sıklık/güç" not in s
+    assert "Tahriş riski" not in s
+    assert "Cildin hassas" in s
+
+
+def test_strip_risk_keeps_user_checkin():
     u = (
-        "Sıklık/güç hafif düşürüldü: Haftada 1-2x düşür. Tahriş riski azaltıldı. "
-        "Check-in: cilt hissi (kuru); haftalık sıklık düşürüldü: Kurulukta sıklık yarıya iner. "
+        "Cildin hassas görünüyor; bu adımı biraz daha seyrek kullanmanı öneririm (Haftada 1-2x düşür). "
+        "Cildin “kuru” hissettiği için bu hafta sıklığı azalttım: Kurulukta sıklık yarıya iner. "
         "İnce tabaka."
     )
     out = _strip_risk_usage_overlays(u)
-    assert "Sıklık/güç" not in out
-    assert "Check-in: cilt hissi" in out
+    assert "Cildin hassas" not in out
+    assert "hissettiği için" in out
     assert "İnce tabaka" in out
 
 
 def test_strip_checkin_keeps_risk():
     u = (
-        "Sıklık/güç hafif düşürüldü: Haftada 1-2x düşür. Tahriş riski azaltıldı. "
-        "Check-in: cilt hissi (kuru); haftalık sıklık düşürüldü: Kurulukta sıklık yarıya iner. "
+        "Cildin hassas görünüyor; bu adımı biraz daha seyrek kullanmanı öneririm (Haftada 1-2x düşür). "
+        "Cildin “kuru” hissettiği için bu hafta sıklığı azalttım: Kurulukta sıklık yarıya iner. "
         "İnce tabaka."
     )
     out = _strip_checkin_usage_overlays(u)
-    assert "Check-in:" not in out
-    assert "Sıklık/güç" in out
+    assert "hissettiği için" not in out
+    assert "Cildin hassas" in out
     assert "İnce tabaka" in out
 
 
-def test_sanitize_items_dedupes_usage():
-    items = [{"category": "Bakım", "action": "BHA", "usage": STACKED, "detail": "x"}]
-    sanitize_routine_items_details(items)
-    assert items[0]["usage"].count("Sıklık/güç") == 1
-    assert items[0]["usage"].count("Check-in:") == 1
+def test_dedupe_friendly_overlays():
+    stacked = (
+        "Cildin hassas görünüyor; bu adımı biraz daha seyrek kullanmanı öneririm (Haftada 1-2x düşür). "
+        "Cildin “kuru” hissettiği için bu hafta sıklığı azalttım: Kurulukta sıklık yarıya iner. "
+        "Cildin hassas görünüyor; bu adımı biraz daha seyrek kullanmanı öneririm (Haftada 1-2x düşür). "
+        "Cildin “kuru” hissettiği için bu hafta sıklığı azalttım: Kurulukta sıklık yarıya iner. "
+        "İnce tabaka."
+    )
+    out = _dedupe_usage_overlays(stacked)
+    assert out.count("Cildin hassas görünüyor") == 1
+    assert out.count("hissettiği için") == 1
+    assert "İnce tabaka" in out
 
 
 def test_overlay_risk_does_not_stack_on_repeat():
@@ -71,5 +86,6 @@ def test_overlay_risk_does_not_stack_on_repeat():
     once = overlay_daily_risk_on_saved_routine(items, "high")
     twice = overlay_daily_risk_on_saved_routine(once, "high")
     u = twice[0]["usage"]
-    assert u.count("Sıklık/güç hafif düşürüldü") <= 1
+    assert u.count("Cildin hassas görünüyor") <= 1
+    assert "Sıklık/güç" not in u
     assert "İnce tabaka" in u

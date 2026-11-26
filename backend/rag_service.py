@@ -3076,17 +3076,14 @@ async def _graceful_chat_fallback_reply(
     history: Optional[list] = None,
     rate_limited: bool = False,
 ) -> str:
-    from knowledge.evidence_fallback import build_graceful_evidence_fallback
-
-    body = build_graceful_evidence_fallback(kb, user_message=user_message)
-    prefix = (
-        "Şu an yapay zekâ kotası dolu; kısa bir özet paylaşıyorum:"
+    # Bilgi bankası / "Etken özet" dump'ı kullanıcıya gösterilmez (motor içi bağlamdır).
+    soft = (
+        "Şu an yoğunum; sorunuzu biraz sonra tekrar dener misiniz? "
+        "İsterseniz etken veya cilt şikâyetinizi kısaca yazın, netleştireyim."
         if rate_limited
-        else "Şu an kısa bir özet üretemedim; elimdeki notların özeti:"
+        else await _strict_no_evidence_reply(user_message, history or [])
     )
-    if body:
-        return _chat_general_shape(prefix + "\n\n" + body)
-    return _chat_general_shape(await _strict_no_evidence_reply(user_message, history or []))
+    return _chat_general_shape(soft)
 
 
 async def _chat_general_compose_with_evidence(
@@ -3632,15 +3629,8 @@ async def _free_chat(
     )
 
     if not gemini_client:
-        from knowledge.evidence_fallback import build_graceful_evidence_fallback
-
-        short = build_graceful_evidence_fallback(kb, user_message=um)
         return {
-            "reply": (
-                "Şu an kısa özet üretemedim; işte kısa notların özeti:\n\n" + short
-                if short
-                else "Şu an kısa özet üretemedim. Biraz sonra tekrar dener misin?"
-            ),
+            "reply": "Şu an kısa bir yanıt üretemedim. Biraz sonra tekrar dener misin?",
             "is_complete": False,
             "extracted_data": None,
         }
@@ -3673,23 +3663,13 @@ async def _free_chat(
     except Exception as e:
         log.error("Free chat hatası: %s", e)
         et = str(e).lower()
-        from knowledge.evidence_fallback import build_graceful_evidence_fallback, is_gemini_rate_limit_error
+        from knowledge.evidence_fallback import is_gemini_rate_limit_error
 
-        short = build_graceful_evidence_fallback(kb, user_message=um)
-        if short:
-            prefix = (
-                "Şu an yapay zekâ kotası doldu; kısa bir özet paylaşıyorum:"
-                if is_gemini_rate_limit_error(e)
-                else "Şu an yapay zekâ yanıtı alınamadı; elimdeki notların özeti:"
-            )
-            return {
-                "reply": prefix + "\n\n" + short,
-                "is_complete": False,
-                "extracted_data": None,
-            }
         return {
             "reply": (
-                "Şu an güvenli bir yanıt üretilemedi. Sorunu biraz kısaltıp tekrar dener misin?"
+                "Şu an yoğunum; sorunuzu biraz sonra tekrar dener misiniz?"
+                if is_gemini_rate_limit_error(e)
+                else "Şu an güvenli bir yanıt üretilemedi. Sorunu biraz kısaltıp tekrar dener misin?"
             ),
             "is_complete": False,
             "extracted_data": None,

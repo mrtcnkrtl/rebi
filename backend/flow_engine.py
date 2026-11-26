@@ -115,8 +115,9 @@ def sanitize_routine_items_details(items: list) -> None:
         if it.get("detail"):
             it["detail"] = sanitize_routine_detail_system_voice(it["detail"])
         if it.get("usage"):
-            # Eski kayıtlarda 3× tekrarlayan risk/check-in öneklerini teke indir.
-            cleaned = _dedupe_usage_overlays(it["usage"])
+            # Motor jargonunu sil; kullanıcı dili öneklerini teke indir.
+            cleaned = _strip_usage_patterns(it["usage"], _LEGACY_MOTOR_USAGE_PATTERNS)
+            cleaned = _dedupe_usage_overlays(cleaned)
             it["usage"] = sanitize_routine_detail_system_voice(cleaned) if cleaned else cleaned
 
 
@@ -5407,22 +5408,20 @@ def _risk_condition_sentence(
     *,
     paused: bool,
 ) -> str:
-    note = (note or "").strip()
+    """Kullanıcıya görünen uyarı; motor/check-in jargonu yok."""
+    note = (note or "").strip().rstrip(".")
     if paused:
-        s = (
-            "Yaşam verilerine göre bu adım geçici duraklatıldı; bariyer öne alındı. "
-            "Sıklık check-in ile yeniden planlanır."
-        )
+        s = "Cildin bugün dinlenmeye ihtiyaç duyuyor; bu adımı bir süre ara verip nemlendiriciye odaklanmanı öneririm."
         if note and note.lower() not in ("ara ver, sadece bariyer bakım",):
-            s += f" ({note})"
+            s = f"{s} ({note})."
         return s
     if freq_multiplier >= 1.0:
         return ""
     if not note or note.lower() in ("standart", "standart protokol"):
         return ""
     if risk_level == "crisis":
-        return f"Tempo yumuşatıldı: {note}. Bariyer öncelikli."
-    return f"Sıklık/güç hafif düşürüldü: {note}. Tahriş riski azaltıldı."
+        return f"Bugün cildini zorlamamak için bu adımı yumuşattım: {note}."
+    return f"Cildin hassas görünüyor; bu adımı biraz daha seyrek kullanmanı öneririm ({note})."
 
 
 def _strip_prior_daily_risk_overlay(detail: str) -> str:
@@ -5440,13 +5439,25 @@ def _strip_prior_daily_risk_overlay(detail: str) -> str:
     return d.strip()
 
 
-_RISK_USAGE_PATTERNS = (
+# Eski motor jargonu — kullanıcıya asla gösterilmez (sanitize ile silinir).
+_LEGACY_MOTOR_USAGE_PATTERNS = (
     r"Sıklık/güç hafif düşürüldü:[^.]*\.\s*Tahriş riski azaltıldı\.\s*",
     r"Tempo yumuşatıldı:[^.]*\.\s*Bariyer öncelikli\.\s*",
     r"Yaşam verilerine göre bu adım geçici duraklatıldı[^.]*\.(?:\s*\([^)]*\))?\s*",
+    r"Sıklık check-in ile yeniden planlanır\.\s*",
+    r"Check-in:\s*cilt hissi[^.]*\.\s*",
+    r"Check-in süreci:\s*beslenme[^.]*\.\s*",
+)
+# Güncel kullanıcı dili önekleri (yeniden yazmadan önce teke indirilir).
+_RISK_USAGE_PATTERNS = _LEGACY_MOTOR_USAGE_PATTERNS + (
+    r"Cildin bugün dinlenmeye ihtiyaç duyuyor;[^.]*\.(?:\s*\([^)]*\))?\s*",
+    r"Bugün cildini zorlamamak için bu adımı yumuşattım:[^.]*\.\s*",
+    r"Cildin hassas görünüyor;[^.]*\.\s*",
 )
 _CHECKIN_USAGE_PATTERNS = (
     r"Check-in:\s*cilt hissi[^.]*\.\s*",
+    r"Cildin\s+[“\"][^”\"]+[”\"]\s+hissettiği için[^.]*\.\s*",
+    r"Beslenme alışkanlığın nedeniyle[^.]*\.\s*",
 )
 
 
@@ -5830,12 +5841,18 @@ def adjust_routine_for_risk(items: list, risk_level: str) -> list:
 # 17. ADAPTIVE ROUTINE — Günlük check-in sonrası mevcut rutini adapte et
 # ══════════════════════════════════════════════════════════════════════
 
-_DIET_USAGE_MARK = "Check-in süreci: beslenme"
+_DIET_USAGE_MARK = "Beslenme alışkanlığın nedeniyle"
 
 
 def _strip_diet_usage(usage: str) -> str:
     parts = [p.strip() for p in (usage or "").split(".")]
-    kept = [p for p in parts if p and not p.startswith(_DIET_USAGE_MARK)]
+    kept = [
+        p
+        for p in parts
+        if p
+        and not p.startswith(_DIET_USAGE_MARK)
+        and not p.startswith("Check-in süreci: beslenme")
+    ]
     if not kept:
         return ""
     return ". ".join(kept) + "."
@@ -5857,8 +5874,8 @@ def _apply_checkin_diet_process(items: list, daily_data: dict, changes: list) ->
     active = bool(status.get("active"))
     bits = status.get("bits") or []
     note = (
-        f"{_DIET_USAGE_MARK}; son check-in'lerde {', '.join(bits)}. "
-        "Asit ve güçlü aktif sıklığı bu süre boyunca düşürüldü"
+        f"{_DIET_USAGE_MARK} ({', '.join(bits)}) asit ve güçlü aktifleri "
+        "bir süre daha seyrek kullanmanı öneririm"
     )
     touched = {str(c.get("item") or "") for c in changes}
 
@@ -6557,7 +6574,7 @@ def adapt_existing_routine(
             tn = (trigger.get("note") or "").strip().rstrip(".")
             prior_u = _strip_checkin_usage_overlays(item.get("usage") or "")
             check_u = (
-                f"Check-in: cilt hissi “{skin_feeling}”; bu adım yaklaşık {days} gün duraklatıldı"
+                f"Cildin “{skin_feeling}” hissettiği için bu adımı yaklaşık {days} gün ara vermeni öneririm"
                 f"{(': ' + tn) if tn else ''}."
             )
             new_item["usage"] = sanitize_routine_detail_system_voice(
@@ -6577,7 +6594,7 @@ def adapt_existing_routine(
             prior_u = _strip_checkin_usage_overlays(item.get("usage") or "")
             _shrink_weekly_days_for_reduce(new_item, mult)
             check_u = (
-                f"Check-in: cilt hissi ({skin_feeling}); haftalık sıklık düşürüldü"
+                f"Cildin “{skin_feeling}” hissettiği için bu hafta sıklığı azalttım"
                 f"{(': ' + tn) if tn else ''}."
             )
             new_item["usage"] = sanitize_routine_detail_system_voice(
@@ -6603,7 +6620,7 @@ def adapt_existing_routine(
             tn = (trigger.get("note") or "").strip().rstrip(".")
             prior_u = _strip_checkin_usage_overlays(item.get("usage") or "")
             check_u = (
-                f"Check-in: cilt hissi “{skin_feeling}”; bu bariyer adımı öne alındı"
+                f"Cildin “{skin_feeling}” hissettiği için bariyer adımını güçlendirdim"
                 f"{(': ' + tn) if tn else ''}."
             )
             new_item["usage"] = sanitize_routine_detail_system_voice(
