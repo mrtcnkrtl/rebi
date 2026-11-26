@@ -369,7 +369,12 @@ def format_graph_evidence_block(user_message: str, *, max_chars: int = 950) -> s
 
     text = "\n\n".join(chunks).strip()
     if len(text) > max_chars:
-        text = text[: max_chars - 1].rstrip() + "…"
+        try:
+            from knowledge.evidence_fallback import clip_at_boundary
+
+            text = clip_at_boundary(text, max_chars)
+        except Exception:
+            text = text[: max_chars - 1].rstrip() + "…"
     return text
 
 

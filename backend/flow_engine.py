@@ -114,6 +114,10 @@ def sanitize_routine_items_details(items: list) -> None:
     for it in items or []:
         if it.get("detail"):
             it["detail"] = sanitize_routine_detail_system_voice(it["detail"])
+        if it.get("usage"):
+            # Eski kayıtlarda 3× tekrarlayan risk/check-in öneklerini teke indir.
+            cleaned = _dedupe_usage_overlays(it["usage"])
+            it["usage"] = sanitize_routine_detail_system_voice(cleaned) if cleaned else cleaned
 
 
 def _niacinamide_start_pct(exp_norm: str, merged_tol: dict) -> str:
@@ -5436,6 +5440,70 @@ def _strip_prior_daily_risk_overlay(detail: str) -> str:
     return d.strip()
 
 
+_RISK_USAGE_PATTERNS = (
+    r"Sıklık/güç hafif düşürüldü:[^.]*\.\s*Tahriş riski azaltıldı\.\s*",
+    r"Tempo yumuşatıldı:[^.]*\.\s*Bariyer öncelikli\.\s*",
+    r"Yaşam verilerine göre bu adım geçici duraklatıldı[^.]*\.(?:\s*\([^)]*\))?\s*",
+)
+_CHECKIN_USAGE_PATTERNS = (
+    r"Check-in:\s*cilt hissi[^.]*\.\s*",
+)
+
+
+def _strip_usage_patterns(usage: str, patterns: tuple[str, ...]) -> str:
+    d = (usage or "").strip()
+    if not d:
+        return ""
+    for _ in range(8):
+        prev = d
+        for p in patterns:
+            d = re.sub(p, "", d, flags=re.IGNORECASE)
+        d = re.sub(r"\s{2,}", " ", d).strip()
+        d = re.sub(r"\s+\.", ".", d)
+        d = re.sub(r"\.{2,}", ".", d)
+        if d == prev:
+            break
+    return d
+
+
+def _strip_risk_usage_overlays(usage: str) -> str:
+    """Yalnız risk cümlelerini sil (check-in notu kalsın)."""
+    return _strip_usage_patterns(usage, _RISK_USAGE_PATTERNS)
+
+
+def _strip_checkin_usage_overlays(usage: str) -> str:
+    """Yalnız Check-in: cümlelerini sil (risk notu kalsın)."""
+    return _strip_usage_patterns(usage, _CHECKIN_USAGE_PATTERNS)
+
+
+def _strip_usage_overlays(usage: str) -> str:
+    """Risk + check-in öneklerinin hepsini sil (taban usage kalsın)."""
+    return _strip_checkin_usage_overlays(_strip_risk_usage_overlays(usage))
+
+
+def _dedupe_usage_overlays(usage: str) -> str:
+    """Üst üste binmiş risk/check-in cümlelerini teke indir; taban metni koru."""
+    u = (usage or "").strip()
+    if not u:
+        return ""
+    base = _strip_usage_overlays(u)
+    risk_m = ""
+    for p in _RISK_USAGE_PATTERNS:
+        matches = list(re.finditer(p, u, flags=re.IGNORECASE))
+        if matches:
+            risk_m = matches[-1].group(0).strip()
+            break
+    check_m = ""
+    for p in _CHECKIN_USAGE_PATTERNS:
+        matches = list(re.finditer(p, u, flags=re.IGNORECASE))
+        if matches:
+            check_m = matches[-1].group(0).strip()
+            break
+    parts = [p for p in (risk_m, check_m, base) if p]
+    out = " ".join(parts).strip()
+    return re.sub(r"\s{2,}", " ", out)
+
+
 def _is_spf_routine_row(item: dict) -> bool:
     a = (item.get("action") or "").lower()
     return "spf" in a or "güneş koruyucu" in a or "gunes koruyucu" in a
@@ -5688,8 +5756,11 @@ def overlay_daily_risk_on_saved_routine(items: list, risk_level: str) -> list:
         adjusted = []
         for item in items:
             ni = dict(item)
-            if ni.get("category") in ("Bakım", "Koruma") and ni.get("detail"):
-                ni["detail"] = _strip_prior_daily_risk_overlay(ni["detail"])
+            if ni.get("category") in ("Bakım", "Koruma"):
+                if ni.get("detail"):
+                    ni["detail"] = _strip_prior_daily_risk_overlay(ni["detail"])
+                if ni.get("usage"):
+                    ni["usage"] = _strip_risk_usage_overlays(ni["usage"])
             adjusted.append(ni)
         return adjusted
 
@@ -5702,7 +5773,8 @@ def overlay_daily_risk_on_saved_routine(items: list, risk_level: str) -> list:
             continue
 
         base_detail = _strip_prior_daily_risk_overlay(orig.get("detail") or "")
-        motor_usage = (orig.get("usage") or "").strip()
+        # Risk önekini yenile; check-in notunu koru.
+        motor_usage = _strip_risk_usage_overlays(orig.get("usage") or "")
         ik = _detect_ingredient_key(orig.get("action", "").lower())
         rk = _ingredient_key_for_risk_adjustment(ik)
         risk_part = ""
@@ -6482,8 +6554,8 @@ def adapt_existing_routine(
                 "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
             })
             new_item["action"] = f"⏸️ {item['action']} — {days} gün ara ver"
-            tn = trigger.get("note", "")
-            prior_u = (item.get("usage") or "").strip()
+            tn = (trigger.get("note") or "").strip().rstrip(".")
+            prior_u = _strip_checkin_usage_overlays(item.get("usage") or "")
             check_u = (
                 f"Check-in: cilt hissi “{skin_feeling}”; bu adım yaklaşık {days} gün duraklatıldı"
                 f"{(': ' + tn) if tn else ''}."
@@ -6501,8 +6573,8 @@ def adapt_existing_routine(
                 "new": f"sıklık x{mult}",
                 "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
             })
-            tn = trigger.get("note", "")
-            prior_u = (item.get("usage") or "").strip()
+            tn = (trigger.get("note") or "").strip().rstrip(".")
+            prior_u = _strip_checkin_usage_overlays(item.get("usage") or "")
             _shrink_weekly_days_for_reduce(new_item, mult)
             check_u = (
                 f"Check-in: cilt hissi ({skin_feeling}); haftalık sıklık düşürüldü"
@@ -6528,8 +6600,8 @@ def adapt_existing_routine(
                 "new": "artırıldı",
                 "reason": trigger.get("note", f"Cilt hissi: {skin_feeling}"),
             })
-            tn = trigger.get("note", "")
-            prior_u = (item.get("usage") or "").strip()
+            tn = (trigger.get("note") or "").strip().rstrip(".")
+            prior_u = _strip_checkin_usage_overlays(item.get("usage") or "")
             check_u = (
                 f"Check-in: cilt hissi “{skin_feeling}”; bu bariyer adımı öne alındı"
                 f"{(': ' + tn) if tn else ''}."

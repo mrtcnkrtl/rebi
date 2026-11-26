@@ -8,6 +8,33 @@ from __future__ import annotations
 import re
 
 
+def clip_at_boundary(text: str, max_chars: int) -> str:
+    """
+    Uzun metni kelime ortasında kesme (örn. "genelde k" → "genelde…").
+    Kısmi satır yeterince uzunsa satır içinde kelime sınırında keser;
+    aksi halde son tam satıra düşer.
+    """
+    t = (text or "").strip()
+    if max_chars <= 0 or len(t) <= max_chars:
+        return t
+    budget = max(8, max_chars - 1)
+    cut = t[:budget]
+
+    def _word_clip(s: str) -> str:
+        sp = s.rfind(" ")
+        if sp >= max(8, len(s) // 3):
+            return s[:sp].rstrip(" ,;:/") + "…"
+        return s.rstrip() + "…"
+
+    if "\n" in cut:
+        head, tail = cut.rsplit("\n", 1)
+        if len(tail.strip()) >= 36:
+            return f"{head}\n{_word_clip(tail)}"
+        if head.strip():
+            return head.rstrip() + "\n…"
+    return _word_clip(cut)
+
+
 def is_gemini_rate_limit_error(err: Exception) -> bool:
     et = str(err or "").lower()
     return any(x in et for x in ("429", "resource_exhausted", "quota", "rate limit"))
@@ -55,7 +82,7 @@ def build_graceful_evidence_fallback(
     if m:
         g = m.group(1).strip()
         if g:
-            lines.append(g[: min(len(g), max_chars_per_snippet * 2)])
+            lines.append(clip_at_boundary(g, max_chars_per_snippet * 2))
             graph_added = True
 
     # Remaining sections split by chunk delimiter or section headers.
@@ -78,9 +105,7 @@ def build_graceful_evidence_fallback(
             if nl > 0:
                 label = chunk[1 : chunk.find("]")].strip() if "]" in chunk[: nl + 1] else ""
                 chunk = chunk[nl + 1 :].strip()
-        snippet = chunk[:max_chars_per_snippet].strip()
-        if len(chunk) > max_chars_per_snippet:
-            snippet += "…"
+        snippet = clip_at_boundary(chunk, max_chars_per_snippet)
         if not snippet:
             continue
         if label:
@@ -95,11 +120,9 @@ def build_graceful_evidence_fallback(
 
             g = (format_graph_evidence_block(user_message) or "").strip()
             if g:
-                lines.append(g[:max_chars_per_snippet * 2])
+                lines.append(clip_at_boundary(g, max_chars_per_snippet * 2))
         except Exception:
             pass
 
     text = "\n".join(f"- {ln}" if not ln.startswith("-") else ln for ln in lines[:max_snippets]).strip()
-    if len(text) > max_total:
-        text = text[: max_total - 1].rstrip() + "…"
-    return text
+    return clip_at_boundary(text, max_total) if len(text) > max_total else text
