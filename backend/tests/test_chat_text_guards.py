@@ -31,6 +31,24 @@ def test_chat_reply_keeps_two_sentences():
     assert out == "Birinci cümle. İkinci cümle."
 
 
+def test_chat_blocks_etken_ozet_kb_dump():
+    dump = (
+        "Etken özet:\n"
+        "- Niasinamid: tipik %2-10 (etkili ~%4); pH ~5-7; hamilelik: genelde uygun kabul (yine de doktor) [A (Güçlü RCT)]\n"
+        "- C Vitamini (L-Askorbik Asit): tipik %5-20 (etkili ~%10); pH ~2.5-3.5; hamilelik: genelde uygun kabul (yine de doktor) [A (Güçlü RCT)]\n"
+        "- Salisilik Asit: tipik %0.5-2; pH ~3-4; hamilelik: dikkat / genelde kaçınılır"
+    )
+    out = rs._chat_general_shape(dump)
+    assert "Etken özet" not in out
+    assert "tipik %" not in out
+    assert "anlatayım" in out.lower() or "etkeni" in out.lower()
+
+
+def test_looks_like_internal_kb_dump():
+    assert rs._looks_like_internal_kb_dump("Etken özet:\n- X: tipik %1; pH ~3; hamilelik: genelde")
+    assert not rs._looks_like_internal_kb_dump("Niasinamid genelde gözenek görünümünü yumuşatmaya yardımcı olabilir.")
+
+
 def test_free_chat_daily_limit_defaults_to_six(monkeypatch):
     monkeypatch.delenv("FREE_CHAT_DAILY_LIMIT", raising=False)
     assert free_chat_limit() == 6
