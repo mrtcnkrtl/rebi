@@ -14,6 +14,7 @@ import {
 import RoutineStepChoices from "../components/RoutineStepChoices";
 import { applyChosenOptionIds, getChosenOption, withResolvedChoices } from "../lib/routineStepChoices";
 import { friendlyRoutineTitle } from "../lib/routineDisplay";
+import { sanitizeRoutineUsage } from "../lib/sanitizeRoutineVoice";
 import { activeRoutineItems } from "../lib/routineEdits";
 import ThemePatternOverlay from "../components/ThemePatternOverlay";
 import AiDisclaimer from "../components/AiDisclaimer";
@@ -1169,7 +1170,7 @@ function ProductStep({ item, theme, step }) {
   const title = friendlyRoutineTitle(displayAction, t("dashboard.fallbackStepTitle", { defaultValue: "This step" }));
   const hasStructuredChoices = Array.isArray(resolved.choices) && resolved.choices.length >= 2;
   const isSkincare = item.category === "Bakım" || item.category === "Koruma";
-  const usageRaw = item.usage != null ? String(item.usage).trim() : "";
+  const usageRaw = sanitizeRoutineUsage(item.usage != null ? String(item.usage).trim() : "");
   const so = item.step_order ?? 50;
   const usage =
     usageRaw ||

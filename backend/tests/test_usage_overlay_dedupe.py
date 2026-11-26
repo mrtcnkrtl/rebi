@@ -29,6 +29,16 @@ def test_sanitize_strips_legacy_motor_jargon_from_usage():
     assert "Kişisel not" in u
 
 
+def test_dedupe_does_not_reintroduce_legacy_jargon():
+    only_legacy = (
+        "Sıklık/güç hafif düşürüldü: Haftada 2-3x düşür. Tahriş riski azaltıldı. "
+        "Sıklık/güç hafif düşürüldü: Haftada 2-3x düşür. Tahriş riski azaltıldı."
+    )
+    out = _dedupe_usage_overlays(only_legacy)
+    assert out == ""
+    assert "Sıklık/güç" not in out
+
+
 def test_risk_sentence_is_user_facing():
     s = _risk_condition_sentence("high", 0.5, "Haftada 1-2x düşür", paused=False)
     assert "Sıklık/güç" not in s

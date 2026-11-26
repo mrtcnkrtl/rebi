@@ -668,9 +668,18 @@ def _int_or(value, fallback: int) -> int:
 
 def _active_routine_split(row: dict) -> tuple[list[dict], list[dict]]:
     """Satırdaki rutini (yürürlükteki adımlar, kullanıcının çıkardığı adımlar) olarak ayırır."""
+    import copy
+
+    from flow_engine import sanitize_routine_items_details
     from routine_edits import split_user_edits
 
-    return split_user_edits(row.get("active_routine") or [])
+    routine, skipped = split_user_edits(row.get("active_routine") or [])
+    # Eski kayıtlarda kalan motor jargonu okumada temizlenir (DB'ye yazılmaz).
+    routine = copy.deepcopy(routine)
+    skipped = copy.deepcopy(skipped)
+    sanitize_routine_items_details(routine)
+    sanitize_routine_items_details(skipped)
+    return routine, skipped
 
 
 def _checkin_done_today(supabase, user_id: str, log_date: str) -> bool:

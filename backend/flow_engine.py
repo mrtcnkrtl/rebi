@@ -5449,13 +5449,19 @@ _LEGACY_MOTOR_USAGE_PATTERNS = (
     r"Check-in süreci:\s*beslenme[^.]*\.\s*",
 )
 # Güncel kullanıcı dili önekleri (yeniden yazmadan önce teke indirilir).
-_RISK_USAGE_PATTERNS = _LEGACY_MOTOR_USAGE_PATTERNS + (
+_FRIENDLY_RISK_USAGE_PATTERNS = (
     r"Cildin bugün dinlenmeye ihtiyaç duyuyor;[^.]*\.(?:\s*\([^)]*\))?\s*",
     r"Bugün cildini zorlamamak için bu adımı yumuşattım:[^.]*\.\s*",
     r"Cildin hassas görünüyor;[^.]*\.\s*",
 )
+_RISK_USAGE_PATTERNS = _LEGACY_MOTOR_USAGE_PATTERNS + _FRIENDLY_RISK_USAGE_PATTERNS
 _CHECKIN_USAGE_PATTERNS = (
     r"Check-in:\s*cilt hissi[^.]*\.\s*",
+    r"Cildin\s+[“\"][^”\"]+[”\"]\s+hissettiği için[^.]*\.\s*",
+    r"Beslenme alışkanlığın nedeniyle[^.]*\.\s*",
+)
+# Dedupe yalnızca kullanıcı dilini geri ekler; legacy jargonu asla tutmaz.
+_FRIENDLY_CHECKIN_USAGE_PATTERNS = (
     r"Cildin\s+[“\"][^”\"]+[”\"]\s+hissettiği için[^.]*\.\s*",
     r"Beslenme alışkanlığın nedeniyle[^.]*\.\s*",
 )
@@ -5499,13 +5505,13 @@ def _dedupe_usage_overlays(usage: str) -> str:
         return ""
     base = _strip_usage_overlays(u)
     risk_m = ""
-    for p in _RISK_USAGE_PATTERNS:
+    for p in _FRIENDLY_RISK_USAGE_PATTERNS:
         matches = list(re.finditer(p, u, flags=re.IGNORECASE))
         if matches:
             risk_m = matches[-1].group(0).strip()
             break
     check_m = ""
-    for p in _CHECKIN_USAGE_PATTERNS:
+    for p in _FRIENDLY_CHECKIN_USAGE_PATTERNS:
         matches = list(re.finditer(p, u, flags=re.IGNORECASE))
         if matches:
             check_m = matches[-1].group(0).strip()
